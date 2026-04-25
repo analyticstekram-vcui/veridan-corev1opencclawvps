@@ -1,0 +1,51 @@
+{
+  "name": "CreditLedgerEvent",
+  "type": "object",
+  "properties": {
+    "creditFacilityId": {
+      "type": "string"
+    },
+    "eventDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "draw",
+        "paydown",
+        "fee",
+        "interest",
+        "adjustment",
+        "allocation",
+        "reversal"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "amountCents": {
+      "type": "number"
+    },
+    "balanceAfterCents": {
+      "type": "number"
+    },
+    "availableAfterCents": {
+      "type": "number"
+    },
+    "sourceAccount": {
+      "type": "string"
+    },
+    "destinationAccount": {
+      "type": "string"
+    },
+    "referenceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "creditFacilityId",
+    "eventType",
+    "amountCents"
+  ]
+}

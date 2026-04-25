@@ -1,0 +1,154 @@
+{
+  "name": "CreditFacility",
+  "type": "object",
+  "properties": {
+    "facilityName": {
+      "type": "string",
+      "description": "Name of the credit facility"
+    },
+    "facilityCode": {
+      "type": "string",
+      "description": "Unique code identifier"
+    },
+    "facilityType": {
+      "type": "string",
+      "enum": [
+        "revolving",
+        "term",
+        "heloc",
+        "line_of_credit",
+        "credit_card",
+        "bridge"
+      ],
+      "description": "Type of credit facility"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "suspended",
+        "closed",
+        "pending"
+      ],
+      "default": "pending"
+    },
+    "borrowerEntityId": {
+      "type": "string",
+      "description": "Borrower entity ID"
+    },
+    "borrowerEntityName": {
+      "type": "string",
+      "description": "Borrower entity name"
+    },
+    "lenderEntityId": {
+      "type": "string",
+      "description": "Lender entity ID"
+    },
+    "lenderEntityName": {
+      "type": "string",
+      "description": "Lender entity name"
+    },
+    "liabilityAccount": {
+      "type": "string",
+      "description": "Liability account reference"
+    },
+    "cashAccount": {
+      "type": "string",
+      "description": "Cash account reference"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "creditLimitCents": {
+      "type": "number",
+      "default": 0
+    },
+    "currentBalanceCents": {
+      "type": "number",
+      "default": 0
+    },
+    "availableCreditCents": {
+      "type": "number",
+      "default": 0
+    },
+    "aprBps": {
+      "type": "number",
+      "description": "APR in basis points"
+    },
+    "promoAprBps": {
+      "type": "number",
+      "description": "Promo APR in basis points"
+    },
+    "promoStartDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "promoEndDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "minimumPaymentCents": {
+      "type": "number",
+      "default": 0
+    },
+    "statementDay": {
+      "type": "number",
+      "description": "Day of month for statement"
+    },
+    "dueDay": {
+      "type": "number",
+      "description": "Day of month payment is due"
+    },
+    "openedDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "closedDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "personalGuarantee": {
+      "type": "boolean",
+      "default": false
+    },
+    "secured": {
+      "type": "boolean",
+      "default": false
+    },
+    "collateral": {
+      "type": "string"
+    },
+    "riskRating": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "approvalStatus": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "pending",
+        "rejected",
+        "expired"
+      ]
+    },
+    "paymentDueDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "facilityName",
+    "borrowerEntityName",
+    "creditLimitCents"
+  ]
+}

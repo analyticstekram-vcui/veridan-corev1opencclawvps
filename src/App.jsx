@@ -6,6 +6,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Dashboard from './pages/Dashboard';
+import CreditLedger from './pages/CreditLedger';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -35,6 +36,7 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/" element={<Dashboard />} />
+      <Route path="/credit-ledger" element={<CreditLedger />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

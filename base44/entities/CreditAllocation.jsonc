@@ -1,0 +1,67 @@
+{
+  "name": "CreditAllocation",
+  "type": "object",
+  "properties": {
+    "creditFacilityId": {
+      "type": "string"
+    },
+    "allocationType": {
+      "type": "string",
+      "enum": [
+        "inventory",
+        "equipment",
+        "real_estate",
+        "working_capital",
+        "payroll",
+        "marketing",
+        "other"
+      ]
+    },
+    "amountCents": {
+      "type": "number"
+    },
+    "outstandingCents": {
+      "type": "number"
+    },
+    "costOfCapitalBps": {
+      "type": "number"
+    },
+    "expectedRoiBps": {
+      "type": "number"
+    },
+    "riskRating": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "allocationDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "repaymentDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "repaid",
+        "defaulted"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "creditFacilityId",
+    "allocationType",
+    "amountCents"
+  ]
+}
