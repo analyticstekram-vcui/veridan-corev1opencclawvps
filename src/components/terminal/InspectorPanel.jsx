@@ -1,23 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PanelRightClose, PanelRightOpen, ShieldAlert } from 'lucide-react';
-
-const inspectorData = [
-  { label: 'Active Module', value: 'AI Command', color: 'text-primary' },
-  { label: 'Active Vault', value: 'VRD-PRIMARY', color: 'text-foreground' },
-  { label: 'Current Agent', value: 'CreditAudit-v3', color: 'text-blue-400' },
-  { label: 'System State', value: 'NOMINAL', color: 'text-primary' },
-  { label: 'Risk State', value: 'LOW', color: 'text-primary' },
-  { label: 'Last Command', value: 'credit_audit VRD-0042', color: 'text-muted-foreground' },
-];
+import { getStatus } from '@/lib/veridanApi';
 
 const InspectorRow = ({ label, value, color }) => (
   <div className="px-3 py-2 border-b border-border/50">
     <div className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider mb-0.5">{label}</div>
-    <div className={`text-[11px] font-mono ${color}`}>{value}</div>
+    <div className={`text-[11px] font-mono ${color}`}>{value ?? '—'}</div>
   </div>
 );
 
-export default function InspectorPanel({ collapsed, onToggle }) {
+export default function InspectorPanel({ collapsed, onToggle, pendingApprovals = [] }) {
+  const [status, setStatus] = useState(null);
+  const [uptime, setUptime] = useState(0);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try { setStatus(await getStatus()); } catch (_) { /* offline */ }
+    };
+    fetchStatus();
+    const si = setInterval(fetchStatus, 15000);
+    const ui = setInterval(() => setUptime(s => s + 1), 1000);
+    return () => { clearInterval(si); clearInterval(ui); };
+  }, []);
+
+  const fmtUptime = (s) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  };
+
+  const openclawStatus = status
+    ? (status.openclaw.online ? `ONLINE (${status.openclaw.latencyMs}ms)` : 'OFFLINE')
+    : 'CHECKING';
+
   if (collapsed) {
     return (
       <button
@@ -32,57 +48,55 @@ export default function InspectorPanel({ collapsed, onToggle }) {
 
   return (
     <div className="w-56 bg-card border-l border-border flex flex-col shrink-0 select-none">
-      {/* Header */}
       <div className="h-8 border-b border-border flex items-center justify-between px-3 shrink-0">
         <span className="text-[11px] font-mono text-muted-foreground">INSPECTOR</span>
-        <button
-          onClick={onToggle}
-          className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-        >
+        <button onClick={onToggle} className="p-0.5 text-muted-foreground hover:text-foreground transition-colors">
           <PanelRightClose className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Inspector Data */}
       <div className="flex-1 overflow-y-auto">
-        {inspectorData.map((item, i) => (
-          <InspectorRow key={i} {...item} />
-        ))}
+        <InspectorRow label="Active Module" value="AI Command" color="text-primary" />
+        <InspectorRow label="Active Vault" value={status?.vault.name} color="text-foreground" />
+        <InspectorRow label="AI Model" value={status?.ai.model} color="text-blue-400" />
+        <InspectorRow
+          label="OpenClaw"
+          value={openclawStatus}
+          color={status?.openclaw.online ? 'text-primary' : 'text-destructive'}
+        />
+        <InspectorRow
+          label="System State"
+          value={status ? 'NOMINAL' : 'INITIALIZING'}
+          color={status ? 'text-primary' : 'text-amber-500'}
+        />
 
-        {/* Pending Approval Section */}
+        {/* Pending Approvals */}
         <div className="px-3 py-2 border-b border-border/50">
           <div className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider mb-1.5">
-            Pending Approval
+            Pending Approval ({pendingApprovals.length})
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-amber-500/5 border border-amber-500/20">
-            <ShieldAlert className="w-3 h-3 text-amber-500 shrink-0" />
-            <div>
-              <div className="text-[10px] font-mono text-amber-500">Dispute TL-8812</div>
-              <div className="text-[9px] font-mono text-muted-foreground/50">Experian submission</div>
+          {pendingApprovals.length === 0 ? (
+            <div className="text-[10px] font-mono text-muted-foreground/30">None</div>
+          ) : (
+            <div className="space-y-1">
+              {pendingApprovals.map((p, i) => (
+                <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 bg-amber-500/5 border border-amber-500/20">
+                  <ShieldAlert className="w-3 h-3 text-amber-500 shrink-0" />
+                  <div>
+                    <div className="text-[10px] font-mono text-amber-500">{p.action}</div>
+                    <div className="text-[9px] font-mono text-muted-foreground/50">risk: {p.riskLevel}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        </div>
-
-        {/* Queue */}
-        <div className="px-3 py-2">
-          <div className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider mb-1.5">
-            Queue
-          </div>
-          <div className="space-y-1">
-            {['Credit pull VRD-0043', 'Vault sync #47'].map((item, i) => (
-              <div key={i} className="text-[10px] font-mono text-muted-foreground/50 pl-2 border-l border-border">
-                {item}
-              </div>
-            ))}
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Footer */}
       <div className="border-t border-border px-3 py-1.5 shrink-0">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-mono text-muted-foreground/40">UPTIME</span>
-          <span className="text-[9px] font-mono text-muted-foreground/60">4h 23m 11s</span>
+          <span className="text-[9px] font-mono text-muted-foreground/40">SESSION</span>
+          <span className="text-[9px] font-mono text-muted-foreground/60">{fmtUptime(uptime)}</span>
         </div>
       </div>
     </div>
