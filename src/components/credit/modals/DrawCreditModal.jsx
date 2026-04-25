@@ -52,7 +52,7 @@ export default function DrawCreditModal({ facility, onClose, onSuccess }) {
         destinationAccount: destAccount,
       });
 
-      onSuccess(amountCents);
+      onSuccess();
     } catch (err) {
       setError(err.message);
       setLoading(false);

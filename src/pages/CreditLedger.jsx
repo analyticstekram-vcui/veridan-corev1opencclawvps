@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import CreditFacilityKpiStrip from '@/components/credit/CreditFacilityKpiStrip';
 import CreditFacilityFilters from '@/components/credit/CreditFacilityFilters';
@@ -29,19 +29,22 @@ export default function CreditLedger() {
   const openModal = (key) => setModals(m => ({ ...m, [key]: true }));
   const closeModal = (key) => setModals(m => ({ ...m, [key]: false }));
 
+  const selectedFacilityIdRef = useRef(null);
+
   const fetchFacilities = useCallback(async () => {
     setLoading(true);
     try {
       const data = await base44.entities.CreditFacility.list('-created_date', 200);
       setFacilities(data);
-      if (selectedFacility) {
-        const updated = data.find(f => f.id === selectedFacility.id);
+      // Always sync selected facility from server data to pick up persisted balance changes
+      if (selectedFacilityIdRef.current) {
+        const updated = data.find(f => f.id === selectedFacilityIdRef.current);
         if (updated) setSelectedFacility(updated);
       }
     } finally {
       setLoading(false);
     }
-  }, [selectedFacility]);
+  }, []);
 
   const fetchLedger = useCallback(async (facilityId) => {
     if (!facilityId) return;
@@ -60,6 +63,7 @@ export default function CreditLedger() {
 
   const handleSelectFacility = useCallback((facility) => {
     setSelectedFacility(facility);
+    selectedFacilityIdRef.current = facility?.id || null;
     if (facility) fetchLedger(facility.id);
     else setLedgerEvents([]);
   }, [fetchLedger]);
@@ -69,25 +73,12 @@ export default function CreditLedger() {
     if (selectedFacility) fetchLedger(selectedFacility.id);
   };
 
-  const handleOptimisticDraw = (amountCents) => {
-    const update = (f) => ({
-      ...f,
-      currentBalanceCents: (f.currentBalanceCents || 0) + amountCents,
-      availableCreditCents: (f.availableCreditCents || 0) - amountCents,
-    });
-    setFacilities(prev => prev.map(f => f.id === selectedFacility.id ? update(f) : f));
-    setSelectedFacility(prev => update(prev));
-  };
-
-  const handleOptimisticPayDown = (amountCents) => {
-    const update = (f) => ({
-      ...f,
-      currentBalanceCents: Math.max(0, (f.currentBalanceCents || 0) - amountCents),
-      availableCreditCents: Math.min(f.creditLimitCents, (f.availableCreditCents || 0) + amountCents),
-    });
-    setFacilities(prev => prev.map(f => f.id === selectedFacility.id ? update(f) : f));
-    setSelectedFacility(prev => update(prev));
-  };
+  // After any balance-changing operation: re-fetch both facilities and ledger from server
+  // so the UI always reflects persisted state (survives reload).
+  const handlePostTransaction = useCallback(() => {
+    fetchFacilities();
+    if (selectedFacilityIdRef.current) fetchLedger(selectedFacilityIdRef.current);
+  }, [fetchFacilities, fetchLedger]);
 
   const canDraw = selectedFacility?.status === 'active';
   const canPayDown = (selectedFacility?.currentBalanceCents || 0) > 0;
@@ -178,21 +169,21 @@ export default function CreditLedger() {
         <DrawCreditModal
           facility={selectedFacility}
           onClose={() => closeModal('draw')}
-          onSuccess={(amt) => { closeModal('draw'); handleOptimisticDraw(amt); fetchLedger(selectedFacility.id); }}
+          onSuccess={() => { closeModal('draw'); handlePostTransaction(); }}
         />
       )}
       {modals.paydown && selectedFacility && (
         <PayDownCreditModal
           facility={selectedFacility}
           onClose={() => closeModal('paydown')}
-          onSuccess={(amt) => { closeModal('paydown'); handleOptimisticPayDown(amt); fetchLedger(selectedFacility.id); }}
+          onSuccess={() => { closeModal('paydown'); handlePostTransaction(); }}
         />
       )}
       {modals.allocate && selectedFacility && (
         <AllocateCreditModal
           facility={selectedFacility}
           onClose={() => closeModal('allocate')}
-          onSuccess={() => { closeModal('allocate'); handleRefresh(); fetchLedger(selectedFacility.id); }}
+          onSuccess={() => { closeModal('allocate'); handlePostTransaction(); }}
         />
       )}
     </div>

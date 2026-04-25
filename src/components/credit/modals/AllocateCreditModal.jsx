@@ -41,6 +41,11 @@ export default function AllocateCreditModal({ facility, onClose, onSuccess }) {
     setError(null);
 
     try {
+      // Compute new balances — allocation is a tagged draw against available credit
+      const newBalance = (facility.currentBalanceCents || 0) + amountCents;
+      const newAvailable = (facility.availableCreditCents || 0) - amountCents;
+
+      // 1. Persist allocation record
       await base44.entities.CreditAllocation.create({
         creditFacilityId: facility.id,
         allocationType: form.allocationType,
@@ -55,15 +60,21 @@ export default function AllocateCreditModal({ facility, onClose, onSuccess }) {
         status: 'active',
       });
 
-      // Create ledger event for allocation
+      // 2. Update facility balances so they persist on reload
+      await base44.entities.CreditFacility.update(facility.id, {
+        currentBalanceCents: newBalance,
+        availableCreditCents: newAvailable,
+      });
+
+      // 3. Write ledger event with accurate post-allocation balances
       await base44.entities.CreditLedgerEvent.create({
         creditFacilityId: facility.id,
         eventDate: form.allocationDate,
         eventType: 'allocation',
         description: `Allocation: ${form.allocationType}${form.description ? ' — ' + form.description : ''}`,
         amountCents,
-        balanceAfterCents: facility.currentBalanceCents,
-        availableAfterCents: facility.availableCreditCents,
+        balanceAfterCents: newBalance,
+        availableAfterCents: newAvailable,
       });
 
       onSuccess();

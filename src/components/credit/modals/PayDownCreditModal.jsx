@@ -48,7 +48,7 @@ export default function PayDownCreditModal({ facility, onClose, onSuccess }) {
         destinationAccount: facility.liabilityAccount || '',
       });
 
-      onSuccess(amountCents);
+      onSuccess();
     } catch (err) {
       setError(err.message);
       setLoading(false);
