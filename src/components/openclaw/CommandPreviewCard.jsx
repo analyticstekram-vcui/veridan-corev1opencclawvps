@@ -18,16 +18,21 @@ const statusColors = {
   cancelled: 'text-muted-foreground bg-secondary/60 border-border',
 };
 
-export default function CommandPreviewCard({ command, onApprove, onDeny, onCancel, onExecuted }) {
+export default function CommandPreviewCard({ command, onApprove, onDeny, onCancel, onExecuted, executionMode = 'SIMULATED', executionPaused = false }) {
   const isPending  = command.status === 'pending';
   const isApproved = command.status === 'approved';
+  const isLive     = executionMode === 'LIVE' && !executionPaused;
   const [executing, setExecuting] = useState(false);
   const [execResult, setExecResult] = useState(null);
 
-  const handleSimulatedExecute = async () => {
+  const handleExecute = async () => {
     setExecuting(true);
     setExecResult(null);
-    const res = await base44.functions.invoke('openclawExecutionAdapter', { commandId: command.id });
+    const res = await base44.functions.invoke('openclawExecutionBridge', {
+      commandId: command.id,
+      executionMode,
+      executionPaused,
+    });
     setExecuting(false);
     if (res.data?.result) {
       setExecResult(res.data.result);
@@ -119,7 +124,7 @@ export default function CommandPreviewCard({ command, onApprove, onDeny, onCance
             </div>
           </div>
           <div className="mt-2 text-[10px] text-muted-foreground/50">
-            {new Date(execResult.timestamp).toLocaleString()} · No real command sent to OpenClaw
+            {new Date(execResult.timestamp).toLocaleString()} · {execResult.simulated ? 'No real command sent to OpenClaw' : 'Live dispatch to OpenClaw gateway'}
           </div>
         </div>
       )}
@@ -152,12 +157,18 @@ export default function CommandPreviewCard({ command, onApprove, onDeny, onCance
       {isApproved && !execResult && (
         <div className="px-4 py-3">
           <button
-            onClick={handleSimulatedExecute}
-            disabled={executing}
-            className="flex items-center gap-2 w-full justify-center py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[11px] hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+            onClick={handleExecute}
+            disabled={executing || executionPaused}
+            className={`flex items-center gap-2 w-full justify-center py-2 border text-[11px] transition-colors disabled:opacity-50 ${
+              isLive
+                ? 'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20'
+                : 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20'
+            }`}
           >
             {executing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-            {executing ? 'Simulating...' : 'Execute (Simulated)'}
+            {executing
+              ? (isLive ? 'Executing...' : 'Simulating...')
+              : (isLive ? 'Execute (LIVE)' : 'Execute (Simulated)')}
           </button>
         </div>
       )}
