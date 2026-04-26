@@ -64,9 +64,10 @@ export default function CommandQueuePanel({ currentUser }) {
     fetchCommands();
   };
 
-  const onApprove = (cmd) => transition(cmd, 'approved', 'OPENCLAW_COMMAND_APPROVED');
-  const onDeny    = (cmd) => transition(cmd, 'denied',   'OPENCLAW_COMMAND_DENIED');
-  const onCancel  = (cmd) => transition(cmd, 'cancelled','OPENCLAW_COMMAND_CANCELLED');
+  const onApprove  = (cmd) => transition(cmd, 'approved',  'OPENCLAW_COMMAND_APPROVED');
+  const onDeny     = (cmd) => transition(cmd, 'denied',    'OPENCLAW_COMMAND_DENIED');
+  const onCancel   = (cmd) => transition(cmd, 'cancelled', 'OPENCLAW_COMMAND_CANCELLED');
+  const onExecuted = ()    => fetchCommands();
 
   return (
     <div className="flex flex-col h-full font-mono">
@@ -156,6 +157,7 @@ export default function CommandQueuePanel({ currentUser }) {
               onApprove={onApprove}
               onDeny={onDeny}
               onCancel={onCancel}
+              onExecuted={onExecuted}
             />
           ))
         )}

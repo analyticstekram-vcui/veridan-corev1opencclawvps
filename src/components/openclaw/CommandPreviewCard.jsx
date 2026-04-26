@@ -1,5 +1,6 @@
-import React from 'react';
-import { Terminal, User, AlertTriangle, Clock, Shield } from 'lucide-react';
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Terminal, User, AlertTriangle, Clock, Shield, Zap, Loader2, CheckCircle2 } from 'lucide-react';
 
 const riskColors = {
   low: 'text-primary border-primary/30 bg-primary/5',
@@ -9,16 +10,30 @@ const riskColors = {
 };
 
 const statusColors = {
-  pending: 'text-amber-500 bg-amber-500/10 border-amber-500/30',
-  approved: 'text-primary bg-primary/10 border-primary/30',
-  denied: 'text-destructive bg-destructive/10 border-destructive/30',
-  executed: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-  failed: 'text-destructive bg-destructive/10 border-destructive/30',
+  pending:   'text-amber-500 bg-amber-500/10 border-amber-500/30',
+  approved:  'text-primary bg-primary/10 border-primary/30',
+  denied:    'text-destructive bg-destructive/10 border-destructive/30',
+  executed:  'text-blue-400 bg-blue-400/10 border-blue-400/30',
+  failed:    'text-destructive bg-destructive/10 border-destructive/30',
   cancelled: 'text-muted-foreground bg-secondary/60 border-border',
 };
 
-export default function CommandPreviewCard({ command, onApprove, onDeny, onCancel }) {
-  const isPending = command.status === 'pending';
+export default function CommandPreviewCard({ command, onApprove, onDeny, onCancel, onExecuted }) {
+  const isPending  = command.status === 'pending';
+  const isApproved = command.status === 'approved';
+  const [executing, setExecuting] = useState(false);
+  const [execResult, setExecResult] = useState(null);
+
+  const handleSimulatedExecute = async () => {
+    setExecuting(true);
+    setExecResult(null);
+    const res = await base44.functions.invoke('openclawExecutionAdapter', { commandId: command.id });
+    setExecuting(false);
+    if (res.data?.result) {
+      setExecResult(res.data.result);
+      if (onExecuted) onExecuted();
+    }
+  };
 
   return (
     <div className="bg-card border border-border font-mono">
@@ -82,32 +97,67 @@ export default function CommandPreviewCard({ command, onApprove, onDeny, onCance
         </div>
       )}
 
+      {/* Execution Result Panel */}
+      {execResult && (
+        <div className="px-4 py-3 border-b border-blue-400/20 bg-blue-400/5">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-[10px] uppercase tracking-widest text-blue-400">Simulated Execution Result</span>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-[11px]">
+            <div>
+              <div className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-0.5">Status</div>
+              <div className="text-primary font-semibold">SUCCESS</div>
+            </div>
+            <div>
+              <div className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-0.5">Latency</div>
+              <div className="text-foreground">{execResult.latency}ms</div>
+            </div>
+            <div>
+              <div className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-0.5">Mode</div>
+              <div className="text-amber-500">SIMULATED</div>
+            </div>
+          </div>
+          <div className="mt-2 text-[10px] text-muted-foreground/50">
+            {new Date(execResult.timestamp).toLocaleString()} · No real command sent to OpenClaw
+          </div>
+        </div>
+      )}
+
       {/* Governance Warning */}
       <div className="px-4 py-2 bg-amber-500/5 border-b border-amber-500/10 flex items-center gap-2">
         <Shield className="w-3 h-3 text-amber-500 shrink-0" />
-        <span className="text-[10px] text-amber-500/80">Governance approval required before execution · Live commands disabled</span>
+        <span className="text-[10px] text-amber-500/80">
+          {isApproved
+            ? 'Approved · Simulation mode only · No live dispatch to OpenClaw'
+            : 'Governance approval required before execution · Live commands disabled'}
+        </span>
       </div>
 
       {/* Action Buttons */}
       {isPending && (
         <div className="flex items-center gap-2 px-4 py-3">
-          <button
-            onClick={() => onApprove(command)}
-            className="flex-1 py-1.5 bg-primary text-primary-foreground text-[11px] hover:bg-primary/90 transition-colors"
-          >
+          <button onClick={() => onApprove(command)} className="flex-1 py-1.5 bg-primary text-primary-foreground text-[11px] hover:bg-primary/90 transition-colors">
             Approve
           </button>
-          <button
-            onClick={() => onDeny(command)}
-            className="flex-1 py-1.5 bg-destructive/10 border border-destructive/30 text-destructive text-[11px] hover:bg-destructive/20 transition-colors"
-          >
+          <button onClick={() => onDeny(command)} className="flex-1 py-1.5 bg-destructive/10 border border-destructive/30 text-destructive text-[11px] hover:bg-destructive/20 transition-colors">
             Deny
           </button>
-          <button
-            onClick={() => onCancel(command)}
-            className="px-4 py-1.5 border border-border text-muted-foreground text-[11px] hover:text-foreground hover:bg-secondary/50 transition-colors"
-          >
+          <button onClick={() => onCancel(command)} className="px-4 py-1.5 border border-border text-muted-foreground text-[11px] hover:text-foreground hover:bg-secondary/50 transition-colors">
             Cancel
+          </button>
+        </div>
+      )}
+
+      {isApproved && !execResult && (
+        <div className="px-4 py-3">
+          <button
+            onClick={handleSimulatedExecute}
+            disabled={executing}
+            className="flex items-center gap-2 w-full justify-center py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[11px] hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+          >
+            {executing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+            {executing ? 'Simulating...' : 'Execute (Simulated)'}
           </button>
         </div>
       )}
