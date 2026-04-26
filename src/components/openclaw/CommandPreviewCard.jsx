@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Terminal, User, AlertTriangle, Clock, Shield, Zap, Loader2, CheckCircle2 } from 'lucide-react';
+import MultiSigApprovalBar from './MultiSigApprovalBar';
 
 const riskColors = {
   low: 'text-primary border-primary/30 bg-primary/5',
@@ -18,7 +19,7 @@ const statusColors = {
   cancelled: 'text-muted-foreground bg-secondary/60 border-border',
 };
 
-export default function CommandPreviewCard({ command, onApprove, onDeny, onCancel, onExecuted, executionMode = 'SIMULATED', executionPaused = false }) {
+export default function CommandPreviewCard({ command, onApprove, onDeny, onCancel, onExecuted, executionMode = 'SIMULATED', executionPaused = false, currentUser }) {
   const isPending  = command.status === 'pending';
   const isApproved = command.status === 'approved';
   const isLive     = executionMode === 'LIVE' && !executionPaused;
@@ -94,6 +95,9 @@ export default function CommandPreviewCard({ command, onApprove, onDeny, onCance
           </div>
         </div>
       </div>
+
+      {/* Multi-sig bar */}
+      <MultiSigApprovalBar command={command} currentUser={currentUser} onUpdated={onExecuted} />
 
       {/* Notes */}
       {command.notes && (

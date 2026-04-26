@@ -59,8 +59,13 @@ export default function CommandQueuePanel({ currentUser }) {
   };
 
   const transition = async (command, newStatus, eventType) => {
-    await base44.entities.OpenClawCommand.update(command.id, { status: newStatus });
-    await logAudit({ ...command, auditLog: command.auditLog }, eventType);
+    const existing = Array.isArray(command.auditLog) ? command.auditLog : [];
+    const update = { status: newStatus, auditLog: [...existing, { eventType, timestamp: new Date().toISOString(), commandId: command.id }] };
+    // Seed approvers array on first approval
+    if (newStatus === 'approved' && currentUser?.email) {
+      update.approvers = [currentUser.email];
+    }
+    await base44.entities.OpenClawCommand.update(command.id, update);
     fetchCommands();
   };
 
@@ -158,6 +163,7 @@ export default function CommandQueuePanel({ currentUser }) {
               onDeny={onDeny}
               onCancel={onCancel}
               onExecuted={onExecuted}
+              currentUser={currentUser}
             />
           ))
         )}

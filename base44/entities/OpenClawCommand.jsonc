@@ -37,9 +37,16 @@
       ],
       "default": "pending"
     },
+    "approvers": {
+      "type": "array",
+      "description": "List of distinct approver emails (multi-sig)",
+      "items": {
+        "type": "string"
+      }
+    },
     "auditLog": {
       "type": "array",
-      "description": "Audit trail of lifecycle events",
+      "description": "Hash-chained immutable audit trail",
       "items": {
         "type": "object"
       }

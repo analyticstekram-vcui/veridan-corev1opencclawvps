@@ -1,14 +1,17 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// ── Constants ──────────────────────────────────────────────────────────────
-const COMMAND_ALLOWLIST = ['system.status', 'logs.fetch', 'session.list'];
-const RATE_WINDOW_MS    = 60_000;
-const RATE_LIMIT        = 5;
-const REPLAY_WINDOW_MS  = 10_000;
+// ── Risk / Allowlist config ────────────────────────────────────────────────
+const RISK_MAP = {
+  'system.status': 'low',
+  'logs.fetch':    'low',
+  'session.list':  'medium',
+};
+const APPROVALS_REQUIRED = { low: 1, medium: 2, high: Infinity }; // high = blocked
 
-// In-memory rate limiter (per Deno isolate)
-const rateStore = new Map(); // key → [timestamp, ...]
-
+// ── Rate limiter (in-memory per isolate) ──────────────────────────────────
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT     = 5;
+const rateStore      = new Map();
 function checkRateLimit(key) {
   const now   = Date.now();
   const times = (rateStore.get(key) || []).filter(t => now - t < RATE_WINDOW_MS);
@@ -18,18 +21,51 @@ function checkRateLimit(key) {
   return true;
 }
 
+// ── Cooldown tracker (per commandId) ─────────────────────────────────────
+const COOLDOWN_MS   = 10_000;
+const cooldownStore = new Map();
+function checkCooldown(commandId) {
+  const last = cooldownStore.get(commandId);
+  if (last && Date.now() - last < COOLDOWN_MS) return false;
+  cooldownStore.set(commandId, Date.now());
+  return true;
+}
+
+// ── Circuit breaker (in-memory) ───────────────────────────────────────────
+const CB_WINDOW_MS  = 30_000;
+const CB_THRESHOLD  = 3;
+const failureStore  = { times: [] };
+let   circuitOpen   = false;
+function recordFailure() {
+  const now = Date.now();
+  failureStore.times = failureStore.times.filter(t => now - t < CB_WINDOW_MS);
+  failureStore.times.push(now);
+  if (failureStore.times.length >= CB_THRESHOLD) { circuitOpen = true; }
+}
+function resetFailures() { failureStore.times = []; circuitOpen = false; }
+
+// ── HMAC signing ──────────────────────────────────────────────────────────
 async function hmacSign(secret, timestamp, commandText) {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const message = encoder.encode(`${timestamp}:${commandText}`);
-  const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig  = await crypto.subtle.sign('HMAC', key, message);
+  const enc  = new TextEncoder();
+  const key  = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig  = await crypto.subtle.sign('HMAC', key, enc.encode(`${timestamp}:${commandText}`));
   return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function appendAudit(base44, commandId, existingLog, entry) {
-  const auditLog = Array.isArray(existingLog) ? existingLog : [];
-  await base44.entities.OpenClawCommand.update(commandId, { auditLog: [...auditLog, entry] });
+// ── Hash-chained audit append ──────────────────────────────────────────────
+async function hashEntry(entry) {
+  const data = new TextEncoder().encode(JSON.stringify(entry));
+  const buf  = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function appendAudit(base44, command, entry) {
+  const log      = Array.isArray(command.auditLog) ? command.auditLog : [];
+  const prevHash = log.length > 0 ? (log[log.length - 1].hash || 'genesis') : 'genesis';
+  const newEntry = { ...entry, prevHash };
+  newEntry.hash  = await hashEntry(newEntry);
+  await base44.entities.OpenClawCommand.update(command.id, { auditLog: [...log, newEntry] });
+  return newEntry.hash;
 }
 
 // ── Handler ────────────────────────────────────────────────────────────────
@@ -47,50 +83,95 @@ Deno.serve(async (req) => {
     if (!command) return Response.json({ error: 'Command not found' }, { status: 404 });
 
     const auditBase = { commandId, triggeredBy: user.email, timestamp: new Date().toISOString() };
+    const reject = async (status, eventType, reason) => {
+      recordFailure();
+      await appendAudit(base44, command, { ...auditBase, eventType, reason });
+      if (circuitOpen) {
+        await appendAudit(base44, { ...command, auditLog: [...(command.auditLog || []) ] }, {
+          ...auditBase, eventType: 'OPENCLAW_CIRCUIT_BREAKER_TRIGGERED',
+          reason: `${CB_THRESHOLD} failures in ${CB_WINDOW_MS / 1000}s`,
+        });
+      }
+      return Response.json({ success: false, blocked: true, reason, eventType, circuitOpen }, { status });
+    };
 
     // ── 1. Emergency kill switch ───────────────────────────────────────────
-    if (executionPaused) {
-      await appendAudit(base44, commandId, command.auditLog, {
-        ...auditBase, eventType: 'OPENCLAW_EXECUTION_BLOCKED_GLOBAL',
-        reason: 'Emergency kill switch active',
-      });
-      return Response.json({ success: false, blocked: true, reason: 'Emergency kill switch active', eventType: 'OPENCLAW_EXECUTION_BLOCKED_GLOBAL' }, { status: 503 });
+    if (executionPaused || circuitOpen) {
+      const evt = circuitOpen ? 'OPENCLAW_CIRCUIT_BREAKER_TRIGGERED' : 'OPENCLAW_EXECUTION_BLOCKED_GLOBAL';
+      const why = circuitOpen ? 'Circuit breaker open — too many failures' : 'Emergency kill switch active';
+      await appendAudit(base44, command, { ...auditBase, eventType: evt, reason: why });
+      return Response.json({ success: false, blocked: true, reason: why, eventType: evt, circuitOpen }, { status: 503 });
     }
 
     // ── 2. Must be approved ────────────────────────────────────────────────
     if (command.status !== 'approved') {
-      await appendAudit(base44, commandId, command.auditLog, {
-        ...auditBase, eventType: 'OPENCLAW_EXECUTION_REJECTED',
-        reason: `Status is '${command.status}', must be 'approved'`,
-      });
-      return Response.json({ success: false, blocked: true, reason: `Command must be 'approved'. Current: '${command.status}'`, eventType: 'OPENCLAW_EXECUTION_REJECTED' }, { status: 422 });
+      return reject(422, 'OPENCLAW_EXECUTION_REJECTED', `Status is '${command.status}', must be 'approved'`);
     }
 
-    // ── 3. Rate limit ──────────────────────────────────────────────────────
+    // ── 3. Allowlist + risk check ──────────────────────────────────────────
+    const cmdText   = command.commandText?.trim();
+    const riskLevel = RISK_MAP[cmdText];
+    if (!riskLevel) {
+      return reject(403, 'OPENCLAW_EXECUTION_REJECTED', `'${cmdText}' is not in the allowlist`);
+    }
+    if (riskLevel === 'high' || !APPROVALS_REQUIRED[riskLevel]) {
+      return reject(403, 'OPENCLAW_EXECUTION_REJECTED', `HIGH risk commands are blocked pending policy`);
+    }
+
+    // ── 4. Multi-sig: check approvers array ───────────────────────────────
+    const approvers      = Array.isArray(command.approvers) ? command.approvers : [];
+    const uniqueApprovers = [...new Set(approvers)];
+    const required       = APPROVALS_REQUIRED[riskLevel];
+
+    if (uniqueApprovers.length < required) {
+      await appendAudit(base44, command, {
+        ...auditBase, eventType: 'OPENCLAW_MULTISIG_PENDING',
+        reason: `Need ${required} approvers, have ${uniqueApprovers.length}`,
+        approvers: uniqueApprovers,
+      });
+      return Response.json({
+        success: false,
+        multisigPending: true,
+        required,
+        current: uniqueApprovers.length,
+        approvers: uniqueApprovers,
+        reason: `MEDIUM risk requires ${required} distinct approvers. Have: ${uniqueApprovers.length}.`,
+        eventType: 'OPENCLAW_MULTISIG_PENDING',
+      }, { status: 202 });
+    }
+
+    // Multi-sig complete
+    await appendAudit(base44, command, {
+      ...auditBase, eventType: 'OPENCLAW_MULTISIG_COMPLETE',
+      approvers: uniqueApprovers,
+    });
+
+    // ── 5. Rate limit ──────────────────────────────────────────────────────
     if (!checkRateLimit(user.email)) {
-      await appendAudit(base44, commandId, command.auditLog, {
-        ...auditBase, eventType: 'OPENCLAW_EXECUTION_REJECTED', reason: 'Rate limit exceeded (5/min)',
-      });
-      return Response.json({ success: false, blocked: true, reason: 'Rate limit exceeded: max 5 commands/minute', eventType: 'OPENCLAW_EXECUTION_REJECTED' }, { status: 429 });
+      return reject(429, 'OPENCLAW_EXECUTION_REJECTED', 'Rate limit exceeded: max 5 commands/minute');
     }
 
-    // ── 4. Allowlist check ─────────────────────────────────────────────────
-    const isAllowlisted = COMMAND_ALLOWLIST.includes(command.commandText?.trim());
+    // ── 6. Cooldown ───────────────────────────────────────────────────────
+    if (!checkCooldown(commandId)) {
+      await appendAudit(base44, command, {
+        ...auditBase, eventType: 'OPENCLAW_COOLDOWN_BLOCKED',
+        reason: `Command cooldown active (${COOLDOWN_MS / 1000}s)`,
+      });
+      return Response.json({
+        success: false, blocked: true,
+        reason: `Command is in cooldown. Wait ${COOLDOWN_MS / 1000}s between executions.`,
+        eventType: 'OPENCLAW_COOLDOWN_BLOCKED',
+      }, { status: 429 });
+    }
 
-    // ── 5. LIVE execution path ─────────────────────────────────────────────
-    if (executionMode === 'LIVE' && isAllowlisted) {
+    // ── 7. LIVE execution path ─────────────────────────────────────────────
+    if (executionMode === 'LIVE') {
       const gatewayUrl = Deno.env.get('OPENCLAW_GATEWAY_URL');
-      const secret     = Deno.env.get('OPENCLAW_SIGNING_SECRET') || 'veridan-default-secret';
+      const secret     = Deno.env.get('OPENCLAW_PROD_KEY') || Deno.env.get('OPENCLAW_DEV_KEY') || 'veridan-dev-secret';
       const timestamp  = Date.now().toString();
+      const signature  = await hmacSign(secret, timestamp, cmdText);
 
-      // Replay protection: reject if somehow timestamp drifted (belt-and-suspenders)
-      if (Math.abs(Date.now() - parseInt(timestamp)) > REPLAY_WINDOW_MS) {
-        return Response.json({ success: false, reason: 'Replay protection: timestamp out of window' }, { status: 400 });
-      }
-
-      const signature = await hmacSign(secret, timestamp, command.commandText);
-
-      let liveResult;
+      let liveResult = null;
       const fetchStart = Date.now();
       try {
         const resp = await fetch(`${gatewayUrl}/execute`, {
@@ -99,59 +180,41 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
             'x-veridan-signature': signature,
             'x-veridan-timestamp': timestamp,
+            'x-veridan-mode': 'LIVE',
           },
-          body: JSON.stringify({ command: command.commandText, commandId }),
+          body: JSON.stringify({ command: cmdText, commandId }),
           signal: AbortSignal.timeout(8000),
         });
         liveResult = { status: resp.status, body: await resp.text(), latency: Date.now() - fetchStart };
       } catch (fetchErr) {
-        // Gateway unreachable → fallback to simulated
-        await appendAudit(base44, commandId, command.auditLog, {
+        recordFailure();
+        await appendAudit(base44, command, {
           ...auditBase, eventType: 'OPENCLAW_EXECUTION_FALLBACK',
           reason: `Live fetch failed: ${fetchErr.message}`,
         });
-        // Fall through to simulated below
         liveResult = null;
       }
 
       if (liveResult) {
-        const result = { success: true, simulated: false, latency: liveResult.latency, timestamp: auditBase.timestamp, response: liveResult.body };
-        const auditLog = Array.isArray(command.auditLog) ? command.auditLog : [];
-        await base44.entities.OpenClawCommand.update(commandId, {
-          status: 'executed',
-          auditLog: [...auditLog, { ...auditBase, eventType: 'OPENCLAW_EXECUTION_LIVE', result }],
-        });
+        resetFailures();
+        const result = { success: true, simulated: false, latency: liveResult.latency, timestamp: auditBase.timestamp, response: liveResult.body, riskLevel };
+        await appendAudit(base44, command, { ...auditBase, eventType: 'OPENCLAW_EXECUTION_LIVE', result });
+        await base44.entities.OpenClawCommand.update(commandId, { status: 'executed' });
         return Response.json({ success: true, result });
       }
+      // Gateway unreachable → fall through to simulated
     }
 
-    // ── 6. Fallback / Simulated execution ──────────────────────────────────
-    if (!isAllowlisted && executionMode === 'LIVE') {
-      await appendAudit(base44, commandId, command.auditLog, {
-        ...auditBase, eventType: 'OPENCLAW_EXECUTION_REJECTED',
-        reason: `'${command.commandText}' is not in the command allowlist`,
-      });
-      return Response.json({
-        success: false, blocked: true,
-        reason: `Command '${command.commandText}' is not in the allowlist: ${COMMAND_ALLOWLIST.join(', ')}`,
-        eventType: 'OPENCLAW_EXECUTION_REJECTED',
-      }, { status: 403 });
-    }
-
-    // Simulated path (executionMode === SIMULATED, or LIVE fallback)
+    // ── 8. Simulated execution ────────────────────────────────────────────
     const simStart = Date.now();
     await new Promise(r => setTimeout(r, 200));
     const latency   = Date.now() - simStart;
     const timestamp = new Date().toISOString();
+    const result    = { success: true, simulated: true, latency, timestamp, commandId, commandText: cmdText, riskLevel, executedBy: user.email };
 
-    const result = { success: true, simulated: true, latency, timestamp, commandId, commandText: command.commandText, target: command.target || 'OpenClaw Gateway', executedBy: user.email };
-
-    const fallbackEvent = executionMode === 'LIVE' ? 'OPENCLAW_EXECUTION_FALLBACK' : 'OPENCLAW_EXECUTION_SIMULATED';
-    const auditLog = Array.isArray(command.auditLog) ? command.auditLog : [];
-    await base44.entities.OpenClawCommand.update(commandId, {
-      status: 'executed',
-      auditLog: [...auditLog, { ...auditBase, eventType: fallbackEvent, result }],
-    });
+    const evt = executionMode === 'LIVE' ? 'OPENCLAW_EXECUTION_FALLBACK' : 'OPENCLAW_EXECUTION_SIMULATED';
+    await appendAudit(base44, command, { ...auditBase, eventType: evt, result });
+    await base44.entities.OpenClawCommand.update(commandId, { status: 'executed' });
 
     return Response.json({ success: true, result });
 
