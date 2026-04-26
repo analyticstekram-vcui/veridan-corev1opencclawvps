@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff } from 'lucide-react';
+import CommandQueuePanel from '@/components/openclaw/CommandQueuePanel';
 
 export default function OpenClawControl() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeView, setActiveView] = useState('status'); // 'status' | 'queue'
   const intervalRef = useRef(null);
 
   const fetchStatus = async () => {
@@ -24,6 +27,7 @@ export default function OpenClawControl() {
   useEffect(() => {
     fetchStatus();
     intervalRef.current = setInterval(fetchStatus, 15000);
+    base44.auth.me().then(setCurrentUser).catch(() => {});
     return () => clearInterval(intervalRef.current);
   }, []);
 
@@ -56,19 +60,38 @@ export default function OpenClawControl() {
   const online = status?.online;
 
   return (
-    <div className="min-h-screen bg-background p-6 font-mono">
+    <div className="min-h-screen bg-background font-mono">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="border-b border-border bg-card px-6 py-3 flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
         <div className="w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center">
           <Terminal className="w-4 h-4 text-primary" />
         </div>
         <div>
           <h1 className="text-sm font-semibold tracking-wider text-foreground">OPENCLAW CONTROL</h1>
-          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">Read-only gateway monitor · Veridan Core</p>
+          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">Gateway monitor · Governance queue · Veridan Core</p>
+        </div>
+      </div>
+        {/* View Toggle */}
+        <div className="flex gap-1">
+          {[['status', 'Status'], ['queue', 'Command Queue']].map(([id, label]) => (
+            <button key={id} onClick={() => setActiveView(id)}
+              className={`px-3 py-1.5 text-[11px] border transition-colors ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="max-w-2xl space-y-4">
+      {/* Command Queue View */}
+      {activeView === 'queue' && (
+        <div className="h-[calc(100vh-56px)]">
+          <CommandQueuePanel currentUser={currentUser} />
+        </div>
+      )}
+
+      {/* Status View */}
+      {activeView === 'status' && <div className="p-6 max-w-2xl space-y-4">
         {/* Status Card */}
         <div className="bg-card border border-border p-5">
           <div className="flex items-center justify-between mb-4">
@@ -203,7 +226,7 @@ export default function OpenClawControl() {
         <div className="text-[9px] text-muted-foreground/30 text-center uppercase tracking-widest">
           Status polling every 15 seconds · Read-only mode
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

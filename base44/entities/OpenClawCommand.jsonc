@@ -1,0 +1,56 @@
+{
+  "name": "OpenClawCommand",
+  "type": "object",
+  "properties": {
+    "commandText": {
+      "type": "string",
+      "description": "The command to be executed"
+    },
+    "target": {
+      "type": "string",
+      "default": "OpenClaw Gateway",
+      "description": "Target system"
+    },
+    "requestedBy": {
+      "type": "string",
+      "description": "User who requested the command"
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied",
+        "executed",
+        "failed",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "auditLog": {
+      "type": "array",
+      "description": "Audit trail of lifecycle events",
+      "items": {
+        "type": "object"
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "commandText",
+    "requestedBy",
+    "riskLevel"
+  ]
+}
