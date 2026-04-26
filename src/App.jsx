@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Dashboard from './pages/Dashboard';
 import CreditLedger from './pages/CreditLedger';
+import OpenClawControl from './pages/OpenClawControl';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -37,6 +38,7 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/" element={<Dashboard />} />
       <Route path="/credit-ledger" element={<CreditLedger />} />
+      <Route path="/openclaw-control" element={<OpenClawControl />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

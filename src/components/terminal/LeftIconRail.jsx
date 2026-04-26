@@ -8,7 +8,8 @@ import {
   TrendingUp,
   Lock,
   ScrollText,
-  Settings
+  Settings,
+  Bot
 } from 'lucide-react';
 
 const navItems = [
@@ -18,6 +19,7 @@ const navItems = [
   { icon: Building2, label: 'Business Credit', id: 'business', href: null },
   { icon: TrendingUp, label: 'Trading', id: 'trading', href: null },
   { icon: Lock, label: 'Obsidian Vault', id: 'vault', href: null },
+  { icon: Bot, label: 'OpenClaw Control', id: 'openclaw', href: '/openclaw-control' },
   { icon: ScrollText, label: 'Logs', id: 'logs', href: null },
   { icon: Settings, label: 'Settings', id: 'settings', href: null },
 ];
