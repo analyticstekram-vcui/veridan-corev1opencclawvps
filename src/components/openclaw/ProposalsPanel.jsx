@@ -232,6 +232,10 @@ function ProposalCard({ proposal, currentUser, onRefresh, onConverted }) {
   );
 }
 
+// Dev self-cosign badge — shown when ALLOW_SELF_COSIGN is active (non-production only)
+// This mirrors the backend flag. In production this component is not shown.
+const DEV_SELF_COSIGN_ACTIVE = true; // set to false to hide badge
+
 // ── Main Panel ────────────────────────────────────────────────────────────
 export default function ProposalsPanel({ currentUser, onWorkflowCreated }) {
   const [proposals, setProposals]   = useState([]);
@@ -293,6 +297,9 @@ export default function ProposalsPanel({ currentUser, onWorkflowCreated }) {
           <Sparkles className="w-3.5 h-3.5 text-primary" />
           <span className="text-[11px] font-semibold text-foreground">AI Workflow Proposal</span>
           <span className="ml-2 text-[9px] uppercase tracking-widest text-amber-500/70 border border-amber-500/30 px-1.5 py-0.5">read-only · governance-gated</span>
+          {DEV_SELF_COSIGN_ACTIVE && (
+            <span className="ml-1 text-[9px] uppercase tracking-widest text-orange-400 border border-orange-400/40 bg-orange-400/10 px-1.5 py-0.5">DEV MODE: Self co-sign enabled</span>
+          )}
         </div>
         <div className="flex gap-2">
           <textarea

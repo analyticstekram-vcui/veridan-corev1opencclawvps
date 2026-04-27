@@ -317,10 +317,19 @@ Respond ONLY with valid JSON:
         return Response.json({ error: `Cannot approve proposal in status '${proposal.status}'` }, { status: 422 });
       }
 
-      // Enforce distinct approvers
+      // Dev override flag — only honoured outside production
+      const ALLOW_SELF_COSIGN = Deno.env.get('ALLOW_SELF_COSIGN') === 'true';
+      const isProduction = Deno.env.get('NODE_ENV') === 'production';
+      const selfCosignEnabled = ALLOW_SELF_COSIGN && !isProduction;
+
+      // Enforce distinct approvers (bypass in dev self-cosign mode)
       const existingApprovers = Array.isArray(proposal.approvers) ? proposal.approvers : [];
       if (existingApprovers.includes(user.email)) {
-        return Response.json({ error: 'Duplicate approval rejected: you have already approved this proposal' }, { status: 422 });
+        if (!selfCosignEnabled) {
+          return Response.json({ error: 'Duplicate approval rejected: you have already approved this proposal' }, { status: 422 });
+        }
+        // Dev override: allow same user — log it and continue
+        console.warn(`OPENCLAW_MULTISIG_DEV_OVERRIDE: self co-sign by ${user.email} on proposal ${proposalId}`);
       }
 
       const newApprovers = [...existingApprovers, user.email];
@@ -330,9 +339,11 @@ Respond ONLY with valid JSON:
       let newStatus;
       let auditEventType;
 
+      const selfCosignUsed = existingApprovers.includes(user.email) && selfCosignEnabled;
+
       if (newCount >= required) {
         newStatus = 'APPROVED';
-        auditEventType = 'OPENCLAW_MULTISIG_COMPLETE';
+        auditEventType = selfCosignUsed ? 'OPENCLAW_MULTISIG_DEV_OVERRIDE' : 'OPENCLAW_MULTISIG_COMPLETE';
       } else {
         newStatus = 'MULTISIG_PENDING';
         auditEventType = 'OPENCLAW_MULTISIG_PENDING';
@@ -343,6 +354,7 @@ Respond ONLY with valid JSON:
         approvalCount: newCount,
         required,
         approvers: newApprovers,
+        ...(selfCosignUsed ? { devOverride: true } : {}),
       });
 
       await base44.entities.OpenClawProposal.update(proposalId, {
@@ -353,7 +365,7 @@ Respond ONLY with valid JSON:
         auditLog,
       });
 
-      return Response.json({ success: true, status: newStatus, approvalCount: newCount, required });
+      return Response.json({ success: true, status: newStatus, approvalCount: newCount, required, devOverride: selfCosignUsed || undefined });
     }
 
     // ── REJECT ────────────────────────────────────────────────────────────
