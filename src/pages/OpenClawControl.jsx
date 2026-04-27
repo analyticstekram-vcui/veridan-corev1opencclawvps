@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff } from 'lucide-react';
 import CommandQueuePanel from '@/components/openclaw/CommandQueuePanel';
 import ExecutionReadinessPanel from '@/components/openclaw/ExecutionReadinessPanel';
+import TelemetryPanel from '@/components/openclaw/TelemetryPanel';
 
 export default function OpenClawControl() {
   const [status, setStatus] = useState(null);
@@ -75,7 +76,7 @@ export default function OpenClawControl() {
       </div>
         {/* View Toggle */}
         <div className="flex gap-1">
-          {[['status', 'Status'], ['queue', 'Command Queue'], ['readiness', 'Execution Readiness']].map(([id, label]) => (
+          {[['status', 'Status'], ['queue', 'Command Queue'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
             <button key={id} onClick={() => setActiveView(id)}
               className={`px-3 py-1.5 text-[11px] border transition-colors ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
               {label}
@@ -95,6 +96,13 @@ export default function OpenClawControl() {
       {activeView === 'readiness' && (
         <div className="overflow-auto h-[calc(100vh-56px)]">
           <ExecutionReadinessPanel gatewayOnline={status?.online} />
+        </div>
+      )}
+
+      {/* Telemetry View */}
+      {activeView === 'telemetry' && (
+        <div className="overflow-auto h-[calc(100vh-56px)]">
+          <TelemetryPanel executionMode="SIMULATED" gatewayOnline={status?.online} />
         </div>
       )}
 
