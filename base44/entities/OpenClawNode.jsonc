@@ -1,0 +1,62 @@
+{
+  "name": "OpenClawNode",
+  "type": "object",
+  "properties": {
+    "nodeId": {
+      "type": "string",
+      "description": "Unique node identifier (e.g. node-us-east-1)"
+    },
+    "url": {
+      "type": "string",
+      "description": "Base URL of the node gateway"
+    },
+    "health": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "offline",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "Capability IDs this node can handle",
+      "items": {
+        "type": "string"
+      }
+    },
+    "scopes": {
+      "type": "array",
+      "description": "Entity scopes this node is authorized for",
+      "items": {
+        "type": "string"
+      }
+    },
+    "latencyMs": {
+      "type": "number",
+      "description": "Last measured round-trip latency in ms"
+    },
+    "lastHealthCheck": {
+      "type": "string",
+      "description": "ISO timestamp of last health check"
+    },
+    "errorRate": {
+      "type": "number",
+      "description": "Error rate 0-1 from last window"
+    },
+    "requestCount": {
+      "type": "number",
+      "default": 0,
+      "description": "Total requests routed to this node"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nodeId",
+    "url"
+  ]
+}
