@@ -42,8 +42,21 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  const visible = workflows.filter(w => w.status === activeTab);
-  const countByStatus = s => workflows.filter(w => w.status === s).length;
+  // The 'approved' tab shows approved + running + completed (post-approval lifecycle)
+  // so workflows don't disappear after execution begins.
+  const getVisible = (tab) => {
+    if (tab === 'approved') {
+      return workflows.filter(w =>
+        w.status === 'approved' ||
+        w.status === 'running' ||
+        (w.status === 'completed' && Array.isArray(w.approvedBy) && w.approvedBy.length > 0) ||
+        (w.status === 'failed'    && Array.isArray(w.approvedBy) && w.approvedBy.length > 0)
+      );
+    }
+    return workflows.filter(w => w.status === tab);
+  };
+  const visible = getVisible(activeTab);
+  const countByStatus = s => getVisible(s).length;
   const toggleExpand = id => setExpanded(p => ({ ...p, [id]: !p[id] }));
 
   const handleApprove = async (wf) => {
