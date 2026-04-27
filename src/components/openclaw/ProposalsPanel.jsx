@@ -71,11 +71,20 @@ function ProposalCard({ proposal, currentUser, onRefresh, onConverted }) {
   const [actioning, setActioning]     = useState(false);
   const [showConvert, setShowConvert] = useState(false);
 
+  const [actError, setActError] = useState(null);
+
   const act = async (action) => {
     setActioning(true);
-    await base44.functions.invoke('openclawProposalEngine', { action, proposalId: proposal.id });
-    setActioning(false);
-    onRefresh();
+    setActError(null);
+    try {
+      await base44.functions.invoke('openclawProposalEngine', { action, proposalId: proposal.id });
+      onRefresh();
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Action failed';
+      setActError(msg);
+    } finally {
+      setActioning(false);
+    }
   };
 
   const isReview          = proposal.status === 'REVIEW';
@@ -203,6 +212,12 @@ function ProposalCard({ proposal, currentUser, onRefresh, onConverted }) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {actError && (
+        <div className="px-4 py-2 border-t border-destructive/20 bg-destructive/5 flex items-center gap-2 text-[11px] text-destructive">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {actError}
         </div>
       )}
 
