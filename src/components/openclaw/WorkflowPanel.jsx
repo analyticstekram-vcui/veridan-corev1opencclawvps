@@ -5,6 +5,7 @@ import WorkflowBuilder from './workflow/WorkflowBuilder';
 import WorkflowExecutionView from './workflow/WorkflowExecutionView';
 import TemplatesPanel, { SaveTemplateModal } from './workflow/TemplatesPanel';
 import ProposalsPanel from './ProposalsPanel';
+import RunbooksPanel from './workflow/RunbooksPanel';
 
 const STATUS_COLORS = {
   draft:            'text-muted-foreground border-border',
@@ -29,7 +30,8 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
   const [executing, setExecuting]       = useState({});
   const [approving, setApproving]       = useState({});
   const [execResults, setExecResults]   = useState({});
-  const [saveTemplateFor, setSaveTemplateFor] = useState(null); // workflow to save as template
+  const [saveTemplateFor, setSaveTemplateFor] = useState(null);
+  const [runbookSeed, setRunbookSeed]         = useState(null); // { name, description, steps }
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -67,9 +69,14 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
     fetch();
   };
 
-  // Instantiate from template: open builder pre-seeded (handled by passing steps to builder via key)
   const handleInstantiate = (template) => {
+    setRunbookSeed({ name: template.name, description: template.description, steps: template.steps });
     setTopTab('workflows');
+    setShowBuilder(true);
+  };
+
+  const handleRunbookLoad = (runbook) => {
+    setRunbookSeed({ name: runbook.name, description: runbook.description, steps: runbook.steps });
     setShowBuilder(true);
   };
 
@@ -143,12 +150,25 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
       {/* Builder */}
       {showBuilder && (
         <div className="shrink-0 border-b border-border bg-card/80 p-5 overflow-auto max-h-[75vh]">
-          <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-4">Workflow Builder · Capability Registry</div>
+          <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-4">
+            Workflow Builder · Capability Registry {runbookSeed && <span className="text-primary ml-2">· Loaded from runbook</span>}
+          </div>
           <WorkflowBuilder
+            key={runbookSeed ? runbookSeed.name : 'empty'}
             currentUser={currentUser}
-            onCreated={() => { setShowBuilder(false); setActiveTab('pending_approval'); fetch(); }}
-            onCancel={() => setShowBuilder(false)}
+            initialName={runbookSeed?.name || ''}
+            initialDescription={runbookSeed?.description || ''}
+            initialSteps={runbookSeed?.steps || null}
+            onCreated={() => { setShowBuilder(false); setRunbookSeed(null); setActiveTab('pending_approval'); fetch(); }}
+            onCancel={() => { setShowBuilder(false); setRunbookSeed(null); }}
           />
+        </div>
+      )}
+
+      {/* Runbooks */}
+      {!showBuilder && (
+        <div className="shrink-0 border-b border-border bg-card/40 px-4 py-3">
+          <RunbooksPanel currentUser={currentUser} onLoad={handleRunbookLoad} />
         </div>
       )}
 

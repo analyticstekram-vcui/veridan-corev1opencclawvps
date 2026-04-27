@@ -10,10 +10,10 @@ function newStep(index) {
   return { stepId: `step_${index + 1}`, capabilityId: '', entityScope: '', riskLevel: 'medium', params: {}, onFailure: 'STOP', timeoutMs: 5000, dependsOn: [] };
 }
 
-export default function WorkflowBuilder({ currentUser, onCreated, onCancel }) {
-  const [name, setName]             = useState('');
-  const [description, setDescription] = useState('');
-  const [steps, setSteps]           = useState([newStep(0)]);
+export default function WorkflowBuilder({ currentUser, onCreated, onCancel, initialName = '', initialDescription = '', initialSteps = null }) {
+  const [name, setName]             = useState(initialName);
+  const [description, setDescription] = useState(initialDescription);
+  const [steps, setSteps]           = useState(initialSteps ?? [newStep(0)]);
   const [showPreview, setShowPreview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors]         = useState([]);
