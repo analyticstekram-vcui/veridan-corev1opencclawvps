@@ -1,19 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// ── Risk / Allowlist config ────────────────────────────────────────────────
-const RISK_MAP = {
-  'system.status': 'low',
-  'logs.fetch':    'low',
-  'session.list':  'medium',
+// ── Capability Registry (server-side mirror of lib/capabilityRegistry.js) ─
+const CAPABILITY_REGISTRY = {
+  'system.status': { riskLevel: 'low',    requiredScopes: ['vcm', 'gfm_admin', 'genesis_trust'] },
+  'logs.fetch':    { riskLevel: 'low',    requiredScopes: ['vcm', 'gfm_admin'] },
+  'session.list':  { riskLevel: 'medium', requiredScopes: ['gfm_admin'] },
+  'browser.open':  { riskLevel: 'medium', requiredScopes: ['gfm_admin'] },
+  'browser.click': { riskLevel: 'medium', requiredScopes: ['gfm_admin'] },
+  'browser.type':  { riskLevel: 'medium', requiredScopes: ['gfm_admin'] },
+  'workflow.run':  { riskLevel: 'high',   requiredScopes: [] },
 };
+
+// ── Risk / Approvals ───────────────────────────────────────────────────────
 const APPROVALS_REQUIRED = { low: 1, medium: 2, high: Infinity }; // high = blocked
 
-// ── Scope policy (default deny) ────────────────────────────────────────────
-const SCOPE_ALLOWLIST = {
-  vcm:           ['system.status', 'logs.fetch'],
-  gfm_admin:     ['system.status', 'logs.fetch', 'session.list'],
-  genesis_trust: ['system.status'],
-};
+// ── Per-scope rate limit ───────────────────────────────────────────────────
 const SCOPE_RATE_WINDOW_MS = 60_000;
 const SCOPE_RATE_LIMIT     = 3; // per entity per minute
 const scopeRateStore       = new Map(); // `${scope}:${userEmail}` → [timestamps]
@@ -128,30 +129,32 @@ Deno.serve(async (req) => {
       return reject(422, 'OPENCLAW_EXECUTION_REJECTED', `Status is '${command.status}', must be 'approved'`);
     }
 
-    // ── 3. Scope guard (default deny) ─────────────────────────────────────
-    const cmdText    = command.commandText?.trim();
+    // ── 3. Capability registry validation (default deny) ─────────────────
+    const cmdText     = command.commandText?.trim();
     const entityScope = command.entityScope;
+    const capDef      = CAPABILITY_REGISTRY[cmdText];
+
+    if (!capDef) {
+      await appendAudit(base44, command, { ...auditBase, eventType: 'OPENCLAW_SCOPE_BLOCKED', reason: `'${cmdText}' is not in the capability registry` });
+      return Response.json({ success: false, blocked: true, reason: `'${cmdText}' is not a registered capability.`, eventType: 'OPENCLAW_SCOPE_BLOCKED' }, { status: 403 });
+    }
     if (!entityScope) {
       await appendAudit(base44, command, { ...auditBase, eventType: 'OPENCLAW_SCOPE_BLOCKED', reason: 'No entityScope set on command' });
       return Response.json({ success: false, blocked: true, reason: 'Command has no entityScope — blocked by default deny policy.', eventType: 'OPENCLAW_SCOPE_BLOCKED' }, { status: 403 });
     }
-    const scopeAllowed = SCOPE_ALLOWLIST[entityScope] || [];
-    if (!scopeAllowed.includes(cmdText)) {
-      await appendAudit(base44, command, { ...auditBase, eventType: 'OPENCLAW_SCOPE_BLOCKED', reason: `'${cmdText}' not permitted under scope '${entityScope}'`, entityScope });
-      return Response.json({ success: false, blocked: true, reason: `'${cmdText}' is not permitted under scope '${entityScope}'. Allowed: ${scopeAllowed.join(', ') || 'none'}.`, eventType: 'OPENCLAW_SCOPE_BLOCKED' }, { status: 403 });
+    if (capDef.requiredScopes.length > 0 && !capDef.requiredScopes.includes(entityScope)) {
+      await appendAudit(base44, command, { ...auditBase, eventType: 'OPENCLAW_SCOPE_BLOCKED', reason: `scope '${entityScope}' not in requiredScopes for '${cmdText}'`, entityScope });
+      return Response.json({ success: false, blocked: true, reason: `Scope '${entityScope}' is not authorized for capability '${cmdText}'. Required: ${capDef.requiredScopes.join(', ')}.`, eventType: 'OPENCLAW_SCOPE_BLOCKED' }, { status: 403 });
     }
     if (!checkScopeRateLimit(entityScope, user.email)) {
       await appendAudit(base44, command, { ...auditBase, eventType: 'OPENCLAW_SCOPE_BLOCKED', reason: `Scope rate limit hit: ${SCOPE_RATE_LIMIT}/min for '${entityScope}'`, entityScope });
       return Response.json({ success: false, blocked: true, reason: `Scope rate limit exceeded: max ${SCOPE_RATE_LIMIT} commands/min under '${entityScope}'.`, eventType: 'OPENCLAW_SCOPE_BLOCKED' }, { status: 429 });
     }
 
-    // ── 4. Allowlist + risk check ──────────────────────────────────────────
-    const riskLevel = RISK_MAP[cmdText];
-    if (!riskLevel) {
-      return reject(403, 'OPENCLAW_EXECUTION_REJECTED', `'${cmdText}' is not in the global allowlist`);
-    }
+    // ── 4. Risk check ─────────────────────────────────────────────────────
+    const riskLevel = capDef.riskLevel;
     if (riskLevel === 'high' || !APPROVALS_REQUIRED[riskLevel]) {
-      return reject(403, 'OPENCLAW_EXECUTION_REJECTED', `HIGH risk commands are blocked pending policy`);
+      return reject(403, 'OPENCLAW_EXECUTION_REJECTED', `HIGH risk capabilities are blocked pending policy`);
     }
 
     // ── 5. Multi-sig: check approvers array ───────────────────────────────

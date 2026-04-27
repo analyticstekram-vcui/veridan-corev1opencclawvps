@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Terminal, User, AlertTriangle, Clock, Shield, Zap, Loader2, CheckCircle2 } from 'lucide-react';
+import { Terminal, User, AlertTriangle, Clock, Shield, Zap, Loader2, CheckCircle2, Package } from 'lucide-react';
 import MultiSigApprovalBar from './MultiSigApprovalBar';
 import ScopeBadge, { isScopePermitted } from './ScopeBadge';
+import { CAPABILITY_MAP } from '@/lib/capabilityRegistry';
 
 const riskColors = {
   low: 'text-primary border-primary/30 bg-primary/5',
@@ -26,6 +27,7 @@ export default function CommandPreviewCard({ command, onApprove, onDeny, onCance
   const isLive       = executionMode === 'LIVE' && !executionPaused;
   const scopeOk      = isScopePermitted(command.entityScope, command.commandText);
   const scopeBlocked = isApproved && !scopeOk;
+  const capability   = command.capabilityId ? CAPABILITY_MAP[command.capabilityId] : null;
   const [executing, setExecuting] = useState(false);
   const [execResult, setExecResult] = useState(null);
 
@@ -60,10 +62,33 @@ export default function CommandPreviewCard({ command, onApprove, onDeny, onCance
         </div>
       </div>
 
-      {/* Command Text */}
-      <div className="px-4 py-3 border-b border-border/50 bg-secondary/20">
-        <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-1">Command</div>
-        <code className="text-[12px] text-foreground break-all">{command.commandText}</code>
+      {/* Capability + Command */}
+      <div className="px-4 py-3 border-b border-border/50 bg-secondary/20 space-y-2">
+        {capability && (
+          <div className="flex items-center gap-2">
+            <Package className="w-3 h-3 text-muted-foreground/40" />
+            <span className="text-[10px] text-muted-foreground/70">{capability.name}</span>
+            <span className="text-[9px] text-muted-foreground/30">·</span>
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/40">{capability.commandType}</span>
+          </div>
+        )}
+        <div>
+          <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-1">Command</div>
+          <code className="text-[12px] text-foreground break-all">{command.commandText}</code>
+        </div>
+        {command.parameters && Object.keys(command.parameters).length > 0 && (
+          <div>
+            <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-1">Parameters</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+              {Object.entries(command.parameters).map(([k, v]) => (
+                <div key={k} className="flex items-center gap-1.5 text-[10px]">
+                  <span className="text-muted-foreground/50">{k}:</span>
+                  <span className="text-foreground font-mono truncate">{String(v)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Metadata Grid */}

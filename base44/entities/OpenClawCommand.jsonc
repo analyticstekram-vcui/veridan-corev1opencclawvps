@@ -4,7 +4,19 @@
   "properties": {
     "commandText": {
       "type": "string",
-      "description": "The command to be executed"
+      "description": "The capability id used as the command"
+    },
+    "capabilityId": {
+      "type": "string",
+      "description": "ID of the capability from the registry"
+    },
+    "capabilityName": {
+      "type": "string",
+      "description": "Human-readable capability name"
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Sanitized capability parameters"
     },
     "target": {
       "type": "string",
@@ -66,6 +78,7 @@
   },
   "required": [
     "commandText",
+    "capabilityId",
     "requestedBy",
     "riskLevel",
     "entityScope"
