@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Trash2, ShieldAlert, ChevronRight, Bot, User, Loader2 } from 'lucide-react';
-import { postCommand, postApprove } from '@/lib/veridanApi';
+import { postCommand, postApprove, getStatus } from '@/lib/veridanApi';
 
 const riskColors = { low: 'text-primary', medium: 'text-amber-500', high: 'text-destructive' };
 
@@ -88,30 +88,45 @@ export default function CommandConsole({ onOpenClawStatus }) {
     }
   }, [messages]);
 
-  // Auto status check on mount
+  // Controlled status polling — one immediate check + 20s interval, never recursive
   useEffect(() => {
-    const runStatusCheck = async () => {
+    let mounted = true;
+
+    const runStatusCheck = async (isInitial = false) => {
       try {
-        const result = await postCommand('status check');
-        const connected = result.openclawConnected === true;
+        const res = await getStatus();
+        if (!mounted) return;
+        const connected = res?.openclaw?.online === true;
         if (onOpenClawStatus) onOpenClawStatus(connected);
-        setMessages(prev => prev.map(m =>
-          m.content === 'Connecting to Veridan backend...'
-            ? { ...m, content: connected
-                ? 'OpenClaw ONLINE — Veridan backend connected. Type a command to begin.'
-                : 'OpenClaw OFFLINE — Veridan backend reachable but OpenClaw not connected.' }
-            : m
-        ));
+        if (isInitial) {
+          setMessages(prev => prev.map(m =>
+            m.content === 'Connecting to Veridan backend...'
+              ? { ...m, content: connected
+                  ? 'OpenClaw ONLINE — Veridan backend connected. Type a command to begin.'
+                  : 'OpenClaw OFFLINE — Veridan backend reachable but OpenClaw not connected.' }
+              : m
+          ));
+        }
       } catch (_) {
+        if (!mounted) return;
         if (onOpenClawStatus) onOpenClawStatus(false);
-        setMessages(prev => prev.map(m =>
-          m.content === 'Connecting to Veridan backend...'
-            ? { ...m, content: 'Veridan backend OFFLINE — running in local mode.' }
-            : m
-        ));
+        if (isInitial) {
+          setMessages(prev => prev.map(m =>
+            m.content === 'Connecting to Veridan backend...'
+              ? { ...m, content: 'Veridan backend OFFLINE — running in local mode.' }
+              : m
+          ));
+        }
       }
     };
-    runStatusCheck();
+
+    runStatusCheck(true);
+    const interval = setInterval(() => runStatusCheck(false), 20000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const pushMsg = (msg) => setMessages(prev => [...prev, { id: Date.now() + Math.random(), ...msg }]);
