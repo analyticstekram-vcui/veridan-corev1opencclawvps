@@ -1,0 +1,109 @@
+{
+  "name": "OpenClawWorkflow",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable workflow name"
+    },
+    "description": {
+      "type": "string"
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_approval",
+        "approved",
+        "running",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "default": "draft"
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "approvedBy": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "description": "Ordered capability steps",
+      "items": {
+        "type": "object",
+        "properties": {
+          "stepId": {
+            "type": "string"
+          },
+          "capabilityId": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object"
+          },
+          "entityScope": {
+            "type": "string"
+          },
+          "riskLevel": {
+            "type": "string"
+          },
+          "dependsOn": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "onFailure": {
+            "type": "string",
+            "enum": [
+              "STOP",
+              "CONTINUE",
+              "ROLLBACK"
+            ]
+          },
+          "timeoutMs": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "executionResults": {
+      "type": "array",
+      "description": "Per-step execution outcomes",
+      "items": {
+        "type": "object"
+      }
+    },
+    "auditLog": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "idempotencyKey": {
+      "type": "string"
+    },
+    "executionMode": {
+      "type": "string",
+      "enum": [
+        "SIMULATED",
+        "LIVE"
+      ],
+      "default": "SIMULATED"
+    }
+  },
+  "required": [
+    "name",
+    "createdBy",
+    "steps"
+  ]
+}

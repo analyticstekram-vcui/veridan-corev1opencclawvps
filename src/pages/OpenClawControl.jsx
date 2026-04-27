@@ -4,6 +4,7 @@ import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, Wifi
 import CommandQueuePanel from '@/components/openclaw/CommandQueuePanel';
 import ExecutionReadinessPanel from '@/components/openclaw/ExecutionReadinessPanel';
 import TelemetryPanel from '@/components/openclaw/TelemetryPanel';
+import WorkflowPanel from '@/components/openclaw/WorkflowPanel';
 
 export default function OpenClawControl() {
   const [status, setStatus] = useState(null);
@@ -76,7 +77,7 @@ export default function OpenClawControl() {
       </div>
         {/* View Toggle */}
         <div className="flex gap-1">
-          {[['status', 'Status'], ['queue', 'Command Queue'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
+          {[['status', 'Status'], ['queue', 'Command Queue'], ['workflows', 'Workflows'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
             <button key={id} onClick={() => setActiveView(id)}
               className={`px-3 py-1.5 text-[11px] border transition-colors ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
               {label}
@@ -89,6 +90,13 @@ export default function OpenClawControl() {
       {activeView === 'queue' && (
         <div className="h-[calc(100vh-56px)]">
           <CommandQueuePanel currentUser={currentUser} />
+        </div>
+      )}
+
+      {/* Workflows View */}
+      {activeView === 'workflows' && (
+        <div className="h-[calc(100vh-56px)]">
+          <WorkflowPanel currentUser={currentUser} executionMode="SIMULATED" executionPaused={false} />
         </div>
       )}
 
