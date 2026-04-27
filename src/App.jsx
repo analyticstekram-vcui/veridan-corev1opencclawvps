@@ -8,6 +8,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Dashboard from './pages/Dashboard';
 import CreditLedger from './pages/CreditLedger';
 import OpenClawControl from './pages/OpenClawControl';
+import BrowserControl from './pages/BrowserControl';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -39,6 +40,7 @@ const AuthenticatedApp = () => {
       <Route path="/" element={<Dashboard />} />
       <Route path="/credit-ledger" element={<CreditLedger />} />
       <Route path="/openclaw-control" element={<OpenClawControl />} />
+      <Route path="/browser-control" element={<BrowserControl />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

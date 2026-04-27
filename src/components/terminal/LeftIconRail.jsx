@@ -9,7 +9,8 @@ import {
   Lock,
   ScrollText,
   Settings,
-  Bot
+  Bot,
+  Globe
 } from 'lucide-react';
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
   { icon: TrendingUp, label: 'Trading', id: 'trading', href: null },
   { icon: Lock, label: 'Obsidian Vault', id: 'vault', href: null },
   { icon: Bot, label: 'OpenClaw Control', id: 'openclaw', href: '/openclaw-control' },
+  { icon: Globe, label: 'Browser Control', id: 'browser', href: '/browser-control' },
   { icon: ScrollText, label: 'Logs', id: 'logs', href: null },
   { icon: Settings, label: 'Settings', id: 'settings', href: null },
 ];
