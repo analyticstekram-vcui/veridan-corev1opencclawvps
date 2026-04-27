@@ -11,11 +11,12 @@ const RISK_COLORS = {
 };
 
 const STATUS_COLORS = {
-  DRAFT:     'text-muted-foreground border-border',
-  REVIEW:    'text-amber-500 border-amber-500/40 bg-amber-500/5',
-  APPROVED:  'text-primary border-primary/40 bg-primary/5',
-  REJECTED:  'text-destructive border-destructive/40 bg-destructive/5',
-  CONVERTED: 'text-blue-400 border-blue-400/40 bg-blue-400/5',
+  DRAFT:            'text-muted-foreground border-border',
+  REVIEW:           'text-amber-500 border-amber-500/40 bg-amber-500/5',
+  MULTISIG_PENDING: 'text-orange-400 border-orange-400/40 bg-orange-400/5',
+  APPROVED:         'text-primary border-primary/40 bg-primary/5',
+  REJECTED:         'text-destructive border-destructive/40 bg-destructive/5',
+  CONVERTED:        'text-blue-400 border-blue-400/40 bg-blue-400/5',
 };
 
 // ── Convert Modal ─────────────────────────────────────────────────────────
@@ -77,8 +78,12 @@ function ProposalCard({ proposal, currentUser, onRefresh, onConverted }) {
     onRefresh();
   };
 
-  const isReview   = proposal.status === 'REVIEW';
-  const isApproved = proposal.status === 'APPROVED';
+  const isReview          = proposal.status === 'REVIEW';
+  const isMultisigPending = proposal.status === 'MULTISIG_PENDING';
+  const isApproved        = proposal.status === 'APPROVED';
+  const approvalCount     = proposal.approvalCount || 0;
+  const required          = proposal.requiredApprovals || 1;
+  const awaitingCosign    = isMultisigPending && approvalCount < required;
 
   return (
     <div className="bg-card border border-border font-mono">
@@ -108,21 +113,33 @@ function ProposalCard({ proposal, currentUser, onRefresh, onConverted }) {
           </div>
         </div>
         {/* Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {isReview && (
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+          {/* Approve / Reject available while REVIEW or MULTISIG_PENDING */}
+          {(isReview || isMultisigPending) && (
             <>
+              {awaitingCosign && (
+                <span className="text-[9px] text-orange-400 border border-orange-400/30 bg-orange-400/5 px-2 py-0.5 uppercase tracking-wider">
+                  {approvalCount} of {required} approvals · Awaiting co-sign
+                </span>
+              )}
               <button onClick={() => act('approve')} disabled={actioning} className="flex items-center gap-1 px-2.5 py-1 bg-primary/10 border border-primary/30 text-primary text-[10px] hover:bg-primary/20 transition-colors disabled:opacity-50">
-                {actioning ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-3 h-3" />} Approve
+                {actioning ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-3 h-3" />}
+                {isMultisigPending ? 'Co-sign' : 'Approve'}
               </button>
               <button onClick={() => act('reject')} disabled={actioning} className="flex items-center gap-1 px-2.5 py-1 bg-destructive/10 border border-destructive/30 text-destructive text-[10px] hover:bg-destructive/20 transition-colors disabled:opacity-50">
                 <ThumbsDown className="w-3 h-3" /> Reject
               </button>
             </>
           )}
+          {/* Convert only when fully APPROVED */}
           {isApproved && (
             <button onClick={() => setShowConvert(true)} className="flex items-center gap-1 px-2.5 py-1 bg-blue-400/10 border border-blue-400/30 text-blue-400 text-[10px] hover:bg-blue-400/20 transition-colors">
               <ArrowRight className="w-3 h-3" /> Convert
             </button>
+          )}
+          {/* Blocked: multisig not yet complete */}
+          {isMultisigPending && !awaitingCosign && (
+            <span className="text-[9px] text-muted-foreground/50 italic">Awaiting second approval before convert</span>
           )}
         </div>
       </div>

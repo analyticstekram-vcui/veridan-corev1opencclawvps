@@ -37,11 +37,24 @@
       "type": "number",
       "default": 1
     },
+    "approvalCount": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of distinct approvals received"
+    },
+    "approvers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of distinct approver emails"
+    },
     "status": {
       "type": "string",
       "enum": [
         "DRAFT",
         "REVIEW",
+        "MULTISIG_PENDING",
         "APPROVED",
         "REJECTED",
         "CONVERTED"

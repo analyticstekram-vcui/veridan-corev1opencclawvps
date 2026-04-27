@@ -313,11 +313,47 @@ Respond ONLY with valid JSON:
       const proposal = proposals[0];
       if (!proposal) return Response.json({ error: 'Proposal not found' }, { status: 404 });
 
-      const auditLog = await buildAuditEntry(proposal.auditLog, 'OPENCLAW_AI_PROPOSAL_APPROVED', {
-        reviewedBy: user.email,
+      if (!['REVIEW', 'MULTISIG_PENDING'].includes(proposal.status)) {
+        return Response.json({ error: `Cannot approve proposal in status '${proposal.status}'` }, { status: 422 });
+      }
+
+      // Enforce distinct approvers
+      const existingApprovers = Array.isArray(proposal.approvers) ? proposal.approvers : [];
+      if (existingApprovers.includes(user.email)) {
+        return Response.json({ error: 'Duplicate approval rejected: you have already approved this proposal' }, { status: 422 });
+      }
+
+      const newApprovers = [...existingApprovers, user.email];
+      const newCount = newApprovers.length;
+      const required = proposal.requiredApprovals || 1;
+
+      let newStatus;
+      let auditEventType;
+
+      if (newCount >= required) {
+        newStatus = 'APPROVED';
+        auditEventType = 'OPENCLAW_MULTISIG_COMPLETE';
+      } else {
+        newStatus = 'MULTISIG_PENDING';
+        auditEventType = 'OPENCLAW_MULTISIG_PENDING';
+      }
+
+      const auditLog = await buildAuditEntry(proposal.auditLog, auditEventType, {
+        approvedBy: user.email,
+        approvalCount: newCount,
+        required,
+        approvers: newApprovers,
       });
-      await base44.entities.OpenClawProposal.update(proposalId, { status: 'APPROVED', reviewedBy: user.email, auditLog });
-      return Response.json({ success: true });
+
+      await base44.entities.OpenClawProposal.update(proposalId, {
+        status: newStatus,
+        approvers: newApprovers,
+        approvalCount: newCount,
+        reviewedBy: user.email,
+        auditLog,
+      });
+
+      return Response.json({ success: true, status: newStatus, approvalCount: newCount, required });
     }
 
     // ── REJECT ────────────────────────────────────────────────────────────
