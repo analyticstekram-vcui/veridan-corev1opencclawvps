@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Settings, ChevronDown, Zap } from 'lucide-react';
-import { getStatus } from '@/lib/veridanApi';
 
 const StatusDot = ({ online, label, sublabel }) => {
   const color = online === true ? 'bg-green-500' : online === false ? 'bg-destructive' : 'bg-amber-500';
@@ -13,27 +12,9 @@ const StatusDot = ({ online, label, sublabel }) => {
   );
 };
 
-export default function TopToolbar({ mode, onModeToggle, openClawOnline }) {
-  const [status, setStatus] = useState(null);
-
-  useEffect(() => {
-    const fetch = async () => {
-      try { setStatus(await getStatus()); } catch (_) { /* offline */ }
-    };
-    fetch();
-    const i = setInterval(fetch, 15000);
-    return () => clearInterval(i);
-  }, []);
-
-  // Prefer live openClawOnline prop from CommandConsole; fall back to status poll
-  const openclawOnline = openClawOnline !== undefined && openClawOnline !== null
-    ? openClawOnline
-    : (status ? status.openclaw.online : null);
-  const openclawSub = openclawOnline === null
-    ? 'CHECKING'
-    : openclawOnline
-      ? 'ONLINE'
-      : 'OFFLINE';
+export default function TopToolbar({ mode, onModeToggle, openClawOnline, veridanStatus }) {
+  const openclawOnline = openClawOnline ?? null;
+  const openclawSub = openclawOnline === null ? 'CHECKING' : openclawOnline ? 'ONLINE' : 'OFFLINE';
 
   return (
     <div className="h-10 bg-card border-b border-border flex items-center justify-between px-3 shrink-0 select-none">
@@ -52,9 +33,9 @@ export default function TopToolbar({ mode, onModeToggle, openClawOnline }) {
       </div>
 
       <div className="flex items-center gap-1.5">
-        <StatusDot online={status ? true : null} label="AI" sublabel={status ? 'ACTIVE' : 'INIT'} />
+        <StatusDot online={veridanStatus ? true : null} label="AI" sublabel={veridanStatus ? 'ACTIVE' : 'INIT'} />
         <StatusDot online={openclawOnline} label="OPENCLAW" sublabel={openclawSub} />
-        <StatusDot online={status ? status.vault.linked : null} label="VAULT" sublabel={status?.vault.name || 'CHECKING'} />
+        <StatusDot online={veridanStatus ? veridanStatus.vault.linked : null} label="VAULT" sublabel={veridanStatus?.vault.name || 'CHECKING'} />
       </div>
 
       <div className="flex items-center gap-2">

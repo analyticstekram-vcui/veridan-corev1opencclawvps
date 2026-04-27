@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [logsCollapsed, setLogsCollapsed] = useState(false);
   const [openClawOnline, setOpenClawOnline] = useState(null); // null = checking
+  const [veridanStatus, setVeridanStatus] = useState(null);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
@@ -19,6 +20,7 @@ export default function Dashboard() {
         mode={mode}
         onModeToggle={() => setMode(m => m === 'auto' ? 'manual' : 'auto')}
         openClawOnline={openClawOnline}
+        veridanStatus={veridanStatus}
       />
 
       {/* Main Body */}
@@ -35,7 +37,7 @@ export default function Dashboard() {
           <div className="flex-1 flex min-h-0">
             {/* Center Workspace */}
             <div className="flex-1 min-w-0">
-              <CommandConsole onOpenClawStatus={setOpenClawOnline} />
+              <CommandConsole onOpenClawStatus={setOpenClawOnline} onStatusUpdate={setVeridanStatus} />
             </div>
 
             {/* Right Inspector */}
@@ -43,6 +45,7 @@ export default function Dashboard() {
               collapsed={inspectorCollapsed}
               onToggle={() => setInspectorCollapsed(c => !c)}
               openClawOnline={openClawOnline}
+              veridanStatus={veridanStatus}
             />
           </div>
 

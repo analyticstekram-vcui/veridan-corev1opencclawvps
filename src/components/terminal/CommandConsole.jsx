@@ -73,7 +73,7 @@ function nowTime() {
   return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-export default function CommandConsole({ onOpenClawStatus }) {
+export default function CommandConsole({ onOpenClawStatus, onStatusUpdate }) {
   const [messages, setMessages] = useState([
     { id: 1, role: 'system', time: nowTime(), content: 'VERIDAN CORE v2.4.1 — AI Command Console initialized.' },
     { id: 2, role: 'system', time: nowTime(), content: 'Connecting to Veridan backend...' },
@@ -81,6 +81,8 @@ export default function CommandConsole({ onOpenClawStatus }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
+  const pollingStartedRef = useRef(false);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -88,17 +90,23 @@ export default function CommandConsole({ onOpenClawStatus }) {
     }
   }, [messages]);
 
-  // Controlled status polling — one immediate check + 20s interval, never recursive
+  // Single centralized status poller — one mount, one interval, one in-flight guard
   useEffect(() => {
-    let mounted = true;
+    if (pollingStartedRef.current) return;
+    pollingStartedRef.current = true;
 
-    const runStatusCheck = async (isInitial = false) => {
+    let isInitial = true;
+
+    const runStatusCheck = async () => {
+      if (inFlightRef.current) return; // skip if previous call still running
+      inFlightRef.current = true;
       try {
         const res = await getStatus();
-        if (!mounted) return;
         const connected = res?.openclaw?.online === true;
         if (onOpenClawStatus) onOpenClawStatus(connected);
+        if (onStatusUpdate) onStatusUpdate(res);
         if (isInitial) {
+          isInitial = false;
           setMessages(prev => prev.map(m =>
             m.content === 'Connecting to Veridan backend...'
               ? { ...m, content: connected
@@ -108,24 +116,26 @@ export default function CommandConsole({ onOpenClawStatus }) {
           ));
         }
       } catch (_) {
-        if (!mounted) return;
         if (onOpenClawStatus) onOpenClawStatus(false);
         if (isInitial) {
+          isInitial = false;
           setMessages(prev => prev.map(m =>
             m.content === 'Connecting to Veridan backend...'
               ? { ...m, content: 'Veridan backend OFFLINE — running in local mode.' }
               : m
           ));
         }
+      } finally {
+        inFlightRef.current = false;
       }
     };
 
-    runStatusCheck(true);
-    const interval = setInterval(() => runStatusCheck(false), 20000);
+    runStatusCheck();
+    const intervalId = setInterval(runStatusCheck, 20000);
 
     return () => {
-      mounted = false;
-      clearInterval(interval);
+      clearInterval(intervalId);
+      pollingStartedRef.current = false;
     };
   }, []);
 

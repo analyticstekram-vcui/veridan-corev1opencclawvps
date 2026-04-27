@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { PanelRightClose, PanelRightOpen, ShieldAlert } from 'lucide-react';
-import { getStatus } from '@/lib/veridanApi';
 
 const InspectorRow = ({ label, value, color }) => (
   <div className="px-3 py-2 border-b border-border/50">
@@ -9,18 +8,12 @@ const InspectorRow = ({ label, value, color }) => (
   </div>
 );
 
-export default function InspectorPanel({ collapsed, onToggle, pendingApprovals = [], openClawOnline }) {
-  const [status, setStatus] = useState(null);
+export default function InspectorPanel({ collapsed, onToggle, pendingApprovals = [], openClawOnline, veridanStatus }) {
   const [uptime, setUptime] = useState(0);
 
   useEffect(() => {
-    const fetchStatus = async () => {
-      try { setStatus(await getStatus()); } catch (_) { /* offline */ }
-    };
-    fetchStatus();
-    const si = setInterval(fetchStatus, 15000);
     const ui = setInterval(() => setUptime(s => s + 1), 1000);
-    return () => { clearInterval(si); clearInterval(ui); };
+    return () => clearInterval(ui);
   }, []);
 
   const fmtUptime = (s) => {
@@ -30,15 +23,8 @@ export default function InspectorPanel({ collapsed, onToggle, pendingApprovals =
     return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
   };
 
-  // Prefer live prop from CommandConsole; fall back to status poll
-  const resolvedOnline = openClawOnline !== undefined && openClawOnline !== null
-    ? openClawOnline
-    : (status ? status.openclaw.online : null);
-  const openclawStatus = resolvedOnline === null
-    ? 'CHECKING'
-    : resolvedOnline
-      ? 'ONLINE'
-      : 'OFFLINE';
+  const resolvedOnline = openClawOnline ?? null;
+  const openclawStatus = resolvedOnline === null ? 'CHECKING' : resolvedOnline ? 'ONLINE' : 'OFFLINE';
 
   if (collapsed) {
     return (
@@ -63,8 +49,8 @@ export default function InspectorPanel({ collapsed, onToggle, pendingApprovals =
 
       <div className="flex-1 overflow-y-auto">
         <InspectorRow label="Active Module" value="AI Command" color="text-primary" />
-        <InspectorRow label="Active Vault" value={status?.vault.name} color="text-foreground" />
-        <InspectorRow label="AI Model" value={status?.ai.model} color="text-blue-400" />
+        <InspectorRow label="Active Vault" value={veridanStatus?.vault.name} color="text-foreground" />
+        <InspectorRow label="AI Model" value={veridanStatus?.ai.model} color="text-blue-400" />
         <InspectorRow
           label="OpenClaw"
           value={openclawStatus}
@@ -72,8 +58,8 @@ export default function InspectorPanel({ collapsed, onToggle, pendingApprovals =
         />
         <InspectorRow
           label="System State"
-          value={status ? 'NOMINAL' : 'INITIALIZING'}
-          color={status ? 'text-primary' : 'text-amber-500'}
+          value={veridanStatus ? 'NOMINAL' : 'INITIALIZING'}
+          color={veridanStatus ? 'text-primary' : 'text-amber-500'}
         />
 
         {/* Pending Approvals */}
