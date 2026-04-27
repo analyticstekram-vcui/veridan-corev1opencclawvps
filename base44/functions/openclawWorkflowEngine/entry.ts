@@ -214,20 +214,26 @@ Deno.serve(async (req) => {
 
     // ── APPROVE ────────────────────────────────────────────────────────────
     if (action === 'approve') {
-      const workflows = await base44.entities.OpenClawWorkflow.filter({ id: workflowId });
-      const wf = workflows[0];
-      if (!wf) return Response.json({ error: 'Workflow not found' }, { status: 404 });
+      if (!workflowId) return Response.json({ error: 'workflowId required' }, { status: 400 });
+      // Fetch all, find by id (built-in field not filterable via filter())
+      const allWfs = await base44.entities.OpenClawWorkflow.list('-created_date', 200);
+      const wf = allWfs.find(w => w.id === workflowId);
+      if (!wf) return Response.json({ error: 'Workflow not found', workflowId }, { status: 404 });
+      if (wf.status !== 'pending_approval') {
+        return Response.json({ error: `Cannot approve workflow in status '${wf.status}'` }, { status: 422 });
+      }
       const approvedBy = [...new Set([...(wf.approvedBy || []), user.email])];
       await base44.entities.OpenClawWorkflow.update(workflowId, { status: 'approved', approvedBy });
-      await appendAudit(base44, wf, { eventType: 'OPENCLAW_WORKFLOW_APPROVED', approvedBy: user.email });
-      return Response.json({ success: true });
+      await appendAudit(base44, { ...wf, id: workflowId }, { eventType: 'OPENCLAW_WORKFLOW_APPROVED', approvedBy: user.email });
+      return Response.json({ success: true, status: 'approved' });
     }
 
     // ── EXECUTE ────────────────────────────────────────────────────────────
     if (action === 'execute') {
-      const workflows = await base44.entities.OpenClawWorkflow.filter({ id: workflowId });
-      const wf = workflows[0];
-      if (!wf) return Response.json({ error: 'Workflow not found' }, { status: 404 });
+      if (!workflowId) return Response.json({ error: 'workflowId required' }, { status: 400 });
+      const allWfs = await base44.entities.OpenClawWorkflow.list('-created_date', 200);
+      const wf = allWfs.find(w => w.id === workflowId);
+      if (!wf) return Response.json({ error: 'Workflow not found', workflowId }, { status: 404 });
       if (wf.status !== 'approved') return Response.json({ error: `Workflow must be approved, current: ${wf.status}` }, { status: 422 });
 
       // Idempotency check

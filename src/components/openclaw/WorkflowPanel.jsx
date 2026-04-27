@@ -48,7 +48,13 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
 
   const handleApprove = async (wf) => {
     setApproving(p => ({ ...p, [wf.id]: true }));
-    await base44.functions.invoke('openclawWorkflowEngine', { action: 'approve', workflowId: wf.id });
+    try {
+      const res = await base44.functions.invoke('openclawWorkflowEngine', { action: 'approve', workflowId: wf.id });
+      if (res.data?.success) {
+        // Switch to approved tab so the workflow is immediately visible
+        setActiveTab('approved');
+      }
+    } catch (_) {}
     setApproving(p => ({ ...p, [wf.id]: false }));
     fetch();
   };
@@ -56,16 +62,18 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
   const handleExecute = async (wf) => {
     if (executionPaused) return;
     setExecuting(p => ({ ...p, [wf.id]: true }));
-    const res = await base44.functions.invoke('openclawWorkflowEngine', {
-      action: 'execute',
-      workflowId: wf.id,
-      executionMode,
-    });
+    try {
+      const res = await base44.functions.invoke('openclawWorkflowEngine', {
+        action: 'execute',
+        workflowId: wf.id,
+        executionMode,
+      });
+      if (res.data?.results) {
+        setExecResults(p => ({ ...p, [wf.id]: res.data.results }));
+      }
+      setExpanded(p => ({ ...p, [wf.id]: true }));
+    } catch (_) {}
     setExecuting(p => ({ ...p, [wf.id]: false }));
-    if (res.data?.results) {
-      setExecResults(p => ({ ...p, [wf.id]: res.data.results }));
-    }
-    setExpanded(p => ({ ...p, [wf.id]: true }));
     fetch();
   };
 
