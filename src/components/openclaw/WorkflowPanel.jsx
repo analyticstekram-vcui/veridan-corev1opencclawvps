@@ -4,6 +4,7 @@ import { Plus, Play, ThumbsUp, Loader2, RefreshCw, ChevronDown, ChevronRight, Bo
 import WorkflowBuilder from './workflow/WorkflowBuilder';
 import WorkflowExecutionView from './workflow/WorkflowExecutionView';
 import TemplatesPanel, { SaveTemplateModal } from './workflow/TemplatesPanel';
+import ProposalsPanel from './ProposalsPanel';
 
 const STATUS_COLORS = {
   draft:            'text-muted-foreground border-border',
@@ -16,7 +17,7 @@ const STATUS_COLORS = {
 };
 
 const WORKFLOW_TABS = ['pending_approval', 'approved', 'running', 'completed', 'failed', 'draft'];
-const TOP_TABS = ['workflows', 'templates'];
+const TOP_TABS = ['workflows', 'templates', 'ai_proposals'];
 
 export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED', executionPaused = false }) {
   const [workflows, setWorkflows]       = useState([]);
@@ -79,7 +80,9 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
         {TOP_TABS.map(t => (
           <button key={t} onClick={() => setTopTab(t)}
             className={`px-3 py-1 text-[10px] uppercase tracking-wider border transition-colors ${topTab === t ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
-            {t === 'templates' ? <span className="flex items-center gap-1"><BookMarked className="w-3 h-3" />Templates</span> : 'Workflows'}
+            {t === 'templates'    ? <span className="flex items-center gap-1"><BookMarked className="w-3 h-3" />Templates</span>
+           : t === 'ai_proposals' ? <span className="flex items-center gap-1">✦ AI Proposals</span>
+           : 'Workflows'}
           </button>
         ))}
       </div>
@@ -88,6 +91,16 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
       {topTab === 'templates' && (
         <div className="flex-1 overflow-hidden">
           <TemplatesPanel currentUser={currentUser} onInstantiate={handleInstantiate} />
+        </div>
+      )}
+
+      {/* AI Proposals view */}
+      {topTab === 'ai_proposals' && (
+        <div className="flex-1 overflow-hidden">
+          <ProposalsPanel
+            currentUser={currentUser}
+            onWorkflowCreated={() => { setTopTab('workflows'); setActiveTab('pending_approval'); fetch(); }}
+          />
         </div>
       )}
 

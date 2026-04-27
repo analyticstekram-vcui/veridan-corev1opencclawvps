@@ -1,0 +1,71 @@
+{
+  "name": "OpenClawProposal",
+  "type": "object",
+  "properties": {
+    "prompt": {
+      "type": "string",
+      "description": "Natural language input from user"
+    },
+    "context": {
+      "type": "object",
+      "description": "Optional context: entityScope, timeframe, etc."
+    },
+    "proposalId": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "estimatedRisk": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM"
+      ]
+    },
+    "estimatedLatency": {
+      "type": "number",
+      "description": "Estimated ms for full workflow"
+    },
+    "requiredApprovals": {
+      "type": "number",
+      "default": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "CONVERTED"
+      ],
+      "default": "DRAFT"
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "reviewedBy": {
+      "type": "string"
+    },
+    "convertedWorkflowId": {
+      "type": "string"
+    },
+    "auditLog": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "required": [
+    "prompt",
+    "createdBy"
+  ]
+}
