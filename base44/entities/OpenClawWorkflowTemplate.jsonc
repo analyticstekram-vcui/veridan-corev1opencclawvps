@@ -1,0 +1,65 @@
+{
+  "name": "OpenClawWorkflowTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "monitoring",
+          "data",
+          "browser",
+          "security",
+          "ops"
+        ]
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_promotion",
+        "production"
+      ],
+      "default": "draft"
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "promotedBy": {
+      "type": "string"
+    },
+    "sourceWorkflowId": {
+      "type": "string",
+      "description": "Workflow this template was saved from"
+    },
+    "auditLog": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "required": [
+    "name",
+    "steps",
+    "createdBy"
+  ]
+}

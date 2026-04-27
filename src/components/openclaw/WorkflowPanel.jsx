@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Play, ThumbsUp, Loader2, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Play, ThumbsUp, Loader2, RefreshCw, ChevronDown, ChevronRight, BookMarked } from 'lucide-react';
 import WorkflowBuilder from './workflow/WorkflowBuilder';
 import WorkflowExecutionView from './workflow/WorkflowExecutionView';
+import TemplatesPanel, { SaveTemplateModal } from './workflow/TemplatesPanel';
 
 const STATUS_COLORS = {
   draft:            'text-muted-foreground border-border',
@@ -14,17 +15,20 @@ const STATUS_COLORS = {
   cancelled:        'text-muted-foreground border-border',
 };
 
-const TABS = ['pending_approval', 'approved', 'running', 'completed', 'failed', 'draft'];
+const WORKFLOW_TABS = ['pending_approval', 'approved', 'running', 'completed', 'failed', 'draft'];
+const TOP_TABS = ['workflows', 'templates'];
 
 export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED', executionPaused = false }) {
-  const [workflows, setWorkflows]     = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [activeTab, setActiveTab]     = useState('pending_approval');
-  const [showBuilder, setShowBuilder] = useState(false);
-  const [expanded, setExpanded]       = useState({});
-  const [executing, setExecuting]     = useState({});
-  const [approving, setApproving]     = useState({});
-  const [execResults, setExecResults] = useState({});
+  const [workflows, setWorkflows]       = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [topTab, setTopTab]             = useState('workflows');
+  const [activeTab, setActiveTab]       = useState('pending_approval');
+  const [showBuilder, setShowBuilder]   = useState(false);
+  const [expanded, setExpanded]         = useState({});
+  const [executing, setExecuting]       = useState({});
+  const [approving, setApproving]       = useState({});
+  const [execResults, setExecResults]   = useState({});
+  const [saveTemplateFor, setSaveTemplateFor] = useState(null); // workflow to save as template
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -62,11 +66,44 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
     fetch();
   };
 
+  // Instantiate from template: open builder pre-seeded (handled by passing steps to builder via key)
+  const handleInstantiate = (template) => {
+    setTopTab('workflows');
+    setShowBuilder(true);
+  };
+
   return (
     <div className="flex flex-col h-full font-mono">
-      {/* Tab Bar */}
-      <div className="shrink-0 border-b border-border bg-card flex items-center px-2 gap-0 overflow-x-auto">
-        {TABS.map(tab => (
+      {/* Top-level tab: Workflows / Templates */}
+      <div className="shrink-0 border-b border-border bg-card/60 flex items-center px-4 gap-1 py-1.5">
+        {TOP_TABS.map(t => (
+          <button key={t} onClick={() => setTopTab(t)}
+            className={`px-3 py-1 text-[10px] uppercase tracking-wider border transition-colors ${topTab === t ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
+            {t === 'templates' ? <span className="flex items-center gap-1"><BookMarked className="w-3 h-3" />Templates</span> : 'Workflows'}
+          </button>
+        ))}
+      </div>
+
+      {/* Templates view */}
+      {topTab === 'templates' && (
+        <div className="flex-1 overflow-hidden">
+          <TemplatesPanel currentUser={currentUser} onInstantiate={handleInstantiate} />
+        </div>
+      )}
+
+      {/* Save Template Modal */}
+      {saveTemplateFor && (
+        <SaveTemplateModal
+          workflow={saveTemplateFor}
+          currentUser={currentUser}
+          onSaved={() => { setSaveTemplateFor(null); }}
+          onClose={() => setSaveTemplateFor(null)}
+        />
+      )}
+
+      {/* Workflows view */}
+      {topTab === 'workflows' && <><div className="shrink-0 border-b border-border bg-card flex items-center px-2 gap-0 overflow-x-auto">
+        {WORKFLOW_TABS.map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`relative px-4 py-2.5 text-[11px] transition-colors border-b-2 whitespace-nowrap ${
               activeTab === tab ? 'text-primary border-primary' : 'text-muted-foreground border-transparent hover:text-foreground'
@@ -138,6 +175,12 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
                       {executionMode === 'LIVE' ? 'Execute (LIVE)' : 'Execute (Simulated)'}
                     </button>
                   )}
+                  {/* Save as template (completed workflows) */}
+                  {(wf.status === 'completed' || wf.status === 'approved') && (
+                    <button onClick={() => setSaveTemplateFor(wf)} className="flex items-center gap-1 px-2.5 py-1 border border-border text-muted-foreground text-[10px] hover:text-foreground hover:bg-secondary/50 transition-colors" title="Save as template">
+                      <BookMarked className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -151,6 +194,7 @@ export default function WorkflowPanel({ currentUser, executionMode = 'SIMULATED'
           ))
         )}
       </div>
+      </>}
     </div>
   );
 }
