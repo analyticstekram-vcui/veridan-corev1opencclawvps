@@ -225,20 +225,28 @@ export default function ProposalsPanel({ currentUser, onWorkflowCreated }) {
     setGenerating(true);
     setGenError(null);
     const contextObj = context.trim() ? { note: context.trim() } : {};
-    const res = await base44.functions.invoke('openclawProposalEngine', {
-      action: 'propose', prompt: prompt.trim(), context: contextObj,
-    });
-    setGenerating(false);
-    const data = res.data || {};
-    if (data.success) {
-      setPrompt('');
-      setContext('');
-      fetchProposals();
-    } else if (data.blocked) {
-      // Blocked — do NOT create proposal, show red banner
-      setGenError({ message: data.error, blocked: true, classification: data.classification, reason: data.reason });
-    } else {
-      setGenError({ message: data.error || data.details?.join('; ') || 'Generation failed', blocked: false });
+    try {
+      const res = await base44.functions.invoke('openclawProposalEngine', {
+        action: 'propose', prompt: prompt.trim(), context: contextObj,
+      });
+      const data = res.data || {};
+      if (data.success) {
+        setPrompt('');
+        setContext('');
+        fetchProposals();
+      } else {
+        setGenError({ message: data.error || 'Generation failed', blocked: false });
+      }
+    } catch (err) {
+      // Extract structured error from Axios response body if available
+      const data = err?.response?.data || {};
+      if (data.blocked) {
+        setGenError({ message: data.error, blocked: true, classification: data.classification, reason: data.reason });
+      } else {
+        setGenError({ message: data.error || 'Generation failed', blocked: false });
+      }
+    } finally {
+      setGenerating(false);
     }
   };
 
