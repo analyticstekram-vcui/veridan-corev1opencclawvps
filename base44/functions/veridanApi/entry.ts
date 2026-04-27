@@ -13,24 +13,26 @@ function addLog({ source, action, status, commandId = null }) {
   if (logs.length > 200) logs.pop();
 }
 
-// ─── OpenClaw helpers ─────────────────────────────────────────────────────────
-const OPENCLAW_BASE = 'http://localhost:18789';
+// ─── Veridan VPS backend (OpenClaw bridge) ────────────────────────────────────
+const VERIDAN_BACKEND = 'http://142.93.206.36:3001';
+
+async function sendToVeridanBackend(command) {
+  const start = Date.now();
+  const res = await fetch(`${VERIDAN_BACKEND}/command`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ command }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`Veridan backend responded ${res.status}`);
+  const data = await res.json();
+  return { ...data, latencyMs: Date.now() - start };
+}
 
 async function pingOpenClaw() {
   const start = Date.now();
-  const res = await fetch(`${OPENCLAW_BASE}/health`, { signal: AbortSignal.timeout(3000) });
-  return { online: res.ok, latencyMs: Date.now() - start };
-}
-
-async function sendToOpenClaw(command, context) {
-  const res = await fetch(`${OPENCLAW_BASE}/v1/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: command, context }),
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) throw new Error(`OpenClaw responded ${res.status}`);
-  return res.json();
+  const data = await sendToVeridanBackend('status check');
+  return { online: data.openclawConnected === true, latencyMs: data.latencyMs ?? (Date.now() - start) };
 }
 
 // ─── AI Interpretation ────────────────────────────────────────────────────────
@@ -118,17 +120,20 @@ Deno.serve(async (req) => {
       return Response.json({ ...decision, commandId, status: 'pending_approval' });
     }
 
-    // Low risk — attempt OpenClaw execution
+    // Route command through Veridan VPS backend → OpenClaw bridge
     let openclawResult = null;
+    let openclawConnected = false;
     try {
-      openclawResult = await sendToOpenClaw(command, decision);
-      addLog({ source: 'OPENCLAW', action: `Executed: ${decision.action}`, status: 'OK', commandId });
-    } catch (_) {
-      addLog({ source: 'OPENCLAW', action: `Skipped (offline): ${decision.action}`, status: 'SKIPPED', commandId });
-      openclawResult = { note: 'OpenClaw offline — decision returned without execution' };
+      const backendRes = await sendToVeridanBackend(command);
+      openclawConnected = backendRes.openclawConnected === true;
+      openclawResult = backendRes.openclawResponse || backendRes;
+      addLog({ source: openclawConnected ? 'OPENCLAW' : 'SYSTEM', action: decision.action, status: 'OK', commandId });
+    } catch (err) {
+      addLog({ source: 'OPENCLAW', action: decision.action, status: 'ERROR', commandId });
+      openclawResult = { note: err.message };
     }
 
-    return Response.json({ ...decision, commandId, status: 'executed', result: openclawResult });
+    return Response.json({ ...decision, commandId, status: 'executed', result: openclawResult, openclawConnected });
   }
 
   // ── approve ────────────────────────────────────────────────────────────────
@@ -150,8 +155,9 @@ Deno.serve(async (req) => {
 
     let openclawResult = null;
     try {
-      openclawResult = await sendToOpenClaw(pending.command, pending.decision);
-      addLog({ source: 'OPENCLAW', action: `Executed after approval: ${pending.decision.action}`, status: 'OK', commandId });
+      const backendRes = await sendToVeridanBackend(pending.command);
+      openclawResult = backendRes.openclawResponse || backendRes;
+      addLog({ source: backendRes.openclawConnected ? 'OPENCLAW' : 'SYSTEM', action: `Executed after approval: ${pending.decision.action}`, status: 'OK', commandId });
     } catch (err) {
       addLog({ source: 'OPENCLAW', action: `Execution failed: ${err.message}`, status: 'ERROR', commandId });
       openclawResult = { error: err.message };

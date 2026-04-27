@@ -73,10 +73,10 @@ function nowTime() {
   return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-export default function CommandConsole() {
+export default function CommandConsole({ onOpenClawStatus }) {
   const [messages, setMessages] = useState([
     { id: 1, role: 'system', time: nowTime(), content: 'VERIDAN CORE v2.4.1 — AI Command Console initialized.' },
-    { id: 2, role: 'system', time: nowTime(), content: 'All modules online. Type a command to begin.' },
+    { id: 2, role: 'system', time: nowTime(), content: 'Connecting to Veridan backend...' },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -87,6 +87,32 @@ export default function CommandConsole() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Auto status check on mount
+  useEffect(() => {
+    const runStatusCheck = async () => {
+      try {
+        const result = await postCommand('status check');
+        const connected = result.openclawConnected === true;
+        if (onOpenClawStatus) onOpenClawStatus(connected);
+        setMessages(prev => prev.map(m =>
+          m.content === 'Connecting to Veridan backend...'
+            ? { ...m, content: connected
+                ? 'OpenClaw ONLINE — Veridan backend connected. Type a command to begin.'
+                : 'OpenClaw OFFLINE — Veridan backend reachable but OpenClaw not connected.' }
+            : m
+        ));
+      } catch (_) {
+        if (onOpenClawStatus) onOpenClawStatus(false);
+        setMessages(prev => prev.map(m =>
+          m.content === 'Connecting to Veridan backend...'
+            ? { ...m, content: 'Veridan backend OFFLINE — running in local mode.' }
+            : m
+        ));
+      }
+    };
+    runStatusCheck();
+  }, []);
 
   const pushMsg = (msg) => setMessages(prev => [...prev, { id: Date.now() + Math.random(), ...msg }]);
 
@@ -111,6 +137,11 @@ export default function CommandConsole() {
 
     setMessages(prev => prev.filter(m => !m.isTyping));
 
+    // Update OpenClaw connectivity status from command response
+    if (result.openclawConnected !== undefined && onOpenClawStatus) {
+      onOpenClawStatus(result.openclawConnected);
+    }
+
     if (result.status === 'pending_approval') {
       pushMsg({
         role: 'ai',
@@ -122,10 +153,11 @@ export default function CommandConsole() {
         action: result.action,
       });
     } else {
+      const ocNote = result.openclawConnected === false ? '\n[OpenClaw: OFFLINE]' : result.openclawConnected === true ? '\n[OpenClaw: ONLINE]' : '';
       pushMsg({
         role: 'ai',
         time: nowTime(),
-        content: result.summary + (result.result?.note ? `\n\n[${result.result.note}]` : ''),
+        content: result.summary + (result.result?.note ? `\n\n[${result.result.note}]` : '') + ocNote,
         riskLevel: result.riskLevel,
       });
     }

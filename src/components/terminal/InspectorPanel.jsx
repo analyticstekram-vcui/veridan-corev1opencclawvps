@@ -9,7 +9,7 @@ const InspectorRow = ({ label, value, color }) => (
   </div>
 );
 
-export default function InspectorPanel({ collapsed, onToggle, pendingApprovals = [] }) {
+export default function InspectorPanel({ collapsed, onToggle, pendingApprovals = [], openClawOnline }) {
   const [status, setStatus] = useState(null);
   const [uptime, setUptime] = useState(0);
 
@@ -30,9 +30,15 @@ export default function InspectorPanel({ collapsed, onToggle, pendingApprovals =
     return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
   };
 
-  const openclawStatus = status
-    ? (status.openclaw.online ? `ONLINE (${status.openclaw.latencyMs}ms)` : 'OFFLINE')
-    : 'CHECKING';
+  // Prefer live prop from CommandConsole; fall back to status poll
+  const resolvedOnline = openClawOnline !== undefined && openClawOnline !== null
+    ? openClawOnline
+    : (status ? status.openclaw.online : null);
+  const openclawStatus = resolvedOnline === null
+    ? 'CHECKING'
+    : resolvedOnline
+      ? 'ONLINE'
+      : 'OFFLINE';
 
   if (collapsed) {
     return (
@@ -62,7 +68,7 @@ export default function InspectorPanel({ collapsed, onToggle, pendingApprovals =
         <InspectorRow
           label="OpenClaw"
           value={openclawStatus}
-          color={status?.openclaw.online ? 'text-primary' : 'text-destructive'}
+          color={resolvedOnline === null ? 'text-amber-500' : resolvedOnline ? 'text-primary' : 'text-destructive'}
         />
         <InspectorRow
           label="System State"

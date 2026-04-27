@@ -13,7 +13,7 @@ const StatusDot = ({ online, label, sublabel }) => {
   );
 };
 
-export default function TopToolbar({ mode, onModeToggle }) {
+export default function TopToolbar({ mode, onModeToggle, openClawOnline }) {
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
@@ -25,10 +25,15 @@ export default function TopToolbar({ mode, onModeToggle }) {
     return () => clearInterval(i);
   }, []);
 
-  const openclawOnline = status ? status.openclaw.online : null;
-  const openclawSub = status
-    ? (openclawOnline ? `${status.openclaw.latencyMs}ms` : 'OFFLINE')
-    : 'CHECKING';
+  // Prefer live openClawOnline prop from CommandConsole; fall back to status poll
+  const openclawOnline = openClawOnline !== undefined && openClawOnline !== null
+    ? openClawOnline
+    : (status ? status.openclaw.online : null);
+  const openclawSub = openclawOnline === null
+    ? 'CHECKING'
+    : openclawOnline
+      ? 'ONLINE'
+      : 'OFFLINE';
 
   return (
     <div className="h-10 bg-card border-b border-border flex items-center justify-between px-3 shrink-0 select-none">
