@@ -8,6 +8,26 @@ const RISK_MAP = {
 };
 const APPROVALS_REQUIRED = { low: 1, medium: 2, high: Infinity }; // high = blocked
 
+// ── Scope policy (default deny) ────────────────────────────────────────────
+const SCOPE_ALLOWLIST = {
+  vcm:           ['system.status', 'logs.fetch'],
+  gfm_admin:     ['system.status', 'logs.fetch', 'session.list'],
+  genesis_trust: ['system.status'],
+};
+const SCOPE_RATE_WINDOW_MS = 60_000;
+const SCOPE_RATE_LIMIT     = 3; // per entity per minute
+const scopeRateStore       = new Map(); // `${scope}:${userEmail}` → [timestamps]
+
+function checkScopeRateLimit(scope, userEmail) {
+  const key   = `${scope}:${userEmail}`;
+  const now   = Date.now();
+  const times = (scopeRateStore.get(key) || []).filter(t => now - t < SCOPE_RATE_WINDOW_MS);
+  if (times.length >= SCOPE_RATE_LIMIT) return false;
+  times.push(now);
+  scopeRateStore.set(key, times);
+  return true;
+}
+
 // ── Rate limiter (in-memory per isolate) ──────────────────────────────────
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT     = 5;
@@ -108,17 +128,33 @@ Deno.serve(async (req) => {
       return reject(422, 'OPENCLAW_EXECUTION_REJECTED', `Status is '${command.status}', must be 'approved'`);
     }
 
-    // ── 3. Allowlist + risk check ──────────────────────────────────────────
-    const cmdText   = command.commandText?.trim();
+    // ── 3. Scope guard (default deny) ─────────────────────────────────────
+    const cmdText    = command.commandText?.trim();
+    const entityScope = command.entityScope;
+    if (!entityScope) {
+      await appendAudit(base44, command, { ...auditBase, eventType: 'OPENCLAW_SCOPE_BLOCKED', reason: 'No entityScope set on command' });
+      return Response.json({ success: false, blocked: true, reason: 'Command has no entityScope — blocked by default deny policy.', eventType: 'OPENCLAW_SCOPE_BLOCKED' }, { status: 403 });
+    }
+    const scopeAllowed = SCOPE_ALLOWLIST[entityScope] || [];
+    if (!scopeAllowed.includes(cmdText)) {
+      await appendAudit(base44, command, { ...auditBase, eventType: 'OPENCLAW_SCOPE_BLOCKED', reason: `'${cmdText}' not permitted under scope '${entityScope}'`, entityScope });
+      return Response.json({ success: false, blocked: true, reason: `'${cmdText}' is not permitted under scope '${entityScope}'. Allowed: ${scopeAllowed.join(', ') || 'none'}.`, eventType: 'OPENCLAW_SCOPE_BLOCKED' }, { status: 403 });
+    }
+    if (!checkScopeRateLimit(entityScope, user.email)) {
+      await appendAudit(base44, command, { ...auditBase, eventType: 'OPENCLAW_SCOPE_BLOCKED', reason: `Scope rate limit hit: ${SCOPE_RATE_LIMIT}/min for '${entityScope}'`, entityScope });
+      return Response.json({ success: false, blocked: true, reason: `Scope rate limit exceeded: max ${SCOPE_RATE_LIMIT} commands/min under '${entityScope}'.`, eventType: 'OPENCLAW_SCOPE_BLOCKED' }, { status: 429 });
+    }
+
+    // ── 4. Allowlist + risk check ──────────────────────────────────────────
     const riskLevel = RISK_MAP[cmdText];
     if (!riskLevel) {
-      return reject(403, 'OPENCLAW_EXECUTION_REJECTED', `'${cmdText}' is not in the allowlist`);
+      return reject(403, 'OPENCLAW_EXECUTION_REJECTED', `'${cmdText}' is not in the global allowlist`);
     }
     if (riskLevel === 'high' || !APPROVALS_REQUIRED[riskLevel]) {
       return reject(403, 'OPENCLAW_EXECUTION_REJECTED', `HIGH risk commands are blocked pending policy`);
     }
 
-    // ── 4. Multi-sig: check approvers array ───────────────────────────────
+    // ── 5. Multi-sig: check approvers array ───────────────────────────────
     const approvers      = Array.isArray(command.approvers) ? command.approvers : [];
     const uniqueApprovers = [...new Set(approvers)];
     const required       = APPROVALS_REQUIRED[riskLevel];
@@ -146,12 +182,12 @@ Deno.serve(async (req) => {
       approvers: uniqueApprovers,
     });
 
-    // ── 5. Rate limit ──────────────────────────────────────────────────────
+    // ── 6. Global rate limit ───────────────────────────────────────────────
     if (!checkRateLimit(user.email)) {
       return reject(429, 'OPENCLAW_EXECUTION_REJECTED', 'Rate limit exceeded: max 5 commands/minute');
     }
 
-    // ── 6. Cooldown ───────────────────────────────────────────────────────
+    // ── 7. Cooldown ───────────────────────────────────────────────────────
     if (!checkCooldown(commandId)) {
       await appendAudit(base44, command, {
         ...auditBase, eventType: 'OPENCLAW_COOLDOWN_BLOCKED',
@@ -164,7 +200,7 @@ Deno.serve(async (req) => {
       }, { status: 429 });
     }
 
-    // ── 7. LIVE execution path ─────────────────────────────────────────────
+    // ── 8. LIVE execution path ─────────────────────────────────────────────
     if (executionMode === 'LIVE') {
       const gatewayUrl = Deno.env.get('OPENCLAW_GATEWAY_URL');
       const secret     = Deno.env.get('OPENCLAW_PROD_KEY') || Deno.env.get('OPENCLAW_DEV_KEY') || 'veridan-dev-secret';
@@ -205,7 +241,7 @@ Deno.serve(async (req) => {
       // Gateway unreachable → fall through to simulated
     }
 
-    // ── 8. Simulated execution ────────────────────────────────────────────
+    // ── 9. Simulated execution ────────────────────────────────────────────
     const simStart = Date.now();
     await new Promise(r => setTimeout(r, 200));
     const latency   = Date.now() - simStart;

@@ -2,11 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Loader2, Plus } from 'lucide-react';
 import CommandPreviewCard from './CommandPreviewCard';
+import { ENTITY_SCOPES } from './ScopeBadge';
 
 const TABS = ['pending', 'approved', 'denied', 'executed', 'failed', 'cancelled'];
-
 const RISK_LEVELS = ['low', 'medium', 'high', 'critical'];
-
 const inputCls = "w-full px-2.5 py-1.5 bg-secondary/50 border border-border text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 outline-none focus:border-primary/50 transition-colors";
 
 async function logAudit(command, eventType) {
@@ -23,7 +22,8 @@ export default function CommandQueuePanel({ currentUser }) {
   const [commands, setCommands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ commandText: '', riskLevel: 'medium', notes: '' });
+  const [scopeFilter, setScopeFilter] = useState('all');
+  const [form, setForm] = useState({ commandText: '', riskLevel: 'medium', entityScope: 'vcm', notes: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const fetchCommands = useCallback(async () => {
@@ -35,7 +35,7 @@ export default function CommandQueuePanel({ currentUser }) {
 
   useEffect(() => { fetchCommands(); }, [fetchCommands]);
 
-  const visible = commands.filter(c => c.status === activeTab);
+  const visible = commands.filter(c => c.status === activeTab && (scopeFilter === 'all' || c.entityScope === scopeFilter));
   const countByStatus = (s) => commands.filter(c => c.status === s).length;
 
   const handleSubmit = async (e) => {
@@ -45,13 +45,14 @@ export default function CommandQueuePanel({ currentUser }) {
     const cmd = await base44.entities.OpenClawCommand.create({
       commandText: form.commandText.trim(),
       riskLevel: form.riskLevel,
+      entityScope: form.entityScope,
       notes: form.notes,
       requestedBy: currentUser?.email || 'unknown',
       target: 'OpenClaw Gateway',
       status: 'pending',
       auditLog: [{ eventType: 'OPENCLAW_COMMAND_REQUESTED', timestamp: new Date().toISOString() }],
     });
-    setForm({ commandText: '', riskLevel: 'medium', notes: '' });
+    setForm({ commandText: '', riskLevel: 'medium', entityScope: 'vcm', notes: '' });
     setShowForm(false);
     setActiveTab('pending');
     setSubmitting(false);
@@ -98,7 +99,15 @@ export default function CommandQueuePanel({ currentUser }) {
             )}
           </button>
         ))}
-        <div className="ml-auto pr-2">
+        <div className="ml-auto pr-2 flex items-center gap-2">
+          <select
+            className="px-2 py-1 bg-secondary/50 border border-border text-[10px] font-mono text-muted-foreground outline-none focus:border-primary/50"
+            value={scopeFilter}
+            onChange={e => setScopeFilter(e.target.value)}
+          >
+            <option value="all">All Scopes</option>
+            {ENTITY_SCOPES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+          </select>
           <button
             onClick={() => setShowForm(v => !v)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-[10px] hover:bg-primary/90 transition-colors"
@@ -122,7 +131,13 @@ export default function CommandQueuePanel({ currentUser }) {
                 required autoFocus
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Entity Scope<span className="text-destructive">*</span></label>
+                <select className={inputCls} value={form.entityScope} onChange={e => setForm(p => ({ ...p, entityScope: e.target.value }))}>
+                  {ENTITY_SCOPES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                </select>
+              </div>
               <div>
                 <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Risk Level</label>
                 <select className={inputCls} value={form.riskLevel} onChange={e => setForm(p => ({ ...p, riskLevel: e.target.value }))}>

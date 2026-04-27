@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Terminal, User, AlertTriangle, Clock, Shield, Zap, Loader2, CheckCircle2 } from 'lucide-react';
 import MultiSigApprovalBar from './MultiSigApprovalBar';
+import ScopeBadge, { isScopePermitted } from './ScopeBadge';
 
 const riskColors = {
   low: 'text-primary border-primary/30 bg-primary/5',
@@ -20,9 +21,11 @@ const statusColors = {
 };
 
 export default function CommandPreviewCard({ command, onApprove, onDeny, onCancel, onExecuted, executionMode = 'SIMULATED', executionPaused = false, currentUser }) {
-  const isPending  = command.status === 'pending';
-  const isApproved = command.status === 'approved';
-  const isLive     = executionMode === 'LIVE' && !executionPaused;
+  const isPending    = command.status === 'pending';
+  const isApproved   = command.status === 'approved';
+  const isLive       = executionMode === 'LIVE' && !executionPaused;
+  const scopeOk      = isScopePermitted(command.entityScope, command.commandText);
+  const scopeBlocked = isApproved && !scopeOk;
   const [executing, setExecuting] = useState(false);
   const [execResult, setExecResult] = useState(null);
 
@@ -49,9 +52,12 @@ export default function CommandPreviewCard({ command, onApprove, onDeny, onCance
           <Terminal className="w-3.5 h-3.5 text-muted-foreground" />
           <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Command Preview</span>
         </div>
-        <span className={`px-2 py-0.5 border text-[9px] uppercase tracking-wider ${statusColors[command.status] || ''}`}>
-          {command.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <ScopeBadge entityScope={command.entityScope} commandText={command.commandText} />
+          <span className={`px-2 py-0.5 border text-[9px] uppercase tracking-wider ${statusColors[command.status] || ''}`}>
+            {command.status}
+          </span>
+        </div>
       </div>
 
       {/* Command Text */}
@@ -158,7 +164,16 @@ export default function CommandPreviewCard({ command, onApprove, onDeny, onCance
         </div>
       )}
 
-      {isApproved && !execResult && (
+      {isApproved && !execResult && scopeBlocked && (
+        <div className="px-4 py-3 bg-destructive/5 border-t border-destructive/20 flex items-center gap-2">
+          <Shield className="w-3.5 h-3.5 text-destructive shrink-0" />
+          <span className="text-[10px] text-destructive font-mono">
+            SCOPE BLOCKED — <code>{command.commandText}</code> is not permitted under scope <code>{command.entityScope || 'unset'}</code>
+          </span>
+        </div>
+      )}
+
+      {isApproved && !execResult && !scopeBlocked && (
         <div className="px-4 py-3">
           <button
             onClick={handleExecute}

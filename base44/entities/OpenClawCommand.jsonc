@@ -25,6 +25,15 @@
       ],
       "default": "medium"
     },
+    "entityScope": {
+      "type": "string",
+      "enum": [
+        "vcm",
+        "gfm_admin",
+        "genesis_trust"
+      ],
+      "description": "Entity scope this command is authorized under"
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -58,6 +67,7 @@
   "required": [
     "commandText",
     "requestedBy",
-    "riskLevel"
+    "riskLevel",
+    "entityScope"
   ]
 }
