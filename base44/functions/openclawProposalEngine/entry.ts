@@ -1,5 +1,77 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// ── Intent Classification ─────────────────────────────────────────────────
+// Layer 1: hard-coded pattern block (no LLM call needed for obvious attacks)
+const DANGEROUS_PATTERNS = [
+  // Shell / arbitrary execution
+  /\b(exec|execSync|spawn|popen|system|shell|bash|sh|zsh|cmd|powershell|eval)\b/i,
+  // Filesystem destructive
+  /\brm\s+-rf?\b/i,
+  /\b(delete|wipe|format|truncate|shred|unlink)\s+(all|everything|disk|drive|partition|\/)\b/i,
+  /\brmdir\b/i,
+  // Privilege escalation
+  /\b(sudo|su\s|chmod\s+[0-7]*7|chown\s+root|setuid|setgid|privilege.escal)\b/i,
+  // Network scanning / exploitation
+  /\b(nmap|masscan|nikto|sqlmap|metasploit|msfconsole|exploit|reverse.?shell|bind.?shell|port.?scan)\b/i,
+  // Arbitrary download / curl piped
+  /curl\s+.*\|\s*(bash|sh|python|ruby|perl)/i,
+  // Attempt to use non-registry commands
+  /\b(run|execute|invoke)\s+(command|cmd|script|binary|program|exe)\b/i,
+];
+
+const SUSPICIOUS_PATTERNS = [
+  /\b(wget|curl|nc|netcat|telnet)\b/i,
+  /\b(password|secret|token|credential|api.?key)\b/i,
+  /\b(encode|decode|base64|hex|obfuscat)\b/i,
+  /\b(loop|repeat|infinite|flood|spam|ddos|dos)\b/i,
+];
+
+function classifyIntent(prompt) {
+  const lower = prompt.toLowerCase();
+  for (const p of DANGEROUS_PATTERNS) {
+    if (p.test(lower)) return { classification: 'DANGEROUS', matched: p.source };
+  }
+  for (const p of SUSPICIOUS_PATTERNS) {
+    if (p.test(lower)) return { classification: 'SUSPICIOUS', matched: p.source };
+  }
+  return { classification: 'SAFE', matched: null };
+}
+
+// Layer 2: LLM-based intent classification for subtler attacks
+async function llmClassifyIntent(base44, prompt) {
+  const result = await base44.integrations.Core.InvokeLLM({
+    prompt: `You are a security classifier for an automation governance system.
+
+Classify the following user request as one of: SAFE | SUSPICIOUS | DANGEROUS
+
+DANGEROUS if the request implies any of:
+- Shell command execution or scripting
+- File system destructive actions (delete, wipe, format, rm -rf)
+- Arbitrary code or binary execution
+- Privilege escalation (sudo, root access, chmod, setuid)
+- Network scanning, port scanning, or exploitation
+- Reverse shells, bind shells, or backdoors
+- Bypassing authentication or authorization controls
+- Any action not expressible as status checks, log fetching, or browser automation
+
+SUSPICIOUS if the request is ambiguous, involves credentials, encoding, or repeated actions.
+
+SAFE if the request clearly maps to: checking system status, fetching logs, listing sessions, or opening/interacting with a browser session.
+
+USER REQUEST: "${prompt.slice(0, 500)}"
+
+Respond ONLY with valid JSON: { "classification": "SAFE"|"SUSPICIOUS"|"DANGEROUS", "reason": "one sentence" }`,
+    response_json_schema: {
+      type: 'object',
+      properties: {
+        classification: { type: 'string' },
+        reason: { type: 'string' },
+      },
+    },
+  });
+  return result;
+}
+
 // ── Capability Registry (mirror) ──────────────────────────────────────────
 const CAPABILITY_REGISTRY = {
   'system.status': { riskLevel: 'low',    requiredScopes: ['vcm', 'gfm_admin', 'genesis_trust'], description: 'Query health/status of the OpenClaw gateway.' },
@@ -60,6 +132,54 @@ Deno.serve(async (req) => {
       const { prompt, context = {} } = body;
       if (!prompt?.trim()) return Response.json({ error: 'prompt required' }, { status: 400 });
 
+      // ── Layer 1: Static pattern block ─────────────────────────────────
+      const staticCheck = classifyIntent(prompt);
+      if (staticCheck.classification === 'DANGEROUS') {
+        return Response.json({
+          blocked: true,
+          classification: 'DANGEROUS',
+          error: 'Request blocked: unsafe or unsupported operation',
+          event: 'OPENCLAW_AI_PROPOSAL_BLOCKED_UNSAFE',
+          reason: `Pattern match: ${staticCheck.matched}`,
+        }, { status: 403 });
+      }
+
+      // ── Layer 2: LLM intent classification ────────────────────────────
+      let llmClass;
+      try {
+        llmClass = await llmClassifyIntent(base44, prompt);
+      } catch {
+        // If classification fails, reject by default (fail-closed)
+        return Response.json({
+          blocked: true,
+          classification: 'UNKNOWN',
+          error: 'Request blocked: intent classification unavailable — fail-closed policy',
+          event: 'OPENCLAW_AI_PROPOSAL_BLOCKED_UNSAFE',
+        }, { status: 403 });
+      }
+
+      if (llmClass.classification === 'DANGEROUS') {
+        return Response.json({
+          blocked: true,
+          classification: 'DANGEROUS',
+          error: 'Request blocked: unsafe or unsupported operation',
+          event: 'OPENCLAW_AI_PROPOSAL_BLOCKED_UNSAFE',
+          reason: llmClass.reason,
+        }, { status: 403 });
+      }
+
+      // SUSPICIOUS → also reject (no downgrade to MEDIUM, no fallback steps)
+      if (llmClass.classification === 'SUSPICIOUS') {
+        return Response.json({
+          blocked: true,
+          classification: 'SUSPICIOUS',
+          error: 'Request blocked: ambiguous or suspicious intent — clarify your request',
+          event: 'OPENCLAW_AI_PROPOSAL_BLOCKED_UNSAFE',
+          reason: llmClass.reason,
+        }, { status: 403 });
+      }
+
+      // ── SAFE: proceed to capability planning ──────────────────────────
       const capList = ALLOWED_CAPABILITIES.map(c =>
         `- id: "${c.id}" | risk: ${c.riskLevel} | scopes: [${c.requiredScopes.join(', ')}] | ${c.description}`
       ).join('\n');
@@ -82,10 +202,19 @@ ${entityScopeHint}
 CAPABILITY REGISTRY:
 ${capList}
 
+STRICT RULES:
+- If the user goal cannot be fully expressed using ONLY the above capabilities, set cannotFulfill: true and return empty steps.
+- Do NOT invent capability IDs. Do NOT use any capability not in the registry above.
+- Do NOT interpret raw command text, shell syntax, or arbitrary strings as steps.
+- If any step would require HIGH risk, set cannotFulfill: true instead.
+- Unknown, ambiguous, or partially fulfillable intents: set cannotFulfill: true. Do NOT guess or fabricate steps.
+- No fallback steps. No generic placeholders. Registry-only.
+
 USER GOAL: ${prompt}
 
 Respond ONLY with valid JSON:
 {
+  "cannotFulfill": false,
   "steps": [
     {
       "stepId": "string",
@@ -109,6 +238,7 @@ Respond ONLY with valid JSON:
         response_json_schema: {
           type: 'object',
           properties: {
+            cannotFulfill: { type: 'boolean' },
             steps: {
               type: 'array',
               items: {
@@ -132,6 +262,16 @@ Respond ONLY with valid JSON:
           }
         },
       });
+
+      // ── Layer 3: Registry enforcement — cannotFulfill check ──────────
+      if (result.cannotFulfill || !result.steps?.length) {
+        return Response.json({
+          blocked: true,
+          classification: 'NO_CAPABILITY_MATCH',
+          error: 'Request blocked: no registered capability can fulfill this goal',
+          event: 'OPENCLAW_AI_PROPOSAL_BLOCKED_UNSAFE',
+        }, { status: 422 });
+      }
 
       // Validate all steps against registry
       const allErrors = [];

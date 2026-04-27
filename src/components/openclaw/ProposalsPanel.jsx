@@ -207,7 +207,8 @@ export default function ProposalsPanel({ currentUser, onWorkflowCreated }) {
   const [prompt, setPrompt]         = useState('');
   const [context, setContext]       = useState('');
   const [generating, setGenerating] = useState(false);
-  const [genError, setGenError]     = useState(null);
+  const [genError, setGenError]     = useState(null);   // { message, blocked, classification }
+
   const [statusFilter, setStatusFilter] = useState('all');
 
   const fetchProposals = useCallback(async () => {
@@ -228,12 +229,16 @@ export default function ProposalsPanel({ currentUser, onWorkflowCreated }) {
       action: 'propose', prompt: prompt.trim(), context: contextObj,
     });
     setGenerating(false);
-    if (res.data?.success) {
+    const data = res.data || {};
+    if (data.success) {
       setPrompt('');
       setContext('');
       fetchProposals();
+    } else if (data.blocked) {
+      // Blocked — do NOT create proposal, show red banner
+      setGenError({ message: data.error, blocked: true, classification: data.classification, reason: data.reason });
     } else {
-      setGenError(res.data?.error || res.data?.details?.join('; ') || 'Generation failed');
+      setGenError({ message: data.error || data.details?.join('; ') || 'Generation failed', blocked: false });
     }
   };
 
@@ -273,8 +278,22 @@ export default function ProposalsPanel({ currentUser, onWorkflowCreated }) {
           onChange={e => setContext(e.target.value)}
         />
         {genError && (
-          <div className="flex items-start gap-2 text-[11px] text-destructive bg-destructive/5 border border-destructive/20 px-3 py-2">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {genError}
+          <div className={`flex items-start gap-2 text-[11px] px-3 py-2.5 border ${genError.blocked ? 'bg-destructive/10 border-destructive/40 text-destructive' : 'bg-destructive/5 border-destructive/20 text-destructive'}`}>
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold">{genError.message}</div>
+              {genError.blocked && (
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  {genError.classification && (
+                    <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 border border-destructive/40 bg-destructive/10">
+                      {genError.classification}
+                    </span>
+                  )}
+                  {genError.reason && <span className="text-[10px] text-destructive/70">{genError.reason}</span>}
+                  <span className="text-[9px] text-destructive/50 ml-auto">OPENCLAW_AI_PROPOSAL_BLOCKED_UNSAFE</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
