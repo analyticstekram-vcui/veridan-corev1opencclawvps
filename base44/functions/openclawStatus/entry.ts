@@ -9,12 +9,22 @@ Deno.serve(async (req) => {
   const lastChecked = new Date().toISOString();
 
   let online = false;
+  let gatewayStatus = null;
   if (url) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 6000);
     try {
-      const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
-      online = res.ok || res.status === 401 || res.status === 403; // CF Access returns 401/403 — gateway is still up
+      const res = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow',
+        signal: controller.signal,
+        headers: { 'User-Agent': 'VeridanCore-HealthCheck/1.0' },
+      });
+      gatewayStatus = res.status;
+      // 200-399: direct success or redirect followed
+      // 401/403: Cloudflare Access wall — gateway is up but protected
+      // 409/503 etc from our own API: gateway is up
+      online = res.status < 500 || res.status === 401 || res.status === 403;
     } catch (_) {
       online = false;
     } finally {
@@ -26,7 +36,9 @@ Deno.serve(async (req) => {
     online,
     url,
     lastChecked,
+    gatewayStatus,
     authLayer: 'Cloudflare Access',
     mode: 'external-control',
+    protected: gatewayStatus === 401 || gatewayStatus === 403,
   });
 });
