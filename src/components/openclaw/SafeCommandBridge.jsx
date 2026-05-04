@@ -7,90 +7,47 @@ import {
 
 const COMMAND_TYPES = [
   { id: 'OPEN_URL_AND_READ_TITLE', label: 'OPEN_URL_AND_READ_TITLE', icon: FileText },
-  { id: 'OPEN_URL_AND_SCREENSHOT',  label: 'OPEN_URL_AND_SCREENSHOT',  icon: Camera },
+  { id: 'OPEN_URL_AND_SCREENSHOT', label: 'OPEN_URL_AND_SCREENSHOT',  icon: Camera },
 ];
 
 const STATUS_CONFIG = {
-  Pending: { color: 'text-amber-400',    dot: 'bg-amber-400',    icon: Clock },
-  Running: { color: 'text-blue-400',     dot: 'bg-blue-400',     icon: Loader2, spin: true },
-  Success: { color: 'text-primary',      dot: 'bg-primary',      icon: CheckCircle2 },
-  Failed:  { color: 'text-destructive',  dot: 'bg-destructive',  icon: XCircle },
+  Running: { color: 'text-blue-400',    dot: 'bg-blue-400',    icon: Loader2,       spin: true  },
+  success: { color: 'text-primary',     dot: 'bg-primary',     icon: CheckCircle2,  spin: false },
+  failed:  { color: 'text-destructive', dot: 'bg-destructive', icon: XCircle,       spin: false },
 };
 
-function nowIso() { return new Date().toISOString(); }
-function nowTs()  { return new Date().toLocaleTimeString('en-US', { hour12: false }); }
-function shortId() { return 'CMD-' + Math.random().toString(36).slice(2, 8).toUpperCase(); }
+function nowTs() { return new Date().toLocaleTimeString('en-US', { hour12: false }); }
 
-// Mocked executor — structured to later swap in a real openclawSafeBridge backend call
+// ── Real backend call ──
 async function executeSafeCommand(targetUrl, commandType) {
-  // Future wiring point:
-  // const res = await base44.functions.invoke('openclawSafeBridge', { targetUrl, commandType });
-  // return res.data;
-
-  // Simulate network latency
-  await new Promise(r => setTimeout(r, 1800));
-
-  const id = shortId();
-  const startedAt = nowIso();
-
-  if (commandType === 'OPEN_URL_AND_READ_TITLE') {
-    // Attempt to derive a plausible title from the URL
-    let title = null;
-    try {
-      const domain = new URL(targetUrl).hostname.replace('www.', '');
-      title = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1) + ' · ' + domain;
-    } catch (_) {
-      title = '(could not parse URL)';
-    }
-    return {
-      commandId: id,
-      status: 'Success',
-      targetUrl,
-      commandType,
-      pageTitle: title + ' [MOCK — live read requires OpenClaw agent]',
-      screenshotStatus: 'N/A',
-      startedAt,
-      completedAt: nowIso(),
-      error: null,
-      mock: true,
-    };
-  }
-
-  if (commandType === 'OPEN_URL_AND_SCREENSHOT') {
-    return {
-      commandId: id,
-      status: 'Success',
-      targetUrl,
-      commandType,
-      pageTitle: null,
-      screenshotStatus: 'Captured [MOCK — stored at /tmp/screenshot.png on OpenClaw agent]',
-      startedAt,
-      completedAt: nowIso(),
-      error: null,
-      mock: true,
-    };
-  }
-
-  return { commandId: id, status: 'Failed', targetUrl, commandType, error: 'Unknown command type', startedAt, completedAt: nowIso(), mock: true };
+  const res = await base44.functions.invoke('openclawSafeBridge', {
+    commandType,
+    targetUrl,
+    operator: 'VeridanCore',
+    governanceLevel: 'SAFE_READ_ONLY',
+  });
+  return res.data;
 }
 
+// ── Result Panel ──
 function ResultPanel({ result }) {
-  const cfg = STATUS_CONFIG[result.status] || STATUS_CONFIG.Pending;
+  const cfg = STATUS_CONFIG[result.status] || STATUS_CONFIG.failed;
   const Icon = cfg.icon;
+  const isMock = result.pageTitle?.includes('[MOCK') || result.screenshotCaptured && !result.screenshotUrl;
 
   return (
     <div className="bg-card border border-border p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-[9px] uppercase tracking-widest text-muted-foreground/50">Command Result</span>
-        {result.mock && (
-          <span className="text-[9px] px-2 py-0.5 border border-amber-500/30 text-amber-400 bg-amber-500/5 uppercase tracking-wider">MOCK</span>
+        {isMock && (
+          <span className="text-[9px] px-2 py-0.5 border border-amber-500/30 text-amber-400 bg-amber-500/5 uppercase tracking-wider">MOCK MODE</span>
         )}
       </div>
 
       <div className="flex items-center gap-2">
         <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
         <Icon className={`w-3.5 h-3.5 ${cfg.color} ${cfg.spin ? 'animate-spin' : ''}`} />
-        <span className={`text-[13px] font-semibold ${cfg.color}`}>{result.status}</span>
+        <span className={`text-[13px] font-semibold ${cfg.color} uppercase`}>{result.status}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -100,7 +57,7 @@ function ResultPanel({ result }) {
         </div>
         <div className="bg-secondary/30 border border-border px-3 py-2">
           <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Command Type</div>
-          <div className="text-foreground font-mono">{result.commandType}</div>
+          <div className="text-foreground font-mono truncate">{result.commandType}</div>
         </div>
         <div className="bg-secondary/30 border border-border px-3 py-2 col-span-2">
           <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Target URL</div>
@@ -112,12 +69,16 @@ function ResultPanel({ result }) {
             <div className="text-foreground">{result.pageTitle}</div>
           </div>
         )}
-        {result.screenshotStatus && result.screenshotStatus !== 'N/A' && (
-          <div className="bg-secondary/30 border border-border px-3 py-2 col-span-2">
-            <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Screenshot Status</div>
-            <div className="text-foreground">{result.screenshotStatus}</div>
+        <div className="bg-secondary/30 border border-border px-3 py-2">
+          <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Screenshot Status</div>
+          <div className={result.screenshotCaptured ? 'text-primary' : 'text-muted-foreground/50'}>
+            {result.screenshotCaptured ? 'Captured' : 'N/A'}
           </div>
-        )}
+        </div>
+        <div className="bg-secondary/30 border border-border px-3 py-2">
+          <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Screenshot URL</div>
+          <div className="text-muted-foreground/40">{result.screenshotUrl || '—'}</div>
+        </div>
         <div className="bg-secondary/30 border border-border px-3 py-2">
           <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Started At</div>
           <div className="text-foreground font-mono">{result.startedAt ? new Date(result.startedAt).toLocaleTimeString() : '—'}</div>
@@ -137,6 +98,7 @@ function ResultPanel({ result }) {
   );
 }
 
+// ── Audit Log Panel ──
 function AuditLogPanel({ entries }) {
   return (
     <div className="bg-card border border-border">
@@ -156,11 +118,9 @@ function AuditLogPanel({ entries }) {
               <div className="text-muted-foreground/50">{e.timestamp}</div>
               <div className="text-foreground col-span-2 truncate">{e.commandType}</div>
               <div className="text-blue-400 truncate">{e.targetUrl}</div>
-              <div className={
-                e.status === 'Success' ? 'text-primary' :
-                e.status === 'Failed'  ? 'text-destructive' :
-                'text-amber-400'
-              }>{e.status}</div>
+              <div className={e.status === 'success' ? 'text-primary' : e.status === 'failed' ? 'text-destructive' : 'text-amber-400'}>
+                {e.status}
+              </div>
               <div className="text-muted-foreground/40 text-right">SAFE_READ_ONLY</div>
             </div>
           ))
@@ -168,37 +128,48 @@ function AuditLogPanel({ entries }) {
       </div>
       {entries.length > 0 && (
         <div className="px-4 py-1.5 border-t border-border/40 grid grid-cols-6 gap-2 text-[9px] text-muted-foreground/30 uppercase tracking-wider">
-          <div>Time</div>
-          <div className="col-span-2">Command Type</div>
-          <div>Target URL</div>
-          <div>Status</div>
-          <div className="text-right">Governance</div>
+          <div>Time</div><div className="col-span-2">Command Type</div>
+          <div>Target URL</div><div>Status</div><div className="text-right">Governance</div>
         </div>
       )}
     </div>
   );
 }
 
+// ── Main Component ──
 export default function SafeCommandBridge() {
-  const [targetUrl, setTargetUrl]   = useState('https://example.com');
-  const [commandType, setCommandType] = useState('OPEN_URL_AND_READ_TITLE');
-  const [running, setRunning]       = useState(false);
-  const [result, setResult]         = useState(null);
-  const [auditLog, setAuditLog]     = useState([]);
+  const [targetUrl,    setTargetUrl]    = useState('https://example.com');
+  const [commandType,  setCommandType]  = useState('OPEN_URL_AND_READ_TITLE');
+  const [running,      setRunning]      = useState(false);
+  const [result,       setResult]       = useState(null);
+  const [auditLog,     setAuditLog]     = useState([]);
+  const [error,        setError]        = useState(null);
 
   const handleExecute = async () => {
     if (running) return;
     setRunning(true);
-    setResult({ commandId: '...', status: 'Running', targetUrl, commandType, startedAt: nowIso() });
+    setError(null);
+    setResult({ commandId: '…', status: 'Running', targetUrl, commandType, startedAt: new Date().toISOString() });
 
-    const res = await executeSafeCommand(targetUrl, commandType);
+    let res;
+    try {
+      res = await executeSafeCommand(targetUrl, commandType);
+    } catch (err) {
+      const msg = err?.response?.data?.error || err.message || 'Unknown error';
+      setError(msg);
+      setResult(prev => ({ ...prev, status: 'failed', error: msg, completedAt: new Date().toISOString() }));
+      setAuditLog(prev => [...prev, { timestamp: nowTs(), commandType, targetUrl, status: 'failed', operator: 'VeridanCore', governanceLevel: 'SAFE_READ_ONLY' }]);
+      setRunning(false);
+      return;
+    }
+
     setResult(res);
     setAuditLog(prev => [...prev, {
       timestamp: nowTs(),
       commandType: res.commandType,
-      targetUrl: res.targetUrl,
-      status: res.status,
-      operator: 'OpenClaw',
+      targetUrl:   res.targetUrl,
+      status:      res.status,
+      operator:    'VeridanCore',
       governanceLevel: 'SAFE_READ_ONLY',
     }]);
     setRunning(false);
@@ -206,7 +177,7 @@ export default function SafeCommandBridge() {
 
   return (
     <div className="p-6 max-w-3xl space-y-5 font-mono">
-      {/* Section Header */}
+      {/* Header */}
       <div className="flex items-center gap-3 pb-2 border-b border-border">
         <div className="w-7 h-7 bg-primary/10 border border-primary/30 flex items-center justify-center">
           <Shield className="w-3.5 h-3.5 text-primary" />
@@ -224,9 +195,9 @@ export default function SafeCommandBridge() {
       {/* Production Config Strip */}
       <div className="grid grid-cols-3 gap-2 text-[9px]">
         {[
-          ['Gateway', 'https://openclaw.veridancore.com', 'text-blue-400'],
-          ['WebSocket', 'wss://openclaw.veridancore.com', 'text-blue-400/70'],
-          ['CDP Port', '18800 · Browser Automation: Operational', 'text-primary'],
+          ['Gateway',   'https://openclaw.veridancore.com', 'text-blue-400'],
+          ['WebSocket', 'wss://openclaw.veridancore.com',   'text-blue-400/70'],
+          ['CDP Port',  '18800 · Browser Automation: Operational', 'text-primary'],
         ].map(([label, val, cls]) => (
           <div key={label} className="bg-secondary/30 border border-border px-3 py-2">
             <div className="text-muted-foreground/40 uppercase tracking-wider mb-0.5">{label}</div>
@@ -237,11 +208,10 @@ export default function SafeCommandBridge() {
 
       {/* Command Builder */}
       <div className="bg-card border border-border p-4 space-y-4">
-        <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50">Command Builder</div>
+        <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50">Command Builder · openclawSafeBridge</div>
 
-        {/* Target URL */}
         <div>
-          <label className="text-[9px] uppercase tracking-wider text-muted-foreground/50 block mb-1.5 flex items-center gap-1.5">
+          <label className="text-[9px] uppercase tracking-wider text-muted-foreground/50 flex items-center gap-1.5 mb-1.5">
             <Globe className="w-2.5 h-2.5" /> Target URL
           </label>
           <input
@@ -253,53 +223,50 @@ export default function SafeCommandBridge() {
           />
         </div>
 
-        {/* Command Type */}
         <div>
           <label className="text-[9px] uppercase tracking-wider text-muted-foreground/50 block mb-1.5">Command Type</label>
           <div className="flex gap-2">
             {COMMAND_TYPES.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setCommandType(id)}
+              <button key={id} onClick={() => setCommandType(id)}
                 className={`flex items-center gap-1.5 px-3 py-2 border text-[10px] transition-colors flex-1 justify-center ${
                   commandType === id
                     ? 'border-primary text-primary bg-primary/10'
                     : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                }`}
-              >
-                <Icon className="w-3 h-3" />
-                {label}
+                }`}>
+                <Icon className="w-3 h-3" />{label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Execute Button */}
-        <button
-          onClick={handleExecute}
-          disabled={running || !targetUrl.trim()}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
+        <button onClick={handleExecute} disabled={running || !targetUrl.trim()}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
           {running
             ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Executing...</>
-            : <><Play className="w-3.5 h-3.5" /> Execute Test Command</>
-          }
+            : <><Play className="w-3.5 h-3.5" /> Execute Test Command</>}
         </button>
 
-        {/* Safety Rules */}
+        {error && (
+          <div className="flex items-start gap-2 px-3 py-2 bg-destructive/5 border border-destructive/20">
+            <XCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+            <div className="text-[10px] text-destructive">{error}</div>
+          </div>
+        )}
+
         <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/5 border border-amber-500/20">
           <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-[9px] text-amber-500/70 leading-relaxed">
-            Safe read-only mode only. No login, no form submission, no trading actions, no credential handling. 
-            OpenClaw externally available at <span className="text-amber-400 cursor-pointer underline" onClick={() => window.open('https://openclaw.veridancore.com', '_blank', 'noopener,noreferrer')}>openclaw.veridancore.com</span>
+            Safe read-only mode only. No login, no form submission, no trading, no credentials.
+            OpenClaw externally available at{' '}
+            <span className="text-amber-400 cursor-pointer underline"
+              onClick={() => window.open('https://openclaw.veridancore.com', '_blank', 'noopener,noreferrer')}>
+              openclaw.veridancore.com
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Result Panel */}
       {result && <ResultPanel result={result} />}
-
-      {/* Audit Log */}
       <AuditLogPanel entries={auditLog} />
     </div>
   );
