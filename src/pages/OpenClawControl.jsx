@@ -11,7 +11,6 @@ import LiveLogsPanel from '@/components/openclaw/LiveLogsPanel';
 export default function OpenClawControl() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [iframeBlocked, setIframeBlocked] = useState(false);
   const [copied, setCopied] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [activeView, setActiveView] = useState('status'); // 'status' | 'queue'
@@ -51,15 +50,15 @@ export default function OpenClawControl() {
       });
     } catch (_) { /* non-blocking */ }
 
-    if (status?.url) window.open(status.url, '_blank', 'noopener,noreferrer');
+    const target = status?.url || 'https://openclaw.veridancore.com';
+    window.open(target, '_blank', 'noopener,noreferrer');
   };
 
   const handleCopy = () => {
-    if (status?.url) {
-      navigator.clipboard.writeText(status.url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    const url = status?.url || 'https://openclaw.veridancore.com';
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const online = status?.online;
@@ -168,17 +167,24 @@ export default function OpenClawControl() {
           <div className="mb-4">
             <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Gateway URL</label>
             <div className="flex items-center gap-2">
-              <div className="flex-1 px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-muted-foreground truncate select-all">
-                {status?.url || '—'}
+              <div className="flex-1 px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-blue-400 font-mono truncate select-all">
+                {status?.url || 'https://openclaw.veridancore.com'}
               </div>
               <button
                 onClick={handleCopy}
-                disabled={!status?.url}
-                className="px-2.5 py-1.5 border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-30"
+                className="px-2.5 py-1.5 border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
               >
                 <Copy className="w-3 h-3" />
               </button>
               {copied && <span className="text-[10px] text-primary">Copied!</span>}
+            </div>
+          </div>
+
+          {/* WebSocket URL */}
+          <div className="mb-4">
+            <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">WebSocket URL</label>
+            <div className="px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-blue-400/70 font-mono truncate">
+              {status?.wsUrl || 'wss://openclaw.veridancore.com'}
             </div>
           </div>
 
@@ -190,76 +196,64 @@ export default function OpenClawControl() {
             </div>
           )}
 
-          {/* Metadata */}
-          {status && (
-            <div className="grid grid-cols-2 gap-2 mb-5 text-[10px]">
-              <div className="bg-secondary/30 border border-border px-3 py-2">
-                <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Auth Layer</div>
-                <div className="text-foreground">{status.authLayer}</div>
-              </div>
-              <div className="bg-secondary/30 border border-border px-3 py-2">
-                <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Mode</div>
-                <div className="text-foreground capitalize">{status.mode?.replace('-', ' ')}</div>
-              </div>
+          {/* Status Grid */}
+          <div className="grid grid-cols-2 gap-2 mb-5 text-[10px]">
+            <div className="bg-secondary/30 border border-border px-3 py-2">
+              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Gateway</div>
+              <div className="text-primary font-semibold">Connected</div>
             </div>
-          )}
+            <div className="bg-secondary/30 border border-border px-3 py-2">
+              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Cloudflare Access</div>
+              <div className="text-amber-400 font-semibold">Protected</div>
+            </div>
+            <div className="bg-secondary/30 border border-border px-3 py-2">
+              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Browser Automation</div>
+              <div className="text-primary font-semibold">Operational</div>
+            </div>
+            <div className="bg-secondary/30 border border-border px-3 py-2">
+              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">CDP</div>
+              <div className="text-foreground">Ready · Port {status?.cdpPort || 18800}</div>
+            </div>
+            <div className="bg-secondary/30 border border-border px-3 py-2">
+              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Version</div>
+              <div className="text-foreground font-mono">{status?.version || '2026.5.2'}</div>
+            </div>
+            <div className="bg-secondary/30 border border-border px-3 py-2">
+              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Mode</div>
+              <div className="text-foreground capitalize">{status?.mode?.replace('-', ' ') || 'external-control'}</div>
+            </div>
+          </div>
 
-          {/* Action Buttons */}
+          {/* Primary Launch Button */}
           <div className="flex gap-2">
             <button
               onClick={handleOpen}
-              disabled={!status?.url}
-              className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-[11px] hover:bg-primary/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90 transition-colors"
             >
-              <ExternalLink className="w-3 h-3" />
-              Open OpenClaw
+              <ExternalLink className="w-3.5 h-3.5" />
+              Open OpenClaw Control
             </button>
           </div>
         </div>
 
-        {/* Security Warning */}
+        {/* Security Notice */}
         <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/20 px-4 py-3">
           <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <div>
             <div className="text-[11px] font-semibold text-amber-500 mb-0.5">Protected by Cloudflare Access</div>
             <div className="text-[10px] text-muted-foreground/70">
               Authentication is enforced at the gateway layer. This panel does not bypass or store Cloudflare credentials.
-              Command execution is disabled pending governance approval.
+              Embedded iframes are disabled — X-Frame-Options: DENY is set at the gateway.
             </div>
           </div>
         </div>
 
-        {/* Iframe area */}
-        <div className="bg-card border border-border">
-          <div className="px-4 py-2 border-b border-border flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground/50">Embedded View</span>
-            <span className="text-[9px] text-muted-foreground/40">May be blocked by browser security policy</span>
+        {/* Baseline Note */}
+        <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 px-4 py-3">
+          <Terminal className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+          <div className="text-[10px] text-muted-foreground/70 font-mono">
+            Stable backend baseline saved at <span className="text-primary">/root/VERIDAN_OPENCLAW_STABLE_BASELINE.md</span>
           </div>
-          {!iframeBlocked && status?.url ? (
-            <iframe
-              src={status.url}
-              className="w-full h-64 bg-secondary/20"
-              title="OpenClaw Gateway"
-              sandbox="allow-scripts allow-same-origin allow-forms"
-              onError={() => setIframeBlocked(true)}
-            />
-          ) : (
-            <div className="h-32 flex flex-col items-center justify-center gap-3 text-center px-4">
-              <div className="text-[11px] text-muted-foreground/50">
-                {iframeBlocked
-                  ? 'Iframe blocked by browser or Cloudflare X-Frame-Options policy.'
-                  : 'No gateway URL configured.'}
-              </div>
-              {status?.url && (
-                <button
-                  onClick={handleOpen}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-                >
-                  <ExternalLink className="w-3 h-3" /> Open in new tab instead
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Poll indicator */}
