@@ -29,10 +29,42 @@ async function sendToVeridanBackend(command) {
   return { ...data, latencyMs: Date.now() - start };
 }
 
-async function pingOpenClaw() {
-  const start = Date.now();
-  const data = await sendToVeridanBackend('status check');
-  return { online: data.openclawConnected === true, latencyMs: data.latencyMs ?? (Date.now() - start) };
+// ─── Direct OpenClaw gateway health check (mirrors openclawStatus function) ──
+const OPENCLAW_GATEWAY_URL = Deno.env.get('OPENCLAW_GATEWAY_URL') || 'https://openclaw.veridancore.com';
+
+async function checkOpenClawGateway() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(OPENCLAW_GATEWAY_URL, {
+      method: 'GET',
+      redirect: 'manual',
+      signal: controller.signal,
+      headers: { 'User-Agent': 'VeridanCore-HealthCheck/1.0' },
+    });
+    clearTimeout(timeout);
+    const s = res.status;
+    if (s === 200) {
+      return { online: true, diagnostic: 'openclaw_online', diagnosticDetail: 'OpenClaw gateway returned HTTP 200 — fully online.', gatewayStatus: s };
+    } else if (s === 302 || s === 301 || s === 307 || s === 308) {
+      return { online: true, diagnostic: 'cloudflare_protected_reachable', diagnosticDetail: `OpenClaw gateway reachable — Cloudflare Access redirect (HTTP ${s}).`, gatewayStatus: s };
+    } else if (s === 401 || s === 403) {
+      return { online: true, diagnostic: 'cloudflare_protected_reachable', diagnosticDetail: `OpenClaw gateway reachable — Cloudflare Access enforced (HTTP ${s}).`, gatewayStatus: s };
+    } else if (s >= 500) {
+      return { online: false, diagnostic: 'gateway_error', diagnosticDetail: `OpenClaw gateway server error HTTP ${s}.`, gatewayStatus: s };
+    } else {
+      return { online: true, diagnostic: 'openclaw_online', diagnosticDetail: `OpenClaw gateway responded HTTP ${s}.`, gatewayStatus: s };
+    }
+  } catch (err) {
+    clearTimeout(timeout);
+    const isTimeout = err?.name === 'AbortError';
+    return {
+      online: false,
+      diagnostic: 'gateway_unreachable',
+      diagnosticDetail: isTimeout ? 'Health check timed out after 8s.' : `OpenClaw gateway unreachable: ${err?.message || 'network error'}.`,
+      gatewayStatus: null,
+    };
+  }
 }
 
 // ─── AI Interpretation ────────────────────────────────────────────────────────
@@ -75,12 +107,21 @@ Deno.serve(async (req) => {
 
   // ── status ─────────────────────────────────────────────────────────────────
   if (route === 'status') {
-    let openclawStatus = { online: false, latencyMs: null };
-    try { openclawStatus = await pingOpenClaw(); } catch (_) { /* offline */ }
-    addLog({ source: 'SYSTEM', action: 'Status check', status: 'OK' });
+    const gatewayCheck = await checkOpenClawGateway();
+    addLog({
+      source: 'OPENCLAW',
+      action: `Gateway check: ${gatewayCheck.diagnosticDetail}`,
+      status: gatewayCheck.online ? 'OK' : 'ERROR',
+    });
     return Response.json({
       ai: { online: true, model: 'veridan-llm' },
-      openclaw: openclawStatus,
+      openclaw: {
+        online: gatewayCheck.online,
+        diagnostic: gatewayCheck.diagnostic,
+        diagnosticDetail: gatewayCheck.diagnosticDetail,
+        gatewayStatus: gatewayCheck.gatewayStatus,
+        latencyMs: null,
+      },
       vault: { linked: true, name: 'VRD-PRIMARY' },
       timestamp: new Date().toISOString(),
     });

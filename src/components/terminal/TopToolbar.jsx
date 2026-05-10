@@ -15,6 +15,7 @@ const StatusDot = ({ online, label, sublabel }) => {
 export default function TopToolbar({ mode, onModeToggle, openClawOnline, veridanStatus }) {
   const openclawOnline = openClawOnline ?? null;
   const openclawSub = openclawOnline === null ? 'CHECKING' : openclawOnline ? 'ONLINE' : 'OFFLINE';
+  // Note: openclawOnline is already true for cloudflare_protected_reachable (set in veridanApi status route)
 
   return (
     <div className="h-10 bg-card border-b border-border flex items-center justify-between px-3 shrink-0 select-none">

@@ -107,11 +107,23 @@ export default function CommandConsole({ onOpenClawStatus, onStatusUpdate }) {
         if (onStatusUpdate) onStatusUpdate(res);
         if (isInitial) {
           isInitial = false;
+          const diag = res?.openclaw?.diagnostic;
+          const diagDetail = res?.openclaw?.diagnosticDetail || '';
+          let statusMsg;
+          if (diag === 'openclaw_online') {
+            statusMsg = `OpenClaw ONLINE — ${diagDetail}`;
+          } else if (diag === 'cloudflare_protected_reachable') {
+            statusMsg = `OpenClaw REACHABLE — ${diagDetail}`;
+          } else if (diag === 'gateway_unreachable' || diag === 'gateway_error') {
+            statusMsg = `OpenClaw OFFLINE — ${diagDetail}`;
+          } else {
+            statusMsg = connected
+              ? 'OpenClaw ONLINE — Veridan backend connected. Type a command to begin.'
+              : 'OpenClaw OFFLINE — Veridan backend reachable but OpenClaw not connected.';
+          }
           setMessages(prev => prev.map(m =>
             m.content === 'Connecting to Veridan backend...'
-              ? { ...m, content: connected
-                  ? 'OpenClaw ONLINE — Veridan backend connected. Type a command to begin.'
-                  : 'OpenClaw OFFLINE — Veridan backend reachable but OpenClaw not connected.' }
+              ? { ...m, content: statusMsg }
               : m
           ));
         }

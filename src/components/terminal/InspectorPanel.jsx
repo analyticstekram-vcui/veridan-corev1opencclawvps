@@ -25,6 +25,7 @@ export default function InspectorPanel({ collapsed, onToggle, pendingApprovals =
 
   const resolvedOnline = openClawOnline ?? null;
   const openclawStatus = resolvedOnline === null ? 'CHECKING' : resolvedOnline ? 'ONLINE' : 'OFFLINE';
+  // resolvedOnline is true for both openclaw_online and cloudflare_protected_reachable
 
   if (collapsed) {
     return (
