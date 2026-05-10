@@ -116,27 +116,46 @@ async function executeViaOpenClaw(commandType, targetUrl) {
     });
     clearTimeout(cmdTimeout);
 
-    if (response.ok) {
-      agentRes = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    const isHtml = contentType.includes('text/html');
+
+    if (response.ok && isHtml) {
+      // Endpoint returned 200 but with HTML — /api/safe-command not yet deployed on VPS
+      diagnostics.push('command_failed: HTTP 200 but Content-Type is text/html — /api/safe-command endpoint not found on VPS. Deploy the bridge server (see VPS setup docs).');
+      // fall through to simulateFallback below
+    } else if (response.ok) {
+      let agentRes;
+      try {
+        agentRes = await response.json();
+      } catch (parseErr) {
+        const raw = await response.text().catch(() => '');
+        diagnostics.push(`command_failed: response is not valid JSON — ${raw.slice(0, 120)}`);
+        // fall through to simulateFallback below
+        return await simulateFallback(commandType, targetUrl, diagnostics);
+      }
       diagnostics.push('command_executed: true');
       return {
         pageTitle: agentRes.pageTitle ?? agentRes.title ?? null,
-        screenshotCaptured: agentRes.screenshotCaptured ?? false,
+        screenshotCaptured: agentRes.screenshotCaptured ?? (agentRes.screenshotUrl ? true : false),
         screenshotUrl: agentRes.screenshotUrl ?? agentRes.screenshot_url ?? null,
         executionMode: 'REAL',
         diagnostics,
       };
-    }
-
-    // Non-2xx from agent — try to read body for error detail
-    let errBody = '';
-    try { errBody = await response.text(); } catch (_) {}
-
-    // If 401/403 with no token configured, the endpoint exists but needs auth
-    if (response.status === 401 || response.status === 403) {
-      diagnostics.push(`command_failed: HTTP ${response.status} — Cloudflare Access blocked. Set OPENCLAW_SERVICE_TOKEN secret.`);
     } else {
-      diagnostics.push(`command_failed: HTTP ${response.status} — ${errBody.slice(0, 200)}`);
+      // Non-2xx — try to read body for error detail
+      let errBody = '';
+      try { errBody = await response.text(); } catch (_) {}
+      const bodyIsHtml = errBody.trim().startsWith('<');
+
+      if (response.status === 401 || response.status === 403) {
+        diagnostics.push(`command_failed: HTTP ${response.status} — Cloudflare Access blocked. Verify OPENCLAW_SERVICE_TOKEN (CF-Access-Client-Id:CF-Access-Client-Secret format).`);
+      } else if (response.status === 404) {
+        diagnostics.push(`command_failed: HTTP 404 — /api/safe-command not found on VPS. Deploy the bridge server.`);
+      } else if (bodyIsHtml) {
+        diagnostics.push(`command_failed: HTTP ${response.status} — HTML response received instead of JSON. /api/safe-command endpoint may not be deployed.`);
+      } else {
+        diagnostics.push(`command_failed: HTTP ${response.status} — ${errBody.slice(0, 200)}`);
+      }
     }
   } catch (err) {
     const isTimeout = err?.name === 'AbortError';
