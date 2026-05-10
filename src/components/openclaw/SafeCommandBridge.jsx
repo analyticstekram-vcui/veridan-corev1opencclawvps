@@ -33,14 +33,17 @@ async function executeSafeCommand(targetUrl, commandType) {
 function ResultPanel({ result }) {
   const cfg = STATUS_CONFIG[result.status] || STATUS_CONFIG.failed;
   const Icon = cfg.icon;
-  const isMock = result.pageTitle?.includes('[MOCK') || result.screenshotCaptured && !result.screenshotUrl;
+  const isReal = result.executionMode === 'REAL';
+  const isSimulated = result.executionMode === 'SIMULATED' || (!isReal && result.status !== 'Running');
 
   return (
     <div className="bg-card border border-border p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-[9px] uppercase tracking-widest text-muted-foreground/50">Command Result</span>
-        {isMock && (
-          <span className="text-[9px] px-2 py-0.5 border border-amber-500/30 text-amber-400 bg-amber-500/5 uppercase tracking-wider">MOCK MODE</span>
+        {result.status !== 'Running' && (
+          isReal
+            ? <span className="text-[9px] px-2 py-0.5 border border-primary/30 text-primary bg-primary/5 uppercase tracking-wider">REAL MODE</span>
+            : <span className="text-[9px] px-2 py-0.5 border border-amber-500/30 text-amber-400 bg-amber-500/5 uppercase tracking-wider">SIMULATED MODE</span>
         )}
       </div>
 
@@ -94,6 +97,23 @@ function ResultPanel({ result }) {
           </div>
         )}
       </div>
+
+      {result.diagnostics && result.diagnostics.length > 0 && (
+        <div className="bg-secondary/30 border border-border px-3 py-2">
+          <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-1.5">Diagnostics</div>
+          <div className="space-y-0.5">
+            {result.diagnostics.map((d, i) => {
+              const isOk = d.includes(': YES') || d.includes(': true') || d.includes('HTTP 2');
+              const isFail = d.includes(': NO') || d.includes(': FAILED') || d.includes('command_failed') || d.includes('SIMULATED');
+              return (
+                <div key={i} className={`font-mono text-[10px] ${isFail ? 'text-amber-400' : isOk ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                  › {d}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -121,7 +141,9 @@ function AuditLogPanel({ entries }) {
               <div className={e.status === 'success' ? 'text-primary' : e.status === 'failed' ? 'text-destructive' : 'text-amber-400'}>
                 {e.status}
               </div>
-              <div className="text-muted-foreground/40 text-right">SAFE_READ_ONLY</div>
+              <div className={`text-right ${e.executionMode === 'REAL' ? 'text-primary' : 'text-amber-400/60'}`}>
+                {e.executionMode ?? 'SIMULATED'}
+              </div>
             </div>
           ))
         )}
@@ -169,6 +191,7 @@ export default function SafeCommandBridge() {
       commandType: res.commandType,
       targetUrl:   res.targetUrl,
       status:      res.status,
+      executionMode: res.executionMode ?? 'SIMULATED',
       operator:    'VeridanCore',
       governanceLevel: 'SAFE_READ_ONLY',
     }]);
