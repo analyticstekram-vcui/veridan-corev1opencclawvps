@@ -152,7 +152,7 @@ export default function OpenClawControl() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center gap-3 mb-3">
             {loading ? (
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
@@ -169,7 +169,30 @@ export default function OpenClawControl() {
                 <span className="text-[13px] font-semibold text-destructive">OFFLINE</span>
               </div>
             )}
+            {status?.gatewayStatus && !loading && (
+              <span className="text-[10px] font-mono text-muted-foreground/50 border border-border px-2 py-0.5">
+                HTTP {status.gatewayStatus}
+              </span>
+            )}
           </div>
+
+          {/* Diagnostic Banner */}
+          {!loading && status?.diagnostic && (() => {
+            const diagMap = {
+              openclaw_online:              { bg: 'bg-primary/5 border-primary/20',         text: 'text-primary',     label: '✓ OpenClaw Online' },
+              cloudflare_protected_reachable:{ bg: 'bg-amber-500/5 border-amber-500/20',     text: 'text-amber-400',   label: '⚡ Cloudflare Access Protected · Reachable' },
+              gateway_unreachable:          { bg: 'bg-destructive/5 border-destructive/20', text: 'text-destructive', label: '✗ OpenClaw Gateway Unreachable' },
+              gateway_error:                { bg: 'bg-destructive/5 border-destructive/20', text: 'text-destructive', label: '✗ Gateway Server Error' },
+              backend_unreachable:          { bg: 'bg-secondary/50 border-border',          text: 'text-muted-foreground', label: '— Backend Unreachable' },
+            };
+            const cfg = diagMap[status.diagnostic] || diagMap.backend_unreachable;
+            return (
+              <div className={`mb-4 px-3 py-2.5 border ${cfg.bg}`}>
+                <div className={`text-[11px] font-semibold font-mono mb-0.5 ${cfg.text}`}>{cfg.label}</div>
+                <div className="text-[10px] text-muted-foreground/60 font-mono">{status.diagnosticDetail}</div>
+              </div>
+            );
+          })()}
 
           {/* URL Field */}
           <div className="mb-4">
@@ -208,11 +231,15 @@ export default function OpenClawControl() {
           <div className="grid grid-cols-2 gap-2 mb-5 text-[10px]">
             <div className="bg-secondary/30 border border-border px-3 py-2">
               <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Gateway</div>
-              <div className="text-primary font-semibold">Connected</div>
+              <div className={online ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
+                {online ? 'Reachable' : 'Unreachable'}
+              </div>
             </div>
             <div className="bg-secondary/30 border border-border px-3 py-2">
               <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Cloudflare Access</div>
-              <div className="text-amber-400 font-semibold">Protected</div>
+              <div className={status?.protected ? 'text-amber-400 font-semibold' : 'text-muted-foreground/50'}>
+                {status?.protected ? 'Protected' : online ? 'Open' : '—'}
+              </div>
             </div>
             <div className="bg-secondary/30 border border-border px-3 py-2">
               <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Browser Automation</div>

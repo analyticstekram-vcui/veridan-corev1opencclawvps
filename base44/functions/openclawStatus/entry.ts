@@ -15,23 +15,55 @@ Deno.serve(async (req) => {
 
   let online = false;
   let gatewayStatus = null;
-  if (url) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-    try {
-      const res = await fetch(url, {
-        method: 'GET',
-        redirect: 'follow',
-        signal: controller.signal,
-        headers: { 'User-Agent': 'VeridanCore-HealthCheck/1.0' },
-      });
-      gatewayStatus = res.status;
-      online = res.status < 500 || res.status === 401 || res.status === 403;
-    } catch (_) {
+  let diagnostic = 'backend_unreachable';
+  let diagnosticDetail = 'Health check not attempted';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      // Do NOT follow redirects — we want to see Cloudflare 302 as proof of reachability
+      redirect: 'manual',
+      signal: controller.signal,
+      headers: { 'User-Agent': 'VeridanCore-HealthCheck/1.0' },
+    });
+    gatewayStatus = res.status;
+
+    if (res.status === 200) {
+      online = true;
+      diagnostic = 'openclaw_online';
+      diagnosticDetail = 'OpenClaw gateway returned HTTP 200 — fully online.';
+    } else if (res.status === 302 || res.status === 301 || res.status === 307 || res.status === 308) {
+      // Cloudflare Access redirect to login — endpoint is live and protected
+      online = true;
+      diagnostic = 'cloudflare_protected_reachable';
+      diagnosticDetail = `OpenClaw gateway reachable — Cloudflare Access redirect (HTTP ${res.status}). Authentication required to proceed.`;
+    } else if (res.status === 401 || res.status === 403) {
+      online = true;
+      diagnostic = 'cloudflare_protected_reachable';
+      diagnosticDetail = `OpenClaw gateway reachable — Cloudflare Access enforced (HTTP ${res.status}).`;
+    } else if (res.status >= 500) {
       online = false;
-    } finally {
-      clearTimeout(timeout);
+      diagnostic = 'gateway_error';
+      diagnosticDetail = `OpenClaw gateway returned server error HTTP ${res.status}.`;
+    } else {
+      // Any other 4xx (404, 429, etc.) still means the server is up
+      online = true;
+      diagnostic = 'openclaw_online';
+      diagnosticDetail = `OpenClaw gateway responded HTTP ${res.status}.`;
     }
+  } catch (err) {
+    online = false;
+    if (err?.name === 'AbortError') {
+      diagnostic = 'gateway_unreachable';
+      diagnosticDetail = 'Health check timed out after 8s — OpenClaw gateway did not respond.';
+    } else {
+      diagnostic = 'gateway_unreachable';
+      diagnosticDetail = `OpenClaw gateway unreachable: ${err?.message || 'network error'}.`;
+    }
+  } finally {
+    clearTimeout(timeout);
   }
 
   return Response.json({
@@ -40,9 +72,11 @@ Deno.serve(async (req) => {
     wsUrl: GATEWAY_WS,
     lastChecked,
     gatewayStatus,
+    diagnostic,
+    diagnosticDetail,
     authLayer: 'Cloudflare Access',
     mode: 'external-control',
-    protected: gatewayStatus === 401 || gatewayStatus === 403,
+    protected: diagnostic === 'cloudflare_protected_reachable',
     version: OPENCLAW_VERSION,
     cdpPort: CDP_PORT,
     browserAutomation: 'operational',
