@@ -2,30 +2,39 @@
   "name": "OpenClawCommand",
   "type": "object",
   "properties": {
-    "commandText": {
+    "commandId": {
       "type": "string",
-      "description": "The capability id used as the command"
+      "description": "Unique command identifier"
     },
-    "capabilityId": {
+    "commandType": {
       "type": "string",
-      "description": "ID of the capability from the registry"
+      "enum": [
+        "OPEN_URL_AND_READ_TITLE",
+        "OPEN_URL_AND_SCREENSHOT"
+      ],
+      "description": "Type of safe browser command"
     },
-    "capabilityName": {
+    "targetUrl": {
       "type": "string",
-      "description": "Human-readable capability name"
-    },
-    "parameters": {
-      "type": "object",
-      "description": "Sanitized capability parameters"
-    },
-    "target": {
-      "type": "string",
-      "default": "OpenClaw Gateway",
-      "description": "Target system"
+      "description": "Target HTTPS URL for the command"
     },
     "requestedBy": {
       "type": "string",
-      "description": "User who requested the command"
+      "description": "Email of the user who created this command"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending",
+        "approved",
+        "denied",
+        "executing",
+        "executed",
+        "failed",
+        "blocked"
+      ],
+      "default": "draft"
     },
     "riskLevel": {
       "type": "string",
@@ -35,39 +44,50 @@
         "high",
         "critical"
       ],
-      "default": "medium"
+      "default": "low"
     },
-    "entityScope": {
+    "approvalRequired": {
+      "type": "boolean",
+      "default": true
+    },
+    "approvedBy": {
+      "type": "string",
+      "description": "Email of approver"
+    },
+    "approvedAt": {
+      "type": "string",
+      "description": "ISO timestamp of approval"
+    },
+    "executedAt": {
+      "type": "string",
+      "description": "ISO timestamp of execution"
+    },
+    "executionMode": {
       "type": "string",
       "enum": [
-        "vcm",
-        "gfm_admin",
-        "genesis_trust"
+        "REAL",
+        "SIMULATED"
       ],
-      "description": "Entity scope this command is authorized under"
+      "default": "SIMULATED"
     },
-    "status": {
+    "result": {
+      "type": "object",
+      "description": "Execution result payload"
+    },
+    "error": {
       "type": "string",
-      "enum": [
-        "pending",
-        "approved",
-        "denied",
-        "executed",
-        "failed",
-        "cancelled"
-      ],
-      "default": "pending"
+      "description": "Error message if failed"
     },
-    "approvers": {
+    "diagnostics": {
       "type": "array",
-      "description": "List of distinct approver emails (multi-sig)",
       "items": {
         "type": "string"
-      }
+      },
+      "description": "Diagnostic messages from execution"
     },
     "auditLog": {
       "type": "array",
-      "description": "Hash-chained immutable audit trail",
+      "description": "Immutable audit trail of status transitions",
       "items": {
         "type": "object"
       }
@@ -77,10 +97,8 @@
     }
   },
   "required": [
-    "commandText",
-    "capabilityId",
-    "requestedBy",
-    "riskLevel",
-    "entityScope"
+    "commandType",
+    "targetUrl",
+    "requestedBy"
   ]
 }

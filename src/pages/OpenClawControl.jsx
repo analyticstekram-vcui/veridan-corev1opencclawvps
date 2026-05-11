@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List } from 'lucide-react';
 import SafeCommandBridge from '@/components/openclaw/SafeCommandBridge';
 import CommandQueuePanel from '@/components/openclaw/CommandQueuePanel';
 import ExecutionReadinessPanel from '@/components/openclaw/ExecutionReadinessPanel';
@@ -78,8 +79,12 @@ export default function OpenClawControl() {
         </div>
       </div>
         {/* View Toggle */}
-        <div className="flex gap-1">
-          {[['status', 'Status'], ['safe_bridge', '⚡ Safe Command Test'], ['queue', 'Command Queue'], ['workflows', 'Workflows'], ['nodes', 'Node Registry'], ['logs', 'Live Logs'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
+        <div className="flex gap-1 flex-wrap">
+          <Link to="/command-queue"
+            className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5">
+            <List className="w-3 h-3" /> Command Queue
+          </Link>
+          {[['status', 'Status'], ['safe_bridge', '⚡ Safe Command Test'], ['workflows', 'Workflows'], ['nodes', 'Node Registry'], ['logs', 'Live Logs'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
             <button key={id} onClick={() => setActiveView(id)}
               className={`px-3 py-1.5 text-[11px] border transition-colors ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
               {label}
