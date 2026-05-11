@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle2, AlertCircle, Clock, RefreshCw, Lock, Shield } from 'lucide-react';
 import { format } from 'date-fns';
+import LiveBridgeDryRun from './LiveBridgeDryRun';
 
 const CHECKS = [
   {
@@ -335,8 +336,40 @@ export default function ExecutionReadinessGate() {
     LIVE_WIRING_READY: <Lock className="w-4 h-4" />,
   };
 
+  const [showDryRun, setShowDryRun] = useState(false);
+
   return (
     <div className="space-y-4">
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-border">
+        <button
+          onClick={() => setShowDryRun(false)}
+          className={`px-4 py-2 text-[11px] font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+            !showDryRun
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Readiness Checks
+        </button>
+        <button
+          onClick={() => setShowDryRun(true)}
+          className={`px-4 py-2 text-[11px] font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+            showDryRun
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Live Bridge Dry Run
+        </button>
+      </div>
+
+      {/* Dry Run View */}
+      {showDryRun && <LiveBridgeDryRun />}
+
+      {/* Readiness Checks View */}
+      {!showDryRun && (
+      <div>
       {/* Overall Status Card */}
       <div className={`border rounded-sm p-4 ${overallStatusStyles[overallStatus]}`}>
         <div className="flex items-center justify-between gap-3 mb-2">
@@ -395,6 +428,8 @@ export default function ExecutionReadinessGate() {
           <div>• Kill switch is always accessible and can block execution at any time.</div>
         </div>
       </div>
+      </div>
+      )}
     </div>
   );
 }
