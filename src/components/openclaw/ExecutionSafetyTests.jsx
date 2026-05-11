@@ -239,22 +239,29 @@ export default function ExecutionSafetyTests() {
       
       const passed = actualResult === test.expectedResult;
 
-      setResults(prev => ({
-        ...prev,
-        [test.id]: {
-          expectedResult: test.expectedResult,
-          actualResult,
-          passed,
-          backendValidationStatus: backendStatus || 'UNKNOWN',
-          executionStatus,
-          executionMode: res.data?.executionMode || null,
-          auditTraceId: res.data?.auditTraceId || null,
-          error: res.data?.error || null,
-          controlledBlockReason: res.data?.controlledBlockReason || null,
-          validationErrors: res.data?.validationErrors || null,
-          transportError: null,
-        },
-      }));
+      setResults(prev => {
+        const next = {
+          ...prev,
+          [test.id]: {
+            expectedResult: test.expectedResult,
+            actualResult,
+            passed,
+            backendValidationStatus: backendStatus || 'UNKNOWN',
+            executionStatus,
+            executionMode: res.data?.executionMode || null,
+            auditTraceId: res.data?.auditTraceId || null,
+            error: res.data?.error || null,
+            controlledBlockReason: res.data?.controlledBlockReason || null,
+            validationErrors: res.data?.validationErrors || null,
+            transportError: null,
+          },
+        };
+        // Persist to localStorage so readiness gate can check test results
+        try {
+          localStorage.setItem('veridan_execution_safety_tests', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
     } catch (err) {
       // Only true transport/auth errors count as TRANSPORT_ERROR
       // Controlled governance blocks never reach here (they're HTTP 200)
