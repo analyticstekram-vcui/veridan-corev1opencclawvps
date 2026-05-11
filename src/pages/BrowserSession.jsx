@@ -33,24 +33,46 @@ function ResultPanel({ result }) {
   if (!result) return null;
   const isSuccess = result.status === 'success';
 
-  // Resolve screenshot from all possible field names (top-level and raw)
-  const rawScreenshot =
-    result.screenshotBase64 ||
-    result.raw?.screenshotBase64 ||
-    result.raw?.screenshot_base64 ||
-    result.raw?.imageBase64 ||
-    result.raw?.image_base64 ||
-    result.raw?.dataUrl ||
-    result.raw?.screenshot ||
-    null;
-  const screenshotUrl = result.screenshotUrl || result.raw?.screenshotUrl || result.raw?.screenshot_url || null;
+  // Search all known locations for screenshot data
+  const SCREENSHOT_CANDIDATES = [
+    ['result.screenshotBase64',            result.screenshotBase64],
+    ['result.screenshot_base64',           result.screenshot_base64],
+    ['result.imageBase64',                 result.imageBase64],
+    ['result.image_base64',                result.image_base64],
+    ['result.dataUrl',                     result.dataUrl],
+    ['result.screenshot',                  result.screenshot],
+    ['result.raw?.screenshotBase64',       result.raw?.screenshotBase64],
+    ['result.raw?.screenshot_base64',      result.raw?.screenshot_base64],
+    ['result.raw?.imageBase64',            result.raw?.imageBase64],
+    ['result.raw?.image_base64',           result.raw?.image_base64],
+    ['result.raw?.dataUrl',                result.raw?.dataUrl],
+    ['result.raw?.screenshot',             result.raw?.screenshot],
+    ['result.bridgeResponse?.screenshotBase64',  result.bridgeResponse?.screenshotBase64],
+    ['result.bridgeResponse?.screenshot_base64', result.bridgeResponse?.screenshot_base64],
+    ['result.bridgeResponse?.imageBase64',       result.bridgeResponse?.imageBase64],
+    ['result.bridgeResponse?.image_base64',      result.bridgeResponse?.image_base64],
+    ['result.bridgeResponse?.dataUrl',           result.bridgeResponse?.dataUrl],
+    ['result.bridgeResponse?.screenshot',        result.bridgeResponse?.screenshot],
+    ['result.data?.screenshotBase64',      result.data?.screenshotBase64],
+    ['result.data?.screenshot_base64',     result.data?.screenshot_base64],
+    ['result.data?.imageBase64',           result.data?.imageBase64],
+    ['result.data?.image_base64',          result.data?.image_base64],
+    ['result.data?.dataUrl',               result.data?.dataUrl],
+    ['result.data?.screenshot',            result.data?.screenshot],
+  ];
+
+  // Find first candidate that has a non-empty string value
+  const foundCandidate = SCREENSHOT_CANDIDATES.find(([, val]) => typeof val === 'string' && val.length > 10);
+  const foundFieldName  = foundCandidate?.[0] || null;
+  const foundFieldValue = foundCandidate?.[1] || null;
 
   let screenshot = null;
-  if (rawScreenshot) {
-    screenshot = rawScreenshot.startsWith('data:') ? rawScreenshot : `data:image/png;base64,${rawScreenshot}`;
-  } else if (screenshotUrl) {
-    screenshot = screenshotUrl;
+  if (foundFieldValue) {
+    screenshot = foundFieldValue.startsWith('data:') ? foundFieldValue : `data:image/png;base64,${foundFieldValue}`;
   }
+
+  const topLevelKeys = Object.keys(result).join(', ');
+  const rawKeys      = result.raw ? Object.keys(result.raw).join(', ') : 'N/A';
 
   return (
     <div className="bg-card border border-border p-4 space-y-3">
@@ -114,17 +136,47 @@ function ResultPanel({ result }) {
         )}
       </div>
 
-      {/* Screenshot preview */}
-      {screenshot && (
-        <div className="bg-secondary/30 border border-border px-3 py-2">
-          <div className="flex items-center gap-2 mb-2">
-            <Camera className="w-3 h-3 text-primary" />
-            <div className="text-[9px] uppercase tracking-widest text-primary font-semibold">Screenshot Preview — Real Browser Capture</div>
+      {/* Screenshot debug + preview — shown for screenshot command type */}
+      {result.commandType === 'OPEN_URL_AND_SCREENSHOT' && (
+        <div className="space-y-2">
+          {/* Debug block */}
+          <div className="bg-secondary/20 border border-amber-500/20 px-3 py-2.5 space-y-1">
+            <div className="text-[9px] uppercase tracking-widest text-amber-500/70 mb-1.5">Screenshot Debug Info</div>
+            <div className="font-mono text-[10px] text-muted-foreground/70">
+              <span className="text-muted-foreground/40">field found: </span>
+              <span className={foundFieldName ? 'text-primary' : 'text-destructive'}>{foundFieldName || 'none'}</span>
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground/70">
+              <span className="text-muted-foreground/40">value length: </span>
+              <span className="text-foreground">{foundFieldValue ? foundFieldValue.length : 0}</span>
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground/70 break-all">
+              <span className="text-muted-foreground/40">first 40 chars: </span>
+              <span className="text-foreground">{foundFieldValue ? foundFieldValue.slice(0, 40) : '—'}</span>
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground/70 break-all">
+              <span className="text-muted-foreground/40">top-level keys: </span>
+              <span className="text-foreground">{topLevelKeys}</span>
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground/70 break-all">
+              <span className="text-muted-foreground/40">raw keys: </span>
+              <span className="text-foreground">{rawKeys}</span>
+            </div>
           </div>
-          {screenshot.startsWith('data:') || screenshot.startsWith('http') ? (
-            <img src={screenshot} alt="Real Browser Screenshot" className="w-full rounded border border-border/50 max-h-[500px] object-contain" />
+
+          {/* Screenshot image or not-found message */}
+          {screenshot ? (
+            <div className="bg-secondary/30 border border-border px-3 py-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Camera className="w-3 h-3 text-primary" />
+                <div className="text-[9px] uppercase tracking-widest text-primary font-semibold">Screenshot Preview — Real Browser Capture</div>
+              </div>
+              <img src={screenshot} alt="Real Browser Screenshot" className="w-full rounded border border-border/50 max-h-[500px] object-contain" />
+            </div>
           ) : (
-            <div className="text-blue-400 font-mono text-[11px] break-all">{screenshot}</div>
+            <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 text-[11px] text-destructive font-mono">
+              No screenshot image field found in backend response.
+            </div>
           )}
         </div>
       )}
