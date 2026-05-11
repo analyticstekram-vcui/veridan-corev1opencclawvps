@@ -17,6 +17,7 @@ function CommandRow({ command, index }) {
   const Icon = cfg.icon;
 
   const isReadOnly = ['system.status', 'logs.fetch', 'session.list'].includes(command.commandType);
+  const isLegacyRealExecution = command.executionMode === 'REAL' || command.executionMode === 'LIVE';
   const blockReason = command.error || null;
   const auditTraceId = command.readOnlyBridgeTraceId || command.id?.slice(0, 12);
   const executedAtTime = command.executedAt ? format(new Date(command.executedAt), 'HH:mm:ss') : '—';
@@ -39,12 +40,17 @@ function CommandRow({ command, index }) {
           <div className={`text-[9px] px-1.5 py-0.5 border rounded-sm ${command.riskLevel === 'low' ? 'text-primary border-primary/30' : 'text-amber-500 border-amber-500/30'}`}>
             {command.riskLevel?.toUpperCase() || '—'}
           </div>
-          <div className="text-[9px] px-1.5 py-0.5 border border-border text-muted-foreground">
-            {command.executionMode || 'SIMULATED'}
+          <div className={`text-[9px] px-1.5 py-0.5 border rounded-sm ${isLegacyRealExecution ? 'border-destructive/30 text-destructive bg-destructive/5' : 'border-border text-muted-foreground'}`}>
+            {isLegacyRealExecution ? 'LEGACY_REAL' : (command.executionMode || 'SIMULATED')}
           </div>
           {isReadOnly && (
             <div className="text-[9px] px-1.5 py-0.5 border border-primary/30 text-primary bg-primary/5">
               READ_ONLY
+            </div>
+          )}
+          {isLegacyRealExecution && (
+            <div className="text-[9px] px-1.5 py-0.5 border border-destructive/30 text-destructive bg-destructive/5">
+              LEGACY_REAL_EXECUTION_RECORD
             </div>
           )}
           <div className="text-muted-foreground/50 text-right text-[9px]">
@@ -56,8 +62,21 @@ function CommandRow({ command, index }) {
       {/* Expanded details */}
       {expanded && (
         <div className="bg-secondary/10 border-t border-border/20 px-4 py-3 space-y-3">
+          {/* Legacy REAL execution warning */}
+          {isLegacyRealExecution && (
+            <div className="flex items-start gap-2 px-3 py-2.5 bg-destructive/10 border border-destructive/30">
+              <AlertTriangle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="text-[9px] uppercase tracking-wider text-destructive/70 mb-0.5 font-semibold">LEGACY_REAL_EXECUTION_RECORD</div>
+                <div className="text-[9px] text-destructive/80">
+                  This command record has executionMode = {command.executionMode}. Current system policy is SIMULATED/READ_ONLY only. This record is preserved for audit purposes and will NOT be executed. Operator review required before production readiness can be considered.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Block reason if blocked */}
-          {blockReason && (
+          {blockReason && !isLegacyRealExecution && (
             <div className="flex items-start gap-2 px-3 py-2.5 bg-destructive/5 border border-destructive/20">
               <XCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
               <div className="flex-1">
@@ -138,6 +157,7 @@ export default function ExecutedCommandAuditView() {
   const [commands, setCommands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
+  const [legacyRealCount, setLegacyRealCount] = useState(0);
 
   useEffect(() => {
     const fetchCommands = async () => {
@@ -146,7 +166,9 @@ export default function ExecutedCommandAuditView() {
         const data = await base44.entities.OpenClawCommand.list('-executedAt', 200);
         // Only show commands that have been executed or blocked
         const filtered = data.filter(c => c.executedAt && (c.status === 'executed' || c.status === 'blocked' || c.status === 'failed'));
+        const legacy = data.filter(c => c.executionMode === 'REAL' || c.executionMode === 'LIVE');
         setCommands(filtered);
+        setLegacyRealCount(legacy.length);
       } catch (err) {
         console.error('Failed to fetch commands:', err);
       } finally {
@@ -177,6 +199,16 @@ export default function ExecutedCommandAuditView() {
           <span className="text-[9px] text-muted-foreground/30 ml-1">{filtered.length} shown</span>
         </div>
       </div>
+
+      {/* Legacy REAL/LIVE warning banner */}
+      {legacyRealCount > 0 && (
+        <div className="flex items-start gap-2 px-4 py-2.5 bg-destructive/5 border-b border-destructive/20">
+          <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+          <div className="text-[9px] text-destructive/80">
+            <span className="font-semibold">LEGACY_REAL_EXECUTION_RECORD:</span> {legacyRealCount} command{legacyRealCount !== 1 ? 's' : ''} found with REAL/LIVE execution mode. These are preserved for audit, will NOT be executed, and require operator review before production.
+          </div>
+        </div>
+      )}
 
       {/* Filter bar */}
       <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border/30 bg-secondary/10 overflow-x-auto">

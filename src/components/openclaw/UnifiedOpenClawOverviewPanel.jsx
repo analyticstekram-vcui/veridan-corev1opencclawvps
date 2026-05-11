@@ -120,6 +120,11 @@ export default function UnifiedOpenClawOverviewPanel() {
     fetchData();
   }, []);
 
+  // Detect legacy REAL/LIVE execution records
+  const legacyRealExecutionCommands = commands.filter(c => 
+    c.executionMode === 'REAL' || c.executionMode === 'LIVE'
+  );
+
   // Calculate counters
   const counters = {
     totalCommands: commands.length,
@@ -132,6 +137,7 @@ export default function UnifiedOpenClawOverviewPanel() {
     activeWorkflows: workflows.filter(w => w.status === 'running' || w.status === 'pending_approval').length,
     readyConnectors: 12, // Mock
     passingSims: 7, // Mock
+    legacyRealExecutions: legacyRealExecutionCommands.length,
   };
 
   // Build overview state for JSON export
@@ -194,12 +200,13 @@ export default function UnifiedOpenClawOverviewPanel() {
       <OverviewVerificationPanel activeView="overview" />
 
       {/* Alerts strip */}
-      {(counters.critical > 0 || counters.highRisk > 0) && (
+      {(counters.critical > 0 || counters.highRisk > 0 || counters.legacyRealExecutions > 0) && (
         <div className="flex items-start gap-3 px-4 py-3 bg-destructive/5 border border-destructive/20 rounded">
           <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
           <div className="text-[10px] text-destructive/80">
             <div className="font-semibold mb-1">Active Alerts</div>
             <ul className="text-[9px] space-y-0.5">
+              {counters.legacyRealExecutions > 0 && <li>• ⚠️ LEGACY: {counters.legacyRealExecutions} command{counters.legacyRealExecutions !== 1 ? 's' : ''} with REAL/LIVE execution mode detected · Operator review required before production</li>}
               {counters.critical > 0 && <li>• {counters.critical} critical-risk command{counters.critical !== 1 ? 's' : ''} pending review</li>}
               {counters.highRisk > 0 && <li>• {counters.highRisk} high-risk command{counters.highRisk !== 1 ? 's' : ''} require approval</li>}
               <li>• Production readiness: NOT READY · Multiple checks pending</li>

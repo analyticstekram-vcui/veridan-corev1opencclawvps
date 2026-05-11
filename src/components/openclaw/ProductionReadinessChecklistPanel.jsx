@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
 import { ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Clock, Lock, AlertTriangle } from 'lucide-react';
 
 const CHECKLIST_ITEMS = [
@@ -638,6 +639,21 @@ function ChecklistItemCard({ item, expanded, onToggle }) {
 export default function ProductionReadinessChecklistPanel() {
   const [filter, setFilter] = useState('ALL');
   const [expandedItems, setExpandedItems] = useState({});
+  const [legacyCommands, setLegacyCommands] = useState([]);
+
+  // Detect legacy REAL/LIVE execution commands
+  React.useEffect(() => {
+    const fetchCommands = async () => {
+      try {
+        const commands = await base44.entities.OpenClawCommand.list('-created_date', 100);
+        const legacy = commands.filter(c => c.executionMode === 'REAL' || c.executionMode === 'LIVE');
+        setLegacyCommands(legacy);
+      } catch (e) {
+        console.error('Error fetching legacy commands:', e);
+      }
+    };
+    fetchCommands();
+  }, []);
 
   const toggleExpanded = (name) => {
     setExpandedItems(prev => ({ ...prev, [name]: !prev[name] }));
@@ -683,6 +699,25 @@ export default function ProductionReadinessChecklistPanel() {
           <div className="text-[13px] font-semibold text-foreground">Pre-Production Checklist</div>
         </div>
       </div>
+
+      {/* Legacy REAL/LIVE execution warning */}
+      {legacyCommands.length > 0 && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+          <div className="text-[10px] text-destructive">
+            <div className="font-semibold mb-1">⚠️ LEGACY_REAL_EXECUTION_RECORD Detected</div>
+            <div className="text-[9px] text-destructive/90 mb-2">
+              {legacyCommands.length} command{legacyCommands.length !== 1 ? 's' : ''} found with executionMode = REAL or LIVE. Current system policy is SIMULATED/READ_ONLY only.
+            </div>
+            <ul className="text-[9px] space-y-1 text-destructive/80 ml-4 list-disc">
+              <li>These records are NOT deleted or hidden</li>
+              <li>They will NOT be executed</li>
+              <li>Operator review is REQUIRED before production readiness can be considered</li>
+              <li>Check Executed Audit panel for full legacy record details</li>
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Readiness score */}
       <div className="bg-secondary/20 border border-border rounded-lg p-4 space-y-3">
