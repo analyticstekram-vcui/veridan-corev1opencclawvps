@@ -23,13 +23,14 @@ import ModuleHandoffPanel from '@/components/openclaw/ModuleHandoffPanel';
 import ProductionReadinessChecklistPanel from '@/components/openclaw/ProductionReadinessChecklistPanel';
 import BrowserReadActionsPanel from '@/components/openclaw/BrowserReadActionsPanel';
 import InteractiveRiskMapPanel from '@/components/openclaw/InteractiveRiskMapPanel';
+import UnifiedOpenClawOverviewPanel from '@/components/openclaw/UnifiedOpenClawOverviewPanel';
 
 export default function OpenClawControl() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [activeView, setActiveView] = useState('status'); // 'status' | 'queue'
+  const [activeView, setActiveView] = useState('overview'); // 'overview' | 'status' | etc.
   const intervalRef = useRef(null);
 
   const [bridgeStatus, setBridgeStatus] = useState(null);
@@ -112,7 +113,7 @@ export default function OpenClawControl() {
             className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5">
             <Monitor className="w-3 h-3" /> Browser Session
           </Link>
-          {[['status', 'Status'], ['safe_bridge', '⚡ Safe Command Test'], ['safety_tests', '🛡️ Safety Tests'], ['readiness_gate', '🔐 Readiness Gate'], ['approval_workflow', 'Approval Workflow'], ['policy_registry', 'Policy Registry'], ['connectors', 'Connectors'], ['risk_matrix', 'Risk Matrix'], ['runbook', 'Runbook'], ['simulations', 'Simulations'], ['snapshot', 'Snapshot'], ['handoff', 'Handoff'], ['production_checklist', 'Production Checklist'], ['browser_read', 'Browser Read'], ['risk_map', 'Risk Map'], ['audit', 'Executed Commands'], ['workflows', 'Workflows'], ['nodes', 'Node Registry'], ['logs', 'Live Logs'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
+          {[['overview', '📊 Overview'], ['status', 'Status'], ['safe_bridge', '⚡ Safe Command Test'], ['safety_tests', '🛡️ Safety Tests'], ['readiness_gate', '🔐 Readiness Gate'], ['approval_workflow', 'Approval Workflow'], ['policy_registry', 'Policy Registry'], ['connectors', 'Connectors'], ['risk_matrix', 'Risk Matrix'], ['runbook', 'Runbook'], ['simulations', 'Simulations'], ['snapshot', 'Snapshot'], ['handoff', 'Handoff'], ['production_checklist', 'Production Checklist'], ['browser_read', 'Browser Read'], ['risk_map', 'Risk Map'], ['audit', 'Executed Commands'], ['workflows', 'Workflows'], ['nodes', 'Node Registry'], ['logs', 'Live Logs'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
             <button key={id} onClick={() => setActiveView(id)}
               className={`px-3 py-1.5 text-[11px] border transition-colors ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
               {label}
@@ -120,6 +121,13 @@ export default function OpenClawControl() {
           ))}
         </div>
       </div>
+
+      {/* Overview View */}
+      {activeView === 'overview' && (
+        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+          <UnifiedOpenClawOverviewPanel />
+        </div>
+      )}
 
       {/* Safe Command Bridge View */}
       {activeView === 'safe_bridge' && (
