@@ -17,6 +17,7 @@ import GovernancePolicyRegistryPanel from '@/components/openclaw/GovernancePolic
 import ConnectorHealthMatrixPanel from '@/components/openclaw/ConnectorHealthMatrixPanel';
 import RiskPermissionMatrixPanel from '@/components/openclaw/RiskPermissionMatrixPanel';
 import OperatorRunbookPanel from '@/components/openclaw/OperatorRunbookPanel';
+import SimulationScenarioTesterPanel from '@/components/openclaw/SimulationScenarioTesterPanel';
 
 export default function OpenClawControl() {
   const [status, setStatus] = useState(null);
@@ -106,7 +107,7 @@ export default function OpenClawControl() {
             className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5">
             <Monitor className="w-3 h-3" /> Browser Session
           </Link>
-          {[['status', 'Status'], ['safe_bridge', '⚡ Safe Command Test'], ['safety_tests', '🛡️ Safety Tests'], ['readiness_gate', '🔐 Readiness Gate'], ['approval_workflow', 'Approval Workflow'], ['policy_registry', 'Policy Registry'], ['connectors', 'Connectors'], ['risk_matrix', 'Risk Matrix'], ['runbook', 'Runbook'], ['audit', 'Executed Commands'], ['workflows', 'Workflows'], ['nodes', 'Node Registry'], ['logs', 'Live Logs'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
+          {[['status', 'Status'], ['safe_bridge', '⚡ Safe Command Test'], ['safety_tests', '🛡️ Safety Tests'], ['readiness_gate', '🔐 Readiness Gate'], ['approval_workflow', 'Approval Workflow'], ['policy_registry', 'Policy Registry'], ['connectors', 'Connectors'], ['risk_matrix', 'Risk Matrix'], ['runbook', 'Runbook'], ['simulations', 'Simulations'], ['audit', 'Executed Commands'], ['workflows', 'Workflows'], ['nodes', 'Node Registry'], ['logs', 'Live Logs'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
             <button key={id} onClick={() => setActiveView(id)}
               className={`px-3 py-1.5 text-[11px] border transition-colors ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
               {label}
@@ -168,6 +169,13 @@ export default function OpenClawControl() {
       {activeView === 'runbook' && (
         <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
           <OperatorRunbookPanel />
+        </div>
+      )}
+
+      {/* Simulation Scenario Tester Panel */}
+      {activeView === 'simulations' && (
+        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+          <SimulationScenarioTesterPanel />
         </div>
       )}
 
