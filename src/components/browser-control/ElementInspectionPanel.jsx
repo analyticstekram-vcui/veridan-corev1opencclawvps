@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, ChevronDown, ChevronRight, AlertTriangle, Code2, Crosshair, Copy, X, Shield } from 'lucide-react';
+import ProposedActionPanel from './ProposedActionPanel';
 
 function StatCard({ label, value }) {
   return (
@@ -392,6 +393,15 @@ export default function ElementInspectionPanel({ result, selectedElement, onSele
         {/* Selected Element Panel — always visible when an element is selected */}
         {selectedElement && (
           <SelectedElementPanel el={selectedElement} onClear={() => setSelectedElement(null)} />
+        )}
+
+        {/* Proposed Action Panel — read-only draft action */}
+        {selectedElement && result && (
+          <ProposedActionPanel
+            selectedElement={selectedElement}
+            targetUrl={stats.currentUrl}
+            onClear={() => setSelectedElement(null)}
+          />
         )}
 
         {/* Show Raw JSON — truncated preview, max 10k chars */}
