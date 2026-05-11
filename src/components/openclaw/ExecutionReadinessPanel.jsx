@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle2, XCircle, AlertTriangle, Shield, Lock, Zap, OctagonX } from 'lucide-react';
+import LiveBridgeDryRun from './LiveBridgeDryRun';
 
 const CHECKLIST = [
   {
@@ -213,32 +214,38 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
 
       {/* Emergency Kill Switch */}
       <div className="bg-card border border-border p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <OctagonX className={`w-3.5 h-3.5 ${executionPaused ? 'text-destructive' : 'text-muted-foreground/50'}`} />
-              <div className="text-[12px] font-semibold text-foreground">Emergency Kill Switch</div>
-            </div>
-            <div className="text-[10px] text-muted-foreground/60">
-              Immediately blocks all execution globally and reverts to simulated mode.<br />
-              Logs <span className="text-foreground">OPENCLAW_EXECUTION_BLOCKED_GLOBAL</span>.
-            </div>
-          </div>
-          <button
-            onClick={handleKillSwitch}
-            className={`px-4 py-2 border text-[11px] font-semibold transition-colors ${
-              executionPaused
-                ? 'border-primary/40 text-primary bg-primary/10 hover:bg-primary/20'
-                : 'border-destructive/40 text-destructive bg-destructive/10 hover:bg-destructive/20'
-            }`}
-          >
-            {executionPaused ? 'Release Kill Switch' : 'Engage Kill Switch'}
-          </button>
-        </div>
+       <div className="flex items-center justify-between gap-4">
+         <div>
+           <div className="flex items-center gap-2 mb-1">
+             <OctagonX className={`w-3.5 h-3.5 ${executionPaused ? 'text-destructive' : 'text-muted-foreground/50'}`} />
+             <div className="text-[12px] font-semibold text-foreground">Emergency Kill Switch</div>
+           </div>
+           <div className="text-[10px] text-muted-foreground/60">
+             Immediately blocks all execution globally and reverts to simulated mode.<br />
+             Logs <span className="text-foreground">OPENCLAW_EXECUTION_BLOCKED_GLOBAL</span>.
+           </div>
+         </div>
+         <button
+           onClick={handleKillSwitch}
+           className={`px-4 py-2 border text-[11px] font-semibold transition-colors ${
+             executionPaused
+               ? 'border-primary/40 text-primary bg-primary/10 hover:bg-primary/20'
+               : 'border-destructive/40 text-destructive bg-destructive/10 hover:bg-destructive/20'
+           }`}
+         >
+           {executionPaused ? 'Release Kill Switch' : 'Engage Kill Switch'}
+         </button>
+       </div>
+      </div>
+
+      {/* Live Bridge Dry Run */}
+      <div className="border border-border bg-card p-5">
+       <div className="text-[11px] font-semibold text-foreground mb-4 uppercase tracking-wider">Live Bridge Dry Run</div>
+       <LiveBridgeDryRun />
       </div>
 
       <div className="text-[9px] text-muted-foreground/30 text-center uppercase tracking-widest">
-        {isLive ? 'Live execution active · HMAC signed · Allowlist enforced · Rate limited' : 'Simulation mode · No real commands sent to OpenClaw'}
+       {isLive ? 'Live execution active · HMAC signed · Allowlist enforced · Rate limited' : 'Simulation mode · No real commands sent to OpenClaw'}
       </div>
 
       {/* Confirmation Modal */}
