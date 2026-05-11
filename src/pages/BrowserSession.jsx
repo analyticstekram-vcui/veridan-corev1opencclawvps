@@ -33,78 +33,39 @@ function ResultPanel({ result }) {
   if (!result) return null;
   const isSuccess = result.status === 'success';
 
-  // Resolve screenshotUrl — check top-level, raw, bridgeResponse, data
-  const resolvedScreenshotUrl =
-    result.screenshotUrl ||
-    result.raw?.screenshotUrl || result.raw?.screenshot_url ||
-    result.bridgeResponse?.screenshotUrl || result.bridgeResponse?.screenshot_url ||
-    result.data?.screenshotUrl || result.data?.screenshot_url ||
-    null;
+  // Resolve screenshot sources in priority order
+  const screenshotBase64 = result.screenshotBase64 || result.screenshot_base64 || null;
+  const screenshotUrl = result.screenshotUrl || result.screenshot_url || null;
+  const mimeType = result.screenshotMimeType || 'image/png';
 
-  // Resolve base64 blob — check all known field names
-  const BASE64_CANDIDATES = [
-    ['result.screenshotBase64',                  result.screenshotBase64],
-    ['result.screenshot_base64',                 result.screenshot_base64],
-    ['result.imageBase64',                       result.imageBase64],
-    ['result.image_base64',                      result.image_base64],
-    ['result.dataUrl',                           result.dataUrl],
-    ['result.screenshot',                        result.screenshot],
-    ['result.raw?.screenshotBase64',             result.raw?.screenshotBase64],
-    ['result.raw?.screenshot_base64',            result.raw?.screenshot_base64],
-    ['result.raw?.imageBase64',                  result.raw?.imageBase64],
-    ['result.raw?.image_base64',                 result.raw?.image_base64],
-    ['result.raw?.dataUrl',                      result.raw?.dataUrl],
-    ['result.raw?.screenshot',                   result.raw?.screenshot],
-    ['result.bridgeResponse?.screenshotBase64',  result.bridgeResponse?.screenshotBase64],
-    ['result.bridgeResponse?.screenshot_base64', result.bridgeResponse?.screenshot_base64],
-    ['result.bridgeResponse?.imageBase64',       result.bridgeResponse?.imageBase64],
-    ['result.bridgeResponse?.image_base64',      result.bridgeResponse?.image_base64],
-    ['result.bridgeResponse?.dataUrl',           result.bridgeResponse?.dataUrl],
-    ['result.bridgeResponse?.screenshot',        result.bridgeResponse?.screenshot],
-    ['result.data?.screenshotBase64',            result.data?.screenshotBase64],
-    ['result.data?.screenshot_base64',           result.data?.screenshot_base64],
-    ['result.data?.imageBase64',                 result.data?.imageBase64],
-    ['result.data?.image_base64',                result.data?.image_base64],
-    ['result.data?.dataUrl',                     result.data?.dataUrl],
-    ['result.data?.screenshot',                  result.data?.screenshot],
-  ];
-  const foundB64 = BASE64_CANDIDATES.find(([, val]) => typeof val === 'string' && val.length > 10);
-  const foundB64FieldName  = foundB64?.[0] || null;
-  const foundB64FieldValue = foundB64?.[1] || null;
+  let resolvedScreenshotSrc = null;
+  let resolvedSourceType = 'none';
 
-  // Determine the best screenshot src and type
-  let screenshotSrc  = null;
-  let screenshotType = null; // 'dataurl' | 'http' | 'relative' | 'base64'
-  let debugFieldName = null;
-  let debugFieldValue = null;
-
-  if (foundB64FieldValue) {
-    debugFieldName  = foundB64FieldName;
-    debugFieldValue = foundB64FieldValue;
-    if (foundB64FieldValue.startsWith('data:image')) {
-      screenshotSrc  = foundB64FieldValue;
-      screenshotType = 'dataurl';
-    } else {
-      screenshotSrc  = `data:image/png;base64,${foundB64FieldValue}`;
-      screenshotType = 'base64';
-    }
-  } else if (resolvedScreenshotUrl) {
-    debugFieldName  = 'result.screenshotUrl';
-    debugFieldValue = resolvedScreenshotUrl;
-    if (resolvedScreenshotUrl.startsWith('data:image')) {
-      screenshotSrc  = resolvedScreenshotUrl;
-      screenshotType = 'dataurl';
-    } else if (resolvedScreenshotUrl.startsWith('http')) {
-      screenshotSrc  = resolvedScreenshotUrl;
-      screenshotType = 'http';
-    } else if (resolvedScreenshotUrl.startsWith('/')) {
-      screenshotSrc  = `https://bridge.veridancore.com${resolvedScreenshotUrl}`;
-      screenshotType = 'relative';
+  // Priority 1: direct base64 field
+  if (screenshotBase64) {
+    resolvedScreenshotSrc = `data:${mimeType};base64,${screenshotBase64}`;
+    resolvedSourceType = 'base64';
+  }
+  // Priority 2: screenshotUrl that is actually raw base64 (starts with PNG magic or is not a URL)
+  else if (screenshotUrl && !screenshotUrl.startsWith('http') && !screenshotUrl.startsWith('data:')) {
+    // Check if it looks like base64 PNG magic bytes (iVBOR...) or other base64
+    if (screenshotUrl.startsWith('iVBOR') || /^[A-Za-z0-9+/=]+$/.test(screenshotUrl)) {
+      resolvedScreenshotSrc = `data:${mimeType};base64,${screenshotUrl}`;
+      resolvedSourceType = 'base64';
     }
   }
+  // Priority 3: data URL
+  else if (screenshotUrl?.startsWith('data:image')) {
+    resolvedScreenshotSrc = screenshotUrl;
+    resolvedSourceType = 'data-url';
+  }
+  // Priority 4: HTTP URL
+  else if (screenshotUrl?.startsWith('http')) {
+    resolvedScreenshotSrc = screenshotUrl;
+    resolvedSourceType = 'http-url';
+  }
 
-  const topLevelKeys = Object.keys(result).join(', ');
-  const rawKeys      = result.raw ? Object.keys(result.raw).join(', ') : 'N/A';
+  const base64Length = screenshotBase64?.length || screenshotUrl?.length || 0;
   const screenshotCaptured = result.screenshotCaptured;
 
   return (
@@ -176,16 +137,12 @@ function ResultPanel({ result }) {
           <div className="bg-secondary/20 border border-amber-500/20 px-3 py-2.5 space-y-1">
             <div className="text-[9px] uppercase tracking-widest text-amber-500/70 mb-1.5">Screenshot Debug Info</div>
             {[
-              ['screenshotCaptured',  String(screenshotCaptured ?? '—')],
-              ['screenshotUrl value', debugFieldValue || resolvedScreenshotUrl || '—'],
-              ['screenshotUrl type',  screenshotType || 'none'],
-              ['screenshotUrl length', String(debugFieldValue?.length ?? resolvedScreenshotUrl?.length ?? 0)],
-              ['field found',        debugFieldName || 'none'],
-              ['first 40 chars',     debugFieldValue ? debugFieldValue.slice(0, 40) : (resolvedScreenshotUrl?.slice(0, 40) || '—')],
-              ['top-level keys',     topLevelKeys],
-              ['raw keys',           rawKeys],
+              ['screenshotCaptured',  String(screenshotCaptured ?? false)],
+              ['image source type',   resolvedSourceType],
+              ['base64 length',       String(base64Length)],
+              ['MIME type',           mimeType],
             ].map(([label, val]) => (
-              <div key={label} className="font-mono text-[10px] text-muted-foreground/70 break-all">
+              <div key={label} className="font-mono text-[10px] text-muted-foreground/70">
                 <span className="text-muted-foreground/40">{label}: </span>
                 <span className="text-foreground">{val}</span>
               </div>
@@ -193,33 +150,23 @@ function ResultPanel({ result }) {
           </div>
 
           {/* Screenshot preview */}
-          {screenshotSrc ? (
+          {resolvedScreenshotSrc ? (
             <div className="bg-secondary/30 border border-border px-3 py-2 space-y-2">
               <div className="flex items-center gap-2">
                 <Camera className="w-3 h-3 text-primary" />
-                <div className="text-[9px] uppercase tracking-widest text-primary font-semibold">Screenshot Preview — Real Browser Capture</div>
-                {screenshotType === 'http' && (
-                  <a href={screenshotSrc} target="_blank" rel="noopener noreferrer"
-                    className="ml-auto text-[9px] text-blue-400 hover:underline">Open Screenshot ↗</a>
-                )}
+                <div className="text-[9px] uppercase tracking-widest text-primary font-semibold">Browser Screenshot Preview</div>
               </div>
-              <img src={screenshotSrc} alt="Real Browser Screenshot"
+              <img
+                src={resolvedScreenshotSrc}
+                alt="OpenClaw browser screenshot"
                 className="w-full rounded border border-border/50 max-h-[500px] object-contain"
-                onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
               />
-              <div style={{ display: 'none' }} className="text-[10px] text-destructive font-mono">
-                Image failed to load. URL: {screenshotSrc?.slice(0, 100)}
-              </div>
             </div>
           ) : screenshotCaptured ? (
             <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-400 font-mono">
-              Screenshot was captured but no screenshot URL or image payload was returned by the bridge.
+              Screenshot was captured but no image data was returned by the bridge.
             </div>
-          ) : (
-            <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 text-[11px] text-destructive font-mono">
-              No screenshot image field found in backend response.
-            </div>
-          )}
+          ) : null}
         </div>
       )}
 
