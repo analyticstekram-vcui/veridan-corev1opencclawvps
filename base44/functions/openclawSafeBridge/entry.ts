@@ -133,6 +133,10 @@ async function callVeridanBridge(commandType, targetUrl) {
 
   const pageTitle     = data.title ?? data.pageTitle ?? null;
   const screenshotUrl = data.screenshotUrl ?? data.screenshot_url ?? null;
+  const screenshotBase64 =
+    data.screenshotBase64 ?? data.screenshot_base64 ??
+    data.imageBase64 ?? data.image_base64 ??
+    data.dataUrl ?? data.screenshot ?? null;
 
   const isMockTitle = typeof pageTitle === 'string' && (
     pageTitle === 'Safe Bridge received URL' ||
@@ -156,8 +160,9 @@ async function callVeridanBridge(commandType, targetUrl) {
     targetUrl,
     pageTitle,
     isMockTitle,
-    screenshotCaptured: !!(screenshotUrl),
+    screenshotCaptured: !!(screenshotUrl || screenshotBase64),
     screenshotUrl,
+    screenshotBase64: screenshotBase64 || null,
     executionMode:      'REAL',
     diagnostics,
     raw: data,
@@ -236,6 +241,7 @@ Deno.serve(async (req) => {
     isMockTitle:        result.isMockTitle        ?? false,
     screenshotCaptured: result.screenshotCaptured ?? false,
     screenshotUrl:      result.screenshotUrl      ?? null,
+    screenshotBase64:   result.screenshotBase64   ?? null,
     executionMode:      result.executionMode      ?? 'FAILED',
     diagnostics:        result.diagnostics        ?? [],
     safeDiag:           result.safeDiag           ?? null,
