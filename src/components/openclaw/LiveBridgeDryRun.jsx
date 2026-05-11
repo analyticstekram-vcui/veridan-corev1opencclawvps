@@ -91,23 +91,19 @@ export default function LiveBridgeDryRun() {
 
     for (const cmd of READ_ONLY_COMMANDS) {
       try {
-        const res = await base44.functions.invoke('openclawExecutionBridge', {
-          commandType: cmd.id,
+        const res = await base44.functions.invoke('openclawReadOnlyBridgeStatus', {
           command: cmd.name,
-          params: {},
-          executionMode: 'SIMULATED', // Always simulated
-          readOnly: true,
         });
 
-        const passed = res.data?.status === 'success' || res.data?.status === 'PASSED';
+        const passed = res.data?.ok === true && res.data?.status === 'PASS';
         if (passed) passCount++;
 
         newResults[cmd.id] = {
           passed,
-          responseSummary: res.data?.responseSummary || res.data?.summary || 'OK',
-          auditTraceId: res.data?.auditTraceId || null,
+          responseSummary: res.data?.reason || (passed ? 'Read-only command passed' : 'Command blocked'),
+          auditTraceId: res.data?.traceId || null,
           timestamp: res.data?.timestamp || new Date().toISOString(),
-          error: res.data?.error || null,
+          error: !passed ? res.data?.reason : null,
         };
       } catch (err) {
         newResults[cmd.id] = {
@@ -115,7 +111,7 @@ export default function LiveBridgeDryRun() {
           responseSummary: null,
           auditTraceId: null,
           timestamp: new Date().toISOString(),
-          error: err.message,
+          error: err.message || 'Request failed',
         };
       }
     }
