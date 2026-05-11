@@ -1,16 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// ── Veridan Bridge (primary) — read at request time, not module-load time ─────
-// NOTE: Do NOT cache these at module level; Deno may snapshot env before
-//       secrets are injected. Always read fresh on each invocation.
+// ── Read secrets fresh on every call (never cache at module level) ────────────
 function getBridgeUrl()   { return Deno.env.get('VERIDAN_BRIDGE_URL')   || 'https://bridge.veridancore.com/api/safe-command'; }
 function getBridgeToken() { return Deno.env.get('VERIDAN_BRIDGE_TOKEN') || ''; }
-
-// ── Legacy OpenClaw gateway (fallback) ────────────────────────────────────────
-const OPENCLAW_GATEWAY_URL   = Deno.env.get('OPENCLAW_GATEWAY_URL')   || 'https://openclaw.veridancore.com';
-const CF_CLIENT_ID           = Deno.env.get('CF_ACCESS_CLIENT_ID')    || '';
-const CF_CLIENT_SECRET       = Deno.env.get('CF_ACCESS_CLIENT_SECRET')|| '';
-const OPENCLAW_SERVICE_TOKEN = Deno.env.get('OPENCLAW_SERVICE_TOKEN') || '';
 
 const ALLOWED_COMMAND_TYPES = new Set([
   'OPEN_URL_AND_READ_TITLE',
@@ -46,53 +38,47 @@ function validateRequest({ commandType, targetUrl }) {
 }
 
 // ── callVeridanBridge ─────────────────────────────────────────────────────────
-// Primary: POST to VERIDAN_BRIDGE_URL with Bearer token auth
 async function callVeridanBridge(commandType, targetUrl) {
-  const VERIDAN_BRIDGE_URL   = getBridgeUrl();
-  const VERIDAN_BRIDGE_TOKEN = getBridgeToken();
+  const bridgeUrl   = getBridgeUrl();
+  const bridgeToken = getBridgeToken();
 
-  // Safe diagnostics — host only, never token value
+  // Safe diagnostics — length only, never token value
+  let bridgeUrlFull = bridgeUrl;
   let bridgeUrlHost = '(unset)';
-  try { bridgeUrlHost = new URL(VERIDAN_BRIDGE_URL).host; } catch (_) { bridgeUrlHost = VERIDAN_BRIDGE_URL.slice(0, 40); }
+  try { bridgeUrlHost = new URL(bridgeUrl).host; } catch (_) { bridgeUrlHost = bridgeUrl.slice(0, 60); }
 
-  const safeDiag = {
-    hasBridgeUrl:   !!VERIDAN_BRIDGE_URL && VERIDAN_BRIDGE_URL !== 'https://bridge.veridancore.com/api/safe-command',
-    hasBridgeToken: !!VERIDAN_BRIDGE_TOKEN,
-    bridgeUrlHost,
-  };
+  const tokenLen = bridgeToken.length;
+  const hasToken = tokenLen > 0;
 
-  console.log('[openclawSafeBridge] env check:', JSON.stringify(safeDiag));
+  console.log('[openclawSafeBridge] env check — hasBridgeToken:', hasToken, 'tokenLength:', tokenLen, 'bridgeUrl:', bridgeUrlFull);
 
-  if (!VERIDAN_BRIDGE_TOKEN) {
+  const diagnostics = [];
+  diagnostics.push(`hasBridgeToken: ${hasToken}`);
+  diagnostics.push(`bridgeTokenLength: ${tokenLen}`);
+  diagnostics.push(`bridgeUrl: ${bridgeUrlFull}`);
+  diagnostics.push(`command_type: ${commandType}`);
+  diagnostics.push(`target_url: ${targetUrl}`);
+
+  if (!hasToken) {
     return {
       status: 'failed',
       error: 'VERIDAN_BRIDGE_TOKEN is not configured. Please set this secret in the dashboard.',
-      diagnostics: [
-        `bridge_token: MISSING`,
-        `bridge_url_host: ${bridgeUrlHost}`,
-        `has_bridge_url: ${safeDiag.hasBridgeUrl}`,
-      ],
-      safeDiag,
+      diagnostics,
       executionMode: 'FAILED',
     };
   }
-
-  const diagnostics = [];
-  diagnostics.push(`bridge_url_host: ${bridgeUrlHost}`);
-  diagnostics.push(`command_type: ${commandType}`);
-  diagnostics.push(`target_url: ${targetUrl}`);
 
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 25000);
 
   let response;
   try {
-    response = await fetch(VERIDAN_BRIDGE_URL, {
+    response = await fetch(bridgeUrl, {
       method: 'POST',
       signal: ctrl.signal,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${VERIDAN_BRIDGE_TOKEN}`,
+        'Authorization': `Bearer ${bridgeToken}`,
       },
       body: JSON.stringify({ commandType, targetUrl }),
     });
@@ -106,21 +92,19 @@ async function callVeridanBridge(commandType, targetUrl) {
 
   diagnostics.push(`bridge_http_status: ${response.status}`);
 
-  // Handle auth errors
   if (response.status === 401 || response.status === 403) {
+    const body401 = await response.text().catch(() => '');
     const msg = `Bridge request unauthorized (HTTP ${response.status}). Check VERIDAN_BRIDGE_TOKEN.`;
     diagnostics.push(`bridge_auth: REJECTED`);
+    diagnostics.push(`bridge_auth_body: ${body401.slice(0, 120)}`);
     return { status: 'failed', error: msg, diagnostics, executionMode: 'FAILED' };
   }
 
-  // Handle not found
   if (response.status === 404) {
-    const msg = `Bridge endpoint not found (HTTP 404). Verify VERIDAN_BRIDGE_URL is correct.`;
     diagnostics.push(`bridge_endpoint: NOT_FOUND`);
-    return { status: 'failed', error: msg, diagnostics, executionMode: 'FAILED' };
+    return { status: 'failed', error: `Bridge endpoint not found (HTTP 404). Verify VERIDAN_BRIDGE_URL is correct.`, diagnostics, executionMode: 'FAILED' };
   }
 
-  // Handle non-OK responses
   if (!response.ok) {
     let body = '';
     try { body = await response.text(); } catch (_) {}
@@ -134,8 +118,8 @@ async function callVeridanBridge(commandType, targetUrl) {
   if (!ct.includes('application/json') && !ct.includes('json')) {
     let raw = '';
     try { raw = await response.text(); } catch (_) {}
-    const msg = `Bridge returned non-JSON response (Content-Type: ${ct}): ${raw.slice(0, 120)}`;
-    diagnostics.push(`bridge_response: INVALID_JSON — ${msg}`);
+    const msg = `Bridge returned non-JSON (Content-Type: ${ct}): ${raw.slice(0, 120)}`;
+    diagnostics.push(`bridge_response: INVALID_JSON`);
     return { status: 'failed', error: msg, diagnostics, executionMode: 'FAILED' };
   }
 
@@ -143,12 +127,10 @@ async function callVeridanBridge(commandType, targetUrl) {
   try {
     data = await response.json();
   } catch (err) {
-    const msg = `Bridge response could not be parsed as JSON: ${err.message}`;
     diagnostics.push(`bridge_response: PARSE_ERROR`);
-    return { status: 'failed', error: msg, diagnostics, executionMode: 'FAILED' };
+    return { status: 'failed', error: `Bridge response could not be parsed as JSON: ${err.message}`, diagnostics, executionMode: 'FAILED' };
   }
 
-  // Normalise response fields
   const pageTitle     = data.title ?? data.pageTitle ?? null;
   const screenshotUrl = data.screenshotUrl ?? data.screenshot_url ?? null;
 
@@ -157,11 +139,8 @@ async function callVeridanBridge(commandType, targetUrl) {
     pageTitle.startsWith('[REAL PAGE TITLE')
   );
 
-  // Flatten nested diagnostics if present
   if (data.diagnostics && typeof data.diagnostics === 'object' && !Array.isArray(data.diagnostics)) {
-    for (const [k, v] of Object.entries(data.diagnostics)) {
-      diagnostics.push(`${k}: ${v}`);
-    }
+    for (const [k, v] of Object.entries(data.diagnostics)) diagnostics.push(`${k}: ${v}`);
   } else if (Array.isArray(data.diagnostics)) {
     diagnostics.push(...data.diagnostics);
   }
@@ -172,7 +151,7 @@ async function callVeridanBridge(commandType, targetUrl) {
 
   return {
     status: 'success',
-    commandId:          data.commandId          ?? 'cmd_bridge_' + Date.now(),
+    commandId:          data.commandId ?? 'cmd_bridge_' + Date.now(),
     commandType,
     targetUrl,
     pageTitle,
@@ -198,14 +177,17 @@ Deno.serve(async (req) => {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   if (req.method === 'GET') {
-    let bridgeUrlHost = '(unset)';
-    try { bridgeUrlHost = new URL(getBridgeUrl()).host; } catch (_) {}
+    const token = getBridgeToken();
+    const url   = getBridgeUrl();
+    let host = '(unset)';
+    try { host = new URL(url).host; } catch (_) {}
     return Response.json({
       auditLog,
       safeDiag: {
-        hasBridgeUrl:   !!getBridgeUrl(),
-        hasBridgeToken: !!getBridgeToken(),
-        bridgeUrlHost,
+        hasBridgeToken:    token.length > 0,
+        bridgeTokenLength: token.length,
+        bridgeUrl:         url,
+        bridgeUrlHost:     host,
       },
     });
   }
@@ -219,7 +201,6 @@ Deno.serve(async (req) => {
   const commandId = 'cmd_' + Date.now();
   const startedAt = new Date().toISOString();
 
-  // Security validation (skip strict URL check for session commands)
   const isSessionCommand = commandType === 'START_SESSION' || commandType === 'SESSION_STATUS';
   if (!isSessionCommand) {
     const validationError = validateRequest({ commandType, targetUrl });
@@ -231,7 +212,6 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
   } else {
-    // Still require a valid commandType
     if (!ALLOWED_COMMAND_TYPES.has(commandType)) {
       return Response.json({ error: `Unknown commandType: ${commandType}` }, { status: 400 });
     }
@@ -241,10 +221,7 @@ Deno.serve(async (req) => {
   const completedAt = new Date().toISOString();
 
   appendAudit({
-    commandId,
-    commandType,
-    targetUrl,
-    operator,
+    commandId, commandType, targetUrl, operator,
     status: result.status,
     executionMode: result.executionMode,
     error: result.error || null,
