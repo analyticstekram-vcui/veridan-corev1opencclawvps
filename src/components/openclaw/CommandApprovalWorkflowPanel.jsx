@@ -24,8 +24,9 @@ const stageIcons = {
   5: { icon: Clock, label: 'Audit Recorded', color: 'text-primary' },
 };
 
-function WorkflowCard({ proposal, command, index }) {
+function WorkflowCard({ proposal, command, index, onExecuteReadOnly }) {
   const [expanded, setExpanded] = useState(false);
+  const [executing, setExecuting] = useState(false);
 
   // Determine overall workflow status
   const getWorkflowStatus = () => {
@@ -45,6 +46,25 @@ function WorkflowCard({ proposal, command, index }) {
   const isReadOnly = command?.commandType && ['system.status', 'logs.fetch', 'session.list'].includes(command.commandType);
   const blockReason = command?.error || null;
   const auditTraceId = command?.readOnlyBridgeTraceId || command?.id?.slice(0, 12) || '—';
+
+  // Check if execution button should be shown
+  const canExecuteReadOnly = command &&
+    proposal?.status === 'APPROVED' &&
+    (command.status === 'approved' || command.status === 'ready') &&
+    command.riskLevel === 'low' &&
+    command.executionMode === 'SIMULATED' &&
+    isReadOnly &&
+    command.governanceMode === 'SAFE_REQUIRES_APPROVAL' &&
+    !['executed', 'blocked', 'failed'].includes(command.status);
+
+  const handleExecute = async () => {
+    setExecuting(true);
+    try {
+      await onExecuteReadOnly(command);
+    } finally {
+      setExecuting(false);
+    }
+  };
 
   // Determine which stages are complete
   const stageComplete = {
@@ -246,6 +266,27 @@ function WorkflowCard({ proposal, command, index }) {
             </pre>
           </details>
 
+          {/* Execute button - only for approved LOW risk SIMULATED read-only commands */}
+          {canExecuteReadOnly && (
+            <button
+              onClick={handleExecute}
+              disabled={executing}
+              className="w-full px-4 py-2 bg-primary text-primary-foreground text-[10px] font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {executing ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse" />
+                  Executing...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3 h-3" />
+                  Execute Approved Read-Only Command
+                </>
+              )}
+            </button>
+          )}
+
           {/* Read-only notice */}
           <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
             <Shield className="w-3 h-3 text-primary shrink-0" />
@@ -273,29 +314,55 @@ export default function CommandApprovalWorkflowPanel() {
 
         // Build workflows by matching proposals to commands
         const workflowMap = new Map();
+        const matchedCommandIds = new Set();
+
+        // First pass: match by proposalId field
         proposals.forEach(p => {
           if (p.proposalId) {
-            const existing = workflowMap.get(p.proposalId) || {};
-            workflowMap.set(p.proposalId, { ...existing, proposal: p });
+            const matchedCmd = commands.find(c => c.proposalId === p.proposalId || c.convertedWorkflowId === p.proposalId || c.commandId === p.proposalId);
+            const key = p.proposalId;
+            if (matchedCmd) matchedCommandIds.add(matchedCmd.id);
+            workflowMap.set(key, { proposal: p, command: matchedCmd || null });
           }
         });
 
-        commands.forEach(c => {
-          if (c.commandId) {
-            const existing = workflowMap.get(c.commandId) || {};
-            workflowMap.set(c.commandId, { ...existing, command: c });
+        // Second pass: match by nearest fields (type, URL, selector, timestamp proximity)
+        const unmatchedProposals = proposals.filter(p => !workflowMap.has(p.proposalId));
+        const unmatchedCommands = commands.filter(c => !matchedCommandIds.has(c.id));
+
+        unmatchedProposals.forEach(p => {
+          const stepData = p.steps?.[0] || {};
+          const match = unmatchedCommands.find(c => {
+            const timeDiff = Math.abs(new Date(c.created_date) - new Date(p.created_date)) / 1000 < 300; // Within 5 min
+            const typeMatch = c.commandType === stepData.commandType;
+            const urlMatch = c.targetUrl === stepData.targetUrl;
+            const selectorMatch = c.selector === stepData.selector;
+            return timeDiff && (typeMatch || urlMatch || selectorMatch);
+          });
+          if (match) {
+            matchedCommandIds.add(match.id);
+            const key = `${p.proposalId}_${match.id}`;
+            workflowMap.set(key, { proposal: p, command: match });
+          } else {
+            const key = `orphan_proposal_${p.proposalId}`;
+            workflowMap.set(key, { proposal: p, command: null });
           }
         });
 
-        // Also include commands that might reference proposals
-        commands.forEach(c => {
-          const relatedProposal = proposals.find(p => p.proposalId === c.proposalId || p.convertedWorkflowId === c.commandId);
-          if (relatedProposal && c.commandId) {
-            workflowMap.set(c.commandId, { proposal: relatedProposal, command: c });
-          }
+        // Third pass: add orphan commands
+        unmatchedCommands.filter(c => !matchedCommandIds.has(c.id)).forEach(c => {
+          const key = `orphan_command_${c.id}`;
+          workflowMap.set(key, { proposal: null, command: c });
         });
 
-        setWorkflows(Array.from(workflowMap.values()).reverse());
+        // Sort by newest first
+        const sorted = Array.from(workflowMap.values()).sort((a, b) => {
+          const aTime = new Date(a.command?.created_date || a.proposal?.created_date || 0);
+          const bTime = new Date(b.command?.created_date || b.proposal?.created_date || 0);
+          return bTime - aTime;
+        });
+
+        setWorkflows(sorted);
       } catch (err) {
         console.error('Failed to fetch workflows:', err);
       } finally {
@@ -329,6 +396,16 @@ export default function CommandApprovalWorkflowPanel() {
     return true;
   });
 
+  // Calculate summary counters
+  const summaryStats = {
+    total: workflows.length,
+    pending: workflows.filter(w => getWorkflowStatus(w) === 'PENDING').length,
+    readyToExecute: workflows.filter(w => getWorkflowStatus(w) === 'READY_TO_EXECUTE').length,
+    executed: workflows.filter(w => getWorkflowStatus(w) === 'EXECUTED').length,
+    blocked: workflows.filter(w => getWorkflowStatus(w) === 'BLOCKED').length,
+    failed: workflows.filter(w => getWorkflowStatus(w) === 'FAILED').length,
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -337,7 +414,35 @@ export default function CommandApprovalWorkflowPanel() {
           <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Command Approval Workflow</div>
           <div className="text-[13px] font-semibold text-foreground">Full Lifecycle: Proposal → Review → Command → Execution → Audit</div>
         </div>
-        <span className="text-[9px] text-muted-foreground/30">{filtered.length} shown</span>
+        <span className="text-[9px] text-muted-foreground/30">{filtered.length} of {summaryStats.total} shown</span>
+      </div>
+
+      {/* Summary counters */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-[10px]">
+        <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
+          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1">Total</div>
+          <div className="text-[14px] font-semibold text-foreground">{summaryStats.total}</div>
+        </div>
+        <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
+          <div className="text-amber-500/60 uppercase tracking-wider mb-1">Pending</div>
+          <div className="text-[14px] font-semibold text-amber-400">{summaryStats.pending}</div>
+        </div>
+        <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
+          <div className="text-primary/60 uppercase tracking-wider mb-1">Ready</div>
+          <div className="text-[14px] font-semibold text-primary">{summaryStats.readyToExecute}</div>
+        </div>
+        <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
+          <div className="text-primary/60 uppercase tracking-wider mb-1">Executed</div>
+          <div className="text-[14px] font-semibold text-primary">{summaryStats.executed}</div>
+        </div>
+        <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
+          <div className="text-destructive/60 uppercase tracking-wider mb-1">Blocked</div>
+          <div className="text-[14px] font-semibold text-destructive">{summaryStats.blocked}</div>
+        </div>
+        <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
+          <div className="text-amber-500/60 uppercase tracking-wider mb-1">Failed</div>
+          <div className="text-[14px] font-semibold text-amber-500">{summaryStats.failed}</div>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -364,17 +469,54 @@ export default function CommandApprovalWorkflowPanel() {
         ) : filtered.length === 0 ? (
           <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} workflows found</div>
         ) : (
-          filtered.map((workflow, idx) => <WorkflowCard key={idx} proposal={workflow.proposal} command={workflow.command} index={idx} />)
+          filtered.map((workflow, idx) => (
+            <WorkflowCard
+              key={idx}
+              proposal={workflow.proposal}
+              command={workflow.command}
+              index={idx}
+              onExecuteReadOnly={async (cmd) => {
+                try {
+                  const res = await base44.functions.invoke('openclawReadOnlyBridgeStatus', {
+                    command: cmd.commandType,
+                  });
+                  const passed = res.data?.ok === true && res.data?.status === 'PASS';
+                  const now = new Date().toISOString();
+                  const update = {
+                    status: passed ? 'executed' : 'blocked',
+                    executionMode: 'SIMULATED',
+                    executedAt: now,
+                    error: res.data?.reason || null,
+                    readOnlyBridgeTraceId: res.data?.traceId || null,
+                    result: {
+                      readOnlyStatus: res.data?.status,
+                      ok: res.data?.ok,
+                      command: res.data?.command,
+                      timestamp: res.data?.timestamp,
+                      data: res.data?.data || {},
+                    },
+                  };
+                  await base44.entities.OpenClawCommand.update(cmd.id, update);
+                  // Refresh workflows
+                  setWorkflows(prev => prev.map(w => w.command?.id === cmd.id ? { ...w, command: { ...w.command, ...update } } : w));
+                } catch (err) {
+                  console.error('Execution failed:', err);
+                  alert('Execution failed: ' + (err.message || 'Unknown error'));
+                }
+              }}
+            />
+          ))
         )}
       </div>
 
       {/* Footer */}
-      {filtered.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-          <Shield className="w-3 h-3 shrink-0" />
-          Read-only audit view. No governance bypass. Execution buttons only for approved LOW risk SIMULATED read-only commands.
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
+        <Shield className="w-3 h-3 shrink-0 mt-0.5" />
+        <div>
+          <div className="font-semibold mb-1">Read-only audit workflow</div>
+          <div>Execution remains SIMULATED. No live commands or mutation commands are permitted from this panel.</div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
