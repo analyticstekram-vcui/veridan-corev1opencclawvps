@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Play, CheckCircle2, XCircle, AlertTriangle, Loader2, RotateCw } from 'lucide-react';
 
@@ -174,6 +174,12 @@ function TestRow({ test, result, loading, onRun }) {
                   </ul>
                 </div>
               )}
+              {result.transportError && (
+                <div className="col-span-2 md:col-span-4 bg-destructive/5 border border-destructive/20 px-2 py-1">
+                  <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Transport Error</div>
+                  <div className="font-mono text-[8px] text-destructive">{result.transportError}</div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -186,15 +192,34 @@ export default function ExecutionSafetyTests() {
   const [results, setResults] = useState({});
   const [loadingTests, setLoadingTests] = useState(new Set());
   const [overallLoading, setOverallLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+
+  // Check authentication on mount
+  useEffect(() => {
+    base44.auth.isAuthenticated().then(authed => {
+      setIsAuthenticated(authed);
+    });
+  }, []);
 
   const runTest = async (test) => {
     setLoadingTests(prev => new Set([...prev, test.id]));
     try {
+      // Pass the full proposal so backend can validate all fields
       const res = await base44.functions.invoke('executeOpenClawProposal', {
         proposalId: test.proposal.proposalId,
+        status: test.proposal.status,
+        commandType: test.proposal.commandType,
+        targetUrl: test.proposal.targetUrl,
+        selector: test.proposal.selector,
+        riskTier: test.proposal.riskTier,
+        governanceMode: test.proposal.governanceMode,
       });
 
-      const actualResult = res.data?.error ? 'BLOCKED' : 'SUCCESS';
+      // Determine actual result based on backend response
+      // BLOCKED is when backend validation fails (validationErrors present or status indicates failure)
+      const hasValidationErrors = res.data?.validationErrors && res.data.validationErrors.length > 0;
+      const backendStatus = res.data?.backendValidationStatus;
+      const actualResult = (hasValidationErrors || backendStatus === 'FAILED') ? 'BLOCKED' : 'SUCCESS';
       const passed = actualResult === test.expectedResult;
 
       setResults(prev => ({
@@ -203,15 +228,20 @@ export default function ExecutionSafetyTests() {
           expectedResult: test.expectedResult,
           actualResult,
           passed,
-          backendValidationStatus: res.data?.backendValidationStatus || 'UNKNOWN',
+          backendValidationStatus: backendStatus || 'UNKNOWN',
           executionStatus: res.data?.status || res.data?.executionStatus || null,
           executionMode: res.data?.executionMode || null,
           auditTraceId: res.data?.auditTraceId || null,
           error: res.data?.error || null,
           validationErrors: res.data?.validationErrors || null,
+          transportError: null,
         },
       }));
     } catch (err) {
+      // Distinguish auth errors from other transport errors
+      const isAuthError = err.response?.status === 401 || err.response?.status === 403;
+      const transportError = isAuthError ? 'AUTH_FAILED' : 'TRANSPORT_ERROR';
+      
       setResults(prev => ({
         ...prev,
         [test.id]: {
@@ -224,6 +254,7 @@ export default function ExecutionSafetyTests() {
           auditTraceId: null,
           error: err.message,
           validationErrors: null,
+          transportError,
         },
       }));
     } finally {
@@ -246,6 +277,44 @@ export default function ExecutionSafetyTests() {
 
   const passedCount = Object.values(results).filter(r => r?.passed).length;
   const totalRun = Object.keys(results).length;
+
+  // Show auth required message if not authenticated
+  if (isAuthenticated === false) {
+    return (
+      <div className="bg-card border border-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <div>
+              <div className="text-[11px] font-semibold text-foreground">Execution Safety Tests</div>
+              <div className="text-[9px] text-muted-foreground/60">Validate proposal validation and governance enforcement</div>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-8 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2 text-destructive">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-[11px] font-semibold">Authentication Required</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground/70 max-w-sm mx-auto">
+            Tests require an authenticated session. Please log in to run the safety validation suite.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while checking auth
+  if (isAuthenticated === null) {
+    return (
+      <div className="bg-card border border-border p-6">
+        <div className="flex items-center justify-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+          <span className="text-[10px] text-muted-foreground">Checking authentication...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-card border border-border">
@@ -280,7 +349,7 @@ export default function ExecutionSafetyTests() {
         <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
         <div className="text-[9px] text-muted-foreground/70 leading-relaxed">
           These tests validate that the backend endpoint correctly enforces governance rules, domain allowlists, and command restrictions.
-          Execution mode is SIMULATED by default. LIVE execution is not yet implemented.
+          Expected BLOCKED results indicate successful governance enforcement. Execution mode is SIMULATED by default.
         </div>
       </div>
 
