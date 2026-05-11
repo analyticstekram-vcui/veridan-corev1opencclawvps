@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, AlertCircle, Eye, Activity, Loader2, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
+import OverviewVerificationPanel from './OverviewVerificationPanel';
 
 const MODULES = [
   { id: 'status', name: 'Status', icon: '⚡', description: 'Gateway health & connectivity' },
@@ -188,6 +189,9 @@ export default function UnifiedOpenClawOverviewPanel() {
           <div className="text-[12px] font-semibold text-orange-500">{counters.critical > 0 ? 'CRITICAL' : counters.highRisk > 0 ? 'HIGH' : 'NORMAL'}</div>
         </div>
       </div>
+
+      {/* Overview Verification Pass */}
+      <OverviewVerificationPanel activeView="overview" />
 
       {/* Alerts strip */}
       {(counters.critical > 0 || counters.highRisk > 0) && (
