@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ChevronDown, ChevronUp, AlertTriangle, Lock, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, AlertTriangle, Lock, Zap, Play } from 'lucide-react';
 import { format } from 'date-fns';
 
-function QueueEntryRow({ entry, expanded, onToggle }) {
+function QueueEntryRow({ entry, expanded, onToggle, onExecute }) {
   const statusColors = {
     QUEUED: 'border-accent/30 bg-accent/5 text-accent',
     READY: 'border-primary/30 bg-primary/5 text-primary',
@@ -116,35 +116,64 @@ function QueueEntryRow({ entry, expanded, onToggle }) {
                   <div className="text-[9px] text-foreground/70">{entry.notes}</div>
                 </div>
               )}
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
+
+              {/* Execute button — only for QUEUED or READY states */}
+              {['QUEUED', 'READY'].includes(entry.status) && (
+                <button
+                  onClick={() => onExecute(entry.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-accent/30 bg-accent/10 text-[9px] text-accent uppercase tracking-wider font-semibold hover:bg-accent/20 transition-colors"
+                >
+                  <Play className="w-3 h-3" /> Execute Now
+                </button>
+              )}
+              </div>
+              </td>
+              </tr>
+              )}
+              </>
+              );
+              }
 
 export default function ExecutionQueuePanel() {
   const [queueEntries, setQueueEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [executing, setExecuting] = useState(null);
+
+  const loadQueue = async () => {
+    try {
+      setLoading(true);
+      const entries = await base44.entities.ExecutionQueue.list();
+      setQueueEntries(entries || []);
+    } catch (err) {
+      console.warn('Failed to load execution queue:', err.message);
+      setQueueEntries([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadQueue = async () => {
-      try {
-        setLoading(true);
-        const entries = await base44.entities.ExecutionQueue.list();
-        setQueueEntries(entries || []);
-      } catch (err) {
-        console.warn('Failed to load execution queue:', err.message);
-        setQueueEntries([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadQueue();
   }, []);
+
+  const handleExecute = async (queueId) => {
+    if (!confirm('Execute this queued command?')) return;
+    setExecuting(queueId);
+    try {
+      const res = await base44.functions.invoke('executeQueuedCommand', { queueId });
+      if (res.data?.success) {
+        await loadQueue();
+        alert('Command executed successfully!');
+      } else {
+        alert('Execution failed: ' + (res.data?.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Execution error: ' + (err.message || 'Unknown error'));
+    } finally {
+      setExecuting(null);
+    }
+  };
 
   if (queueEntries.length === 0 && !loading) {
     return (
@@ -171,11 +200,15 @@ export default function ExecutionQueuePanel() {
         </div>
       </div>
 
-      {/* Warning */}
-      <div className="flex items-start gap-2 px-4 py-2.5 border-b border-amber-500/20 bg-amber-500/5">
-        <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
-        <span className="text-[9px] uppercase tracking-wider text-amber-500/80 font-semibold">
-          Execution bridge is not enabled yet. Queueing only.
+      {/* Warning or Info */}
+      <div className={`flex items-start gap-2 px-4 py-2.5 border-b ${executing ? 'border-primary/20 bg-primary/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
+        {executing ? (
+          <Lock className="w-3 h-3 text-primary shrink-0 mt-0.5" />
+        ) : (
+          <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+        )}
+        <span className={`text-[9px] uppercase tracking-wider font-semibold ${executing ? 'text-primary/80' : 'text-amber-500/80'}`}>
+          {executing ? 'Executing command…' : 'Click "Execute Now" on QUEUED items to process them.'}
         </span>
       </div>
 
@@ -199,6 +232,7 @@ export default function ExecutionQueuePanel() {
                   entry={entry}
                   expanded={expandedId === entry.id}
                   onToggle={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
+                  onExecute={handleExecute}
                 />
               ))}
             </tbody>

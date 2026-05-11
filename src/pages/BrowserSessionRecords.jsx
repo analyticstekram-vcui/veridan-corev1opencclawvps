@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { ChevronDown, ChevronUp, Monitor, Shield, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Monitor, Shield, Loader2, AlertCircle, Download, Search, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 function SessionDetailRow({ session, expanded, onToggle }) {
@@ -139,6 +139,51 @@ export default function BrowserSessionRecords() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedSessionId, setExpandedSessionId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredSessions = sessions.filter(s => {
+    const matchesSearch = searchQuery.length === 0 || 
+      s.sessionId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.currentUrl?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.pageTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.createdBy?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const exportAsJSON = () => {
+    const dataStr = JSON.stringify(filteredSessions, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `browser-sessions-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportAsCSV = () => {
+    const headers = ['Session ID', 'Status', 'Mode', 'Created By', 'Current URL', 'Page Title', 'Created', 'Audit Entries'];
+    const rows = filteredSessions.map(s => [
+      s.sessionId,
+      s.status,
+      s.mode,
+      s.createdBy,
+      s.currentUrl,
+      s.pageTitle,
+      s.createdAt ? format(new Date(s.createdAt), 'yyyy-MM-dd HH:mm:ss') : '—',
+      Array.isArray(s.auditTrail) ? s.auditTrail.length : 0,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `browser-sessions-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     const loadSessions = async () => {
@@ -177,14 +222,30 @@ export default function BrowserSessionRecords() {
       </div>
 
       <div className="p-6 max-w-full space-y-4">
-        {/* Navigation */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Navigation and Controls */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <Link
             to="/browser-session"
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-primary/30 bg-primary/5 text-[9px] text-primary uppercase tracking-wider font-semibold hover:bg-primary/10 transition-colors"
           >
             <Monitor className="w-3 h-3" /> Back to Browser Session
           </Link>
+          {!loading && sessions.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={exportAsJSON}
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-accent/30 bg-accent/5 text-[9px] text-accent uppercase tracking-wider font-semibold hover:bg-accent/10 transition-colors"
+              >
+                <Download className="w-3 h-3" /> JSON
+              </button>
+              <button
+                onClick={exportAsCSV}
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-accent/30 bg-accent/5 text-[9px] text-accent uppercase tracking-wider font-semibold hover:bg-accent/10 transition-colors"
+              >
+                <Download className="w-3 h-3" /> CSV
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Error */}
@@ -203,13 +264,53 @@ export default function BrowserSessionRecords() {
           </div>
         )}
 
+        {/* Search and Filters */}
+        {!loading && !error && sessions.length > 0 && (
+          <div className="space-y-3 p-4 bg-secondary/10 border border-border/50">
+            <div className="flex items-center gap-2 relative">
+              <Search className="w-3.5 h-3.5 text-muted-foreground/40 absolute left-2.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by session ID, URL, title, or creator…"
+                className="flex-1 pl-8 pr-3 py-2 bg-secondary/30 border border-border text-[10px] text-foreground placeholder:text-muted-foreground/30 outline-none focus:border-primary/40 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="px-2 py-1 text-muted-foreground/40 hover:text-muted-foreground"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[8px] uppercase tracking-widest text-muted-foreground/40">Status:</span>
+              {['all', 'active', 'idle', 'ended', 'error'].map(status => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-2.5 py-1 border text-[8px] uppercase tracking-wider font-semibold transition-colors ${
+                    statusFilter === status
+                      ? 'border-primary/30 bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground/50 hover:text-muted-foreground'
+                  }`}
+                >
+                  {status === 'all' ? 'All' : status}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Sessions table */}
         {!loading && !error && (
           <>
             <div className="text-[9px] text-muted-foreground/40 uppercase tracking-widest mb-2">
-              {sessions.length} session{sessions.length !== 1 ? 's' : ''} found
+              {filteredSessions.length} of {sessions.length} session{sessions.length !== 1 ? 's' : ''} found
             </div>
-            {sessions.length > 0 ? (
+            {filteredSessions.length > 0 ? (
               <div className="border border-border overflow-x-auto rounded-sm">
                 <table className="w-full text-[10px]">
                   <thead className="bg-secondary/30 border-b border-border/30">
@@ -227,7 +328,7 @@ export default function BrowserSessionRecords() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/20">
-                    {sessions.map(session => (
+                    {filteredSessions.map(session => (
                       <SessionDetailRow
                         key={session.id}
                         session={session}
@@ -238,9 +339,13 @@ export default function BrowserSessionRecords() {
                   </tbody>
                 </table>
               </div>
-            ) : (
+            ) : sessions.length === 0 ? (
               <div className="bg-secondary/10 border border-border/50 px-4 py-4 text-[11px] text-muted-foreground/40 italic">
                 No browser session records found. Start a session on the Browser Session page.
+              </div>
+            ) : (
+              <div className="bg-secondary/10 border border-border/50 px-4 py-4 text-[11px] text-muted-foreground/40 italic">
+                No sessions match the current filters.
               </div>
             )}
           </>
