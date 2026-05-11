@@ -1,0 +1,78 @@
+{
+  "name": "BrowserSession",
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "description": "Unique session identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "inactive",
+        "active",
+        "ended",
+        "error"
+      ],
+      "default": "inactive"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "real_browser",
+        "simulated"
+      ],
+      "default": "real_browser"
+    },
+    "governance": {
+      "type": "string",
+      "enum": [
+        "safe_read_only"
+      ],
+      "default": "safe_read_only"
+    },
+    "currentUrl": {
+      "type": "string"
+    },
+    "pageTitle": {
+      "type": "string"
+    },
+    "lastAction": {
+      "type": "string",
+      "enum": [
+        "start",
+        "navigate",
+        "read_title",
+        "read_page_text",
+        "screenshot",
+        "end"
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "auditTrail": {
+      "type": "array",
+      "description": "Ordered log of all session actions",
+      "items": {
+        "type": "object"
+      }
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "endedAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "createdBy"
+  ]
+}

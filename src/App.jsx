@@ -10,6 +10,7 @@ import CreditLedger from './pages/CreditLedger';
 import OpenClawControl from './pages/OpenClawControl';
 import BrowserControl from './pages/BrowserControl';
 import CommandQueue from './pages/CommandQueue';
+import BrowserSession from './pages/BrowserSession';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -43,6 +44,7 @@ const AuthenticatedApp = () => {
       <Route path="/openclaw-control" element={<OpenClawControl />} />
       <Route path="/browser-control" element={<BrowserControl />} />
       <Route path="/command-queue" element={<CommandQueue />} />
+      <Route path="/browser-session" element={<BrowserSession />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
