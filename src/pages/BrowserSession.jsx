@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Monitor, Wifi, WifiOff, Shield, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Monitor, Wifi, WifiOff, Shield, AlertTriangle, Database } from 'lucide-react';
 import BrowserStatusCards from '@/components/browser-control/BrowserStatusCards';
 import BrowserCommandPanel from '@/components/browser-control/BrowserCommandPanel';
 import BridgeResponsePanel from '@/components/browser-control/BridgeResponsePanel';
@@ -272,6 +273,16 @@ export default function BrowserSession() {
       </div>
 
       <div className="p-6 max-w-3xl space-y-5">
+
+        {/* ── Navigation ── */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            to="/browser-session-records"
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-primary/30 bg-primary/5 text-[9px] text-primary uppercase tracking-wider font-semibold hover:bg-primary/10 transition-colors"
+          >
+            <Database className="w-3 h-3" /> View Session Records
+          </Link>
+        </div>
 
         {/* ── System Status Cards ── */}
         <div>

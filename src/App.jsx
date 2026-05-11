@@ -11,6 +11,7 @@ import OpenClawControl from './pages/OpenClawControl';
 import BrowserControl from './pages/BrowserControl';
 import CommandQueue from './pages/CommandQueue';
 import BrowserSession from './pages/BrowserSession';
+import BrowserSessionRecords from './pages/BrowserSessionRecords';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -45,6 +46,7 @@ const AuthenticatedApp = () => {
       <Route path="/browser-control" element={<BrowserControl />} />
       <Route path="/command-queue" element={<CommandQueue />} />
       <Route path="/browser-session" element={<BrowserSession />} />
+      <Route path="/browser-session-records" element={<BrowserSessionRecords />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
