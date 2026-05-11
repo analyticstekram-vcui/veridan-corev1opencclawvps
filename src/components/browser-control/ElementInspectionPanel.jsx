@@ -163,11 +163,51 @@ function isVpsPending(result) {
   return false;
 }
 
+// ── Type chip config ─────────────────────────────────────────────────────────
+const TYPE_CHIPS = [
+  { id: 'all',    label: 'All' },
+  { id: 'a',      label: 'Link' },
+  { id: 'button', label: 'Button' },
+  { id: 'input',  label: 'Input' },
+  { id: 'form',   label: 'Form' },
+  { id: 'other',  label: 'Other' },
+];
+
+const KNOWN_TYPES = new Set(['a', 'button', 'input', 'form']);
+
+function matchesSearch(el, q) {
+  if (!q) return true;
+  const lower = q.toLowerCase();
+  return (
+    (el.text     || '').toLowerCase().includes(lower) ||
+    (el.type     || '').toLowerCase().includes(lower) ||
+    (el.tag      || '').toLowerCase().includes(lower) ||
+    (el.href     || '').toLowerCase().includes(lower) ||
+    (el.selector || '').toLowerCase().includes(lower)
+  );
+}
+
+function matchesType(el, chip) {
+  if (chip === 'all') return true;
+  const t = (el.type || el.tag || '').toLowerCase();
+  if (chip === 'other') return !KNOWN_TYPES.has(t);
+  return t === chip;
+}
+
+function matchesVisibility(el, vis) {
+  if (vis === 'visible') return el.visible === true;
+  if (vis === 'enabled') return el.enabled !== false;
+  return true;
+}
+
 export default function ElementInspectionPanel({ result, selectedElement, onSelectElement }) {
   const setSelectedElement = onSelectElement;
 
-  if (!result) return null;
+  const [search,     setSearch]     = useState('');
+  const [typeChip,   setTypeChip]   = useState('all');
+  const [visFilter,  setVisFilter]  = useState('all');
 
+  if (!result) return null;
   if (isVpsPending(result)) return <VpsPendingWarning />;
 
   // Support both normalized (_normalized flag) and legacy inspection shape
@@ -177,15 +217,15 @@ export default function ElementInspectionPanel({ result, selectedElement, onSele
     : (result.raw?.inspection?.elements || result.inspection?.elements || []).slice(0, 50);
 
   const stats = isNormalized ? {
-    totalElements:  result.totalElements,
-    visibleButtons: result.buttons,
-    visibleLinks:   result.links,
-    visibleInputs:  result.inputs,
-    detectedForms:  result.forms,
-    visibleElements:result.visibleElements,
-    enabledElements:result.enabledElements,
-    pageTitle:      result.pageTitle,
-    currentUrl:     result.finalUrl,
+    totalElements:   result.totalElements,
+    visibleButtons:  result.buttons,
+    visibleLinks:    result.links,
+    visibleInputs:   result.inputs,
+    detectedForms:   result.forms,
+    visibleElements: result.visibleElements,
+    enabledElements: result.enabledElements,
+    pageTitle:       result.pageTitle,
+    currentUrl:      result.finalUrl,
   } : (() => {
     const insp = result.raw?.inspection || result.inspection || {};
     return {
@@ -204,6 +244,15 @@ export default function ElementInspectionPanel({ result, selectedElement, onSele
     : JSON.stringify(result.raw || {}, null, 2).slice(0, 10000);
 
   if (!isNormalized && !result.raw?.inspection && !result.inspection) return null;
+
+  // ── Client-side filtering (no bridge calls) ─────────────────────────────────
+  const filtered = elements.filter(el =>
+    matchesSearch(el, search) &&
+    matchesType(el, typeChip) &&
+    matchesVisibility(el, visFilter)
+  );
+
+  const filtersActive = search || typeChip !== 'all' || visFilter !== 'all';
 
   return (
     <div className="bg-card border border-border">
@@ -233,25 +282,106 @@ export default function ElementInspectionPanel({ result, selectedElement, onSele
           )}
         </div>
 
-        {/* Elements table — capped at 50 */}
+        {/* ── Filter Controls ── */}
+        {elements.length > 0 && (
+          <div className="space-y-2.5 border border-border/50 bg-secondary/10 px-3 py-3">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40">Filter Elements</div>
+
+            {/* Search input */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/40 pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by text, type, tag, href, selector…"
+                className="w-full pl-7 pr-3 py-1.5 bg-secondary/50 border border-border text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 outline-none focus:border-primary/40 transition-colors"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Type chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {TYPE_CHIPS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setTypeChip(id)}
+                  className={`px-2.5 py-1 border text-[9px] uppercase tracking-wider transition-colors font-semibold ${
+                    typeChip === id
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary/50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Visibility filter */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[8px] uppercase tracking-widest text-muted-foreground/30 mr-1">Visibility:</span>
+              {[['all', 'All'], ['visible', 'Visible Only'], ['enabled', 'Enabled Only']].map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setVisFilter(id)}
+                  className={`px-2.5 py-1 border text-[9px] uppercase tracking-wider transition-colors font-semibold ${
+                    visFilter === id
+                      ? 'border-accent/50 bg-accent/10 text-accent'
+                      : 'border-border text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary/50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Count indicator */}
+            <div className="flex items-center gap-2 text-[9px] font-mono">
+              <span className={filtersActive ? 'text-primary font-semibold' : 'text-muted-foreground/40'}>
+                {filtered.length} of {elements.length} elements
+              </span>
+              {filtersActive && (
+                <button
+                  onClick={() => { setSearch(''); setTypeChip('all'); setVisFilter('all'); }}
+                  className="text-muted-foreground/40 hover:text-muted-foreground underline text-[9px] uppercase tracking-wider"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Elements table */}
         {elements.length > 0 ? (
           <div className="border border-border">
             <div className="grid grid-cols-[16px_80px_1fr_auto_auto] gap-2 px-3 py-1.5 text-[8px] uppercase tracking-widest text-muted-foreground/30 bg-secondary/10 border-b border-border/30">
               <div /><div>Type</div><div>Text</div><div>Visible</div><div>Enabled</div>
             </div>
             <div className="max-h-80 overflow-auto divide-y divide-border/20">
-              {elements.map((el, i) => (
+              {filtered.length > 0 ? filtered.map((el, i) => (
                 <ElementRow
                   key={i}
                   el={el}
                   selected={selectedElement === el}
                   onSelect={setSelectedElement}
                 />
-              ))}
+              )) : (
+                <div className="px-4 py-4 text-[10px] text-muted-foreground/40 font-mono italic">
+                  No elements match the current filters.
+                </div>
+              )}
             </div>
             {stats.totalElements > 50 && (
               <div className="px-4 py-2 text-[9px] text-muted-foreground/40 border-t border-border/30">
-                Showing first 50 of {stats.totalElements} elements.
+                Showing first 50 of {stats.totalElements} elements. {filtersActive && `${filtered.length} match filters.`}
               </div>
             )}
           </div>
@@ -259,7 +389,7 @@ export default function ElementInspectionPanel({ result, selectedElement, onSele
           <div className="text-[11px] text-muted-foreground/40 font-mono py-2">No elements returned.</div>
         )}
 
-        {/* Selected Element Panel */}
+        {/* Selected Element Panel — always visible when an element is selected */}
         {selectedElement && (
           <SelectedElementPanel el={selectedElement} onClear={() => setSelectedElement(null)} />
         )}
