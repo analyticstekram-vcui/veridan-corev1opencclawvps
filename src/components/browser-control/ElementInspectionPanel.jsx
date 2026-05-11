@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, AlertTriangle, Code2 } from 'lucide-react';
 
 function StatCard({ label, value }) {
   return (
@@ -51,30 +51,72 @@ function ElementRow({ el }) {
   );
 }
 
+function VpsPendingWarning() {
+  return (
+    <div className="bg-card border border-border">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
+        <Search className="w-3.5 h-3.5 text-amber-500" />
+        <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Element Inspection Results</span>
+      </div>
+      <div className="p-4 space-y-3">
+        <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/30">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <div className="text-[11px] text-amber-500 font-semibold">Frontend is ready. VPS bridge needs INSPECT_ELEMENTS support.</div>
+            <div className="text-[10px] text-amber-500/70 font-mono">
+              Add handler in{' '}
+              <code className="px-1 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                /opt/veridan-safe-bridge/server.js
+              </code>
+            </div>
+          </div>
+        </div>
+        <div className="bg-secondary/30 border border-border px-3 py-2.5 space-y-1">
+          <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-1.5">
+            <Code2 className="w-3 h-3" /> Expected handler signature
+          </div>
+          <pre className="text-[10px] text-muted-foreground/70 font-mono leading-relaxed overflow-auto">{`case 'INSPECT_ELEMENTS':
+  const elements = await page.evaluate(() => {
+    return [...document.querySelectorAll('button,a,input,select,textarea,form')]
+      .map(el => ({
+        type:    el.tagName.toLowerCase(),
+        text:    el.innerText?.slice(0, 80) || el.value || '',
+        selector: el.id ? '#'+el.id : el.className?.split(' ')[0] || el.tagName,
+        visible: el.offsetParent !== null,
+        enabled: !el.disabled,
+        href:    el.href || null,
+      }));
+  });
+  res.json({ status: 'success', inspection: {
+    totalElements:  elements.length,
+    visibleButtons: elements.filter(e => e.type==='button' && e.visible).length,
+    visibleLinks:   elements.filter(e => e.type==='a'      && e.visible).length,
+    visibleInputs:  elements.filter(e => e.type==='input'  && e.visible).length,
+    detectedForms:  elements.filter(e => e.type==='form').length,
+    elements,
+  }});
+  break;`}</pre>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function isVpsPending(result) {
+  if (!result) return false;
+  const errMsg = (result.error || '').toLowerCase();
+  if (errMsg.includes('unsupported command') || errMsg.includes('not supported') || errMsg.includes('backend command not available')) return true;
+  // Also catches blocked/failed with no inspection payload
+  if (result.commandType === 'INSPECT_ELEMENTS' && result.status !== 'success' && !result.raw?.inspection && !result.inspection) return true;
+  return false;
+}
+
 export default function ElementInspectionPanel({ result }) {
   if (!result) return null;
 
-  // Backend not yet supporting INSPECT_ELEMENTS — show clean message
-  if (result.error && result.error.includes('not supported')) {
-    return (
-      <div className="bg-card border border-border p-4">
-        <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-3">Element Inspection Results</div>
-        <div className="text-[11px] text-muted-foreground/50 font-mono">Backend command not available yet.</div>
-      </div>
-    );
-  }
+  if (isVpsPending(result)) return <VpsPendingWarning />;
 
   const inspection = result.raw?.inspection || result.inspection || null;
-
-  // No inspection data in response at all
-  if (!inspection && result.commandType === 'INSPECT_ELEMENTS' && result.status !== 'success') {
-    return (
-      <div className="bg-card border border-border p-4">
-        <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-3">Element Inspection Results</div>
-        <div className="text-[11px] text-muted-foreground/50 font-mono">Backend command not available yet.</div>
-      </div>
-    );
-  }
 
   if (!inspection) return null;
 

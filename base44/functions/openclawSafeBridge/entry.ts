@@ -9,6 +9,7 @@ const ALLOWED_COMMAND_TYPES = new Set([
   'OPEN_URL_AND_SCREENSHOT',
   'START_SESSION',
   'SESSION_STATUS',
+  'INSPECT_ELEMENTS',
 ]);
 
 const auditLog = [];
