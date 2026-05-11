@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ChevronRight, ChevronDown, FileText, Trash2, AlertTriangle, Clock, Zap } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Trash2, AlertTriangle, Clock, Zap, Play, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STORAGE_KEY = 'veridan_browser_action_proposals_v1';
@@ -60,6 +60,7 @@ export function clearProposals() {
 function AuditRow({ proposal, index, onUpdateProposal }) {
   const [expanded, setExpanded] = useState(false);
   const [reviewNote, setReviewNote] = useState(proposal.reviewNote || '');
+  const [executing, setExecuting] = useState(false);
 
   // Status color mapping
   const statusColors = {
@@ -147,6 +148,47 @@ function AuditRow({ proposal, index, onUpdateProposal }) {
     }
   };
 
+  const handleExecuteApproved = async () => {
+    if (!proposal.proposalId) {
+      alert('Proposal ID missing');
+      return;
+    }
+
+    setExecuting(true);
+    try {
+      const res = await base44.functions.invoke('executeOpenClawProposal', {
+        proposalId: proposal.proposalId,
+      });
+
+      const updated = {
+        ...proposal,
+        executionStatus: res.data?.status === 'success' ? 'SUCCESS' : 'FAILED',
+        executionMode: res.data?.executionMode || 'UNKNOWN',
+        executedAt: res.data?.executedAt || new Date().toISOString(),
+        executionResult: res.data?.result || res.data?.message || null,
+        executionError: res.data?.error || null,
+        backendValidationStatus: res.data?.backendValidationStatus || 'UNKNOWN',
+        auditTraceId: res.data?.auditTraceId || null,
+      };
+
+      onUpdateProposal(index, updated);
+      alert(`Execution ${updated.executionStatus}: ${updated.auditTraceId}`);
+    } catch (err) {
+      const updated = {
+        ...proposal,
+        executionStatus: 'FAILED',
+        executionError: err.message,
+        backendValidationStatus: 'ERROR',
+        auditTraceId: `error_${Date.now()}`,
+      };
+      onUpdateProposal(index, updated);
+      alert('Execution failed: ' + err.message);
+      console.error('Execution error:', err);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
   return (
     <div key={index} className="border-b border-border/20 last:border-0">
       {/* Summary row */}
@@ -184,6 +226,54 @@ function AuditRow({ proposal, index, onUpdateProposal }) {
               <span className="text-[9px] text-amber-500/80 uppercase tracking-wider">
                 Approved for governance review only. Backend execution is not enabled yet.
               </span>
+            </div>
+          )}
+
+          {/* Execution status section */}
+          {proposal.executionStatus && (
+            <div className={`px-3 py-2 border ${
+              proposal.executionStatus === 'SUCCESS'
+                ? 'bg-primary/5 border-primary/20'
+                : 'bg-destructive/5 border-destructive/20'
+            }`}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[9px]">
+                <div>
+                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Status</div>
+                  <div className={`font-semibold ${proposal.executionStatus === 'SUCCESS' ? 'text-primary' : 'text-destructive'}`}>
+                    {proposal.executionStatus}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Mode</div>
+                  <div className="text-muted-foreground/80">{proposal.executionMode}</div>
+                </div>
+                <div>
+                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Validation</div>
+                  <div className="text-muted-foreground/80">{proposal.backendValidationStatus}</div>
+                </div>
+                <div>
+                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Trace ID</div>
+                  <div className="text-muted-foreground/60 font-mono text-[8px] truncate">{proposal.auditTraceId?.slice(0, 16)}...</div>
+                </div>
+                {proposal.executedAt && (
+                  <div className="col-span-2">
+                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Executed At</div>
+                    <div className="text-muted-foreground/80 font-mono text-[9px]">{format(new Date(proposal.executedAt), 'HH:mm:ss')}</div>
+                  </div>
+                )}
+                {proposal.executionResult && (
+                  <div className="col-span-2">
+                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Result</div>
+                    <div className="text-muted-foreground/80 text-[9px] break-all">{proposal.executionResult}</div>
+                  </div>
+                )}
+                {proposal.executionError && (
+                  <div className="col-span-2">
+                    <div className="text-[8px] uppercase tracking-widest text-destructive/60 mb-0.5">Error</div>
+                    <div className="text-destructive/80 text-[9px] break-all font-mono">{proposal.executionError}</div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -276,6 +366,18 @@ function AuditRow({ proposal, index, onUpdateProposal }) {
             )}
             {proposal.status === 'APPROVED' && (
               <>
+                <button
+                  onClick={handleExecuteApproved}
+                  disabled={executing}
+                  className="px-2.5 py-1 border border-primary/30 bg-primary/10 text-[9px] text-primary uppercase tracking-wider hover:bg-primary/20 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  {executing ? (
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  ) : (
+                    <Play className="w-2.5 h-2.5" />
+                  )}
+                  Execute Approved
+                </button>
                 <button
                   onClick={handleQueueForExecution}
                   className="px-2.5 py-1 border border-accent/30 bg-accent/10 text-[9px] text-accent uppercase tracking-wider hover:bg-accent/20 transition-colors font-semibold flex items-center gap-1"
