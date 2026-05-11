@@ -15,6 +15,7 @@ import ExecutedCommandAuditView from '@/components/openclaw/ExecutedCommandAudit
 import CommandApprovalWorkflowPanel from '@/components/openclaw/CommandApprovalWorkflowPanel';
 import GovernancePolicyRegistryPanel from '@/components/openclaw/GovernancePolicyRegistryPanel';
 import ConnectorHealthMatrixPanel from '@/components/openclaw/ConnectorHealthMatrixPanel';
+import RiskPermissionMatrixPanel from '@/components/openclaw/RiskPermissionMatrixPanel';
 
 export default function OpenClawControl() {
   const [status, setStatus] = useState(null);
@@ -104,7 +105,7 @@ export default function OpenClawControl() {
             className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5">
             <Monitor className="w-3 h-3" /> Browser Session
           </Link>
-          {[['status', 'Status'], ['safe_bridge', '⚡ Safe Command Test'], ['safety_tests', '🛡️ Safety Tests'], ['readiness_gate', '🔐 Readiness Gate'], ['approval_workflow', 'Approval Workflow'], ['policy_registry', 'Policy Registry'], ['connectors', 'Connectors'], ['audit', 'Executed Commands'], ['workflows', 'Workflows'], ['nodes', 'Node Registry'], ['logs', 'Live Logs'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
+          {[['status', 'Status'], ['safe_bridge', '⚡ Safe Command Test'], ['safety_tests', '🛡️ Safety Tests'], ['readiness_gate', '🔐 Readiness Gate'], ['approval_workflow', 'Approval Workflow'], ['policy_registry', 'Policy Registry'], ['connectors', 'Connectors'], ['risk_matrix', 'Risk Matrix'], ['audit', 'Executed Commands'], ['workflows', 'Workflows'], ['nodes', 'Node Registry'], ['logs', 'Live Logs'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
             <button key={id} onClick={() => setActiveView(id)}
               className={`px-3 py-1.5 text-[11px] border transition-colors ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
               {label}
@@ -152,6 +153,13 @@ export default function OpenClawControl() {
       {activeView === 'connectors' && (
         <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
           <ConnectorHealthMatrixPanel />
+        </div>
+      )}
+
+      {/* Risk & Permission Matrix Panel */}
+      {activeView === 'risk_matrix' && (
+        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+          <RiskPermissionMatrixPanel />
         </div>
       )}
 
