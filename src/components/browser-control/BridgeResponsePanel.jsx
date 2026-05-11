@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2, XCircle, Camera } from 'lucide-react';
+import ElementInspectionPanel from './ElementInspectionPanel';
 
 function resolveScreenshot(result) {
   const screenshotBase64 = result.screenshotBase64 || result.screenshot_base64 || null;
@@ -131,6 +132,11 @@ export default function BridgeResponsePanel({ result }) {
           </details>
         )}
       </div>
+
+      {/* ── Element Inspection Panel ── */}
+      {result.commandType === 'INSPECT_ELEMENTS' && (
+        <ElementInspectionPanel result={result} />
+      )}
 
       {/* ── Screenshot Preview Panel ── */}
       {isScreenshotCmd && (

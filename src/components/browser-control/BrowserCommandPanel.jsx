@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Camera, Play, RefreshCw, AlertTriangle, Ban, Loader2 } from 'lucide-react';
+import { Globe, Camera, Play, RefreshCw, AlertTriangle, Ban, Loader2, Search } from 'lucide-react';
 
 const TRADINGVIEW_URL = 'https://www.tradingview.com';
 
@@ -16,6 +16,7 @@ const COMMANDS = [
   { id: 'START_SESSION',           label: 'Start Session',          icon: Play,       fixedUrl: TRADINGVIEW_URL, primary: true },
   { id: 'OPEN_URL_AND_READ_TITLE', label: 'Navigate & Read Title',  icon: Globe,      fixedUrl: null },
   { id: 'OPEN_URL_AND_SCREENSHOT', label: 'Capture Screenshot',     icon: Camera,     fixedUrl: null },
+  { id: 'INSPECT_ELEMENTS',        label: 'Inspect Page Elements',  icon: Search,     fixedUrl: null },
 ];
 
 export default function BrowserCommandPanel({ targetUrl, onUrlChange, onInvoke, running }) {
