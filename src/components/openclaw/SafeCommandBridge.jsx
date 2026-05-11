@@ -9,6 +9,10 @@ import {
 const COMMAND_TYPES = [
   { id: 'OPEN_URL_AND_READ_TITLE',  label: 'Read Title',    icon: FileText },
   { id: 'OPEN_URL_AND_SCREENSHOT',  label: 'Screenshot',    icon: Camera  },
+  { id: 'SESSION_STATUS',           label: 'Session Status', icon: Shield  },
+  { id: 'START_SESSION',            label: 'Start Session',  icon: Play    },
+  { id: 'NAVIGATE',                 label: 'Navigate',       icon: Globe   },
+  { id: 'SCREENSHOT',               label: 'Screenshot (v2)',icon: Camera  },
 ];
 
 // Client-side URL block patterns (server is final authority)
@@ -99,6 +103,20 @@ function ResultPanel({ result, uiStatus }) {
                   </span>
                 </div>
               )}
+            </div>
+          )}
+
+          {(result.screenshotBase64 || result.screenshotUrl) && (
+            <div className="bg-secondary/30 border border-border px-3 py-2 col-span-2">
+              <div className="text-muted-foreground/50 uppercase tracking-wider mb-1.5 text-[9px]">Screenshot Preview</div>
+              {(() => {
+                const src = result.screenshotBase64
+                  ? `data:image/png;base64,${result.screenshotBase64}`
+                  : result.screenshotUrl;
+                return src.startsWith('data:') || src.startsWith('http')
+                  ? <img src={src} alt="Screenshot" className="w-full rounded border border-border/50 max-h-80 object-contain" />
+                  : <div className="text-blue-400 font-mono text-[11px] break-all">{src}</div>;
+              })()}
             </div>
           )}
 
@@ -257,7 +275,7 @@ export default function SafeCommandBridge() {
         <div>
           <h2 className="text-[13px] font-semibold tracking-wider text-foreground">SAFE BROWSER COMMAND BRIDGE</h2>
           <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">
-            Live · openclaw.veridancore.com/api/safe-command · Read-only governance
+            Live · bridge.veridancore.com via openclawSafeBridge · Read-only governance
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 border border-primary/30 bg-primary/5">
@@ -269,7 +287,7 @@ export default function SafeCommandBridge() {
       {/* Command Builder */}
       <div className="bg-card border border-border p-4 space-y-4">
         <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50">
-          Command Builder · CF-Access secured
+        Command Builder · Veridan Bridge secured · Token server-side only
         </div>
 
         {/* Target URL */}
@@ -329,7 +347,7 @@ export default function SafeCommandBridge() {
           <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-[9px] text-amber-500/70 leading-relaxed">
             Safe read-only mode only. No login, no form submission, no trading, no credentials.
-            CF-Access service tokens sent server-side only — never exposed to browser.
+            VERIDAN_BRIDGE_TOKEN sent server-side only via openclawSafeBridge — never exposed to browser.
           </div>
         </div>
       </div>

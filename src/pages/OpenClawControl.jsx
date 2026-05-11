@@ -18,11 +18,21 @@ export default function OpenClawControl() {
   const [activeView, setActiveView] = useState('status'); // 'status' | 'queue'
   const intervalRef = useRef(null);
 
+  const [bridgeStatus, setBridgeStatus] = useState(null);
+
   const fetchStatus = async () => {
     setLoading(true);
     try {
-      const res = await base44.functions.invoke('openclawStatus', {});
-      setStatus(res.data);
+      const [statusRes, bridgeRes] = await Promise.allSettled([
+        base44.functions.invoke('openclawStatus', {}),
+        base44.functions.invoke('openclawSafeBridge', {
+          commandType: 'SESSION_STATUS',
+          targetUrl: 'https://www.tradingview.com',
+          operator: 'VeridanCore',
+        }),
+      ]);
+      setStatus(statusRes.status === 'fulfilled' ? statusRes.value.data : null);
+      setBridgeStatus(bridgeRes.status === 'fulfilled' ? bridgeRes.value.data : { status: 'failed', error: 'Bridge unreachable' });
     } catch (_) {
       setStatus(null);
     } finally {
@@ -236,18 +246,53 @@ export default function OpenClawControl() {
             </div>
           )}
 
-          {/* Status Grid */}
+          {/* Bridge Status Grid */}
+          <div className="mb-3">
+            <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2">Veridan Safe Bridge · SESSION_STATUS</div>
+            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div className="bg-secondary/30 border border-border px-3 py-2">
+                <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Bridge</div>
+                <div className={bridgeStatus?.status === 'success' ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
+                  {bridgeStatus?.status === 'success' ? 'Connected' : bridgeStatus?.status || '—'}
+                </div>
+              </div>
+              <div className="bg-secondary/30 border border-border px-3 py-2">
+                <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Session Active</div>
+                <div className={bridgeStatus?.raw?.session_active ? 'text-primary font-semibold' : 'text-muted-foreground'}>
+                  {bridgeStatus?.raw?.session_active !== undefined ? String(bridgeStatus.raw.session_active) : '—'}
+                </div>
+              </div>
+              <div className="col-span-2 bg-secondary/30 border border-border px-3 py-2">
+                <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Current URL</div>
+                <div className="text-blue-400 font-mono truncate">{bridgeStatus?.raw?.current_url || bridgeStatus?.targetUrl || '—'}</div>
+              </div>
+              {bridgeStatus?.pageTitle && (
+                <div className="col-span-2 bg-secondary/30 border border-border px-3 py-2">
+                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Page Title</div>
+                  <div className="text-foreground">{bridgeStatus.pageTitle}</div>
+                </div>
+              )}
+              {bridgeStatus?.error && (
+                <div className="col-span-2 bg-destructive/5 border border-destructive/20 px-3 py-2">
+                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Error</div>
+                  <div className="text-destructive font-mono text-[10px] break-all">{bridgeStatus.error}</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Gateway / CF Status Grid */}
           <div className="grid grid-cols-2 gap-2 mb-5 text-[10px]">
             <div className="bg-secondary/30 border border-border px-3 py-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Gateway</div>
+              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Gateway</div>
               <div className={online ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
                 {online ? 'Reachable' : 'Unreachable'}
               </div>
             </div>
             <div className="bg-secondary/30 border border-border px-3 py-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Cloudflare Access</div>
+              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Gateway Access</div>
               <div className={status?.protected ? 'text-amber-400 font-semibold' : 'text-muted-foreground/50'}>
-                {status?.protected ? 'Protected' : online ? 'Open' : '—'}
+                {status?.protected ? 'CF Access Protected (expected)' : online ? 'Open' : '—'}
               </div>
             </div>
             <div className="bg-secondary/30 border border-border px-3 py-2">
