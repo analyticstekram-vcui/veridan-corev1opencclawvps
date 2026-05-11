@@ -1,211 +1,188 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const OPENCLAW_GATEWAY_URL = Deno.env.get('OPENCLAW_GATEWAY_URL') || 'https://openclaw.veridancore.com';
+const CF_CLIENT_ID     = Deno.env.get('CF_ACCESS_CLIENT_ID')     || '';
+const CF_CLIENT_SECRET = Deno.env.get('CF_ACCESS_CLIENT_SECRET') || '';
+
+// Also support legacy combined token format: "cfid:cfsecret"
 const OPENCLAW_SERVICE_TOKEN = Deno.env.get('OPENCLAW_SERVICE_TOKEN') || '';
-const CDP_PORT = 18800;
 
 const ALLOWED_COMMAND_TYPES = new Set(['OPEN_URL_AND_READ_TITLE', 'OPEN_URL_AND_SCREENSHOT']);
 
-// In-memory audit log (ephemeral per function instance)
 const auditLog = [];
 
-// ─────────────────────────────────────────────
-// Security validation (unchanged)
-// ─────────────────────────────────────────────
-function validateRequest({ commandType, targetUrl, governanceLevel }) {
+// ── Security validation ───────────────────────────────────────────────────────
+function validateRequest({ commandType, targetUrl }) {
   if (!targetUrl || typeof targetUrl !== 'string') return 'targetUrl is required';
   if (!targetUrl.startsWith('https://')) {
     return 'targetUrl must use https://. http://, file://, javascript:, about:, and chrome:// are not allowed.';
   }
   const lower = targetUrl.toLowerCase();
-  const blockedPatterns = [
+  const blocked = [
     'localhost', '127.0.0.1', '0.0.0.0',
-    '192.168.', '10.', '172.16.', '172.17.', '172.18.', '172.19.',
-    '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.',
-    '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.',
+    '192.168.', '10.0.', '10.1.', '10.2.', '10.3.', '10.4.', '10.5.',
+    '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.',
+    '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.',
+    '172.28.', '172.29.', '172.30.', '172.31.',
     'file://', 'chrome://', 'about:', 'javascript:',
     'login', 'signin', 'auth', 'password', 'credential',
     'payment', 'checkout', 'trade', 'order', 'account/delete',
   ];
-  for (const pattern of blockedPatterns) {
-    if (lower.includes(pattern)) {
-      return `targetUrl contains a blocked pattern: "${pattern}". Only safe public HTTPS URLs are permitted.`;
-    }
+  for (const p of blocked) {
+    if (lower.includes(p)) return `targetUrl contains a blocked pattern: "${p}"`;
   }
   if (!ALLOWED_COMMAND_TYPES.has(commandType)) {
     return `Unknown commandType "${commandType}". Allowed: ${[...ALLOWED_COMMAND_TYPES].join(', ')}`;
   }
-  if (governanceLevel !== 'SAFE_READ_ONLY') return 'governanceLevel must be SAFE_READ_ONLY';
   return null;
 }
 
-// ─────────────────────────────────────────────
-// Build auth headers for OpenClaw gateway
-// Supports Cloudflare Access service token (CF-Access-Client-Id / CF-Access-Client-Secret)
-// or a plain Bearer token via OPENCLAW_SERVICE_TOKEN
-// ─────────────────────────────────────────────
+// ── Auth headers ──────────────────────────────────────────────────────────────
 function buildAuthHeaders() {
   const headers = {
     'Content-Type': 'application/json',
     'User-Agent': 'VeridanCore-SafeBridge/1.0',
   };
+
+  // Prefer explicit split secrets
+  if (CF_CLIENT_ID && CF_CLIENT_SECRET) {
+    headers['CF-Access-Client-Id']     = CF_CLIENT_ID;
+    headers['CF-Access-Client-Secret'] = CF_CLIENT_SECRET;
+    return headers;
+  }
+
+  // Fall back to combined token format "cfid:cfsecret" or plain Bearer
   if (OPENCLAW_SERVICE_TOKEN) {
-    // Support both "cfid:cfsecret" format (Cloudflare service token pair) and plain Bearer
     if (OPENCLAW_SERVICE_TOKEN.includes(':')) {
-      const [cfId, cfSecret] = OPENCLAW_SERVICE_TOKEN.split(':');
-      headers['CF-Access-Client-Id'] = cfId.trim();
-      headers['CF-Access-Client-Secret'] = cfSecret.trim();
+      const [id, secret] = OPENCLAW_SERVICE_TOKEN.split(':');
+      headers['CF-Access-Client-Id']     = id.trim();
+      headers['CF-Access-Client-Secret'] = secret.trim();
     } else {
       headers['Authorization'] = `Bearer ${OPENCLAW_SERVICE_TOKEN}`;
     }
   }
+
   return headers;
 }
 
-// ─────────────────────────────────────────────
-// Real OpenClaw gateway execution
-// Calls POST /api/safe-command on the OpenClaw gateway.
-// Falls back to simulation only if gateway is unreachable.
-// ─────────────────────────────────────────────
+// ── Execute via live OpenClaw gateway ─────────────────────────────────────────
 async function executeViaOpenClaw(commandType, targetUrl) {
   const diagnostics = [];
 
   // Step 1: Probe gateway reachability
   let gatewayReachable = false;
   try {
-    const probeCtrl = new AbortController();
-    const probeTimeout = setTimeout(() => probeCtrl.abort(), 6000);
-    const probeRes = await fetch(OPENCLAW_GATEWAY_URL, {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    const probe = await fetch(OPENCLAW_GATEWAY_URL, {
       method: 'HEAD',
       redirect: 'manual',
-      signal: probeCtrl.signal,
+      signal: ctrl.signal,
       headers: buildAuthHeaders(),
     });
-    clearTimeout(probeTimeout);
-    // 200, 3xx (Cloudflare redirect), 401/403 all mean the host is up
-    gatewayReachable = probeRes.status < 500;
-    diagnostics.push(`bridge_reachable: HTTP ${probeRes.status}`);
+    clearTimeout(t);
+    gatewayReachable = probe.status < 500;
+    diagnostics.push(`bridge_reachable: HTTP ${probe.status}`);
   } catch (err) {
     diagnostics.push(`bridge_reachable: FAILED — ${err?.message || 'network error'}`);
   }
 
   if (!gatewayReachable) {
-    // Fallback to simulation — gateway is truly down
     diagnostics.push('openclaw_agent_reachable: NO — falling back to simulation');
-    return await simulateFallback(commandType, targetUrl, diagnostics);
+    return simulateFallback(commandType, targetUrl, diagnostics);
   }
 
-  // Step 2: Send command to OpenClaw /api/safe-command endpoint
   diagnostics.push('openclaw_agent_reachable: YES');
   diagnostics.push('command_sent: true');
 
-  let agentRes;
+  // Step 2: POST to /api/safe-command
   try {
-    const cmdCtrl = new AbortController();
-    const cmdTimeout = setTimeout(() => cmdCtrl.abort(), 20000);
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 25000);
     const response = await fetch(`${OPENCLAW_GATEWAY_URL}/api/safe-command`, {
       method: 'POST',
-      signal: cmdCtrl.signal,
+      signal: ctrl.signal,
       headers: buildAuthHeaders(),
-      body: JSON.stringify({
-        commandType,
-        targetUrl,
-        cdpPort: CDP_PORT,
-        governanceLevel: 'SAFE_READ_ONLY',
-      }),
+      body: JSON.stringify({ commandType, targetUrl, governanceMode: 'SAFE_READ_ONLY' }),
     });
-    clearTimeout(cmdTimeout);
+    clearTimeout(t);
 
-    const contentType = response.headers.get('content-type') || '';
-    const isHtml = contentType.includes('text/html');
+    const ct = response.headers.get('content-type') || '';
+    const isHtml = ct.includes('text/html');
 
-    if (response.ok && isHtml) {
-      // Endpoint returned 200 but with HTML — /api/safe-command not yet deployed on VPS
-      diagnostics.push('command_failed: HTTP 200 but Content-Type is text/html — /api/safe-command endpoint not found on VPS. Deploy the bridge server (see VPS setup docs).');
-      // fall through to simulateFallback below
-    } else if (response.ok) {
-      let agentRes;
-      try {
-        agentRes = await response.json();
-      } catch (parseErr) {
-        const raw = await response.text().catch(() => '');
-        diagnostics.push(`command_failed: response is not valid JSON — ${raw.slice(0, 120)}`);
-        // fall through to simulateFallback below
-        return await simulateFallback(commandType, targetUrl, diagnostics);
-      }
-      diagnostics.push('command_executed: true');
-      return {
-        pageTitle: agentRes.pageTitle ?? agentRes.title ?? null,
-        screenshotCaptured: agentRes.screenshotCaptured ?? (agentRes.screenshotUrl ? true : false),
-        screenshotUrl: agentRes.screenshotUrl ?? agentRes.screenshot_url ?? null,
-        executionMode: 'REAL',
-        diagnostics,
-      };
-    } else {
-      // Non-2xx — try to read body for error detail
-      let errBody = '';
-      try { errBody = await response.text(); } catch (_) {}
-      const bodyIsHtml = errBody.trim().startsWith('<');
-
-      if (response.status === 401 || response.status === 403) {
-        diagnostics.push(`command_failed: HTTP ${response.status} — Cloudflare Access blocked. Verify OPENCLAW_SERVICE_TOKEN (CF-Access-Client-Id:CF-Access-Client-Secret format).`);
-      } else if (response.status === 404) {
-        diagnostics.push(`command_failed: HTTP 404 — /api/safe-command not found on VPS. Deploy the bridge server.`);
-      } else if (bodyIsHtml) {
-        diagnostics.push(`command_failed: HTTP ${response.status} — HTML response received instead of JSON. /api/safe-command endpoint may not be deployed.`);
-      } else {
-        diagnostics.push(`command_failed: HTTP ${response.status} — ${errBody.slice(0, 200)}`);
-      }
+    if (isHtml) {
+      diagnostics.push(`command_failed: HTTP ${response.status} — HTML response (not JSON). /api/safe-command not deployed on VPS yet. See vps-safe-command-bridge.md.`);
+      return simulateFallback(commandType, targetUrl, diagnostics);
     }
-  } catch (err) {
-    const isTimeout = err?.name === 'AbortError';
-    diagnostics.push(`command_failed: ${isTimeout ? 'timed out after 20s' : err?.message || 'unknown error'}`);
-  }
 
-  // Agent returned error — fall back to simulation so the UI still gets a response
-  return await simulateFallback(commandType, targetUrl, diagnostics);
+    if (!response.ok) {
+      let body = '';
+      try { body = await response.text(); } catch (_) {}
+      if (response.status === 401 || response.status === 403) {
+        diagnostics.push(`command_failed: HTTP ${response.status} — Cloudflare Access blocked. Check CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET secrets.`);
+      } else if (response.status === 404) {
+        diagnostics.push('command_failed: HTTP 404 — /api/safe-command not found. Deploy the bridge server.');
+      } else {
+        diagnostics.push(`command_failed: HTTP ${response.status} — ${body.slice(0, 200)}`);
+      }
+      return simulateFallback(commandType, targetUrl, diagnostics);
+    }
+
+    // Parse JSON response
+    let data;
+    try {
+      data = await response.json();
+    } catch (_) {
+      const raw = await response.text().catch(() => '');
+      diagnostics.push(`command_failed: 200 OK but body is not valid JSON — ${raw.slice(0, 120)}`);
+      return simulateFallback(commandType, targetUrl, diagnostics);
+    }
+
+    diagnostics.push('command_executed: REAL');
+    return {
+      pageTitle:         data.title         ?? data.pageTitle      ?? null,
+      screenshotCaptured: !!(data.screenshotUrl ?? data.screenshot_url),
+      screenshotUrl:     data.screenshotUrl  ?? data.screenshot_url ?? null,
+      executionMode:     'REAL',
+      diagnostics,
+      raw: data,
+    };
+
+  } catch (err) {
+    const msg = err?.name === 'AbortError' ? 'timed out after 25s' : (err?.message || 'unknown error');
+    diagnostics.push(`command_failed: ${msg}`);
+    return simulateFallback(commandType, targetUrl, diagnostics);
+  }
 }
 
-// ─────────────────────────────────────────────
-// Simulation fallback (mock mode)
-// ─────────────────────────────────────────────
+// ── Simulation fallback ───────────────────────────────────────────────────────
 async function simulateFallback(commandType, targetUrl, diagnostics = []) {
-  await new Promise(r => setTimeout(r, 400));
+  await new Promise(r => setTimeout(r, 300));
   if (commandType === 'OPEN_URL_AND_READ_TITLE') {
     let pageTitle = null;
     try {
       const domain = new URL(targetUrl).hostname.replace('www.', '');
-      const name = domain.split('.')[0];
-      pageTitle = name.charAt(0).toUpperCase() + name.slice(1) + ' — ' + domain + ' [SIMULATED: OpenClaw agent not reachable]';
-    } catch (_) {
-      pageTitle = '[SIMULATED] Could not parse URL';
-    }
+      pageTitle = `${domain.split('.')[0][0].toUpperCase()}${domain.split('.')[0].slice(1)} — ${domain} [SIMULATED]`;
+    } catch (_) { pageTitle = '[SIMULATED] Could not parse URL'; }
     return { pageTitle, screenshotCaptured: false, screenshotUrl: null, executionMode: 'SIMULATED', diagnostics };
   }
-  if (commandType === 'OPEN_URL_AND_SCREENSHOT') {
-    return { pageTitle: null, screenshotCaptured: false, screenshotUrl: null, executionMode: 'SIMULATED', diagnostics };
-  }
-  throw new Error('Unhandled commandType in simulateFallback');
+  return { pageTitle: null, screenshotCaptured: false, screenshotUrl: null, executionMode: 'SIMULATED', diagnostics };
 }
 
-// ─────────────────────────────────────────────
-// Audit helper
-// ─────────────────────────────────────────────
+// ── Audit helper ──────────────────────────────────────────────────────────────
 function appendAudit(entry) {
   auditLog.push({ ...entry, timestamp: new Date().toISOString() });
   if (auditLog.length > 200) auditLog.shift();
 }
 
-// ─────────────────────────────────────────────
-// Main handler
-// ─────────────────────────────────────────────
+// ── Main handler ──────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   if (req.method === 'GET') {
-    return Response.json({ auditLog, gatewayUrl: OPENCLAW_GATEWAY_URL, cdpPort: CDP_PORT });
+    return Response.json({ auditLog, gatewayUrl: OPENCLAW_GATEWAY_URL });
   }
 
   let body;
@@ -213,21 +190,15 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const {
-    commandType = '',
-    targetUrl = '',
-    operator = 'VeridanCore',
-    governanceLevel = '',
-  } = body;
-
+  const { commandType = '', targetUrl = '', operator = 'VeridanCore' } = body;
   const commandId = 'cmd_' + Date.now();
   const startedAt = new Date().toISOString();
 
-  const validationError = validateRequest({ commandType, targetUrl, governanceLevel });
+  const validationError = validateRequest({ commandType, targetUrl });
   if (validationError) {
-    appendAudit({ commandId, commandType, targetUrl, operator, governanceLevel, status: 'rejected', error: validationError });
+    appendAudit({ commandId, commandType, targetUrl, operator, status: 'blocked', error: validationError });
     return Response.json({
-      commandId, status: 'failed', commandType, targetUrl,
+      commandId, status: 'blocked', commandType, targetUrl,
       pageTitle: null, screenshotCaptured: false, screenshotUrl: null,
       startedAt, completedAt: new Date().toISOString(), error: validationError,
     }, { status: 400 });
@@ -239,24 +210,21 @@ Deno.serve(async (req) => {
     execResult = await executeViaOpenClaw(commandType, targetUrl);
   } catch (err) {
     execError = err.message;
-    execResult = { pageTitle: null, screenshotCaptured: false, screenshotUrl: null, executionMode: 'SIMULATED', diagnostics: [`command_failed: ${err.message}`] };
+    execResult = { pageTitle: null, screenshotCaptured: false, screenshotUrl: null, executionMode: 'SIMULATED', diagnostics: [`exception: ${err.message}`] };
   }
 
   const completedAt = new Date().toISOString();
   const status = execError ? 'failed' : 'success';
 
-  appendAudit({ commandId, commandType, targetUrl, operator, governanceLevel, status, executionMode: execResult.executionMode, error: execError || null });
+  appendAudit({ commandId, commandType, targetUrl, operator, status, executionMode: execResult.executionMode, error: execError || null });
 
   return Response.json({
-    commandId,
-    status,
-    commandType,
-    targetUrl,
-    pageTitle: execResult.pageTitle ?? null,
+    commandId, status, commandType, targetUrl,
+    pageTitle:          execResult.pageTitle          ?? null,
     screenshotCaptured: execResult.screenshotCaptured ?? false,
-    screenshotUrl: execResult.screenshotUrl ?? null,
-    executionMode: execResult.executionMode ?? 'SIMULATED',
-    diagnostics: execResult.diagnostics ?? [],
+    screenshotUrl:      execResult.screenshotUrl      ?? null,
+    executionMode:      execResult.executionMode      ?? 'SIMULATED',
+    diagnostics:        execResult.diagnostics        ?? [],
     startedAt,
     completedAt,
     error: execError || null,
