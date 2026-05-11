@@ -243,10 +243,10 @@ export default function BrowserSession() {
           {/* Action buttons */}
           <div className="grid grid-cols-2 gap-2">
             {[
-              { id: 'SESSION_STATUS', label: 'Check Session',             icon: RefreshCw,  url: TRADIGVIEW_URL },
-              { id: 'START_SESSION',  label: 'Start TradingView Session', icon: Play,        url: TRADIGVIEW_URL },
-              { id: 'NAVIGATE',       label: 'Navigate to URL',           icon: Globe,       url: null },
-              { id: 'SCREENSHOT',     label: 'Capture Screenshot',        icon: Camera,      url: null },
+              { id: 'SESSION_STATUS',           label: 'Check Session',             icon: RefreshCw,  url: TRADIGVIEW_URL },
+              { id: 'START_SESSION',            label: 'Start TradingView Session', icon: Play,        url: TRADIGVIEW_URL },
+              { id: 'OPEN_URL_AND_READ_TITLE',  label: 'Navigate & Read Title',     icon: Globe,       url: null },
+              { id: 'OPEN_URL_AND_SCREENSHOT',  label: 'Capture Screenshot',        icon: Camera,      url: null },
             ].map(({ id, label, icon: Icon, url: fixedUrl }) => (
               <button
                 key={id}
