@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, FileText, Trash2, AlertTriangle, Clock } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { ChevronRight, ChevronDown, FileText, Trash2, AlertTriangle, Clock, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STORAGE_KEY = 'veridan_browser_action_proposals_v1';
@@ -91,6 +92,59 @@ function AuditRow({ proposal, index, onUpdateProposal }) {
       executionAllowed: false,
     };
     onUpdateProposal(index, updated);
+  };
+
+  const validateForQueueing = () => {
+    if (proposal.status !== 'APPROVED') return 'Proposal must be APPROVED to queue';
+    if (!proposal.targetUrl) return 'URL is required';
+    if (['CLICK_ELEMENT', 'TYPE_INTO_ELEMENT'].includes(proposal.commandType) && !proposal.selector) {
+      return 'Selector is required for this command type';
+    }
+    if (proposal.governanceMode !== 'SAFE_REQUIRES_APPROVAL') {
+      return 'Governance mode must be SAFE_REQUIRES_APPROVAL';
+    }
+    return null;
+  };
+
+  const handleQueueForExecution = async () => {
+    const validationError = validateForQueueing();
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
+    try {
+      const user = await base44.auth.me();
+      if (!user) {
+        alert('Not authenticated');
+        return;
+      }
+
+      const queueEntry = {
+        proposalId: proposal.proposalId,
+        commandType: proposal.commandType,
+        selector: proposal.selector || null,
+        url: proposal.targetUrl,
+        payload: {
+          commandType: proposal.commandType,
+          selector: proposal.selector || null,
+          targetUrl: proposal.targetUrl,
+          elementText: proposal.elementText,
+        },
+        riskTier: proposal.riskTier,
+        governanceMode: proposal.governanceMode,
+        status: 'QUEUED',
+        approvedBy: user.email,
+        approvedAt: proposal.reviewedAt || new Date().toISOString(),
+        queuedAt: new Date().toISOString(),
+      };
+
+      await base44.entities.ExecutionQueue.create(queueEntry);
+      alert('Proposal queued for execution successfully!');
+    } catch (err) {
+      alert('Failed to queue proposal: ' + (err.message || 'Unknown error'));
+      console.error('Queue error:', err);
+    }
   };
 
   return (
@@ -221,12 +275,20 @@ function AuditRow({ proposal, index, onUpdateProposal }) {
               </>
             )}
             {proposal.status === 'APPROVED' && (
-              <button
-                onClick={() => handleStatusChange('REVOKED')}
-                className="px-2.5 py-1 border border-muted/30 bg-muted/10 text-[9px] text-muted-foreground uppercase tracking-wider hover:bg-muted/20 transition-colors font-semibold"
-              >
-                Revoke Approval
-              </button>
+              <>
+                <button
+                  onClick={handleQueueForExecution}
+                  className="px-2.5 py-1 border border-accent/30 bg-accent/10 text-[9px] text-accent uppercase tracking-wider hover:bg-accent/20 transition-colors font-semibold flex items-center gap-1"
+                >
+                  <Zap className="w-2.5 h-2.5" /> Queue for Execution
+                </button>
+                <button
+                  onClick={() => handleStatusChange('REVOKED')}
+                  className="px-2.5 py-1 border border-muted/30 bg-muted/10 text-[9px] text-muted-foreground uppercase tracking-wider hover:bg-muted/20 transition-colors font-semibold"
+                >
+                  Revoke Approval
+                </button>
+              </>
             )}
             {proposal.status === 'DENIED' && (
               <button

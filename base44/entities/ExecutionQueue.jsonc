@@ -1,0 +1,102 @@
+{
+  "name": "ExecutionQueue",
+  "type": "object",
+  "properties": {
+    "proposalId": {
+      "type": "string",
+      "description": "Reference to the approved proposal"
+    },
+    "commandType": {
+      "type": "string",
+      "enum": [
+        "CLICK_ELEMENT",
+        "TYPE_INTO_ELEMENT",
+        "READ_ELEMENT_TEXT"
+      ],
+      "description": "Type of browser action"
+    },
+    "selector": {
+      "type": "string",
+      "description": "CSS selector for the target element"
+    },
+    "url": {
+      "type": "string",
+      "description": "Target URL for execution"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Safe execution payload (no secrets, no full screenshots)"
+    },
+    "riskTier": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "default": "LOW",
+      "description": "Risk assessment tier"
+    },
+    "governanceMode": {
+      "type": "string",
+      "default": "SAFE_REQUIRES_APPROVAL",
+      "description": "Governance enforcement mode"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "QUEUED",
+        "READY",
+        "BLOCKED",
+        "EXECUTED",
+        "FAILED"
+      ],
+      "default": "QUEUED",
+      "description": "Queue status"
+    },
+    "approvedBy": {
+      "type": "string",
+      "description": "Email of approver"
+    },
+    "approvedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp of approval"
+    },
+    "queuedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp of queueing"
+    },
+    "executedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp of execution"
+    },
+    "resultSummary": {
+      "type": "string",
+      "description": "Safe result summary (no full JSON, no screenshots)"
+    },
+    "diagnosticsSummary": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Diagnostic messages from execution"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if failed"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Operator notes"
+    }
+  },
+  "required": [
+    "proposalId",
+    "commandType",
+    "url",
+    "approvedBy"
+  ]
+}

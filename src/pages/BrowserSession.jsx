@@ -6,6 +6,8 @@ import BrowserStatusCards from '@/components/browser-control/BrowserStatusCards'
 import BrowserCommandPanel from '@/components/browser-control/BrowserCommandPanel';
 import BridgeResponsePanel from '@/components/browser-control/BridgeResponsePanel';
 import SessionAuditLog from '@/components/browser-control/SessionAuditLog';
+import ProposedActionsAuditPanel from '@/components/browser-control/ProposedActionsAuditPanel';
+import ExecutionQueuePanel from '@/components/browser-control/ExecutionQueuePanel';
 
 const GOVERNANCE_MODE = 'SAFE_READ_ONLY';
 const INSPECT_TIMEOUT_MS = 20000;
@@ -303,6 +305,12 @@ export default function BrowserSession() {
 
         {/* ── Session Activity / Audit Log ── */}
         <SessionAuditLog entries={activityLog} onClear={clearAuditLog} />
+
+        {/* ── Proposed Actions Audit Panel ── */}
+        <ProposedActionsAuditPanel />
+
+        {/* ── Execution Queue Panel ── */}
+        <ExecutionQueuePanel />
 
       </div>
     </div>
