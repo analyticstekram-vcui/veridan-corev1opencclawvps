@@ -8,13 +8,17 @@ export default function SafeReadValidationPanel({ inspectionResult, selectedElem
   const [validationData, setValidationData] = useState(null);
   const [running, setRunning] = useState(false);
 
-  if (!inspectionResult || inspectionResult.status !== 'success') {
+  // Defensive defaults for optional props
+  const hasValidResult = inspectionResult?.status === 'success';
+  const elementsList = Array.isArray(inspectionResult?.elements) ? inspectionResult.elements : [];
+
+  if (!hasValidResult) {
     return null;
   }
 
   // Determine which element to use
   const elementToValidate = selectedElement || (
-    inspectionResult.elements?.find(el => el.visible && el.enabled) || inspectionResult.elements?.[0]
+    elementsList.find(el => el.visible && el.enabled) || elementsList[0]
   );
 
   if (!elementToValidate) {
@@ -34,10 +38,12 @@ export default function SafeReadValidationPanel({ inspectionResult, selectedElem
   const handleRunValidation = async () => {
     setRunning(true);
     setValidationState('draft');
-    setValidationData({
+    
+    // Initialize validation data with safe defaults
+    const initialData = {
       proposalId: 'val_' + Date.now(),
-      elementText: elementToValidate.text || '—',
-      selector: elementToValidate.selector || '—',
+      elementText: elementToValidate?.text || '—',
+      selector: elementToValidate?.selector || '—',
       steps: [
         { step: 'DRAFT', timestamp: new Date().toISOString(), status: 'completed', message: 'Proposal created' },
       ],
@@ -45,31 +51,56 @@ export default function SafeReadValidationPanel({ inspectionResult, selectedElem
       resultSummary: null,
       diagnosticsSummary: [],
       error: null,
-    });
+    };
+    setValidationData(initialData);
 
     try {
-      // Step 1: DRAFT → PENDING_APPROVAL
-      setValidationState('pending_approval');
-      const draftData = { ...validationData };
-      draftData.steps.push({ step: 'PENDING_APPROVAL', timestamp: new Date().toISOString(), status: 'in_progress', message: 'Submitting for approval' });
-      setValidationData(draftData);
+      let currentData = initialData;
 
-      // Simulate approval (in real scenario, this would be user-driven)
+      // Step 1: DRAFT → PENDING_APPROVAL
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setValidationState('pending_approval');
+      currentData = prev => ({
+        ...(prev || {}),
+        steps: [
+          ...(Array.isArray((prev || {}).steps) ? (prev || {}).steps : []),
+          { step: 'PENDING_APPROVAL', timestamp: new Date().toISOString(), status: 'in_progress', message: 'Submitting for approval' },
+        ],
+      });
+      setValidationData(currentData);
+
+      // Simulate approval
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Step 2: PENDING_APPROVAL → APPROVED
       setValidationState('approved');
-      draftData.steps[draftData.steps.length - 1].status = 'completed';
-      draftData.steps.push({ step: 'APPROVED', timestamp: new Date().toISOString(), status: 'in_progress', message: 'Governance approval granted' });
-      setValidationData(draftData);
+      setValidationData(prev => {
+        const updated = { ...prev };
+        const steps = Array.isArray(updated.steps) ? updated.steps : [];
+        if (steps.length > 0) {
+          steps[steps.length - 1] = { ...steps[steps.length - 1], status: 'completed' };
+        }
+        return {
+          ...updated,
+          steps: [...steps, { step: 'APPROVED', timestamp: new Date().toISOString(), status: 'in_progress', message: 'Governance approval granted' }],
+        };
+      });
 
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Step 3: APPROVED → QUEUED
       setValidationState('queued');
-      draftData.steps[draftData.steps.length - 1].status = 'completed';
-      draftData.steps.push({ step: 'QUEUED', timestamp: new Date().toISOString(), status: 'in_progress', message: 'Adding to execution queue' });
-      setValidationData(draftData);
+      setValidationData(prev => {
+        const updated = { ...prev };
+        const steps = Array.isArray(updated.steps) ? updated.steps : [];
+        if (steps.length > 0) {
+          steps[steps.length - 1] = { ...steps[steps.length - 1], status: 'completed' };
+        }
+        return {
+          ...updated,
+          steps: [...steps, { step: 'QUEUED', timestamp: new Date().toISOString(), status: 'in_progress', message: 'Adding to execution queue' }],
+        };
+      });
 
       // Create queue entry
       const user = await base44.auth.me();
@@ -78,15 +109,15 @@ export default function SafeReadValidationPanel({ inspectionResult, selectedElem
       }
 
       const queueEntry = {
-        proposalId: draftData.proposalId,
+        proposalId: initialData.proposalId,
         commandType: 'READ_ELEMENT_TEXT',
-        selector: elementToValidate.selector || null,
-        url: inspectionResult.raw?.current_url || inspectionResult.targetUrl || '—',
+        selector: elementToValidate?.selector || null,
+        url: inspectionResult?.raw?.current_url || inspectionResult?.targetUrl || '—',
         payload: {
           commandType: 'READ_ELEMENT_TEXT',
-          selector: elementToValidate.selector || null,
-          targetUrl: inspectionResult.raw?.current_url || inspectionResult.targetUrl,
-          elementText: elementToValidate.text,
+          selector: elementToValidate?.selector || null,
+          targetUrl: inspectionResult?.raw?.current_url || inspectionResult?.targetUrl,
+          elementText: elementToValidate?.text,
         },
         riskTier: 'LOW',
         governanceMode: 'SAFE_REQUIRES_APPROVAL',
@@ -98,41 +129,69 @@ export default function SafeReadValidationPanel({ inspectionResult, selectedElem
       };
 
       const created = await base44.entities.ExecutionQueue.create(queueEntry);
-      draftData.queueEntry = created;
+
+      setValidationData(prev => ({
+        ...(prev || {}),
+        queueEntry: created,
+      }));
 
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Step 4: QUEUED → EXECUTED
       setValidationState('executed');
-      draftData.steps[draftData.steps.length - 1].status = 'completed';
-      draftData.steps.push({ step: 'EXECUTED', timestamp: new Date().toISOString(), status: 'in_progress', message: 'Executing read validation' });
-      setValidationData(draftData);
+      setValidationData(prev => {
+        const updated = { ...prev };
+        const steps = Array.isArray(updated.steps) ? updated.steps : [];
+        if (steps.length > 0) {
+          steps[steps.length - 1] = { ...steps[steps.length - 1], status: 'completed' };
+        }
+        return {
+          ...updated,
+          steps: [...steps, { step: 'EXECUTED', timestamp: new Date().toISOString(), status: 'in_progress', message: 'Executing read validation' }],
+        };
+      });
 
       // Call executeQueuedCommand
       const execRes = await base44.functions.invoke('executeQueuedCommand', { queueId: created.id });
       
       if (execRes.data?.success) {
-        draftData.steps[draftData.steps.length - 1].status = 'completed';
-        draftData.resultSummary = execRes.data?.resultSummary || 'Read validation completed successfully';
-        draftData.diagnosticsSummary = execRes.data?.diagnostics || [];
+        setValidationData(prev => {
+          const updated = { ...prev };
+          const steps = Array.isArray(updated.steps) ? updated.steps : [];
+          if (steps.length > 0) {
+            steps[steps.length - 1] = { ...steps[steps.length - 1], status: 'completed' };
+          }
+          return {
+            ...updated,
+            steps,
+            resultSummary: execRes.data?.resultSummary || 'Read validation completed successfully',
+            diagnosticsSummary: Array.isArray(execRes.data?.diagnostics) ? execRes.data.diagnostics : [],
+          };
+        });
       } else {
-        draftData.steps[draftData.steps.length - 1].status = 'failed';
-        draftData.error = execRes.data?.error || 'Execution failed';
-        draftData.diagnosticsSummary = [draftData.error];
         setValidationState('failed');
-        setValidationData(draftData);
+        setValidationData(prev => {
+          const updated = { ...prev };
+          const steps = Array.isArray(updated.steps) ? updated.steps : [];
+          if (steps.length > 0) {
+            steps[steps.length - 1] = { ...steps[steps.length - 1], status: 'failed' };
+          }
+          return {
+            ...updated,
+            steps,
+            error: execRes.data?.error || 'Execution failed',
+            diagnosticsSummary: [execRes.data?.error || 'Execution failed'],
+          };
+        });
         setRunning(false);
         return;
       }
-
-      setValidationData(draftData);
-      setValidationState('executed');
     } catch (err) {
       setValidationState('failed');
       setValidationData(prev => ({
-        ...prev,
-        error: err.message,
-        diagnosticsSummary: [err.message],
+        ...(prev || {}),
+        error: err?.message || 'Unknown error',
+        diagnosticsSummary: [err?.message || 'Unknown error'],
       }));
     } finally {
       setRunning(false);
@@ -210,7 +269,7 @@ export default function SafeReadValidationPanel({ inspectionResult, selectedElem
         )}
 
         {/* Validation Steps */}
-        {validationData && (
+        {validationData && Array.isArray(validationData.steps) && (
           <div className="space-y-2">
             <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40">Validation Steps</div>
             <div className="space-y-1.5">
@@ -261,7 +320,7 @@ export default function SafeReadValidationPanel({ inspectionResult, selectedElem
                 </div>
               </div>
             )}
-            {validationData.diagnosticsSummary?.length > 0 && (
+            {Array.isArray(validationData.diagnosticsSummary) && validationData.diagnosticsSummary.length > 0 && (
               <div className="bg-secondary/30 border border-border px-2 py-1.5">
                 <div className="text-[8px] text-muted-foreground/40 mb-1">Diagnostics</div>
                 <div className="space-y-0.5 text-[8px] text-muted-foreground/60 font-mono">
@@ -284,7 +343,7 @@ export default function SafeReadValidationPanel({ inspectionResult, selectedElem
             <div className="bg-secondary/30 border border-border px-2 py-1.5 text-[9px] font-mono text-foreground break-all">
               {validationData.error}
             </div>
-            {validationData.diagnosticsSummary?.length > 0 && (
+            {Array.isArray(validationData.diagnosticsSummary) && validationData.diagnosticsSummary.length > 0 && (
               <div className="bg-secondary/30 border border-border px-2 py-1.5">
                 <div className="text-[8px] text-muted-foreground/40 mb-1">Diagnostics</div>
                 <div className="space-y-0.5 text-[8px] text-muted-foreground/60 font-mono">
