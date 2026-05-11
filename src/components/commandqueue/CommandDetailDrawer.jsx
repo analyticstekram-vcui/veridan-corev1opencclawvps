@@ -25,13 +25,19 @@ function AuditEntry({ entry }) {
   );
 }
 
-export default function CommandDetailDrawer({ command, currentUser, onClose, onApprove, onDeny, onExecute, onRetry }) {
+export default function CommandDetailDrawer({ command, currentUser, onClose, onApprove, onDeny, onExecute, onExecuteReadOnly, onRetry }) {
   if (!command) return null;
   const cfg = STATUS_CONFIG[command.status] || STATUS_CONFIG.draft;
   const auditLog = Array.isArray(command.auditLog) ? command.auditLog : [];
 
+  const READ_ONLY_COMMANDS = ['system.status', 'logs.fetch', 'session.list'];
+  const isReadOnly = READ_ONLY_COMMANDS.includes(command.commandType);
+  const isLowRisk = command.riskLevel === 'low';
+  const isSimulated = command.executionMode === 'SIMULATED';
+
   const canApprove  = command.status === 'pending';
   const canExecute  = command.status === 'approved';
+  const canExecuteReadOnly = command.status === 'approved' && isReadOnly && isLowRisk && isSimulated;
   const canRetry    = command.status === 'failed';
 
   return (
@@ -149,7 +155,7 @@ export default function CommandDetailDrawer({ command, currentUser, onClose, onA
         </div>
 
         {/* Action footer */}
-        {(canApprove || canExecute || canRetry) && (
+        {(canApprove || canExecute || canExecuteReadOnly || canRetry) && (
           <div className="shrink-0 border-t border-border px-5 py-3.5 flex items-center gap-2">
             {canApprove && (
               <>
@@ -163,10 +169,16 @@ export default function CommandDetailDrawer({ command, currentUser, onClose, onA
                 </button>
               </>
             )}
-            {canExecute && (
+            {canExecute && !canExecuteReadOnly && (
               <button onClick={() => onExecute(command)}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-primary-foreground text-[10px] font-semibold hover:bg-primary/90 transition-colors">
                 <Zap className="w-3 h-3" /> Execute
+              </button>
+            )}
+            {canExecuteReadOnly && (
+              <button onClick={() => onExecuteReadOnly(command)}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-primary-foreground text-[10px] font-semibold hover:bg-primary/90 transition-colors">
+                <Zap className="w-3 h-3" /> Execute Read-Only
               </button>
             )}
             {canRetry && (

@@ -135,6 +135,76 @@ export default function CommandQueue() {
     await transition(cmd, 'pending', { error: null, result: null, diagnostics: [] });
   };
 
+  const handleExecuteReadOnly = async (cmd) => {
+    // Validate: only read-only, approved, low-risk, simulated commands
+    const READ_ONLY_COMMANDS = ['system.status', 'logs.fetch', 'session.list'];
+    const isReadOnly = READ_ONLY_COMMANDS.includes(cmd.commandType);
+    const isApproved = cmd.status === 'approved';
+    const isLowRisk = cmd.riskLevel === 'low';
+    const isSimulated = cmd.executionMode === 'SIMULATED';
+
+    if (!isReadOnly || !isApproved || !isLowRisk || !isSimulated) {
+      const reasons = [];
+      if (!isReadOnly) reasons.push('not a read-only command');
+      if (!isApproved) reasons.push('not approved');
+      if (!isLowRisk) reasons.push('not low risk');
+      if (!isSimulated) reasons.push('not simulated mode');
+      const auditLog = appendAudit(cmd.auditLog, `BLOCKED_PRE_EXECUTION: ${reasons.join(', ')}`, 'system');
+      await base44.entities.OpenClawCommand.update(cmd.id, { status: 'blocked', auditLog, error: `Read-only execution: ${reasons.join(', ')}` });
+      fetchCommands();
+      if (selected?.id === cmd.id) setSelected(prev => ({ ...prev, status: 'blocked', error: `Read-only execution: ${reasons.join(', ')}` }));
+      return;
+    }
+
+    setAction(cmd.id, 'execute_readonly');
+    const auditLog1 = appendAudit(cmd.auditLog, 'READ_ONLY_EXECUTION_STARTED', currentUser?.email);
+    await base44.entities.OpenClawCommand.update(cmd.id, { status: 'executing', auditLog: auditLog1 });
+    fetchCommands();
+
+    try {
+      const res = await base44.functions.invoke('openclawReadOnlyBridgeStatus', {
+        command: cmd.commandType,
+      });
+
+      const passed = res.data?.ok === true && res.data?.status === 'PASS';
+      const now = new Date().toISOString();
+      const auditLog2 = appendAudit(auditLog1, `READ_ONLY_EXECUTION_${passed ? 'SUCCESS' : 'BLOCKED'}`, 'system');
+
+      const update = {
+        status: passed ? 'executed' : 'blocked',
+        executionMode: 'SIMULATED',
+        executedAt: now,
+        auditLog: auditLog2,
+        error: res.data?.reason || null,
+        readOnlyBridgeTraceId: res.data?.traceId || null,
+        result: {
+          readOnlyStatus: res.data?.status,
+          ok: res.data?.ok,
+          command: res.data?.command,
+          timestamp: res.data?.timestamp,
+          data: res.data?.data || {},
+        },
+      };
+
+      await base44.entities.OpenClawCommand.update(cmd.id, update);
+      clearAction(cmd.id);
+      fetchCommands();
+      if (selected?.id === cmd.id) setSelected(prev => ({ ...prev, ...update }));
+    } catch (err) {
+      const errMsg = err?.response?.data?.reason || err.message || 'Request failed';
+      const auditLog2 = appendAudit(auditLog1, 'READ_ONLY_EXECUTION_FAILED', 'system');
+      await base44.entities.OpenClawCommand.update(cmd.id, {
+        status: 'blocked',
+        error: errMsg,
+        auditLog: auditLog2,
+        executedAt: new Date().toISOString(),
+      });
+      clearAction(cmd.id);
+      fetchCommands();
+      if (selected?.id === cmd.id) setSelected(prev => ({ ...prev, status: 'blocked', error: errMsg }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background font-mono">
       {/* Header */}
@@ -218,6 +288,7 @@ export default function CommandQueue() {
           onApprove={(cmd) => { handleApprove(cmd); }}
           onDeny={(cmd)    => { handleDeny(cmd); }}
           onExecute={(cmd) => { handleExecute(cmd); }}
+          onExecuteReadOnly={(cmd) => { handleExecuteReadOnly(cmd); }}
           onRetry={(cmd)   => { handleRetry(cmd); }}
         />
       )}
