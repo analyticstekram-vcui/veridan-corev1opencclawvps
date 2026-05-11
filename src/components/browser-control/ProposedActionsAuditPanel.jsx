@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, FileText, Trash2, AlertTriangle } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Trash2, AlertTriangle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STORAGE_KEY = 'veridan_browser_action_proposals_v1';
@@ -33,6 +33,21 @@ export function saveProposal(proposal) {
   }
 }
 
+export function updateProposal(index, updatedProposal) {
+  try {
+    let proposals = loadProposals();
+    if (index >= 0 && index < proposals.length) {
+      proposals[index] = updatedProposal;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(proposals));
+      return updatedProposal;
+    }
+    return null;
+  } catch (err) {
+    console.error('Failed to update proposal:', err);
+    return null;
+  }
+}
+
 export function clearProposals() {
   try {
     localStorage.removeItem(STORAGE_KEY);
@@ -41,11 +56,42 @@ export function clearProposals() {
   }
 }
 
-function AuditRow({ proposal, index }) {
+function AuditRow({ proposal, index, onUpdateProposal }) {
   const [expanded, setExpanded] = useState(false);
+  const [reviewNote, setReviewNote] = useState(proposal.reviewNote || '');
 
-  const statusColor = proposal.status === 'DRAFT' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-secondary/30 border-border text-muted-foreground';
+  // Status color mapping
+  const statusColors = {
+    DRAFT: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
+    PENDING_APPROVAL: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+    APPROVED: 'bg-primary/10 border-primary/30 text-primary',
+    DENIED: 'bg-destructive/10 border-destructive/30 text-destructive',
+    REVOKED: 'bg-muted/30 border-border text-muted-foreground/60',
+  };
+
+  const statusColor = statusColors[proposal.status] || 'bg-secondary/30 border-border text-muted-foreground';
   const riskColor = proposal.riskTier === 'LOW' ? 'text-primary' : proposal.riskTier === 'MEDIUM' ? 'text-amber-500' : 'text-destructive';
+
+  // Valid state transitions
+  const validTransitions = {
+    DRAFT: ['PENDING_APPROVAL'],
+    PENDING_APPROVAL: ['APPROVED', 'DENIED'],
+    APPROVED: ['REVOKED'],
+    DENIED: ['DRAFT'],
+    REVOKED: [],
+  };
+
+  const handleStatusChange = (newStatus) => {
+    const updated = {
+      ...proposal,
+      status: newStatus,
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: 'Veridan Operator',
+      reviewNote: reviewNote,
+      executionAllowed: false,
+    };
+    onUpdateProposal(index, updated);
+  };
 
   return (
     <div key={index} className="border-b border-border/20 last:border-0">
@@ -76,7 +122,18 @@ function AuditRow({ proposal, index }) {
 
       {/* Expanded details */}
       {expanded && (
-        <div className="bg-secondary/10 border-t border-border/20 px-4 py-3 space-y-2.5">
+        <div className="bg-secondary/10 border-t border-border/20 px-4 py-3 space-y-3">
+          {/* Approval warning for APPROVED proposals */}
+          {proposal.status === 'APPROVED' && (
+            <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/5 border border-amber-500/20">
+              <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+              <span className="text-[9px] text-amber-500/80 uppercase tracking-wider">
+                Approved for governance review only. Backend execution is not enabled yet.
+              </span>
+            </div>
+          )}
+
+          {/* Metadata grid */}
           <div className="grid grid-cols-2 gap-2 text-[10px]">
             <div className="bg-secondary/30 border border-border px-2 py-1.5">
               <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Selector</div>
@@ -112,6 +169,73 @@ function AuditRow({ proposal, index }) {
               <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Proposal ID</div>
               <div className="text-muted-foreground/60 font-mono text-[9px] break-all">{proposal.proposalId}</div>
             </div>
+            {proposal.reviewedAt && (
+              <div className="bg-secondary/30 border border-border px-2 py-1.5">
+                <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Reviewed At</div>
+                <div className="text-muted-foreground/60 font-mono text-[9px]">{format(new Date(proposal.reviewedAt), 'HH:mm:ss')}</div>
+              </div>
+            )}
+            {proposal.reviewedBy && (
+              <div className="bg-secondary/30 border border-border px-2 py-1.5">
+                <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Reviewed By</div>
+                <div className="text-muted-foreground/60 text-[9px]">{proposal.reviewedBy}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Review note input */}
+          <div className="space-y-1">
+            <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40">Review Note</label>
+            <textarea
+              value={reviewNote}
+              onChange={(e) => setReviewNote(e.target.value)}
+              placeholder="Add a review note..."
+              className="w-full bg-secondary/30 border border-border px-2 py-1.5 text-[9px] text-foreground placeholder:text-muted-foreground/30 outline-none focus:border-primary/40 transition-colors resize-none h-16"
+            />
+          </div>
+
+          {/* State action buttons */}
+          <div className="flex flex-wrap gap-1.5">
+            {proposal.status === 'DRAFT' && (
+              <button
+                onClick={() => handleStatusChange('PENDING_APPROVAL')}
+                className="px-2.5 py-1 border border-blue-500/30 bg-blue-500/10 text-[9px] text-blue-400 uppercase tracking-wider hover:bg-blue-500/20 transition-colors font-semibold"
+              >
+                Submit for Approval
+              </button>
+            )}
+            {proposal.status === 'PENDING_APPROVAL' && (
+              <>
+                <button
+                  onClick={() => handleStatusChange('APPROVED')}
+                  className="px-2.5 py-1 border border-primary/30 bg-primary/10 text-[9px] text-primary uppercase tracking-wider hover:bg-primary/20 transition-colors font-semibold"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => handleStatusChange('DENIED')}
+                  className="px-2.5 py-1 border border-destructive/30 bg-destructive/10 text-[9px] text-destructive uppercase tracking-wider hover:bg-destructive/20 transition-colors font-semibold"
+                >
+                  Deny
+                </button>
+              </>
+            )}
+            {proposal.status === 'APPROVED' && (
+              <button
+                onClick={() => handleStatusChange('REVOKED')}
+                className="px-2.5 py-1 border border-muted/30 bg-muted/10 text-[9px] text-muted-foreground uppercase tracking-wider hover:bg-muted/20 transition-colors font-semibold"
+              >
+                Revoke Approval
+              </button>
+            )}
+            {proposal.status === 'DENIED' && (
+              <button
+                onClick={() => handleStatusChange('DRAFT')}
+                className="px-2.5 py-1 border border-amber-500/30 bg-amber-500/10 text-[9px] text-amber-500 uppercase tracking-wider hover:bg-amber-500/20 transition-colors font-semibold"
+              >
+                Return to Draft
+              </button>
+            )}
           </div>
 
           {/* Raw JSON */}
@@ -140,6 +264,11 @@ export default function ProposedActionsAuditPanel() {
   };
 
   const handleRefresh = () => {
+    setProposals(loadProposals());
+  };
+
+  const handleUpdateProposal = (index, updatedProposal) => {
+    updateProposal(index, updatedProposal);
     setProposals(loadProposals());
   };
 
@@ -174,7 +303,7 @@ export default function ProposedActionsAuditPanel() {
       <div className="max-h-96 overflow-auto">
         {proposals.length > 0 ? (
           proposals.map((proposal, idx) => (
-            <AuditRow key={idx} proposal={proposal} index={idx} />
+            <AuditRow key={idx} proposal={proposal} index={idx} onUpdateProposal={handleUpdateProposal} />
           ))
         ) : (
           <div className="px-4 py-2 text-[10px] text-muted-foreground/40 font-mono">No proposals saved.</div>
