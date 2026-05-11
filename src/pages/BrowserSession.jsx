@@ -7,6 +7,39 @@ import BridgeResponsePanel from '@/components/browser-control/BridgeResponsePane
 import SessionAuditLog from '@/components/browser-control/SessionAuditLog';
 
 const GOVERNANCE_MODE = 'SAFE_READ_ONLY';
+const INSPECT_TIMEOUT_MS = 20000;
+
+// ── Normalize INSPECT_ELEMENTS response — never store full raw payload ────────
+function normalizeInspectionResponse(data) {
+  const raw = data.raw || {};
+  const inspection = raw.inspection || data.inspection || {};
+  const allElements = inspection.elements || raw.elements || [];
+
+  return {
+    status:          data.status,
+    commandType:     data.commandType || 'INSPECT_ELEMENTS',
+    executionMode:   data.executionMode || 'REAL',
+    error:           data.error || null,
+    diagnostics:     data.diagnostics || [],
+    safeDiag:        data.safeDiag || null,
+    pageTitle:       inspection.pageTitle || data.pageTitle || raw.title || null,
+    finalUrl:        inspection.currentUrl || raw.url || data.targetUrl || null,
+    totalElements:   inspection.totalElements   ?? allElements.length,
+    visibleElements: inspection.visibleElements ?? allElements.filter(e => e.visible).length,
+    enabledElements: inspection.enabledElements ?? allElements.filter(e => e.enabled !== false).length,
+    links:           inspection.visibleLinks    ?? allElements.filter(e => e.type === 'a').length,
+    buttons:         inspection.visibleButtons  ?? allElements.filter(e => e.type === 'button').length,
+    inputs:          inspection.visibleInputs   ?? allElements.filter(e => e.type === 'input').length,
+    forms:           inspection.detectedForms   ?? allElements.filter(e => e.type === 'form').length,
+    timestamp:       data.completedAt || new Date().toISOString(),
+    // Cap elements for rendering — no full payload in state
+    elements:        allElements.slice(0, 50),
+    // Truncated raw preview only — max 10k chars
+    rawPreview:      JSON.stringify(raw, null, 2).slice(0, 10000),
+    // Flag so BridgeResponsePanel / ElementInspectionPanel know this is normalized
+    _normalized:     true,
+  };
+}
 
 async function callBridge(commandType, targetUrl) {
   const res = await base44.functions.invoke('openclawSafeBridge', {
@@ -19,6 +52,8 @@ async function callBridge(commandType, targetUrl) {
 }
 
 function buildAuditEntry(commandType, targetUrl, data) {
+  const isInspect = commandType === 'INSPECT_ELEMENTS';
+
   const screenshotBase64 = data.screenshotBase64 || data.screenshot_base64 || null;
   const screenshotUrl    = data.screenshotUrl    || data.screenshot_url    || null;
   const mimeType         = data.screenshotMimeType || 'image/png';
@@ -26,13 +61,22 @@ function buildAuditEntry(commandType, targetUrl, data) {
     screenshotUrl && !screenshotUrl.startsWith('http') && !screenshotUrl.startsWith('data:')
       ? screenshotUrl : null
   );
+
+  // For INSPECT_ELEMENTS: strip full raw, store only first 20 elements summary
+  const safeRaw = isInspect ? (() => {
+    const r = data.raw || {};
+    const insp = r.inspection || {};
+    const els  = (insp.elements || r.elements || []).slice(0, 20);
+    return { ...r, inspection: { ...insp, elements: els }, elements: undefined };
+  })() : (data.raw || null);
+
   return {
     id:                 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
     timestamp:          new Date().toISOString(),
     commandType,
     targetUrl,
     status:             data.status === 'success' ? 'success' : 'failed',
-    pageTitle:          data.pageTitle   || null,
+    pageTitle:          data.pageTitle || data._normalized && data.pageTitle || null,
     sessionActive:      data.raw?.session_active ?? null,
     screenshotCaptured: data.screenshotCaptured ?? false,
     screenshotMimeType: mimeType,
@@ -41,7 +85,7 @@ function buildAuditEntry(commandType, targetUrl, data) {
     diagnostics:        data.diagnostics || [],
     mode:               data.executionMode || 'UNKNOWN',
     governanceMode:     GOVERNANCE_MODE,
-    raw:                data.raw || null,
+    raw:                safeRaw,
     safeDiag:           data.safeDiag || null,
   };
 }
@@ -61,14 +105,47 @@ export default function BrowserSession() {
     const resolvedUrl = url || targetUrl;
     setRunning(commandType);
     setResult(null);
-    const data = await callBridge(commandType, resolvedUrl);
-    setResult(data);
-    setActivityLog(prev => {
-      const next = [...prev, buildAuditEntry(commandType, resolvedUrl, data)].slice(-100);
-      try { localStorage.setItem('veridan_browser_session_audit_log', JSON.stringify(next)); } catch {}
-      return next;
-    });
-    setRunning(null);
+    try {
+      let data;
+      if (commandType === 'INSPECT_ELEMENTS') {
+        // 20-second frontend timeout
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('INSPECT_TIMEOUT')), INSPECT_TIMEOUT_MS)
+        );
+        try {
+          const raw = await Promise.race([callBridge(commandType, resolvedUrl), timeoutPromise]);
+          data = normalizeInspectionResponse(raw);
+        } catch (err) {
+          if (err.message === 'INSPECT_TIMEOUT') {
+            data = {
+              status: 'failed',
+              commandType: 'INSPECT_ELEMENTS',
+              executionMode: 'FAILED',
+              error: 'Inspection timed out. Backend may still be working, but frontend stopped waiting.',
+              diagnostics: ['frontend_timeout: 20s exceeded'],
+              _normalized: true,
+              elements: [],
+              rawPreview: '',
+            };
+          } else {
+            throw err;
+          }
+        }
+      } else {
+        data = await callBridge(commandType, resolvedUrl);
+      }
+
+      setResult(data);
+      setActivityLog(prev => {
+        const entry = buildAuditEntry(commandType, resolvedUrl, data);
+        const next = [...prev, entry].slice(-100);
+        // Never persist full INSPECT_ELEMENTS raw to localStorage (already capped in buildAuditEntry)
+        try { localStorage.setItem('veridan_browser_session_audit_log', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    } finally {
+      setRunning(null);
+    }
   }, [targetUrl]);
 
   const bridgeConnected = result ? result.status === 'success' : null;
