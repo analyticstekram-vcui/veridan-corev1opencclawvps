@@ -8,6 +8,7 @@ import BridgeResponsePanel from '@/components/browser-control/BridgeResponsePane
 import SessionAuditLog from '@/components/browser-control/SessionAuditLog';
 import ProposedActionsAuditPanel from '@/components/browser-control/ProposedActionsAuditPanel';
 import ExecutionQueuePanel from '@/components/browser-control/ExecutionQueuePanel';
+import SafeReadValidationPanel from '@/components/browser-control/SafeReadValidationPanel';
 
 const GOVERNANCE_MODE = 'SAFE_READ_ONLY';
 const INSPECT_TIMEOUT_MS = 20000;
@@ -162,6 +163,7 @@ export default function BrowserSession() {
   const [targetUrl,   setTargetUrl]   = useState('https://www.tradingview.com');
   const [running,     setRunning]     = useState(null);
   const [result,      setResult]      = useState(null);
+  const [selectedElement, setSelectedElement] = useState(null);
   const [sessionId]   = useState('session_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
   const [persistEnabled] = useState(true);
   const [activityLog, setActivityLog] = useState(() => {
@@ -301,10 +303,13 @@ export default function BrowserSession() {
         />
 
         {/* ── Bridge Response + Screenshot Preview ── */}
-        {result && <BridgeResponsePanel result={result} />}
+        {result && <BridgeResponsePanel result={result} selectedElement={selectedElement} onSelectElement={setSelectedElement} />}
 
         {/* ── Session Activity / Audit Log ── */}
         <SessionAuditLog entries={activityLog} onClear={clearAuditLog} />
+
+        {/* ── Safe Read Validation Panel ── */}
+        <SafeReadValidationPanel inspectionResult={result} selectedElement={selectedElement} />
 
         {/* ── Proposed Actions Audit Panel ── */}
         <ProposedActionsAuditPanel />

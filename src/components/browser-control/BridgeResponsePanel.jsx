@@ -36,8 +36,10 @@ function resolveScreenshot(result) {
   };
 }
 
-export default function BridgeResponsePanel({ result }) {
-  const [selectedElement, setSelectedElement] = useState(null);
+export default function BridgeResponsePanel({ result, selectedElement, onSelectElement }) {
+  const handleSelectElement = (el) => {
+    onSelectElement?.(el);
+  };
 
   if (!result) return null;
   const isSuccess = result.status === 'success';
@@ -141,7 +143,7 @@ export default function BridgeResponsePanel({ result }) {
         <ElementInspectionPanel
           result={result}
           selectedElement={selectedElement}
-          onSelectElement={setSelectedElement}
+          onSelectElement={handleSelectElement}
         />
       )}
 
