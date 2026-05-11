@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ChevronDown, ChevronRight, AlertTriangle, Code2 } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, AlertTriangle, Code2, Crosshair, Copy, X, Shield } from 'lucide-react';
 
 function StatCard({ label, value }) {
   return (
@@ -10,16 +10,15 @@ function StatCard({ label, value }) {
   );
 }
 
-function ElementRow({ el }) {
-  const [expanded, setExpanded] = useState(false);
+function ElementRow({ el, selected, onSelect }) {
   return (
-    <div className="border-b border-border/30 last:border-0">
-      <div
-        className="grid grid-cols-[16px_80px_1fr_auto_auto] gap-2 px-3 py-2 text-[10px] font-mono hover:bg-secondary/20 cursor-pointer items-center"
-        onClick={() => setExpanded(v => !v)}
-      >
+    <div
+      className={`border-b border-border/30 last:border-0 cursor-pointer transition-colors ${selected ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-secondary/20'}`}
+      onClick={() => onSelect(el)}
+    >
+      <div className="grid grid-cols-[16px_80px_1fr_auto_auto] gap-2 px-3 py-2 text-[10px] font-mono items-center">
         <div className="text-muted-foreground/30">
-          {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          {selected ? <Crosshair className="w-3 h-3 text-primary" /> : <ChevronRight className="w-3 h-3" />}
         </div>
         <div className="text-accent uppercase tracking-wider text-[9px]">{el.type || '—'}</div>
         <div className="text-foreground truncate">{el.text || <span className="text-muted-foreground/30 italic">no text</span>}</div>
@@ -30,23 +29,76 @@ function ElementRow({ el }) {
           {el.enabled !== false ? 'ENABLED' : 'DISABLED'}
         </div>
       </div>
-      {expanded && (
-        <div className="mx-3 mb-2 grid grid-cols-2 gap-1.5 text-[9px] font-mono">
-          {[
-            ['Selector', el.selector],
-            ['Type',     el.type],
-            ['Text',     el.text],
-            ['href',     el.href],
-            ['Visible',  String(el.visible ?? '—')],
-            ['Enabled',  String(el.enabled ?? '—')],
-          ].map(([label, val]) => val ? (
-            <div key={label} className="bg-secondary/20 border border-border/50 px-2 py-1.5 col-span-1">
-              <div className="text-muted-foreground/40 uppercase tracking-wider text-[8px] mb-0.5">{label}</div>
-              <div className="text-foreground break-all">{val}</div>
-            </div>
-          ) : null)}
+    </div>
+  );
+}
+
+function SelectedElementPanel({ el, onClear }) {
+  const [copied, setCopied] = useState(false);
+
+  const copySelector = () => {
+    if (!el.selector) return;
+    navigator.clipboard.writeText(el.selector).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  const fields = [
+    ['Type',     el.type],
+    ['Tag',      el.tag || el.type],
+    ['Text',     el.text],
+    ['Selector', el.selector],
+    ['href',     el.href],
+    ['Visible',  String(el.visible ?? '—')],
+    ['Enabled',  String(el.enabled ?? '—')],
+  ].filter(([, val]) => val != null && val !== '');
+
+  return (
+    <div className="bg-card border border-primary/30">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-primary/20 bg-primary/5">
+        <div className="flex items-center gap-2">
+          <Crosshair className="w-3.5 h-3.5 text-primary" />
+          <span className="text-[11px] uppercase tracking-widest text-primary font-semibold">Selected Element Target</span>
         </div>
-      )}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={copySelector}
+            disabled={!el.selector}
+            className="flex items-center gap-1 px-2.5 py-1 border border-primary/30 text-[9px] text-primary uppercase tracking-wider hover:bg-primary/10 transition-colors disabled:opacity-30"
+          >
+            <Copy className="w-2.5 h-2.5" />
+            {copied ? 'Copied!' : 'Copy Selector'}
+          </button>
+          <button
+            onClick={onClear}
+            className="flex items-center gap-1 px-2.5 py-1 border border-border text-[9px] text-muted-foreground uppercase tracking-wider hover:bg-secondary/50 transition-colors"
+          >
+            <X className="w-2.5 h-2.5" /> Clear
+          </button>
+        </div>
+      </div>
+
+      {/* Fields */}
+      <div className="p-4 space-y-3">
+        <div className="grid grid-cols-2 gap-2">
+          {fields.map(([label, val]) => (
+            <div key={label} className={`bg-secondary/30 border border-border px-3 py-2 ${label === 'Selector' || label === 'href' ? 'col-span-2' : ''}`}>
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">{label}</div>
+              <div className="text-[11px] font-mono text-foreground break-all">{val}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Read-only warning */}
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/5 border border-amber-500/20">
+          <Shield className="w-3 h-3 text-amber-500 shrink-0" />
+          <span className="text-[9px] uppercase tracking-wider text-amber-500/80 font-semibold">
+            READ ONLY TARGETING — NO CLICK ACTION SENT
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -112,6 +164,8 @@ function isVpsPending(result) {
 }
 
 export default function ElementInspectionPanel({ result }) {
+  const [selectedElement, setSelectedElement] = useState(null);
+
   if (!result) return null;
 
   if (isVpsPending(result)) return <VpsPendingWarning />;
@@ -186,7 +240,14 @@ export default function ElementInspectionPanel({ result }) {
               <div /><div>Type</div><div>Text</div><div>Visible</div><div>Enabled</div>
             </div>
             <div className="max-h-80 overflow-auto divide-y divide-border/20">
-              {elements.map((el, i) => <ElementRow key={i} el={el} />)}
+              {elements.map((el, i) => (
+                <ElementRow
+                  key={i}
+                  el={el}
+                  selected={selectedElement === el}
+                  onSelect={setSelectedElement}
+                />
+              ))}
             </div>
             {stats.totalElements > 50 && (
               <div className="px-4 py-2 text-[9px] text-muted-foreground/40 border-t border-border/30">
@@ -196,6 +257,11 @@ export default function ElementInspectionPanel({ result }) {
           </div>
         ) : (
           <div className="text-[11px] text-muted-foreground/40 font-mono py-2">No elements returned.</div>
+        )}
+
+        {/* Selected Element Panel */}
+        {selectedElement && (
+          <SelectedElementPanel el={selectedElement} onClear={() => setSelectedElement(null)} />
         )}
 
         {/* Show Raw JSON — truncated preview, max 10k chars */}
