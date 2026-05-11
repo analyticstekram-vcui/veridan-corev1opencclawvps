@@ -138,12 +138,46 @@ async function executeViaOpenClaw(commandType, targetUrl) {
       return simulateFallback(commandType, targetUrl, diagnostics);
     }
 
-    diagnostics.push('command_executed: REAL');
+    // ── Normalise response — support both old and new VPS shape ──────────────
+    // New shape: { ok, mode, title, commandType, targetUrl, timestamp, diagnostics: {...} }
+    // Old shape: { pageTitle, screenshotUrl, screenshot_url, ... }
+    const pageTitle =
+      data.title         ??   // new shape
+      data.pageTitle     ??   // old shape
+      null;
+
+    const screenshotUrl =
+      data.screenshotUrl     ??
+      data.screenshot_url    ??
+      null;
+
+    // Detect mock/receipt-only response from VPS (not yet running real browser)
+    const isMockTitle =
+      typeof pageTitle === 'string' &&
+      (pageTitle === 'Safe Bridge received URL' ||
+       pageTitle.startsWith('[REAL PAGE TITLE FROM VPS'));
+
+    // Flatten new nested diagnostics object into the existing string array
+    if (data.diagnostics && typeof data.diagnostics === 'object' && !Array.isArray(data.diagnostics)) {
+      for (const [k, v] of Object.entries(data.diagnostics)) {
+        diagnostics.push(`${k}: ${v}`);
+      }
+    }
+
+    if (isMockTitle) {
+      diagnostics.push('vps_browser_automation: MOCK — VPS returned receipt response, real browser title not available yet');
+    }
+
+    diagnostics.push(`command_executed: REAL`);
+    if (data.mode) diagnostics.push(`vps_mode: ${data.mode}`);
+    if (data.timestamp) diagnostics.push(`vps_timestamp: ${data.timestamp}`);
+
     return {
-      pageTitle:         data.title         ?? data.pageTitle      ?? null,
-      screenshotCaptured: !!(data.screenshotUrl ?? data.screenshot_url),
-      screenshotUrl:     data.screenshotUrl  ?? data.screenshot_url ?? null,
-      executionMode:     'REAL',
+      pageTitle,
+      isMockTitle,
+      screenshotCaptured: !!(screenshotUrl),
+      screenshotUrl,
+      executionMode: 'REAL',
       diagnostics,
       raw: data,
     };
@@ -221,6 +255,7 @@ Deno.serve(async (req) => {
   return Response.json({
     commandId, status, commandType, targetUrl,
     pageTitle:          execResult.pageTitle          ?? null,
+    isMockTitle:        execResult.isMockTitle        ?? false,
     screenshotCaptured: execResult.screenshotCaptured ?? false,
     screenshotUrl:      execResult.screenshotUrl      ?? null,
     executionMode:      execResult.executionMode      ?? 'SIMULATED',

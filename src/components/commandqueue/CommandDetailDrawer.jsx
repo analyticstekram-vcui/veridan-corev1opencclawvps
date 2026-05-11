@@ -86,7 +86,20 @@ export default function CommandDetailDrawer({ command, currentUser, onClose, onA
           {command.result && (
             <div className="space-y-1.5">
               <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2">Execution Result</div>
-              {command.result.pageTitle && <Field label="Page Title" value={command.result.pageTitle} />}
+              {command.result.pageTitle && (
+                <div className="bg-secondary/30 border border-border px-3 py-2">
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground/40 mb-0.5">Page Title</div>
+                  <div className="text-[11px] text-foreground">{command.result.pageTitle}</div>
+                  {command.isMockTitle && (
+                    <div className="mt-1.5 flex items-start gap-1.5 px-2 py-1.5 bg-amber-500/5 border border-amber-500/20">
+                      <span className="text-amber-500 text-[9px] mt-0.5">⚠</span>
+                      <span className="text-[10px] text-amber-400/80 leading-relaxed">
+                        Bridge connected, but VPS browser automation is not yet returning real page title.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
               {command.result.screenshotUrl && (
                 <div className="bg-secondary/30 border border-border px-3 py-2">
                   <div className="text-[9px] uppercase tracking-wider text-muted-foreground/40 mb-1">Screenshot</div>

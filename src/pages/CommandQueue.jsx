@@ -114,6 +114,7 @@ export default function CommandQueue() {
       auditLog:      auditLog2,
       diagnostics:   res.diagnostics || [],
       error:         res.error || null,
+      isMockTitle:   res.isMockTitle  || false,
       result: {
         pageTitle:          res.pageTitle    || null,
         screenshotCaptured: res.screenshotCaptured || false,

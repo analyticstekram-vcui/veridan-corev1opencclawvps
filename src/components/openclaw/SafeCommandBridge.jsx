@@ -91,6 +91,14 @@ function ResultPanel({ result, uiStatus }) {
             <div className="bg-secondary/30 border border-border px-3 py-2 col-span-2">
               <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Page Title</div>
               <div className="text-foreground">{result.pageTitle}</div>
+              {result.isMockTitle && (
+                <div className="mt-1.5 flex items-start gap-1.5 px-2 py-1.5 bg-amber-500/5 border border-amber-500/20">
+                  <span className="text-amber-500 text-[9px] mt-0.5">⚠</span>
+                  <span className="text-[10px] text-amber-400/80 leading-relaxed">
+                    Bridge connected, but VPS browser automation is not yet returning real page title.
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
