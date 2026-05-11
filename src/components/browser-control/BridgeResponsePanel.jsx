@@ -1,6 +1,7 @@
-import React from 'react';
-import { CheckCircle2, XCircle, Camera } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import ElementInspectionPanel from './ElementInspectionPanel';
+import ScreenshotOverlayPanel from './ScreenshotOverlayPanel';
 
 function resolveScreenshot(result) {
   const screenshotBase64 = result.screenshotBase64 || result.screenshot_base64 || null;
@@ -36,6 +37,8 @@ function resolveScreenshot(result) {
 }
 
 export default function BridgeResponsePanel({ result }) {
+  const [selectedElement, setSelectedElement] = useState(null);
+
   if (!result) return null;
   const isSuccess = result.status === 'success';
   const ss = resolveScreenshot(result);
@@ -135,7 +138,11 @@ export default function BridgeResponsePanel({ result }) {
 
       {/* ── Element Inspection Panel ── */}
       {result.commandType === 'INSPECT_ELEMENTS' && (
-        <ElementInspectionPanel result={result} />
+        <ElementInspectionPanel
+          result={result}
+          selectedElement={selectedElement}
+          onSelectElement={setSelectedElement}
+        />
       )}
 
       {/* ── Screenshot Preview Panel ── */}
@@ -159,19 +166,9 @@ export default function BridgeResponsePanel({ result }) {
             ))}
           </div>
 
-          {/* Image */}
+          {/* Image + overlay */}
           {ss.src ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Camera className="w-3 h-3 text-primary" />
-                <span className="text-[9px] uppercase tracking-widest text-primary font-semibold">Browser Screenshot Preview</span>
-              </div>
-              <img
-                src={ss.src}
-                alt="OpenClaw browser screenshot"
-                className="w-full rounded border border-border/50 max-h-[500px] object-contain"
-              />
-            </div>
+            <ScreenshotOverlayPanel src={ss.src} selectedElement={selectedElement} />
           ) : ss.captured ? (
             <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-400 font-mono">
               Screenshot was captured but no image data was returned by the bridge.

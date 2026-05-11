@@ -163,8 +163,8 @@ function isVpsPending(result) {
   return false;
 }
 
-export default function ElementInspectionPanel({ result }) {
-  const [selectedElement, setSelectedElement] = useState(null);
+export default function ElementInspectionPanel({ result, selectedElement, onSelectElement }) {
+  const setSelectedElement = onSelectElement;
 
   if (!result) return null;
 
