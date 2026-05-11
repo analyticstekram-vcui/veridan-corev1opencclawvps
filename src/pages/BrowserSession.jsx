@@ -50,7 +50,12 @@ export default function BrowserSession() {
   const [targetUrl,   setTargetUrl]   = useState('https://www.tradingview.com');
   const [running,     setRunning]     = useState(null);
   const [result,      setResult]      = useState(null);
-  const [activityLog, setActivityLog] = useState([]);
+  const [activityLog, setActivityLog] = useState(() => {
+    try {
+      const stored = localStorage.getItem('veridan_browser_session_audit_log');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
 
   const invoke = useCallback(async (commandType, url) => {
     const resolvedUrl = url || targetUrl;
@@ -58,11 +63,20 @@ export default function BrowserSession() {
     setResult(null);
     const data = await callBridge(commandType, resolvedUrl);
     setResult(data);
-    setActivityLog(prev => [...prev, buildAuditEntry(commandType, resolvedUrl, data)]);
+    setActivityLog(prev => {
+      const next = [...prev, buildAuditEntry(commandType, resolvedUrl, data)].slice(-100);
+      try { localStorage.setItem('veridan_browser_session_audit_log', JSON.stringify(next)); } catch {}
+      return next;
+    });
     setRunning(null);
   }, [targetUrl]);
 
   const bridgeConnected = result ? result.status === 'success' : null;
+
+  const clearAuditLog = () => {
+    setActivityLog([]);
+    try { localStorage.removeItem('veridan_browser_session_audit_log'); } catch {}
+  };
 
   return (
     <div className="min-h-screen bg-background font-mono">
@@ -127,7 +141,7 @@ export default function BrowserSession() {
         {result && <BridgeResponsePanel result={result} />}
 
         {/* ── Session Activity / Audit Log ── */}
-        <SessionAuditLog entries={activityLog} />
+        <SessionAuditLog entries={activityLog} onClear={clearAuditLog} />
 
       </div>
     </div>

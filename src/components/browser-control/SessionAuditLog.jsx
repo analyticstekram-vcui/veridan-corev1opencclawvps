@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollText, ChevronDown, ChevronRight, Shield, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { ScrollText, ChevronDown, ChevronRight, Shield, CheckCircle2, XCircle, Loader2, Trash2 } from 'lucide-react';
 
 const GOVERNANCE_MODE = 'SAFE_READ_ONLY';
 
@@ -132,15 +132,26 @@ function AuditRow({ entry }) {
   );
 }
 
-export default function SessionAuditLog({ entries }) {
+export default function SessionAuditLog({ entries, onClear }) {
   return (
     <div className="bg-card border border-border">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
         <ScrollText className="w-3.5 h-3.5 text-primary" />
         <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Session Activity</span>
         <span className="text-[9px] text-muted-foreground/30 ml-1">({entries.length})</span>
-        <div className="ml-auto flex items-center gap-1.5 text-[9px] text-muted-foreground/40">
-          <Shield className="w-2.5 h-2.5" /> {GOVERNANCE_MODE}
+        <div className="ml-auto flex items-center gap-2">
+          <span className="flex items-center gap-1.5 text-[9px] text-muted-foreground/40">
+            <Shield className="w-2.5 h-2.5" /> {GOVERNANCE_MODE}
+          </span>
+          {entries.length > 0 && (
+            <button
+              onClick={onClear}
+              className="flex items-center gap-1 px-2 py-0.5 border border-border text-[9px] text-muted-foreground/50 hover:text-destructive hover:border-destructive/40 transition-colors uppercase tracking-wider"
+              title="Clear audit log"
+            >
+              <Trash2 className="w-2.5 h-2.5" /> Clear
+            </button>
+          )}
         </div>
       </div>
       {entries.length === 0 ? (
