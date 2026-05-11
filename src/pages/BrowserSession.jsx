@@ -94,6 +94,27 @@ function buildAuditEntry(commandType, targetUrl, data) {
   };
 }
 
+// Normalize commandType to enum-safe lastAction value
+function normalizeCommandType(commandType) {
+  if (!commandType) return null;
+  // Convert uppercase to lowercase with underscores
+  const normalized = commandType.toLowerCase().replace(/([A-Z])/g, '_$1').replace(/^_/, '');
+  // Map known command types to enum values
+  const mapping = {
+    'open_url_and_read_title': 'read_title',
+    'open_url_and_screenshot': 'screenshot',
+    'inspect_elements': 'inspect_elements',
+    'read_element_text': 'read_element_text',
+    'click_element': 'click_element',
+    'type_into_element': 'type_into_element',
+    'propose_action': 'propose_action',
+    'approve_proposal': 'approve_proposal',
+    'queue_execution': 'queue_execution',
+    'execute_command': 'execute_command',
+  };
+  return mapping[normalized] || normalized;
+}
+
 // Safe audit entry for database storage — minimal metadata only
 function buildDatabaseAuditEntry(commandType, targetUrl, data) {
   const diagnosticsArray = Array.isArray(data.diagnostics) ? data.diagnostics : [];
@@ -118,6 +139,8 @@ async function persistSessionToEntity(sessionId, targetUrl, result, activityLog)
     if (!user) return;
 
     const lastEntry = activityLog[activityLog.length - 1] || {};
+    
+    // Build safe audit trail — metadata only, no secrets/screenshots/raw JSON
     const databaseEntries = activityLog.slice(-50).map(entry => ({
       timestamp: entry.timestamp,
       commandType: entry.commandType,
@@ -133,14 +156,17 @@ async function persistSessionToEntity(sessionId, targetUrl, result, activityLog)
       sessionId,
     });
 
+    // Normalize lastAction to enum-safe value
+    const normalizedLastAction = normalizeCommandType(lastEntry.commandType);
+
     const sessionData = {
       sessionId,
-      status: result?.status === 'success' ? 'active' : 'idle',
+      status: result?.status === 'success' ? 'active' : 'error',
       mode: 'real_browser',
       governance: GOVERNANCE_MODE,
       currentUrl: result?.targetUrl || targetUrl,
       pageTitle: result?.pageTitle || null,
-      lastAction: lastEntry.commandType || null,
+      lastAction: normalizedLastAction,
       auditTrail: databaseEntries,
       createdBy: user.email,
     };

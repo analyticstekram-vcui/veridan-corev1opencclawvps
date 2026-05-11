@@ -45,8 +45,17 @@
         "read_title",
         "read_page_text",
         "screenshot",
-        "end"
-      ]
+        "end",
+        "inspect_elements",
+        "read_element_text",
+        "click_element",
+        "type_into_element",
+        "propose_action",
+        "approve_proposal",
+        "queue_execution",
+        "execute_command"
+      ],
+      "description": "Last action performed in the session"
     },
     "diagnostics": {
       "type": "array",
@@ -56,7 +65,7 @@
     },
     "auditTrail": {
       "type": "array",
-      "description": "Ordered log of all session actions",
+      "description": "Ordered log of all session actions (capped at 50 entries, metadata-only)",
       "items": {
         "type": "object"
       }
