@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, ChevronDown, ChevronRight, AlertTriangle, Code2, Crosshair, Copy, X, Shield } from 'lucide-react';
 import ProposedActionPanel from './ProposedActionPanel';
+import ProposedActionsAuditPanel, { saveProposal } from './ProposedActionsAuditPanel';
 
 function StatCard({ label, value }) {
   return (
@@ -400,9 +401,13 @@ export default function ElementInspectionPanel({ result, selectedElement, onSele
           <ProposedActionPanel
             selectedElement={selectedElement}
             targetUrl={stats.currentUrl}
+            onSaveProposal={saveProposal}
             onClear={() => setSelectedElement(null)}
           />
         )}
+
+        {/* Proposed Actions Audit Panel */}
+        <ProposedActionsAuditPanel />
 
         {/* Show Raw JSON — truncated preview, max 10k chars */}
         {rawPreview && (

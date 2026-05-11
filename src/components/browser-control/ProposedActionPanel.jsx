@@ -16,23 +16,30 @@ function FieldCard({ label, value, mono = false }) {
   );
 }
 
-export default function ProposedActionPanel({ selectedElement, targetUrl, onClear }) {
+export default function ProposedActionPanel({ selectedElement, targetUrl, onSaveProposal, onClear }) {
   const [commandType, setCommandType] = useState('CLICK_ELEMENT');
 
   if (!selectedElement) return null;
 
   const proposal = {
-    proposalId:      'draft_' + Date.now(),
+    proposalId:       'draft_' + Date.now(),
     commandType,
-    selector:        selectedElement.selector || '—',
-    elementText:     selectedElement.text || '—',
-    elementTag:      selectedElement.tag || selectedElement.type || '—',
-    targetUrl:       targetUrl || '—',
-    riskTier:        'LOW',
-    governanceMode:  'SAFE_REQUIRES_APPROVAL',
+    selector:         selectedElement.selector || '—',
+    elementText:      selectedElement.text || '—',
+    tag:              selectedElement.tag || selectedElement.type || '—',
+    href:             selectedElement.href || null,
+    targetUrl:        targetUrl || '—',
+    riskTier:         'LOW',
+    governanceMode:   'SAFE_REQUIRES_APPROVAL',
     requiresApproval: true,
-    status:          'DRAFT',
-    createdAt:       new Date().toISOString(),
+    status:           'DRAFT',
+    source:           'BROWSER_SESSION',
+    executionAllowed: false,
+    createdAt:        new Date().toISOString(),
+  };
+
+  const handleSave = () => {
+    onSaveProposal(proposal);
   };
 
   return (
@@ -101,8 +108,14 @@ export default function ProposedActionPanel({ selectedElement, targetUrl, onClea
           </p>
         </div>
 
-        {/* Action Buttons — disabled for now */}
+        {/* Action Buttons */}
         <div className="flex gap-2">
+          <button
+            onClick={handleSave}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 border border-accent/50 bg-accent/10 text-[9px] text-accent uppercase tracking-wider font-semibold hover:bg-accent/20 transition-colors"
+          >
+            <Clock className="w-3 h-3" /> Save Proposal
+          </button>
           <button
             disabled
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 border border-primary/20 bg-primary/5 text-[9px] text-primary uppercase tracking-wider font-semibold opacity-40 cursor-not-allowed"
