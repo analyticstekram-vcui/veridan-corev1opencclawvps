@@ -90,10 +90,77 @@ function buildAuditEntry(commandType, targetUrl, data) {
   };
 }
 
+// Safe audit entry for database storage — minimal metadata only
+function buildDatabaseAuditEntry(commandType, targetUrl, data) {
+  const diagnosticsArray = Array.isArray(data.diagnostics) ? data.diagnostics : [];
+  const diagnosticsSummary = diagnosticsArray.slice(0, 5); // First 5 diagnostics only
+
+  return {
+    timestamp:          new Date().toISOString(),
+    commandType,
+    targetUrl,
+    status:             data.status === 'success' ? 'success' : 'failed',
+    pageTitle:          data.pageTitle || (data._normalized && data.pageTitle) || null,
+    screenshotCaptured: data.screenshotCaptured ?? false,
+    base64Length:       0, // Never store actual screenshot
+    error:              data.error || null,
+    diagnosticsSummary,
+  };
+}
+
+async function persistSessionToEntity(sessionId, targetUrl, result, activityLog) {
+  try {
+    const user = await base44.auth.me();
+    if (!user) return;
+
+    const lastEntry = activityLog[activityLog.length - 1] || {};
+    const databaseEntries = activityLog.slice(-50).map(entry => ({
+      timestamp: entry.timestamp,
+      commandType: entry.commandType,
+      targetUrl: entry.targetUrl,
+      status: entry.status,
+      pageTitle: entry.pageTitle,
+      screenshotCaptured: entry.screenshotCaptured,
+      diagnosticsSummary: Array.isArray(entry.diagnostics) ? entry.diagnostics.slice(0, 5) : [],
+    }));
+
+    // Create or update BrowserSession entity
+    const existingSessions = await base44.entities.BrowserSession.filter({
+      sessionId,
+    });
+
+    const sessionData = {
+      sessionId,
+      status: result?.status === 'success' ? 'active' : 'idle',
+      mode: 'real_browser',
+      governance: GOVERNANCE_MODE,
+      currentUrl: result?.targetUrl || targetUrl,
+      pageTitle: result?.pageTitle || null,
+      lastAction: lastEntry.commandType || null,
+      auditTrail: databaseEntries,
+      createdBy: user.email,
+    };
+
+    if (existingSessions && existingSessions.length > 0) {
+      // Update existing session
+      await base44.entities.BrowserSession.update(existingSessions[0].id, sessionData);
+    } else {
+      // Create new session
+      sessionData.createdAt = new Date().toISOString();
+      await base44.entities.BrowserSession.create(sessionData);
+    }
+  } catch (err) {
+    console.warn('Failed to persist session to entity:', err.message);
+    // Silently fail — localStorage is fallback
+  }
+}
+
 export default function BrowserSession() {
   const [targetUrl,   setTargetUrl]   = useState('https://www.tradingview.com');
   const [running,     setRunning]     = useState(null);
   const [result,      setResult]      = useState(null);
+  const [sessionId]   = useState('session_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+  const [persistEnabled] = useState(true);
   const [activityLog, setActivityLog] = useState(() => {
     try {
       const stored = localStorage.getItem('veridan_browser_session_audit_log');
@@ -141,12 +208,18 @@ export default function BrowserSession() {
         const next = [...prev, entry].slice(-100);
         // Never persist full INSPECT_ELEMENTS raw to localStorage (already capped in buildAuditEntry)
         try { localStorage.setItem('veridan_browser_session_audit_log', JSON.stringify(next)); } catch {}
+        
+        // Persist to entity if enabled (non-blocking)
+        if (persistEnabled) {
+          persistSessionToEntity(sessionId, resolvedUrl, data, next);
+        }
+        
         return next;
       });
     } finally {
       setRunning(null);
     }
-  }, [targetUrl]);
+  }, [targetUrl, sessionId, persistEnabled]);
 
   const bridgeConnected = result ? result.status === 'success' : null;
 
