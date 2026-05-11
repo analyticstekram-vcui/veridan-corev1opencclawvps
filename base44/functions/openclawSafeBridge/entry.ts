@@ -1,8 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// ── Veridan Bridge (primary) ──────────────────────────────────────────────────
-const VERIDAN_BRIDGE_URL   = Deno.env.get('VERIDAN_BRIDGE_URL')   || 'https://bridge.veridancore.com/api/safe-command';
-const VERIDAN_BRIDGE_TOKEN = Deno.env.get('VERIDAN_BRIDGE_TOKEN') || '';
+// ── Veridan Bridge (primary) — read at request time, not module-load time ─────
+// NOTE: Do NOT cache these at module level; Deno may snapshot env before
+//       secrets are injected. Always read fresh on each invocation.
+function getBridgeUrl()   { return Deno.env.get('VERIDAN_BRIDGE_URL')   || 'https://bridge.veridancore.com/api/safe-command'; }
+function getBridgeToken() { return Deno.env.get('VERIDAN_BRIDGE_TOKEN') || ''; }
 
 // ── Legacy OpenClaw gateway (fallback) ────────────────────────────────────────
 const OPENCLAW_GATEWAY_URL   = Deno.env.get('OPENCLAW_GATEWAY_URL')   || 'https://openclaw.veridancore.com';
@@ -46,17 +48,37 @@ function validateRequest({ commandType, targetUrl }) {
 // ── callVeridanBridge ─────────────────────────────────────────────────────────
 // Primary: POST to VERIDAN_BRIDGE_URL with Bearer token auth
 async function callVeridanBridge(commandType, targetUrl) {
+  const VERIDAN_BRIDGE_URL   = getBridgeUrl();
+  const VERIDAN_BRIDGE_TOKEN = getBridgeToken();
+
+  // Safe diagnostics — host only, never token value
+  let bridgeUrlHost = '(unset)';
+  try { bridgeUrlHost = new URL(VERIDAN_BRIDGE_URL).host; } catch (_) { bridgeUrlHost = VERIDAN_BRIDGE_URL.slice(0, 40); }
+
+  const safeDiag = {
+    hasBridgeUrl:   !!VERIDAN_BRIDGE_URL && VERIDAN_BRIDGE_URL !== 'https://bridge.veridancore.com/api/safe-command',
+    hasBridgeToken: !!VERIDAN_BRIDGE_TOKEN,
+    bridgeUrlHost,
+  };
+
+  console.log('[openclawSafeBridge] env check:', JSON.stringify(safeDiag));
+
   if (!VERIDAN_BRIDGE_TOKEN) {
     return {
       status: 'failed',
       error: 'VERIDAN_BRIDGE_TOKEN is not configured. Please set this secret in the dashboard.',
-      diagnostics: ['bridge_token: MISSING'],
+      diagnostics: [
+        `bridge_token: MISSING`,
+        `bridge_url_host: ${bridgeUrlHost}`,
+        `has_bridge_url: ${safeDiag.hasBridgeUrl}`,
+      ],
+      safeDiag,
       executionMode: 'FAILED',
     };
   }
 
   const diagnostics = [];
-  diagnostics.push(`bridge_url: ${VERIDAN_BRIDGE_URL}`);
+  diagnostics.push(`bridge_url_host: ${bridgeUrlHost}`);
   diagnostics.push(`command_type: ${commandType}`);
   diagnostics.push(`target_url: ${targetUrl}`);
 
@@ -176,7 +198,16 @@ Deno.serve(async (req) => {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   if (req.method === 'GET') {
-    return Response.json({ auditLog, bridgeUrl: VERIDAN_BRIDGE_URL });
+    let bridgeUrlHost = '(unset)';
+    try { bridgeUrlHost = new URL(getBridgeUrl()).host; } catch (_) {}
+    return Response.json({
+      auditLog,
+      safeDiag: {
+        hasBridgeUrl:   !!getBridgeUrl(),
+        hasBridgeToken: !!getBridgeToken(),
+        bridgeUrlHost,
+      },
+    });
   }
 
   let body;
@@ -230,6 +261,7 @@ Deno.serve(async (req) => {
     screenshotUrl:      result.screenshotUrl      ?? null,
     executionMode:      result.executionMode      ?? 'FAILED',
     diagnostics:        result.diagnostics        ?? [],
+    safeDiag:           result.safeDiag           ?? null,
     raw:                result.raw                ?? null,
     startedAt,
     completedAt,
