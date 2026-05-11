@@ -86,22 +86,29 @@ Deno.serve(async (req) => {
     // Validate proposal
     const validationErrors = validateProposal(proposal);
     if (validationErrors.length > 0) {
+      // Return controlled governance block as HTTP 200 with structured response
       return Response.json(
         {
-          error: 'Validation failed',
-          validationErrors,
+          ok: false,
           backendValidationStatus: 'FAILED',
+          executionStatus: 'BLOCKED',
+          executionMode: 'SIMULATED',
           auditTraceId,
+          controlledBlockReason: validationErrors[0], // Primary reason
+          validationErrors,
+          errorCategory: 'GOVERNANCE_BLOCK',
         },
-        { status: 400 }
+        { status: 200 }
       );
     }
 
     // SIMULATED mode
     if (executionMode === 'SIMULATED') {
       const simulatedResult = {
+        ok: true,
         status: 'success',
         executionMode: 'SIMULATED',
+        executionStatus: 'COMPLETED',
         commandType: proposal.commandType,
         url: proposal.targetUrl,
         selector: proposal.selector,
@@ -120,25 +127,29 @@ Deno.serve(async (req) => {
       return Response.json(simulatedResult, { status: 200 });
     }
 
-    // LIVE mode (TODO: verify token auth and backend tunnel checks before calling bridge)
+    // LIVE mode (not yet implemented)
     if (executionMode === 'LIVE') {
-      // TODO: Verify OPENCLAW_SERVICE_TOKEN is set and valid
-      // TODO: Verify backend tunnel to openclawSafeBridge is available
-      // TODO: Call openclawSafeBridge with proposal and user context
-      // For now, return unimplemented error
       return Response.json(
         {
-          error: 'LIVE execution not yet implemented',
-          message: 'Token authentication and backend tunnel checks pending',
+          ok: false,
           backendValidationStatus: 'BLOCKED',
+          executionStatus: 'BLOCKED',
+          executionMode: 'LIVE',
           auditTraceId,
+          controlledBlockReason: 'LIVE execution not yet implemented',
+          errorCategory: 'GOVERNANCE_BLOCK',
         },
-        { status: 501 }
+        { status: 200 }
       );
     }
 
+    // Invalid execution mode - this is a programming error
     return Response.json(
-      { error: 'Invalid execution mode', backendValidationStatus: 'FAILED', auditTraceId },
+      { 
+        error: 'Invalid execution mode',
+        backendValidationStatus: 'ERROR',
+        auditTraceId,
+      },
       { status: 400 }
     );
   } catch (error) {

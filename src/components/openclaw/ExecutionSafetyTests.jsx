@@ -174,6 +174,12 @@ function TestRow({ test, result, loading, onRun }) {
                   </ul>
                 </div>
               )}
+              {result.controlledBlockReason && (
+                <div className="col-span-2 md:col-span-4 bg-amber-500/5 border border-amber-500/20 px-2 py-1">
+                  <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Block Reason</div>
+                  <div className="font-mono text-[8px] text-amber-500">{result.controlledBlockReason}</div>
+                </div>
+              )}
               {result.transportError && (
                 <div className="col-span-2 md:col-span-4 bg-destructive/5 border border-destructive/20 px-2 py-1">
                   <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Transport Error</div>
@@ -216,10 +222,21 @@ export default function ExecutionSafetyTests() {
       });
 
       // Determine actual result based on backend response
-      // BLOCKED is when backend validation fails (validationErrors present or status indicates failure)
-      const hasValidationErrors = res.data?.validationErrors && res.data.validationErrors.length > 0;
       const backendStatus = res.data?.backendValidationStatus;
-      const actualResult = (hasValidationErrors || backendStatus === 'FAILED') ? 'BLOCKED' : 'SUCCESS';
+      const executionStatus = res.data?.executionStatus || res.data?.status;
+      const errorCategory = res.data?.errorCategory;
+      
+      // SUCCESS: PASSED validation with successful execution
+      // BLOCKED: FAILED/BLOCKED validation with GOVERNANCE_BLOCK error category
+      let actualResult = 'UNKNOWN';
+      if (backendStatus === 'PASSED' && (executionStatus === 'success' || executionStatus === 'COMPLETED')) {
+        actualResult = 'SUCCESS';
+      } else if ((backendStatus === 'FAILED' || backendStatus === 'BLOCKED') && (executionStatus === 'BLOCKED' || errorCategory === 'GOVERNANCE_BLOCK')) {
+        actualResult = 'BLOCKED';
+      } else if (backendStatus === 'BLOCKED' && errorCategory === 'GOVERNANCE_BLOCK') {
+        actualResult = 'BLOCKED';
+      }
+      
       const passed = actualResult === test.expectedResult;
 
       setResults(prev => ({
@@ -229,16 +246,18 @@ export default function ExecutionSafetyTests() {
           actualResult,
           passed,
           backendValidationStatus: backendStatus || 'UNKNOWN',
-          executionStatus: res.data?.status || res.data?.executionStatus || null,
+          executionStatus,
           executionMode: res.data?.executionMode || null,
           auditTraceId: res.data?.auditTraceId || null,
           error: res.data?.error || null,
+          controlledBlockReason: res.data?.controlledBlockReason || null,
           validationErrors: res.data?.validationErrors || null,
           transportError: null,
         },
       }));
     } catch (err) {
-      // Distinguish auth errors from other transport errors
+      // Only true transport/auth errors count as TRANSPORT_ERROR
+      // Controlled governance blocks never reach here (they're HTTP 200)
       const isAuthError = err.response?.status === 401 || err.response?.status === 403;
       const transportError = isAuthError ? 'AUTH_FAILED' : 'TRANSPORT_ERROR';
       
@@ -253,6 +272,7 @@ export default function ExecutionSafetyTests() {
           executionMode: null,
           auditTraceId: null,
           error: err.message,
+          controlledBlockReason: null,
           validationErrors: null,
           transportError,
         },
