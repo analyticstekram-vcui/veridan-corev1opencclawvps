@@ -809,6 +809,7 @@ export default function ProductionReadinessChecklistPanel() {
   const [showOnlyUnresolved, setShowOnlyUnresolved] = useState(false);
   const [suggestedReviews, setSuggestedReviews] = useState({});
   const [savingAuto, setSavingAuto] = useState(false);
+  const [reviewCompleted, setReviewCompleted] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -935,6 +936,7 @@ export default function ProductionReadinessChecklistPanel() {
 
   const runSafeChecklistReview = async () => {
     setSystemReviewRunning(true);
+    setReviewCompleted(false);
     try {
       const user = await base44.auth.me();
       const now = new Date().toISOString();
@@ -961,6 +963,7 @@ export default function ProductionReadinessChecklistPanel() {
 
       setSuggestedReviews(suggestions);
       setSystemReviewResults({ ...results, unresolvedItems });
+      setReviewCompleted(true);
     } catch (err) {
       console.error('System review error:', err);
     } finally {
@@ -1015,6 +1018,26 @@ export default function ProductionReadinessChecklistPanel() {
     }
   };
 
+  // Get unresolved items sorted by severity
+  const getUnresolvedBySeverity = () => {
+    const unresolvedItems = CHECKLIST_ITEMS.filter(item => {
+      const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+      return effectiveStatus !== 'COMPLETE';
+    });
+
+    return unresolvedItems.sort((a, b) => {
+      // Priority order: BLOCKED > CRITICAL NOT_STARTED > CRITICAL PARTIAL > others
+      const getOrder = (item) => {
+        const status = reviews[item.name]?.reviewStatus || item.status;
+        if (status === 'BLOCKED') return 0;
+        if (item.priority === 'CRITICAL' && status === 'NOT_STARTED') return 1;
+        if (item.priority === 'CRITICAL' && status === 'PARTIAL') return 2;
+        return 3;
+      };
+      return getOrder(a) - getOrder(b);
+    });
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -1023,6 +1046,62 @@ export default function ProductionReadinessChecklistPanel() {
           <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Production Readiness</div>
           <div className="text-[13px] font-semibold text-foreground">Pre-Production Checklist</div>
         </div>
+      </div>
+
+      {/* Audit-Only Banner */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-[10px] text-primary/80">
+          <div className="font-semibold mb-0.5">Checklist review is audit-only.</div>
+          <div className="text-[9px] text-primary/70">It records operator review progress. It does not enable live execution, execute commands, or bypass governance.</div>
+        </div>
+      </div>
+
+      {/* Action Panel */}
+      <div className="bg-secondary/20 border border-border rounded-lg p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold">Action Panel</span>
+          <span className="text-[9px] text-muted-foreground/40 border border-border px-2 py-0.5">Location: top green button under the audit-only notice</span>
+        </div>
+
+        {/* Main button */}
+        <button
+          type="button"
+          onClick={runSafeChecklistReview}
+          disabled={systemReviewRunning}
+          className="w-full px-4 py-3 bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
+        >
+          {systemReviewRunning ? '⏳ Analyzing...' : '🔍 Auto-resolve everything safe to review'}
+        </button>
+
+        {/* Helper text */}
+        <div className="text-[9px] text-muted-foreground/70 bg-card/50 border border-border/30 px-3 py-2 rounded">
+          This saves review records for items that are already verifiable from the checklist evidence. It does not run commands, enable live mode, expose secrets, or bypass governance.
+        </div>
+
+        {/* Secondary button */}
+        <button
+          type="button"
+          onClick={() => setShowOnlyUnresolved(!showOnlyUnresolved)}
+          className={`w-full px-4 py-2 text-[11px] border transition-colors rounded-lg font-semibold ${
+            showOnlyUnresolved
+              ? 'border-primary text-primary bg-primary/10'
+              : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+          }`}
+        >
+          {showOnlyUnresolved ? '✓ Showing items still needing work' : 'Show only items still needing work'}
+        </button>
+
+        {/* Confirmation message */}
+        {reviewCompleted && (
+          <div className="flex items-start gap-2 px-3 py-2.5 bg-primary/10 border border-primary/30 rounded">
+            <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="text-[10px] text-primary/80">
+              <div className="font-semibold mb-0.5">Done — safe review records were saved.</div>
+              <div className="text-[9px] text-primary/70">Items below still need external work before completion.</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Legacy REAL/LIVE execution warning */}
@@ -1063,49 +1142,52 @@ export default function ProductionReadinessChecklistPanel() {
         );
       })()}
 
-      {/* Audit-Only Banner */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
-        <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <div className="text-[10px] text-primary/80">
-          <div className="font-semibold mb-0.5">Checklist review is audit-only.</div>
-          <div className="text-[9px] text-primary/70">It records operator review progress. It does not enable live execution, execute commands, or bypass governance.</div>
-        </div>
-      </div>
+      {/* Items still needing external work */}
+      {(() => {
+        const unresolved = getUnresolvedBySeverity();
+        return unresolved.length > 0 ? (
+          <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+            <div className="text-[11px] font-semibold text-foreground">Items still needing external work</div>
+            <div className="space-y-2">
+              {unresolved.slice(0, 15).map((item, i) => {
+                const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+                const statusColor = effectiveStatus === 'BLOCKED' ? 'text-destructive border-destructive/30 bg-destructive/5' :
+                                   effectiveStatus === 'NOT_STARTED' ? 'text-blue-400 border-blue-400/30 bg-blue-400/5' :
+                                   'text-amber-500 border-amber-500/30 bg-amber-500/5';
+                return (
+                  <div key={i} className="flex items-start gap-3 px-3 py-2.5 bg-card/50 border border-border/30 rounded">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="font-semibold text-foreground text-[10px] flex-1">{item.name}</div>
+                        <span className={`text-[8px] px-2 py-0.5 border rounded font-semibold whitespace-nowrap ${statusColor}`}>
+                          {effectiveStatus}
+                        </span>
+                      </div>
+                      <div className="text-[9px] text-muted-foreground/70">
+                        <div><span className="font-semibold">Category:</span> {item.category}</div>
+                        <div className="mt-1"><span className="font-semibold">Next action:</span> {item.nextAction}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {unresolved.length > 15 && <div className="text-[8px] text-muted-foreground/50 text-center py-1">+ {unresolved.length - 15} more items</div>}
+            </div>
+          </div>
+        ) : null;
+      })()}
 
-      {/* Auto-review Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Save suggested reviews button */}
+      {Object.keys(suggestedReviews).length > 0 && !reviewCompleted && (
         <button
           type="button"
-          onClick={runSafeChecklistReview}
-          disabled={systemReviewRunning}
-          className="px-4 py-2.5 bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
+          onClick={autoSaveSuggestedReviews}
+          disabled={savingAuto}
+          className="w-full px-4 py-2.5 bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
         >
-          {systemReviewRunning ? '⏳ Analyzing...' : '🔍 Auto-resolve safe checklist items'}
+          {savingAuto ? '💾 Saving...' : '💾 Auto-save suggested reviews'}
         </button>
-        {Object.keys(suggestedReviews).length > 0 && (
-          <button
-            type="button"
-            onClick={autoSaveSuggestedReviews}
-            disabled={savingAuto}
-            className="px-4 py-2.5 bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
-          >
-            {savingAuto ? '💾 Saving...' : '💾 Auto-save suggested reviews'}
-          </button>
-        )}
-      </div>
-
-      {/* Filter for unresolved items */}
-      <button
-        type="button"
-        onClick={() => setShowOnlyUnresolved(!showOnlyUnresolved)}
-        className={`px-4 py-2 text-[11px] border transition-colors rounded-lg ${
-          showOnlyUnresolved
-            ? 'border-primary text-primary bg-primary/10'
-            : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-        }`}
-      >
-        {showOnlyUnresolved ? '✓ Showing only unresolved items' : 'Show only items I still need to fix'}
-      </button>
+      )}
 
       {/* System Review Results */}
       {systemReviewResults && (
