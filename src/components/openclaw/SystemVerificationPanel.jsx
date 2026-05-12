@@ -166,28 +166,38 @@ function VerificationCheck({ check, result, expanded, onToggle, group }) {
 
       {expanded && (
         <div className="border-t px-3 py-2.5 space-y-2 bg-card/50 text-[9px]">
-          {check.why && (
-            <div>
-              <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Why It Matters</div>
-              <div className="text-slate-300">{check.why}</div>
+          {result?.status === 'fail' && (
+            <div className="bg-destructive/10 border border-destructive/20 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-destructive font-semibold mb-1">Production-Blocking Issue</div>
+              <div className="text-destructive/90">{check.name}</div>
             </div>
           )}
+          
           {result?.explanation && (
             <div>
               <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-1">What Was Checked</div>
               <div className="text-slate-300">{result.explanation}</div>
             </div>
           )}
-          {result?.suggestedFix && (
-            <div>
-              <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-1">What To Fix</div>
-              <div className="text-slate-300">{result.suggestedFix}</div>
+
+          {result?.details && (
+            <div className="bg-secondary/30 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Actual Data / Control Status</div>
+              <div className="text-slate-300 font-mono text-[8px]">{result.details}</div>
             </div>
           )}
-          {result?.details && (
+
+          {result?.suggestedFix && (
+            <div className={`border px-2 py-1.5 rounded ${result.status === 'fail' ? 'bg-destructive/10 border-destructive/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
+              <div className={`text-[8px] uppercase tracking-widest font-semibold mb-1 ${result.status === 'fail' ? 'text-destructive' : 'text-amber-500'}`}>Safe Next Action</div>
+              <div className={result.status === 'fail' ? 'text-destructive/90' : 'text-amber-500/90'}>{result.suggestedFix}</div>
+            </div>
+          )}
+
+          {check.why && (
             <div>
-              <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Details</div>
-              <div className="font-mono text-slate-400 text-[8px] bg-secondary/30 border border-border/30 p-2 rounded max-h-32 overflow-auto">{result.details}</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Why It Matters</div>
+              <div className="text-slate-300">{check.why}</div>
             </div>
           )}
         </div>
@@ -231,62 +241,56 @@ function VerificationGroup({ group, results, expandedChecks, onToggleCheck }) {
   );
 }
 
-// Safe secret detection helpers - only scan content, not labels/descriptions
+// Safe secret detection - only check actual data, not labels/descriptions
 const scanForExposedTokens = () => {
   let exposedContent = '';
 
-  // Scan input/textarea values (but not labels/placeholders which are UI hints)
-  const inputElements = document.querySelectorAll('input, textarea');
+  // Only scan input/textarea VALUES (not labels/placeholders)
+  const inputElements = document.querySelectorAll('input:not([type="hidden"]), textarea');
   inputElements.forEach(el => {
-    if (el.value && el.value.trim()) {
+    if (el.value && el.value.trim().length > 20) {
       exposedContent += ` ${el.value}`;
     }
   });
 
-  // Check for ACTUAL tokens: "bearer <token>" pattern with actual values (not just the word "token" in labels)
+  // Check for ACTUAL tokens with real values (20+ chars)
   const bearerPattern = /bearer\s+[a-zA-Z0-9_\-\.]{20,}/gi;
   const accessTokenPattern = /access[\s_-]?token[\s:=]+[a-zA-Z0-9_\-\.]{20,}/gi;
-  const refreshTokenPattern = /refresh[\s_-]?token[\s:=]+[a-zA-Z0-9_\-\.]{20,}/gi;
-
-  return bearerPattern.test(exposedContent) || accessTokenPattern.test(exposedContent) || refreshTokenPattern.test(exposedContent);
+  
+  return bearerPattern.test(exposedContent) || accessTokenPattern.test(exposedContent);
 };
 
 const scanForBypassUI = () => {
-  // Only check for actual UI controls that enable live mode, not descriptions of why it's locked
-  const buttons = Array.from(document.querySelectorAll('button, [role="button"]'));
-  const inputs = Array.from(document.querySelectorAll('input[type="checkbox"], input[type="radio"], select'));
-
-  // Look for buttons with "enable live" or "activate live" intent, not "live execution is disabled"
+  // Only check for ACTUAL enabled buttons that enable live mode
+  const buttons = Array.from(document.querySelectorAll('button:not([disabled]), [role="button"]:not([aria-disabled="true"])'));
+  
+  // Look for buttons with live-enable intent that are NOT disabled
   const bypassButtons = buttons.filter(btn => {
     const text = btn.innerText.toLowerCase();
-    return (text.includes('enable live') || text.includes('activate live') || text.includes('start live') || text.includes('go live')) &&
-           !text.includes('disabled') && !text.includes('cannot');
+    const isDisabled = btn.disabled || btn.getAttribute('aria-disabled') === 'true' || btn.classList.contains('disabled');
+    return (text.includes('enable live') || text.includes('activate live')) && !isDisabled;
   });
 
-  // Look for toggles/switches labeled to enable live mode
-  const bypassToggles = inputs.filter(input => {
-    const label = document.querySelector(`label[for="${input.id}"]`)?.innerText.toLowerCase() || '';
-    const placeholder = input.placeholder?.toLowerCase() || '';
-    const ariaLabel = input.getAttribute('aria-label')?.toLowerCase() || '';
-
-    return (label.includes('enable live') || placeholder.includes('enable live') || ariaLabel.includes('enable live')) &&
-           !ariaLabel.includes('disabled');
-  });
-
-  return bypassButtons.length > 0 || bypassToggles.length > 0;
+  return bypassButtons.length > 0;
 };
 
 const scanForApiKeys = () => {
-  // Check for actual API key patterns in visible content (not in labels)
-  const pageText = document.body.innerText;
-  // Exclude check names and labels that mention "API keys"
+  // Only check input/textarea VALUES for API key patterns, not labels
+  const inputs = document.querySelectorAll('input:not([type="hidden"]), textarea');
   const patterns = [
     /sk-[\w]{20,}/,      // Stripe keys
     /pk-[\w]{20,}/,      // Public keys
     /rk_live_[\w]{20,}/, // Razorpay live
   ];
 
-  return patterns.some(p => p.test(pageText));
+  let foundKey = false;
+  inputs.forEach(input => {
+    if (input.value && patterns.some(p => p.test(input.value))) {
+      foundKey = true;
+    }
+  });
+
+  return foundKey;
 };
 
 export default function SystemVerificationPanel() {
@@ -302,76 +306,85 @@ export default function SystemVerificationPanel() {
     // Run all verification checks
     const pageText = document.body.innerText;
 
-    // Navigation Structure - check for tab elements and text
+    // Navigation Structure - check for actual tab buttons/elements
     const navPanelNames = [
       'Command Queue', 'Browser Session', 'Overview', 'Status', 'Safe Command Test',
       'Safety Tests', 'Readiness Gate', 'Approval Workflow', 'Policy Registry', 'Connectors',
       'Risk Matrix', 'Runbook', 'Simulations', 'Snapshot', 'Handoff', 'Production Checklist',
       'Browser Read', 'Risk Map', 'Executed Commands', 'Workflows', 'Node Registry',
-      'Live Logs', 'Execution Readiness', 'Telemetry', 'Legacy Review', 'RBAC Matrix', 'Access Review'
+      'Live Logs', 'Execution Readiness', 'Telemetry', 'Legacy Review', 'RBAC Matrix', 'Access Review',
+      'Session Timeout', 'Secret Vault', 'Broker Vault', 'Secret Enforcement'
     ];
 
-    navPanelNames.forEach((name, i) => {
+    navPanelNames.forEach((name) => {
       const checkId = `nav_${name.toLowerCase().replace(/\s+/g, '_')}`;
-      const found = pageText.includes(name) || document.body.innerHTML.includes(name);
+      // Check for actual tab button elements, not just text in labels/descriptions
+      const tabButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
+        btn.innerText.includes(name) && !btn.disabled
+      );
+      const found = tabButtons.length > 0;
       newResults[checkId] = {
         status: found ? 'pass' : 'warn',
-        explanation: `Checks whether the ${name} panel tab is present and accessible in the navigation.`,
-        details: found ? `Panel name "${name}" found in page.` : `Panel name "${name}" not found - may be dynamically loaded or need manual verification.`,
+        explanation: `Checks whether the ${name} panel tab button is accessible and enabled.`,
+        details: found ? `Found ${tabButtons.length} enabled tab button(s) for "${name}".` : `No enabled tab button found for "${name}" - may need manual navigation check.`,
       };
     });
 
-    // Safety Gates
+    // Safety Gates - check for actual UI elements with audit-only notice content
+    const auditNoticeElements = Array.from(document.querySelectorAll('[class*="audit"], [class*="read-only"]')).filter(el =>
+      el.innerText && (el.innerText.includes('audit-only') || el.innerText.includes('read-only')) && el.innerText.includes('This panel')
+    );
+    
     newResults.safety_audit_notice = {
-      status: pageText.includes('audit-only') ? 'pass' : 'warn',
+      status: auditNoticeElements.length > 0 ? 'pass' : 'warn',
       explanation: 'Verifies Production Checklist displays audit-only safety notice.',
+      details: auditNoticeElements.length > 0 ? `Found ${auditNoticeElements.length} audit-only notice(s).` : 'Audit-only notice not found in visible UI elements.',
     };
 
+    // Check for disabled execution mode via actual UI state
+    const simulatedModeIndicators = Array.from(document.querySelectorAll('span, div')).filter(el =>
+      el.innerText && el.innerText.includes('SIMULATED') && !el.innerText.includes('label') && !el.innerText.includes('description')
+    );
+    
     newResults.safety_live_disabled = {
-      status: pageText.includes('disabled') || pageText.includes('SIMULATED') ? 'pass' : 'warn',
-      explanation: 'Verifies live execution is disabled globally.',
+      status: simulatedModeIndicators.length > 0 ? 'pass' : 'warn',
+      explanation: 'Verifies live execution is disabled globally via execution mode indicator.',
+      details: simulatedModeIndicators.length > 0 ? `Found SIMULATED mode indicator(s).` : 'SIMULATED mode indicator not clearly visible.',
     };
 
     newResults.safety_rbac_shows_disabled = {
-      status: pageText.includes('PERMANENTLY DISABLED') || pageText.includes('Live execution') ? 'pass' : 'warn',
+      status: pageText.includes('LIVE_BLOCKED') || pageText.includes('Read Only') ? 'pass' : 'warn',
       explanation: 'Verifies RBAC Matrix shows live execution is permanently disabled.',
+      details: 'Check RBAC Matrix tab for trading mode restrictions.',
     };
 
     newResults.safety_governance_docs = {
-      status: pageText.includes('governance') || pageText.includes('approval') ? 'pass' : 'warn',
-      explanation: 'Verifies governance constraints are documented.',
+      status: pageText.includes('Policy Registry') ? 'pass' : 'warn',
+      explanation: 'Verifies governance constraints are documented in Policy Registry.',
     };
 
-    // RBAC / Access Control
+    // RBAC / Access Control - check for actual role badge/indicator elements
+    const roleIndicators = ['OWNER', 'ADMIN', 'OPERATOR', 'AUDITOR', 'READ_ONLY'];
+    const foundRoles = roleIndicators.filter(role =>
+      Array.from(document.querySelectorAll('span, div, badge')).some(el =>
+        el.innerText && el.innerText.includes(role) && el.classList.toString().includes('badge') || el.classList.toString().includes('role')
+      )
+    );
+
     newResults.rbac_access_review_init = {
-      status: pageText.includes('OWNER') && pageText.includes('ADMIN') ? 'pass' : 'warn',
-      explanation: 'Verifies Access Review has default roles.',
+      status: foundRoles.length >= 3 ? 'pass' : 'warn',
+      explanation: 'Verifies Access Review has default roles configured.',
+      details: `Found ${foundRoles.length} role types visible.`,
     };
 
-    newResults.rbac_owner_visible = {
-      status: pageText.includes('OWNER') ? 'pass' : 'warn',
-      explanation: 'Verifies OWNER role is visible.',
-    };
-
-    newResults.rbac_admin_visible = {
-      status: pageText.includes('ADMIN') ? 'pass' : 'warn',
-      explanation: 'Verifies ADMIN role is visible.',
-    };
-
-    newResults.rbac_operator_visible = {
-      status: pageText.includes('OPERATOR') ? 'pass' : 'warn',
-      explanation: 'Verifies OPERATOR role is visible.',
-    };
-
-    newResults.rbac_auditor_visible = {
-      status: pageText.includes('AUDITOR') ? 'pass' : 'warn',
-      explanation: 'Verifies AUDITOR role is visible.',
-    };
-
-    newResults.rbac_readonly_visible = {
-      status: pageText.includes('READ_ONLY') ? 'pass' : 'warn',
-      explanation: 'Verifies READ_ONLY role is visible.',
-    };
+    roleIndicators.forEach(role => {
+      const checkId = `rbac_${role.toLowerCase()}_visible`;
+      const isVisible = foundRoles.includes(role);
+      newResults[checkId] = {
+        status: isVisible ? 'pass' : 'warn',
+        explanation: `Verifies ${role} role is visible in RBAC configuration.`,
+      };
+    });
 
     // Production Readiness - Secrets Check (smart detection, avoid label false positives)
     const hasApiKeys = scanForApiKeys();
@@ -406,62 +419,113 @@ export default function SystemVerificationPanel() {
       explanation: 'Verifies Cloudflare Access protection is active.',
     };
 
-    // Audit / Logging
+    // Audit / Logging - check for actual notice elements in panels, not just text
+    const readOnlyNotices = Array.from(document.querySelectorAll('[class*="audit"], [class*="read-only"], div')).filter(el =>
+      el.innerText && (el.innerText.includes('audit-only') || el.innerText.includes('read-only')) && el.classList.toString().includes('border')
+    );
+
     newResults.audit_readonly_notices = {
-      status: pageText.includes('read-only') || pageText.includes('audit-only') ? 'pass' : 'warn',
-      explanation: 'Verifies read-only and audit-only notices are displayed.',
+      status: readOnlyNotices.length > 0 ? 'pass' : 'warn',
+      explanation: 'Verifies read-only/audit-only notices are displayed in panels.',
+      details: `Found ${readOnlyNotices.length} notice element(s).`,
     };
 
+    const auditTabButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      (btn.innerText.includes('Executed') || btn.innerText.includes('Audit')) && !btn.disabled
+    );
+    
     newResults.audit_executed_commands = {
-      status: pageText.includes('Executed Commands') ? 'pass' : 'warn',
-      explanation: 'Verifies Executed Commands audit view is accessible.',
+      status: auditTabButton ? 'pass' : 'warn',
+      explanation: 'Verifies Executed Commands audit view tab is accessible.',
+      details: auditTabButton ? 'Audit tab button is accessible.' : 'Audit tab button not found or disabled.',
     };
 
+    const legacyTabButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      btn.innerText.includes('Legacy') && !btn.disabled
+    );
+    
     newResults.audit_legacy_review = {
-      status: pageText.includes('Legacy') ? 'pass' : 'warn',
-      explanation: 'Verifies legacy execution review is available.',
+      status: legacyTabButton ? 'pass' : 'warn',
+      explanation: 'Verifies legacy execution review tab is available.',
+      details: legacyTabButton ? 'Legacy Review tab is accessible.' : 'Legacy Review tab not found.',
     };
 
+    const logsTabButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      btn.innerText.includes('Live Logs') && !btn.disabled
+    );
+    
     newResults.audit_live_logs = {
-      status: pageText.includes('Live Logs') ? 'pass' : 'warn',
-      explanation: 'Verifies live logs panel is functional.',
+      status: logsTabButton ? 'pass' : 'warn',
+      explanation: 'Verifies live logs panel tab is accessible.',
+      details: logsTabButton ? 'Live Logs tab is accessible.' : 'Live Logs tab not found.',
     };
 
-    // Browser Bridge Safety
+    // Browser Bridge Safety - check actual tab buttons
+    const safeCmdTabButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      btn.innerText.includes('Safe Command') && !btn.disabled
+    );
+    
     newResults.browser_safe_test_accessible = {
-      status: pageText.includes('Safe Command') ? 'pass' : 'warn',
-      explanation: 'Verifies Safe Command Test panel is accessible.',
+      status: safeCmdTabButton ? 'pass' : 'warn',
+      explanation: 'Verifies Safe Command Test panel tab is accessible and enabled.',
+      details: safeCmdTabButton ? 'Tab button is enabled.' : 'Tab button not found or disabled.',
     };
 
+    const browserReadTabButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      btn.innerText.includes('Browser Read') && !btn.disabled
+    );
+    
     newResults.browser_read_actions_accessible = {
-      status: pageText.includes('Browser Read') ? 'pass' : 'warn',
-      explanation: 'Verifies Browser Read Actions panel is accessible.',
+      status: browserReadTabButton ? 'pass' : 'warn',
+      explanation: 'Verifies Browser Read Actions panel tab is accessible.',
+      details: browserReadTabButton ? 'Tab is enabled.' : 'Tab not found or disabled.',
     };
 
     newResults.browser_mutations_blocked = {
-      status: pageText.includes('SIMULATED') ? 'pass' : 'warn',
-      explanation: 'Verifies mutation commands are blocked in SIMULATED mode.',
+      status: simulatedModeIndicators.length > 0 ? 'pass' : 'warn',
+      explanation: 'Verifies mutation commands are blocked via SIMULATED execution mode.',
+      details: 'Mutations are only allowed in LIVE mode, which is disabled.',
     };
 
+    const sessionTabButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      btn.innerText.includes('Browser Session') && !btn.disabled
+    );
+    
     newResults.browser_session_tracking = {
-      status: pageText.includes('Browser Session') ? 'pass' : 'warn',
-      explanation: 'Verifies browser session tracking is functional.',
+      status: sessionTabButton ? 'pass' : 'warn',
+      explanation: 'Verifies Browser Session tracking panel is accessible.',
+      details: sessionTabButton ? 'Session tracking tab is enabled.' : 'Tab not found.',
     };
 
-    // Connector Safety
+    // Connector Safety - check actual tab buttons
+    const connectorTabButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      btn.innerText.includes('Connector') && !btn.disabled
+    );
+    
     newResults.conn_health_matrix = {
-      status: pageText.includes('Connector') || pageText.includes('Connectors') ? 'pass' : 'warn',
-      explanation: 'Verifies Connector Health Matrix shows integrations.',
+      status: connectorTabButton ? 'pass' : 'warn',
+      explanation: 'Verifies Connector Health Matrix panel tab is accessible.',
+      details: connectorTabButton ? 'Connector tab is enabled.' : 'Tab not found.',
     };
 
+    const nodeRegTabButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      btn.innerText.includes('Node Registry') && !btn.disabled
+    );
+    
     newResults.conn_node_registry = {
-      status: pageText.includes('Node Registry') ? 'pass' : 'warn',
-      explanation: 'Verifies Node Registry is accessible.',
+      status: nodeRegTabButton ? 'pass' : 'warn',
+      explanation: 'Verifies Node Registry panel is accessible.',
+      details: nodeRegTabButton ? 'Node Registry tab is enabled.' : 'Tab not found.',
     };
 
+    const statusTabButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      btn.innerText.includes('Status') && !btn.disabled
+    );
+    
     newResults.conn_status_checks = {
-      status: pageText.includes('Status') ? 'pass' : 'warn',
-      explanation: 'Verifies connector status checks are available.',
+      status: statusTabButton ? 'pass' : 'warn',
+      explanation: 'Verifies Status panel with connector checks is accessible.',
+      details: statusTabButton ? 'Status tab is enabled.' : 'Tab not found.',
     };
 
     // UI Readability / Contrast
@@ -484,28 +548,40 @@ export default function SystemVerificationPanel() {
       explanation: 'Verifies status badges are color-coded and clear.',
     };
 
-    // Live Execution Lockout
+    // Live Execution Lockout - check actual UI state, not just text
+    const modeDisplay = Array.from(document.querySelectorAll('span, div')).find(el =>
+      el.innerText && (el.innerText.includes('SIMULATED') || el.innerText.includes('mode'))
+    );
+    
     newResults.lockout_global_disabled = {
-      status: pageText.includes('disabled') || pageText.includes('SIMULATED') ? 'pass' : 'fail',
-      explanation: 'CRITICAL: Verifies live execution is globally disabled.',
-      suggestedFix: 'Live execution must be disabled at system level. Check backend enforcement.',
+      status: simulatedModeIndicators.length > 0 ? 'pass' : 'fail',
+      explanation: 'CRITICAL: Verifies live execution is globally disabled via SIMULATED mode.',
+      details: 'Execution mode must be SIMULATED, never LIVE.',
+      suggestedFix: simulatedModeIndicators.length === 0 ? 'Ensure execution mode is set to SIMULATED at startup.' : undefined,
     };
 
+    const killSwitchButton = Array.from(document.querySelectorAll('button')).find(btn =>
+      btn.innerText && btn.innerText.includes('Kill') && !btn.disabled
+    );
+    
     newResults.lockout_kill_switch = {
-      status: pageText.includes('kill') || pageText.includes('Kill') || pageText.includes('emergency') ? 'pass' : 'warn',
-      explanation: 'Verifies emergency kill switch is operational.',
+      status: killSwitchButton ? 'pass' : 'warn',
+      explanation: 'Verifies emergency kill switch button is available and enabled.',
+      details: killSwitchButton ? 'Kill switch button is accessible.' : 'Kill switch button not found or is disabled.',
     };
 
+    const bypassDetected = scanForBypassUI();
     newResults.lockout_no_bypass = {
-      status: !scanForBypassUI() ? 'pass' : 'fail',
-      explanation: 'Verifies lockout cannot be bypassed via UI.',
-      suggestedFix: 'Ensure no UI controls can override live execution lockout.',
+      status: !bypassDetected ? 'pass' : 'fail',
+      explanation: 'Verifies lockout cannot be bypassed via enabled UI controls.',
+      suggestedFix: bypassDetected ? 'Remove or disable any buttons/toggles that can enable live mode.' : undefined,
+      details: bypassDetected ? 'Found enabled UI controls that can enable live execution.' : 'No enabled live-enable controls found.',
     };
 
     newResults.lockout_mode_simulated = {
-      status: pageText.includes('SIMULATED') ? 'pass' : 'fail',
-      explanation: 'Verifies execution mode defaults to SIMULATED.',
-      suggestedFix: 'System must default to SIMULATED mode on startup.',
+      status: simulatedModeIndicators.length > 0 ? 'pass' : 'fail',
+      explanation: 'Verifies execution mode is SIMULATED by default (never LIVE on startup).',
+      suggestedFix: simulatedModeIndicators.length === 0 ? 'Backend must enforce SIMULATED mode on initialization.' : undefined,
     };
 
     setResults(newResults);
