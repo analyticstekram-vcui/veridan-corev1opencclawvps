@@ -830,6 +830,35 @@ export default function SystemVerificationPanel() {
     };
   }, [results]);
 
+  // Calculate summary metrics
+  const failedTests = [
+    'logic_blocking_isolation',
+    'logic_manual_review_distinction',
+    'logic_pass_excluded_from_warnings',
+    'logic_nav_checks_informational',
+    'logic_backend_enforcement_gate',
+  ].filter(testId => results[testId]?.status === 'fail').length;
+
+  const manualReviewItemCount = blockingIssues.filter(i => i.severity === 'WARNING').length;
+  const backendEnforcementPassed = results.backend_enforcement_tests?.status === 'pass';
+  const hasBlockingIssues = prodBlockingFailed.length > 0;
+  const hasFailedTests = failedTests > 0;
+
+  // Determine overall readiness status
+  let overallReadiness = 'READY';
+  let readinessColor = 'text-primary';
+  let readinessBg = 'bg-primary/5 border-primary/20';
+
+  if (hasBlockingIssues || hasFailedTests || !backendEnforcementPassed) {
+    overallReadiness = 'BLOCKED';
+    readinessColor = 'text-destructive';
+    readinessBg = 'bg-destructive/5 border-destructive/20';
+  } else if (manualReviewItemCount > 0) {
+    overallReadiness = 'REVIEW REQUIRED';
+    readinessColor = 'text-amber-500';
+    readinessBg = 'bg-amber-500/5 border-amber-500/20';
+  }
+
   let systemStatus = 'SYSTEM VERIFIED';
   let statusColor = 'text-primary';
   let statusBg = 'bg-primary/5 border-primary/20';
@@ -856,6 +885,61 @@ export default function SystemVerificationPanel() {
           <div className="text-[13px] font-semibold text-foreground">OpenClaw Control Production Readiness</div>
         </div>
         <Shield className="w-5 h-5 text-primary" />
+      </div>
+
+      {/* Production Readiness Summary */}
+      <div className={`border rounded-lg p-4 ${readinessBg}`}>
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-1 font-semibold">Production Readiness Status</div>
+            <div className={`text-[16px] font-bold ${readinessColor}`}>{overallReadiness}</div>
+          </div>
+          <div className="text-right">
+            <div className={`text-[11px] font-semibold ${readinessColor} mb-1`}>
+              {overallReadiness === 'READY' ? '✓ Ready for Production' : 
+               overallReadiness === 'REVIEW REQUIRED' ? '⚠️ Review Before Production' :
+               '✗ Blocked from Production'}
+            </div>
+            <div className="text-[9px] text-muted-foreground">{lastRunTime ? `Verified: ${lastRunTime}` : 'Not yet verified'}</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-[9px]">
+          <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+            <div className="text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-0.5">Blocking Issues</div>
+            <div className={`text-[14px] font-bold ${hasBlockingIssues ? 'text-destructive' : 'text-primary'}`}>
+              {prodBlockingFailed.length}
+            </div>
+          </div>
+          <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+            <div className="text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-0.5">Manual Review Items</div>
+            <div className={`text-[14px] font-bold ${manualReviewItemCount > 0 ? 'text-amber-500' : 'text-primary'}`}>
+              {manualReviewItemCount}
+            </div>
+          </div>
+          <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+            <div className="text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-0.5">Failed Tests</div>
+            <div className={`text-[14px] font-bold ${hasFailedTests ? 'text-destructive' : 'text-primary'}`}>
+              {failedTests}
+            </div>
+          </div>
+          <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+            <div className="text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-0.5">Backend Enforcement</div>
+            <div className={`text-[14px] font-bold ${backendEnforcementPassed ? 'text-primary' : 'text-destructive'}`}>
+              {backendEnforcementPassed ? '✓ Pass' : '✗ Fail'}
+            </div>
+          </div>
+          <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+            <div className="text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-0.5">Checks Passed</div>
+            <div className="text-[14px] font-bold text-primary">
+              {passCount} / {totalCount}
+            </div>
+          </div>
+        </div>
+
+        <div className="text-[8px] text-muted-foreground/60 border-t border-border/30 pt-2 mt-2">
+          BLOCKED if blocking issues exist, tests fail, or backend enforcement fails. REVIEW REQUIRED if manual items exist but no blockers. READY only if all clear. Read-only diagnostic—no live actions executed.
+        </div>
       </div>
 
       {/* Operator Guidance */}
