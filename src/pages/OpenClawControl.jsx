@@ -30,6 +30,7 @@ import UserAccessReviewPanel from '@/components/openclaw/UserAccessReviewPanel';
 import SystemVerificationPanel from '@/components/openclaw/SystemVerificationPanel';
 import CommandAuditTrailPanel from '@/components/openclaw/CommandAuditTrailPanel';
 import SessionTimeoutPanel from '@/components/openclaw/SessionTimeoutPanel';
+import SecretVaultRegistryPanel from '@/components/openclaw/SecretVaultRegistryPanel';
 
 const TABS = [
   { id: 'system_verify', label: '✓ System Verify' },
@@ -60,6 +61,7 @@ const TABS = [
   { id: 'rbac_matrix', label: '🔐 RBAC Matrix' },
   { id: 'access_review', label: 'Access Review' },
   { id: 'session_timeout', label: '⏱️ Session Timeout' },
+  { id: 'secret_vault', label: '🔐 Secret Vault' },
 ];
 
 export default function OpenClawControl() {
@@ -304,6 +306,10 @@ export default function OpenClawControl() {
 
         {activeView === 'session_timeout' && (
           <div className="p-6"><SessionTimeoutPanel /></div>
+        )}
+
+        {activeView === 'secret_vault' && (
+          <div className="p-6"><SecretVaultRegistryPanel /></div>
         )}
 
         {activeView === 'status' && (
