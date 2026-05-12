@@ -25,6 +25,8 @@ import BrowserReadActionsPanel from '@/components/openclaw/BrowserReadActionsPan
 import InteractiveRiskMapPanel from '@/components/openclaw/InteractiveRiskMapPanel';
 import UnifiedOpenClawOverviewPanel from '@/components/openclaw/UnifiedOpenClawOverviewPanel';
 import LegacyExecutionReviewPanel from '@/components/openclaw/LegacyExecutionReviewPanel';
+import RolePermissionMatrixPanel from '@/components/openclaw/RolePermissionMatrixPanel';
+import UserAccessReviewPanel from '@/components/openclaw/UserAccessReviewPanel';
 
 const TABS = [
   { id: 'overview', label: '📊 Overview' },
@@ -50,6 +52,8 @@ const TABS = [
   { id: 'readiness', label: 'Execution Readiness' },
   { id: 'telemetry', label: 'Telemetry' },
   { id: 'legacy_review', label: '⚠️ Legacy Review' },
+  { id: 'rbac_matrix', label: '🔐 RBAC Matrix' },
+  { id: 'access_review', label: 'Access Review' },
 ];
 
 export default function OpenClawControl() {
@@ -274,6 +278,14 @@ export default function OpenClawControl() {
 
         {activeView === 'legacy_review' && (
           <div className="p-6"><LegacyExecutionReviewPanel /></div>
+        )}
+
+        {activeView === 'rbac_matrix' && (
+          <div className="p-6"><RolePermissionMatrixPanel /></div>
+        )}
+
+        {activeView === 'access_review' && (
+          <div className="p-6"><UserAccessReviewPanel /></div>
         )}
 
         {activeView === 'status' && (

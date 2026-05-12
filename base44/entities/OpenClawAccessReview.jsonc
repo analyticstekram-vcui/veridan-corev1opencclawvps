@@ -1,0 +1,70 @@
+{
+  "name": "OpenClawAccessReview",
+  "type": "object",
+  "properties": {
+    "userEmail": {
+      "type": "string",
+      "description": "Email of the user being reviewed"
+    },
+    "assignedRole": {
+      "type": "string",
+      "enum": [
+        "OWNER",
+        "ADMIN",
+        "OPERATOR",
+        "AUDITOR",
+        "READ_ONLY"
+      ],
+      "description": "Primary role assigned to the user"
+    },
+    "grantedPermissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of permission strings (canViewOpenClaw, canRunReadOnlyTests, etc.)"
+    },
+    "reviewStatus": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "APPROVED",
+        "DENIED",
+        "UNDER_REVIEW"
+      ],
+      "default": "PENDING",
+      "description": "Access review status"
+    },
+    "reviewedBy": {
+      "type": "string",
+      "description": "Email of the reviewer/approver"
+    },
+    "reviewedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when access was last reviewed"
+    },
+    "reviewNotes": {
+      "type": "string",
+      "description": "Reviewer notes and justification"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Access expiration date (optional)"
+    },
+    "lastAccessedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time user accessed OpenClaw"
+    },
+    "accessDenialReason": {
+      "type": "string",
+      "description": "Reason for denial, if denied"
+    }
+  },
+  "required": [
+    "userEmail",
+    "assignedRole"
+  ]
+}
