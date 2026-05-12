@@ -233,36 +233,17 @@ function VerificationGroup({ group, results, expandedChecks, onToggleCheck }) {
 
 // Safe secret detection helpers - only scan content, not labels/descriptions
 const scanForExposedTokens = () => {
-  // Only scan input values, data attributes, and visible content - NOT labels/headers
-  const dataElements = document.querySelectorAll('[data-*]');
-  const inputElements = document.querySelectorAll('input, textarea');
-  const visibleContentElements = document.querySelectorAll('[role="main"], main, [class*="content"]');
-
   let exposedContent = '';
 
-  // Scan data attributes
-  dataElements.forEach(el => {
-    Object.keys(el.dataset).forEach(key => {
-      exposedContent += ` ${el.dataset[key]}`;
-    });
-  });
-
   // Scan input/textarea values (but not labels/placeholders which are UI hints)
+  const inputElements = document.querySelectorAll('input, textarea');
   inputElements.forEach(el => {
     if (el.value && el.value.trim()) {
       exposedContent += ` ${el.value}`;
     }
   });
 
-  // Only check actual content innerText, excluding headers/titles
-  visibleContentElements.forEach(el => {
-    const text = el.innerText;
-    if (text && !text.includes('Bearer') && !text.includes('token') && !text.includes('No way to bypass')) {
-      exposedContent += ` ${text}`;
-    }
-  });
-
-  // Check for ACTUAL tokens: "bearer <token>" pattern with actual values
+  // Check for ACTUAL tokens: "bearer <token>" pattern with actual values (not just the word "token" in labels)
   const bearerPattern = /bearer\s+[a-zA-Z0-9_\-\.]{20,}/gi;
   const accessTokenPattern = /access[\s_-]?token[\s:=]+[a-zA-Z0-9_\-\.]{20,}/gi;
   const refreshTokenPattern = /refresh[\s_-]?token[\s:=]+[a-zA-Z0-9_\-\.]{20,}/gi;
