@@ -781,45 +781,42 @@ export default function SystemVerificationPanel() {
         backendStatus={{ passed: Object.values(results).filter(r => r?.status === 'pass').length > 0 }}
       />
 
-      {/* Blocking Issues Section */}
-      {blockingIssues.length > 0 && (
-        <div className="space-y-3 bg-card/30 border border-border/50 rounded-lg p-4">
+      {/* Production Readiness Status */}
+      {prodBlockingFailed.length === 0 && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+          <div className="text-[10px] text-primary/80">
+            <div className="font-semibold mb-0.5">✓ System has no blocking issues.</div>
+            <div className="text-[9px] text-primary/70">All critical safety gates are green. Manual review items remain below before final production deployment.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Blocking Issues Section - only show if there are actual blockers */}
+      {prodBlockingFailed.length > 0 && (
+        <div className="space-y-3 bg-destructive/5 border border-destructive/20 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <AlertCircle className="w-5 h-5 text-destructive" />
+            <XCircle className="w-5 h-5 text-destructive" />
             <div className="text-[12px] font-semibold text-destructive uppercase tracking-wider">
-              {blockingIssues.filter(i => i.severity === 'BLOCKING').length} Blocking Issue{blockingIssues.filter(i => i.severity === 'BLOCKING').length !== 1 ? 's' : ''}
-              {blockingIssues.filter(i => i.severity === 'WARNING').length > 0 && ` · ${blockingIssues.filter(i => i.severity === 'WARNING').length} Warning${blockingIssues.filter(i => i.severity === 'WARNING').length !== 1 ? 's' : ''}`}
+              {prodBlockingFailed.length} Production-Blocking Issue{prodBlockingFailed.length !== 1 ? 's' : ''}
             </div>
           </div>
 
           <div className="space-y-2">
-            {blockingIssues.map((issue, idx) => (
-              <div key={idx} className={`border rounded-lg p-3 space-y-2 ${
-                issue.severity === 'BLOCKING'
-                  ? 'bg-destructive/5 border-destructive/20'
-                  : 'bg-amber-500/5 border-amber-500/20'
-              }`}>
+            {blockingIssues.filter(i => i.severity === 'BLOCKING').map((issue, idx) => (
+              <div key={idx} className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className={`text-[11px] font-semibold ${issue.severity === 'BLOCKING' ? 'text-destructive' : 'text-amber-500'}`}>
+                    <div className="text-[11px] font-semibold text-destructive">
                       {issue.name}
                     </div>
                     <div className="text-[9px] text-foreground/60 mt-0.5">
                       <span className="font-semibold">Panel:</span> {issue.panel}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className={`text-[8px] px-2 py-0.5 border rounded font-semibold ${
-                      issue.severity === 'BLOCKING'
-                        ? 'bg-destructive/10 border-destructive/30 text-destructive'
-                        : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
-                    }`}>
-                      {issue.severity}
-                    </span>
-                    <span className="text-[8px] px-2 py-0.5 border border-border/50 bg-secondary/30 text-muted-foreground rounded">
-                      {issue.fixType}
-                    </span>
-                  </div>
+                  <span className="text-[8px] px-2 py-0.5 border bg-destructive/10 border-destructive/30 text-destructive font-semibold rounded shrink-0">
+                    BLOCKING
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[9px]">
@@ -836,8 +833,55 @@ export default function SystemVerificationPanel() {
             ))}
           </div>
 
-          <div className="text-[8px] text-muted-foreground/70 border-t border-border/30 pt-3 mt-3">
-            All blocking issues must be resolved before production deployment. Read-only verification only. No commands executed, secrets exposed, or governance bypassed.
+          <div className="text-[8px] text-destructive/70 border-t border-destructive/20 pt-3 mt-3">
+            All blocking issues must be resolved immediately before production deployment.
+          </div>
+        </div>
+      )}
+
+      {/* Manual Review Items Section - non-blocking fails that need review */}
+      {blockingIssues.filter(i => i.severity === 'WARNING').length > 0 && (
+        <div className="space-y-3 bg-blue-400/5 border border-blue-400/20 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-5 h-5 text-blue-400" />
+            <div className="text-[12px] font-semibold text-blue-400 uppercase tracking-wider">
+              {blockingIssues.filter(i => i.severity === 'WARNING').length} Manual Review Item{blockingIssues.filter(i => i.severity === 'WARNING').length !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {blockingIssues.filter(i => i.severity === 'WARNING').map((issue, idx) => (
+              <div key={idx} className="bg-blue-400/10 border border-blue-400/20 rounded-lg p-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-semibold text-blue-400">
+                      {issue.name}
+                    </div>
+                    <div className="text-[9px] text-foreground/60 mt-0.5">
+                      <span className="font-semibold">Panel:</span> {issue.panel}
+                    </div>
+                  </div>
+                  <span className="text-[8px] px-2 py-0.5 border bg-blue-400/10 border-blue-400/30 text-blue-400 font-semibold rounded shrink-0">
+                    REVIEW
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[9px]">
+                  <div>
+                    <div className="font-semibold text-foreground/80 mb-0.5">Context</div>
+                    <div className="text-foreground/70">{issue.why}</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-foreground/80 mb-0.5">Suggested action</div>
+                    <div className="text-foreground/70">{issue.action}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-[8px] text-blue-400/70 border-t border-blue-400/20 pt-3 mt-3">
+            Manual review items are not production-blocking but should be reviewed and addressed before final production deployment. Read-only verification only.
           </div>
         </div>
       )}
@@ -846,9 +890,9 @@ export default function SystemVerificationPanel() {
       <div className={`border rounded-lg px-4 py-3 ${statusBg}`}>
         <div className={`text-[14px] font-semibold ${statusColor} mb-1 uppercase tracking-wider`}>{systemStatus}</div>
         <div className={`text-[10px] ${statusColor}/80`}>
-          {systemStatus === 'SYSTEM VERIFIED' && 'All critical safety checks passed. System is ready for operation.'}
+          {systemStatus === 'SYSTEM VERIFIED' && 'All critical safety gates are green. No blocking issues detected.'}
           {systemStatus === 'SYSTEM BLOCKED' && `${prodBlockingFailed.length} production-blocking issue${prodBlockingFailed.length !== 1 ? 's' : ''} detected. System is not ready.`}
-          {systemStatus === 'SYSTEM HAS WARNINGS' && `${warnChecks.length} warning${warnChecks.length !== 1 ? 's' : ''} and ${failedChecks.length} non-blocking issue${failedChecks.length !== 1 ? 's' : ''} detected. Review before production.`}
+          {systemStatus === 'SYSTEM HAS WARNINGS' && `${failedChecks.length} manual review item${failedChecks.length !== 1 ? 's' : ''} require attention before production deployment.`}
         </div>
         {prodBlockingFailed.length > 0 && (
           <div className="mt-2 text-[9px] text-destructive/90">
