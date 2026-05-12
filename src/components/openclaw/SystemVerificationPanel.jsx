@@ -1015,6 +1015,55 @@ export default function SystemVerificationPanel() {
         </div>
       </div>
 
+      {/* System Verify Logic Test Results */}
+      <div className="border border-primary/20 bg-primary/5 rounded-lg p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="w-4 h-4 text-primary" />
+          <div className="text-[11px] font-semibold text-primary uppercase tracking-wider">System Verify Logic Test Results</div>
+        </div>
+        <div className="text-[9px] text-primary/70 mb-3">Read-only validation that blocking issues block production and manual review items do not. No live actions executed.</div>
+        
+        <div className="space-y-2">
+          {[
+            { id: 'logic_blocking_isolation', label: 'Blocking issues are isolated to prod-blocking checks only' },
+            { id: 'logic_manual_review_distinction', label: 'Manual review items do not affect production readiness' },
+            { id: 'logic_pass_excluded_from_warnings', label: 'Passed checks are never shown as warnings or issues' },
+            { id: 'logic_nav_checks_informational', label: 'Navigation checks are informational, do not block production' },
+            { id: 'logic_backend_enforcement_gate', label: 'Backend enforcement is the hard gate for production readiness' },
+          ].map(test => {
+            const result = results[test.id];
+            const statusCfg = result?.status === 'pass' ? 
+              { icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/5 border-primary/20' } :
+              result?.status === 'fail' ?
+              { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20' } :
+              { icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20' };
+            
+            const StatusIcon = statusCfg.icon;
+            
+            return (
+              <div key={test.id} className={`border rounded p-2.5 ${statusCfg.bg}`}>
+                <div className="flex items-start gap-2">
+                  <StatusIcon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${statusCfg.color}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-[9px] font-semibold ${statusCfg.color}`}>{test.label}</div>
+                    {result?.details && (
+                      <div className="text-[8px] text-foreground/60 mt-0.5">{result.details}</div>
+                    )}
+                  </div>
+                  <span className={`text-[8px] px-1.5 py-0.5 border rounded font-semibold shrink-0 ${statusCfg.bg} ${statusCfg.color}`}>
+                    {result?.status === 'pass' ? 'PASS' : result?.status === 'fail' ? 'FAIL' : 'WARN'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="text-[8px] text-primary/60 border-t border-primary/20 pt-2 mt-2">
+          These tests validate that System Verify correctly distinguishes between production-blocking issues and manual review items. All tests are read-only diagnostics—no live commands, credentials, or governance actions are executed.
+        </div>
+      </div>
+
       {/* Verification Groups */}
       <div className="space-y-3">
         {VERIFICATION_GROUPS.map(group => (
