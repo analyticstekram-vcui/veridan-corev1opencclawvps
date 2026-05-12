@@ -24,6 +24,7 @@ import ProductionReadinessChecklistPanel from '@/components/openclaw/ProductionR
 import BrowserReadActionsPanel from '@/components/openclaw/BrowserReadActionsPanel';
 import InteractiveRiskMapPanel from '@/components/openclaw/InteractiveRiskMapPanel';
 import UnifiedOpenClawOverviewPanel from '@/components/openclaw/UnifiedOpenClawOverviewPanel';
+import LegacyExecutionReviewPanel from '@/components/openclaw/LegacyExecutionReviewPanel';
 
 const TABS = [
   { id: 'overview', label: '📊 Overview' },
@@ -48,6 +49,7 @@ const TABS = [
   { id: 'logs', label: 'Live Logs' },
   { id: 'readiness', label: 'Execution Readiness' },
   { id: 'telemetry', label: 'Telemetry' },
+  { id: 'legacy_review', label: '⚠️ Legacy Review' },
 ];
 
 export default function OpenClawControl() {
@@ -268,6 +270,10 @@ export default function OpenClawControl() {
 
         {activeView === 'telemetry' && (
           <div className="p-6"><TelemetryPanel executionMode="SIMULATED" gatewayOnline={status?.online} /></div>
+        )}
+
+        {activeView === 'legacy_review' && (
+          <div className="p-6"><LegacyExecutionReviewPanel /></div>
         )}
 
         {activeView === 'status' && (
