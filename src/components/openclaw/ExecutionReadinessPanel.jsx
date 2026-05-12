@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { CheckCircle2, XCircle, AlertTriangle, Shield, Lock, Zap, OctagonX } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, Shield, Lock, Zap, OctagonX, AlertCircle } from 'lucide-react';
 import LiveBridgeDryRun from './LiveBridgeDryRun';
 
 const CHECKLIST = [
@@ -122,14 +122,23 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
   return (
     <div className="p-6 max-w-2xl space-y-4 font-mono">
 
+      {/* System Verify Authority Banner */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-blue-400/5 border border-blue-400/20 rounded-lg">
+        <AlertCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+        <div className="text-[10px] text-blue-400/80">
+          <div className="font-semibold mb-0.5">⚠️ Final production readiness determined by System Verify.</div>
+          <div className="text-[9px] text-blue-400/70">Local infrastructure checks shown below. For production readiness decision, see System Verify tab. Backend enforcement must pass.</div>
+        </div>
+      </div>
+
       {/* Header + Mode Indicator */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Execution Readiness</div>
+          <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Local Infrastructure Status</div>
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${hasBlocked ? 'bg-destructive' : overallReady ? 'bg-primary' : 'bg-amber-500'}`} />
             <span className={`text-sm font-semibold ${hasBlocked ? 'text-destructive' : overallReady ? 'text-primary' : 'text-amber-500'}`}>
-              {hasBlocked ? 'NOT READY' : overallReady ? 'ALL SYSTEMS READY' : 'WARNING'}
+              {hasBlocked ? 'CHECKS FAILED' : overallReady ? 'CHECKS PASSED' : 'WARNINGS'}
             </span>
           </div>
         </div>

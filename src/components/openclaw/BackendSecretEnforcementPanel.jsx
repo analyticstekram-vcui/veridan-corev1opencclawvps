@@ -274,6 +274,15 @@ export default function BackendSecretEnforcementPanel() {
         <Shield className="w-5 h-5 text-primary" />
       </div>
 
+      {/* System Verify Authority Banner */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-blue-400/5 border border-blue-400/20 rounded-lg">
+        <AlertTriangle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+        <div className="text-[10px] text-blue-400/80">
+          <div className="font-semibold mb-0.5">⚠️ Final production readiness determined by System Verify.</div>
+          <div className="text-[9px] text-blue-400/70">This panel shows secret enforcement status only. For complete production readiness decision, see System Verify tab. Backend enforcement must pass all checks.</div>
+        </div>
+      </div>
+
       {/* Critical Warning */}
       <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg">
         <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
@@ -288,11 +297,11 @@ export default function BackendSecretEnforcementPanel() {
         <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
           <div className="text-[10px] text-destructive/80">
-            <div className="font-semibold mb-1">🚫 SECRET_ENFORCEMENT_BLOCKED — Production readiness denied</div>
+            <div className="font-semibold mb-1">🚫 SECRET_ENFORCEMENT_BLOCKED — Local check failed</div>
             <div className="text-[9px] text-destructive/70 space-y-1">
               {violations.map((v, i) => <div key={i}>• {v}</div>)}
             </div>
-            <div className="text-[9px] text-destructive/60 mt-2">Resolve all violations before enabling production operations.</div>
+            <div className="text-[9px] text-destructive/60 mt-2">Resolve all violations. Final production readiness determined by System Verify tab.</div>
           </div>
         </div>
       )}
@@ -301,8 +310,8 @@ export default function BackendSecretEnforcementPanel() {
         <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
           <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-[10px] text-amber-500/80">
-            <div className="font-semibold mb-0.5">⚠️ SECRET_ENFORCEMENT_WARN — Attention required</div>
-            <div className="text-[9px] text-amber-500/70">{stats.rotationDue} secret(s) require rotation. Schedule rotation operations immediately.</div>
+            <div className="font-semibold mb-0.5">⚠️ SECRET_ENFORCEMENT_WARN — Local warnings present</div>
+            <div className="text-[9px] text-amber-500/70">{stats.rotationDue} secret(s) require rotation. Schedule rotation and check System Verify for final readiness.</div>
           </div>
         </div>
       )}
@@ -311,8 +320,8 @@ export default function BackendSecretEnforcementPanel() {
        <div className="flex items-start gap-3 px-4 py-3 bg-primary/10 border border-primary/20 rounded-lg">
          <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
          <div className="text-[10px] text-primary/80">
-           <div className="font-semibold mb-0.5">✓ SECRET_ENFORCEMENT_PASS — All secrets properly configured</div>
-           <div className="text-[9px] text-primary/70">All required secrets are configured and stored in backend. No frontend exposure detected. Check System Verify tab for complete production readiness assessment.</div>
+           <div className="font-semibold mb-0.5">✓ SECRET_ENFORCEMENT_PASS — Local checks passed</div>
+           <div className="text-[9px] text-primary/70">All required secrets are configured and stored in backend. No frontend exposure detected. See System Verify tab for complete production readiness assessment.</div>
          </div>
        </div>
       )}

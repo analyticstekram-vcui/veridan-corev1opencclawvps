@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Shield, AlertTriangle, Filter, Lock, TrendingUp, ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Shield, AlertTriangle, Filter, Lock, TrendingUp, ChevronDown, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { format, isPast } from 'date-fns';
 
 const STATUS_CONFIG = {
@@ -345,12 +345,21 @@ export default function BrokerCredentialVaultPanel() {
         <Lock className="w-5 h-5 text-primary" />
       </div>
 
+      {/* System Verify Authority Banner */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-blue-400/5 border border-blue-400/20 rounded-lg">
+        <AlertCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+        <div className="text-[10px] text-blue-400/80">
+          <div className="font-semibold mb-0.5">⚠️ Final production readiness determined by System Verify.</div>
+          <div className="text-[9px] text-blue-400/70">Broker vault shows local credential status only. For production readiness decision, see System Verify tab. Backend enforcement must pass.</div>
+        </div>
+      </div>
+
       {/* Critical Safety Banner */}
       <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg">
         <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
         <div className="text-[10px] text-destructive/80">
           <div className="font-semibold mb-0.5">⚠️ This vault stores credential metadata only. Real broker credentials never stored or displayed here.</div>
-          <div className="text-[9px] text-destructive/70">Broker API keys, account numbers, usernames, passwords, and tokens must remain in backend vault/KMS (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault, HSM). This panel tracks connectivity status, scope allowances, and trading mode restrictions only. Live trading is permanently blocked across all environments. For production readiness verification, see System Verify tab.</div>
+          <div className="text-[9px] text-destructive/70">Broker API keys, account numbers, usernames, passwords, and tokens must remain in backend vault/KMS (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault, HSM). This panel tracks connectivity status, scope allowances, and trading mode restrictions only. Live trading is permanently blocked across all environments.</div>
         </div>
       </div>
 
