@@ -142,7 +142,7 @@ export default function OpenClawControl() {
         </div>
         <div>
           <h1 className="text-sm font-semibold tracking-wider text-foreground">OPENCLAW CONTROL</h1>
-          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">Gateway monitor · Governance queue · Veridan Core</p>
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Gateway monitor · Governance queue · Veridan Core</p>
         </div>
       </div>
 
@@ -173,10 +173,10 @@ export default function OpenClawControl() {
               type="button"
               style={{ cursor: 'pointer' }}
               onClick={() => handleTabClick(id)}
-              className={`px-3 py-1.5 text-[11px] border transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 text-[11px] border transition-colors whitespace-nowrap font-semibold ${
                 activeView === id
                   ? 'border-primary text-primary bg-primary/10'
-                  : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                  : 'border-border text-slate-400 hover:text-slate-200 hover:bg-secondary/50'
               }`}
             >
               {label}
@@ -292,11 +292,11 @@ export default function OpenClawControl() {
           <div className="p-6 max-w-2xl space-y-4">
             <div className="bg-card border border-border p-5">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Gateway Status</span>
+                <span className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Gateway Status</span>
                 <button
                   type="button"
                   onClick={fetchStatus}
-                  className="flex items-center gap-1.5 px-2.5 py-1 border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1 border border-border text-[10px] text-slate-400 hover:text-slate-200 hover:bg-secondary/50 transition-colors font-semibold"
                 >
                   <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
                   Refresh
@@ -333,66 +333,66 @@ export default function OpenClawControl() {
                   cloudflare_protected_reachable: { bg: 'bg-amber-500/5 border-amber-500/20', text: 'text-amber-400', label: '⚡ Cloudflare Access Protected · Reachable' },
                   gateway_unreachable: { bg: 'bg-destructive/5 border-destructive/20', text: 'text-destructive', label: '✗ OpenClaw Gateway Unreachable' },
                   gateway_error: { bg: 'bg-destructive/5 border-destructive/20', text: 'text-destructive', label: '✗ Gateway Server Error' },
-                  backend_unreachable: { bg: 'bg-secondary/50 border-border', text: 'text-muted-foreground', label: '— Backend Unreachable' },
+                  backend_unreachable: { bg: 'bg-secondary/50 border-border', text: 'text-slate-300', label: '— Backend Unreachable' },
                 };
                 const cfg = diagMap[status.diagnostic] || diagMap.backend_unreachable;
                 return (
                   <div className={`mb-4 px-3 py-2.5 border ${cfg.bg}`}>
                     <div className={`text-[11px] font-semibold font-mono mb-0.5 ${cfg.text}`}>{cfg.label}</div>
-                    <div className="text-[10px] text-muted-foreground/60 font-mono">{status.diagnosticDetail}</div>
+                    <div className="text-[10px] text-slate-400 font-mono">{status.diagnosticDetail}</div>
                   </div>
                 );
               })()}
 
               <div className="mb-4">
-                <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Gateway URL</label>
+                <label className="text-[9px] uppercase tracking-widest text-slate-400 block mb-1 font-semibold">Gateway URL</label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-blue-400 font-mono truncate select-all">
                     {status?.url || 'https://openclaw.veridancore.com'}
                   </div>
-                  <button type="button" onClick={handleCopy} className="px-2.5 py-1.5 border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
+                  <button type="button" onClick={handleCopy} className="px-2.5 py-1.5 border border-border text-[10px] text-slate-400 hover:text-slate-200 hover:bg-secondary/50 transition-colors font-semibold">
                     <Copy className="w-3 h-3" />
                   </button>
-                  {copied && <span className="text-[10px] text-primary">Copied!</span>}
+                  {copied && <span className="text-[10px] text-primary font-semibold">Copied!</span>}
                 </div>
               </div>
 
               <div className="mb-4">
-                <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">WebSocket URL</label>
-                <div className="px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-blue-400/70 font-mono truncate">
+                <label className="text-[9px] uppercase tracking-widest text-slate-400 block mb-1 font-semibold">WebSocket URL</label>
+                <div className="px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-blue-400 font-mono truncate">
                   {status?.wsUrl || 'wss://openclaw.veridancore.com'}
                 </div>
               </div>
 
               {status?.lastChecked && (
-                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 mb-4">
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-4 font-semibold">
                   <Clock className="w-3 h-3" />
                   Last checked: {new Date(status.lastChecked).toLocaleTimeString()}
                 </div>
               )}
 
               <div className="mb-3">
-                <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2">Veridan Safe Bridge · SESSION_STATUS</div>
+                <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Veridan Safe Bridge · SESSION_STATUS</div>
                 <div className="grid grid-cols-2 gap-2 text-[10px]">
                   <div className="bg-secondary/30 border border-border px-3 py-2">
-                    <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Bridge</div>
+                    <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Bridge</div>
                     <div className={bridgeStatus?.status === 'success' ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
                       {bridgeStatus?.status === 'success' ? 'Connected' : bridgeStatus?.status || '—'}
                     </div>
                   </div>
                   <div className="bg-secondary/30 border border-border px-3 py-2">
-                    <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Session Active</div>
-                    <div className={bridgeStatus?.raw?.session_active ? 'text-primary font-semibold' : 'text-muted-foreground'}>
+                    <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Session Active</div>
+                    <div className={bridgeStatus?.raw?.session_active ? 'text-primary font-semibold' : 'text-slate-300 font-semibold'}>
                       {bridgeStatus?.raw?.session_active !== undefined ? String(bridgeStatus.raw.session_active) : '—'}
                     </div>
                   </div>
                   <div className="col-span-2 bg-secondary/30 border border-border px-3 py-2">
-                    <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Current URL</div>
+                    <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Current URL</div>
                     <div className="text-blue-400 font-mono truncate">{bridgeStatus?.raw?.current_url || bridgeStatus?.targetUrl || '—'}</div>
                   </div>
                   {bridgeStatus?.error && (
                     <div className="col-span-2 bg-destructive/5 border border-destructive/20 px-3 py-2">
-                      <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Error</div>
+                      <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Error</div>
                       <div className="text-destructive font-mono text-[10px] break-all">{bridgeStatus.error}</div>
                     </div>
                   )}
@@ -401,22 +401,22 @@ export default function OpenClawControl() {
 
               <div className="grid grid-cols-2 gap-2 mb-5 text-[10px]">
                 <div className="bg-secondary/30 border border-border px-3 py-2">
-                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Gateway</div>
+                  <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">OpenClaw Gateway</div>
                   <div className={online ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>{online ? 'Reachable' : 'Unreachable'}</div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-3 py-2">
-                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">CF Access</div>
-                  <div className={status?.protected ? 'text-amber-400 font-semibold' : 'text-muted-foreground/50'}>
+                  <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">CF Access</div>
+                  <div className={status?.protected ? 'text-amber-400 font-semibold' : 'text-slate-400 font-semibold'}>
                     {status?.protected ? 'Protected (expected)' : online ? 'Open' : '—'}
                   </div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-3 py-2">
-                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Browser Automation</div>
+                  <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Browser Automation</div>
                   <div className="text-primary font-semibold">Operational</div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-3 py-2">
-                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Version</div>
-                  <div className="text-foreground font-mono">{status?.version || '2026.5.2'}</div>
+                  <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">OpenClaw Version</div>
+                  <div className="text-slate-200 font-mono">{status?.version || '2026.5.2'}</div>
                 </div>
               </div>
 
@@ -434,7 +434,7 @@ export default function OpenClawControl() {
               <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               <div>
                 <div className="text-[11px] font-semibold text-amber-500 mb-0.5">Protected by Cloudflare Access</div>
-                <div className="text-[10px] text-muted-foreground/70">
+                <div className="text-[10px] text-slate-300">
                   Authentication is enforced at the gateway layer. This panel does not bypass or store Cloudflare credentials. X-Frame-Options: DENY is set at the gateway.
                 </div>
               </div>
@@ -442,12 +442,12 @@ export default function OpenClawControl() {
 
             <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 px-4 py-3">
               <Terminal className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-              <div className="text-[10px] text-muted-foreground/70 font-mono">
-                Stable backend baseline saved at <span className="text-primary">/root/VERIDAN_OPENCLAW_STABLE_BASELINE.md</span>
+              <div className="text-[10px] text-slate-300 font-mono">
+                Stable backend baseline saved at <span className="text-primary font-semibold">/root/VERIDAN_OPENCLAW_STABLE_BASELINE.md</span>
               </div>
             </div>
 
-            <div className="text-[9px] text-muted-foreground/30 text-center uppercase tracking-widest">
+            <div className="text-[9px] text-slate-400 text-center uppercase tracking-widest font-semibold">
               Status polling every 15 seconds · Read-only mode
             </div>
           </div>

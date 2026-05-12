@@ -472,10 +472,10 @@ export default function LegacyExecutionReviewPanel() {
       <div className="flex flex-wrap gap-1.5">
         {FILTERS.map(f => (
           <button key={f} type="button" onClick={() => setFilter(f)}
-            className={`px-3 py-1 text-[9px] border transition-colors whitespace-nowrap ${
+            className={`px-3 py-1 text-[9px] border transition-colors whitespace-nowrap font-semibold ${
               filter === f
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-slate-200 hover:bg-secondary/50'
             }`}
           >
             {f}
@@ -486,9 +486,9 @@ export default function LegacyExecutionReviewPanel() {
       {/* Records list */}
       <div>
         {loading ? (
-          <div className="py-12 text-center text-[11px] text-muted-foreground/40">Loading legacy records…</div>
+          <div className="py-12 text-center text-[11px] text-slate-400 font-semibold">Loading legacy records…</div>
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-[11px] text-muted-foreground/40">
+          <div className="py-12 text-center text-[11px] text-slate-400 font-semibold">
             {commands.length === 0 ? 'No REAL or LIVE execution records found.' : `No records match filter: ${filter}`}
           </div>
         ) : (
@@ -504,10 +504,10 @@ export default function LegacyExecutionReviewPanel() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-secondary/10 border border-border/30 text-[9px] text-muted-foreground/50">
-        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500/50" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-secondary/10 border border-border/30 text-[9px] text-slate-400 font-semibold">
+        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
         <div>
-          Reviews are saved to <span className="text-primary/70 font-semibold">OpenClawLegacyReview</span>. Original <span className="text-foreground/60">OpenClawCommand</span> records are never modified.
+          Reviews are saved to <span className="text-primary font-semibold">OpenClawLegacyReview</span>. Original <span className="text-slate-300">OpenClawCommand</span> records are never modified.
           No command rerun, deletion, live execution, or governance bypass.
         </div>
       </div>

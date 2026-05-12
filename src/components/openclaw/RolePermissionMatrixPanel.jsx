@@ -50,7 +50,7 @@ export default function RolePermissionMatrixPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Access Control</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Access Control</div>
           <div className="text-[13px] font-semibold text-foreground">Role-Permission Matrix</div>
         </div>
         <Shield className="w-5 h-5 text-primary" />

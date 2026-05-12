@@ -217,8 +217,8 @@ export default function ExecutedCommandAuditView() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Shield className="w-3.5 h-3.5 text-primary" />
-          <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Executed Command Audit</span>
-          <span className="text-[9px] text-muted-foreground/30 ml-1">{filtered.length} shown</span>
+          <span className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Executed Command Audit</span>
+          <span className="text-[9px] text-slate-400 ml-1 font-semibold">{filtered.length} shown</span>
         </div>
       </div>
 
@@ -238,10 +238,10 @@ export default function ExecutedCommandAuditView() {
           <button
             key={opt}
             onClick={() => setFilter(opt)}
-            className={`px-3 py-1 text-[9px] border rounded whitespace-nowrap transition-colors ${
+            className={`px-3 py-1 text-[9px] border rounded whitespace-nowrap transition-colors font-semibold ${
               filter === opt
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-slate-200 hover:bg-secondary/50'
             }`}
           >
             {opt}
@@ -250,7 +250,7 @@ export default function ExecutedCommandAuditView() {
       </div>
 
       {/* Column headers */}
-      <div className="hidden lg:grid grid-cols-[20px_120px_80px_60px_70px_100px_auto] gap-2 px-4 py-2 bg-secondary/20 border-b border-border/30 text-[9px] uppercase tracking-wider text-muted-foreground/50 font-semibold">
+      <div className="hidden lg:grid grid-cols-[20px_120px_80px_60px_70px_100px_auto] gap-2 px-4 py-2 bg-secondary/20 border-b border-border/30 text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
         <div />
         <div>Command Type</div>
         <div>Status</div>
@@ -263,9 +263,9 @@ export default function ExecutedCommandAuditView() {
       {/* Commands list */}
       <div className="max-h-[600px] overflow-y-auto">
         {loading ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">Loading...</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">Loading...</div>
         ) : filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} commands found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} commands found</div>
         ) : (
           filtered.map((cmd, idx) => <CommandRow key={idx} command={cmd} index={idx} savedReview={reviewMap[cmd.id] || null} />)
         )}
@@ -273,7 +273,7 @@ export default function ExecutedCommandAuditView() {
 
       {/* Footer info */}
       {filtered.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2 border-t border-border/30 bg-secondary/10 text-[9px] text-muted-foreground/40">
+        <div className="flex items-center gap-2 px-4 py-2 border-t border-border/30 bg-secondary/10 text-[9px] text-slate-400 font-semibold">
           <AlertTriangle className="w-3 h-3 shrink-0" />
           <span>Read-only audit view. No modifications allowed.</span>
         </div>

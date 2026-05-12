@@ -641,7 +641,7 @@ function ChecklistItemCard({ item, expanded, onToggle, savedReview, onReviewSave
           {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
           <div className="flex-1 min-w-0">
             <div className="text-[10px] font-semibold text-foreground">{item.name}</div>
-            <div className="text-[8px] text-muted-foreground/50 mt-0.5">{item.category}</div>
+            <div className="text-[8px] text-slate-400 mt-0.5 font-semibold">{item.category}</div>
           </div>
         </div>
 
@@ -1130,7 +1130,7 @@ export default function ProductionReadinessChecklistPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Production Readiness</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Production Readiness</div>
           <div className="text-[13px] font-semibold text-foreground">Pre-Production Checklist</div>
         </div>
       </div>
@@ -1510,10 +1510,10 @@ export default function ProductionReadinessChecklistPanel() {
       <div className="flex flex-wrap gap-1.5">
         {[...FILTER_OPTIONS, 'UNRESOLVED'].map(f => (
           <button key={f} type="button" onClick={() => setFilter(f)}
-            className={`px-3 py-1 text-[9px] border transition-colors whitespace-nowrap ${
+            className={`px-3 py-1 text-[9px] border transition-colors whitespace-nowrap font-semibold ${
               filter === f
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-slate-200 hover:bg-secondary/50'
             }`}
           >
             {f === 'UNRESOLVED' ? `UNRESOLVED (${CHECKLIST_ITEMS.filter(i => reviews[i.name]?.reviewStatus !== 'COMPLETE' && i.status !== 'COMPLETE').length})` : f}
@@ -1524,9 +1524,9 @@ export default function ProductionReadinessChecklistPanel() {
       {/* Checklist items */}
       <div className="space-y-2">
         {loading ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">Loading checklist…</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">Loading checklist…</div>
         ) : filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} items found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} items found</div>
         ) : (
           filtered.map(item => (
             <ChecklistItemCard
