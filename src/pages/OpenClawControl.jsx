@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor } from 'lucide-react';
@@ -25,15 +25,55 @@ import BrowserReadActionsPanel from '@/components/openclaw/BrowserReadActionsPan
 import InteractiveRiskMapPanel from '@/components/openclaw/InteractiveRiskMapPanel';
 import UnifiedOpenClawOverviewPanel from '@/components/openclaw/UnifiedOpenClawOverviewPanel';
 
+const TABS = [
+  { id: 'overview', label: '📊 Overview' },
+  { id: 'status', label: 'Status' },
+  { id: 'safe_bridge', label: '⚡ Safe Command Test' },
+  { id: 'safety_tests', label: '🛡️ Safety Tests' },
+  { id: 'readiness_gate', label: '🔐 Readiness Gate' },
+  { id: 'approval_workflow', label: 'Approval Workflow' },
+  { id: 'policy_registry', label: 'Policy Registry' },
+  { id: 'connectors', label: 'Connectors' },
+  { id: 'risk_matrix', label: 'Risk Matrix' },
+  { id: 'runbook', label: 'Runbook' },
+  { id: 'simulations', label: 'Simulations' },
+  { id: 'snapshot', label: 'Snapshot' },
+  { id: 'handoff', label: 'Handoff' },
+  { id: 'production_checklist', label: 'Production Checklist' },
+  { id: 'browser_read', label: 'Browser Read' },
+  { id: 'risk_map', label: 'Risk Map' },
+  { id: 'audit', label: 'Executed Commands' },
+  { id: 'workflows', label: 'Workflows' },
+  { id: 'nodes', label: 'Node Registry' },
+  { id: 'logs', label: 'Live Logs' },
+  { id: 'readiness', label: 'Execution Readiness' },
+  { id: 'telemetry', label: 'Telemetry' },
+];
+
 export default function OpenClawControl() {
+  const [activeView, setActiveView] = useState('overview');
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [activeView, setActiveView] = useState('overview'); // 'overview' | 'status' | etc.
+  const [bridgeStatus, setBridgeStatus] = useState(null);
   const intervalRef = useRef(null);
 
-  const [bridgeStatus, setBridgeStatus] = useState(null);
+  // Listen for navigation events dispatched by child panels (e.g. quick links in Overview)
+  useEffect(() => {
+    const handler = (e) => {
+      console.log('TAB NAVIGATE EVENT', e.detail);
+      setActiveView(e.detail);
+    };
+    window.addEventListener('openclaw:navigate', handler);
+    return () => window.removeEventListener('openclaw:navigate', handler);
+  }, []);
+
+  const handleTabClick = useCallback((id) => {
+    console.log('TAB CLICKED', id);
+    setActiveView(id);
+    console.log('ACTIVE TAB', id);
+  }, []);
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -63,7 +103,6 @@ export default function OpenClawControl() {
   }, []);
 
   const handleOpen = async () => {
-    // Audit event
     try {
       await base44.integrations.Core.InvokeLLM({
         prompt: JSON.stringify({
@@ -75,84 +114,66 @@ export default function OpenClawControl() {
         }),
         response_json_schema: { type: 'object', properties: { logged: { type: 'boolean' } } },
       });
-    } catch (_) { /* non-blocking */ }
-
-    const target = status?.url || 'https://openclaw.veridancore.com';
-    window.open(target, '_blank', 'noopener,noreferrer');
+    } catch (_) {}
+    window.open(status?.url || 'https://openclaw.veridancore.com', '_blank', 'noopener,noreferrer');
   };
 
   const handleCopy = () => {
-    const url = status?.url || 'https://openclaw.veridancore.com';
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(status?.url || 'https://openclaw.veridancore.com');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const online = status?.online;
 
-  const TABS = [
-    ['overview', '📊 Overview'],
-    ['status', 'Status'],
-    ['safe_bridge', '⚡ Safe Command Test'],
-    ['safety_tests', '🛡️ Safety Tests'],
-    ['readiness_gate', '🔐 Readiness Gate'],
-    ['approval_workflow', 'Approval Workflow'],
-    ['policy_registry', 'Policy Registry'],
-    ['connectors', 'Connectors'],
-    ['risk_matrix', 'Risk Matrix'],
-    ['runbook', 'Runbook'],
-    ['simulations', 'Simulations'],
-    ['snapshot', 'Snapshot'],
-    ['handoff', 'Handoff'],
-    ['production_checklist', 'Production Checklist'],
-    ['browser_read', 'Browser Read'],
-    ['risk_map', 'Risk Map'],
-    ['audit', 'Executed Commands'],
-    ['workflows', 'Workflows'],
-    ['nodes', 'Node Registry'],
-    ['logs', 'Live Logs'],
-    ['readiness', 'Execution Readiness'],
-    ['telemetry', 'Telemetry'],
-  ];
-
-  const handleTabClick = (id) => {
-    console.log('TAB CLICKED', id);
-    setActiveView(id);
-    console.log('ACTIVE TAB', id);
-  };
-
   return (
-    <div className="h-screen flex flex-col bg-background font-mono overflow-hidden">
-      {/* Title bar */}
-      <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center">
-            <Terminal className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold tracking-wider text-foreground">OPENCLAW CONTROL</h1>
-            <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">Gateway monitor · Governance queue · Veridan Core</p>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }} className="bg-background font-mono">
+
+      {/* ── Title bar ── */}
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 20 }} className="border-b border-border bg-card px-6 py-3 flex items-center gap-3">
+        <div className="w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center">
+          <Terminal className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-sm font-semibold tracking-wider text-foreground">OPENCLAW CONTROL</h1>
+          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">Gateway monitor · Governance queue · Veridan Core</p>
         </div>
       </div>
 
-      {/* Tab strip — separate row, horizontally scrollable */}
-      <div className="shrink-0 border-b border-border bg-card/80 px-2 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div className="flex gap-1 py-2 w-max">
-          <Link to="/command-queue"
-            className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap">
+      {/* ── Tab strip ── horizontally scrollable, never clipped, above content */}
+      <div
+        style={{ flexShrink: 0, position: 'relative', zIndex: 10, overflowX: 'auto', overflowY: 'visible' }}
+        className="border-b border-border bg-card"
+      >
+        <div style={{ display: 'flex', gap: '4px', padding: '6px 8px', width: 'max-content' }}>
+          {/* External links */}
+          <Link
+            to="/command-queue"
+            style={{ flexShrink: 0 }}
+            className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+          >
             <List className="w-3 h-3" /> Command Queue
           </Link>
-          <Link to="/browser-session"
-            className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap">
+          <Link
+            to="/browser-session"
+            style={{ flexShrink: 0 }}
+            className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+          >
             <Monitor className="w-3 h-3" /> Browser Session
           </Link>
-          {TABS.map(([id, label]) => (
+
+          {/* Tab buttons */}
+          {TABS.map(({ id, label }) => (
             <button
               key={id}
               type="button"
+              style={{ flexShrink: 0, cursor: 'pointer' }}
               onClick={() => handleTabClick(id)}
-              className={`px-3 py-1.5 text-[11px] border transition-colors whitespace-nowrap cursor-pointer select-none ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}
+              className={`px-3 py-1.5 text-[11px] border transition-colors whitespace-nowrap ${
+                activeView === id
+                  ? 'border-primary text-primary bg-primary/10'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+              }`}
             >
               {label}
             </button>
@@ -160,336 +181,263 @@ export default function OpenClawControl() {
         </div>
       </div>
 
-      {/* Panel content — fills remaining space */}
-      <div className="flex-1 overflow-auto min-h-0">
+      {/* ── Panel area ── scrollable, fills remaining height */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}>
 
-      {activeView === 'overview' && (
-        <div className="p-6">
-          <UnifiedOpenClawOverviewPanel />
-        </div>
-      )}
+        {activeView === 'overview' && (
+          <div className="p-6"><UnifiedOpenClawOverviewPanel /></div>
+        )}
 
-      {activeView === 'safe_bridge' && (
-        <div className="h-full">
-          <SafeCommandBridge />
-        </div>
-      )}
+        {activeView === 'safe_bridge' && (
+          <div style={{ height: '100%' }}><SafeCommandBridge /></div>
+        )}
 
-      {activeView === 'safety_tests' && (
-        <div className="p-6">
-          <ExecutionSafetyTests />
-        </div>
-      )}
+        {activeView === 'safety_tests' && (
+          <div className="p-6"><ExecutionSafetyTests /></div>
+        )}
 
-      {activeView === 'readiness_gate' && (
-        <div className="p-6">
-          <ExecutionReadinessGate />
-        </div>
-      )}
+        {activeView === 'readiness_gate' && (
+          <div className="p-6"><ExecutionReadinessGate /></div>
+        )}
 
-      {activeView === 'approval_workflow' && (
-        <div className="p-6">
-          <CommandApprovalWorkflowPanel />
-        </div>
-      )}
+        {activeView === 'approval_workflow' && (
+          <div className="p-6"><CommandApprovalWorkflowPanel /></div>
+        )}
 
-      {activeView === 'policy_registry' && (
-        <div className="p-6">
-          <GovernancePolicyRegistryPanel />
-        </div>
-      )}
+        {activeView === 'policy_registry' && (
+          <div className="p-6"><GovernancePolicyRegistryPanel /></div>
+        )}
 
-      {activeView === 'connectors' && (
-        <div className="p-6">
-          <ConnectorHealthMatrixPanel />
-        </div>
-      )}
+        {activeView === 'connectors' && (
+          <div className="p-6"><ConnectorHealthMatrixPanel /></div>
+        )}
 
-      {activeView === 'risk_matrix' && (
-        <div className="p-6">
-          <RiskPermissionMatrixPanel />
-        </div>
-      )}
+        {activeView === 'risk_matrix' && (
+          <div className="p-6"><RiskPermissionMatrixPanel /></div>
+        )}
 
-      {activeView === 'runbook' && (
-        <div className="p-6">
-          <OperatorRunbookPanel />
-        </div>
-      )}
+        {activeView === 'runbook' && (
+          <div className="p-6"><OperatorRunbookPanel /></div>
+        )}
 
-      {activeView === 'simulations' && (
-        <div className="p-6">
-          <SimulationScenarioTesterPanel />
-        </div>
-      )}
+        {activeView === 'simulations' && (
+          <div className="p-6"><SimulationScenarioTesterPanel /></div>
+        )}
 
-      {activeView === 'snapshot' && (
-        <div className="p-6">
-          <SystemSnapshotExportPanel />
-        </div>
-      )}
+        {activeView === 'snapshot' && (
+          <div className="p-6"><SystemSnapshotExportPanel /></div>
+        )}
 
-      {activeView === 'handoff' && (
-        <div className="p-6">
-          <ModuleHandoffPanel />
-        </div>
-      )}
+        {activeView === 'handoff' && (
+          <div className="p-6"><ModuleHandoffPanel /></div>
+        )}
 
-      {activeView === 'production_checklist' && (
-        <div className="p-6">
-          <ProductionReadinessChecklistPanel />
-        </div>
-      )}
+        {activeView === 'production_checklist' && (
+          <div className="p-6"><ProductionReadinessChecklistPanel /></div>
+        )}
 
-      {activeView === 'browser_read' && (
-        <div className="p-6">
-          <BrowserReadActionsPanel />
-        </div>
-      )}
+        {activeView === 'browser_read' && (
+          <div className="p-6"><BrowserReadActionsPanel /></div>
+        )}
 
-      {activeView === 'risk_map' && (
-        <div className="p-6">
-          <InteractiveRiskMapPanel />
-        </div>
-      )}
+        {activeView === 'risk_map' && (
+          <div className="p-6"><InteractiveRiskMapPanel /></div>
+        )}
 
-      {activeView === 'audit' && (
-        <div className="p-6">
-          <ExecutedCommandAuditView />
-        </div>
-      )}
+        {activeView === 'audit' && (
+          <div className="p-6"><ExecutedCommandAuditView /></div>
+        )}
 
-      {activeView === 'queue' && (
-        <div className="h-full">
-          <CommandQueuePanel currentUser={currentUser} />
-        </div>
-      )}
+        {activeView === 'queue' && (
+          <div style={{ height: '100%' }}><CommandQueuePanel currentUser={currentUser} /></div>
+        )}
 
-      {activeView === 'workflows' && (
-        <div className="h-full">
-          <WorkflowPanel currentUser={currentUser} executionMode="SIMULATED" executionPaused={false} />
-        </div>
-      )}
+        {activeView === 'workflows' && (
+          <div style={{ height: '100%' }}><WorkflowPanel currentUser={currentUser} executionMode="SIMULATED" executionPaused={false} /></div>
+        )}
 
-      {activeView === 'nodes' && (
-        <div className="p-6">
-          <NodeRegistryPanel />
-        </div>
-      )}
+        {activeView === 'nodes' && (
+          <div className="p-6"><NodeRegistryPanel /></div>
+        )}
 
-      {activeView === 'logs' && (
-        <div className="h-full">
-          <LiveLogsPanel />
-        </div>
-      )}
+        {activeView === 'logs' && (
+          <div style={{ height: '100%' }}><LiveLogsPanel /></div>
+        )}
 
-      {activeView === 'readiness' && (
-        <div className="p-6">
-          <ExecutionReadinessPanel gatewayOnline={status?.online} />
-        </div>
-      )}
+        {activeView === 'readiness' && (
+          <div className="p-6"><ExecutionReadinessPanel gatewayOnline={status?.online} /></div>
+        )}
 
-      {activeView === 'telemetry' && (
-        <div className="p-6">
-          <TelemetryPanel executionMode="SIMULATED" gatewayOnline={status?.online} />
-        </div>
-      )}
+        {activeView === 'telemetry' && (
+          <div className="p-6"><TelemetryPanel executionMode="SIMULATED" gatewayOnline={status?.online} /></div>
+        )}
 
-      {activeView === 'status' && <div className="p-6 max-w-2xl space-y-4">
-        {/* Status Card */}
-        <div className="bg-card border border-border p-5">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Gateway Status</span>
-            <button
-              onClick={fetchStatus}
-              className="flex items-center gap-1.5 px-2.5 py-1 border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 mb-3">
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-[13px] text-amber-500">CHECKING...</span>
+        {activeView === 'status' && (
+          <div className="p-6 max-w-2xl space-y-4">
+            <div className="bg-card border border-border p-5">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Gateway Status</span>
+                <button
+                  type="button"
+                  onClick={fetchStatus}
+                  className="flex items-center gap-1.5 px-2.5 py-1 border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                >
+                  <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
               </div>
-            ) : online ? (
-              <div className="flex items-center gap-2">
-                <Wifi className="w-4 h-4 text-primary" />
-                <span className="text-[13px] font-semibold text-primary">ONLINE</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <WifiOff className="w-4 h-4 text-destructive" />
-                <span className="text-[13px] font-semibold text-destructive">OFFLINE</span>
-              </div>
-            )}
-            {status?.gatewayStatus && !loading && (
-              <span className="text-[10px] font-mono text-muted-foreground/50 border border-border px-2 py-0.5">
-                HTTP {status.gatewayStatus}
-              </span>
-            )}
-          </div>
 
-          {/* Diagnostic Banner */}
-          {!loading && status?.diagnostic && (() => {
-            const diagMap = {
-              openclaw_online:              { bg: 'bg-primary/5 border-primary/20',         text: 'text-primary',     label: '✓ OpenClaw Online' },
-              cloudflare_protected_reachable:{ bg: 'bg-amber-500/5 border-amber-500/20',     text: 'text-amber-400',   label: '⚡ Cloudflare Access Protected · Reachable' },
-              gateway_unreachable:          { bg: 'bg-destructive/5 border-destructive/20', text: 'text-destructive', label: '✗ OpenClaw Gateway Unreachable' },
-              gateway_error:                { bg: 'bg-destructive/5 border-destructive/20', text: 'text-destructive', label: '✗ Gateway Server Error' },
-              backend_unreachable:          { bg: 'bg-secondary/50 border-border',          text: 'text-muted-foreground', label: '— Backend Unreachable' },
-            };
-            const cfg = diagMap[status.diagnostic] || diagMap.backend_unreachable;
-            return (
-              <div className={`mb-4 px-3 py-2.5 border ${cfg.bg}`}>
-                <div className={`text-[11px] font-semibold font-mono mb-0.5 ${cfg.text}`}>{cfg.label}</div>
-                <div className="text-[10px] text-muted-foreground/60 font-mono">{status.diagnosticDetail}</div>
+              <div className="flex items-center gap-3 mb-3">
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-[13px] text-amber-500">CHECKING...</span>
+                  </div>
+                ) : online ? (
+                  <div className="flex items-center gap-2">
+                    <Wifi className="w-4 h-4 text-primary" />
+                    <span className="text-[13px] font-semibold text-primary">ONLINE</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <WifiOff className="w-4 h-4 text-destructive" />
+                    <span className="text-[13px] font-semibold text-destructive">OFFLINE</span>
+                  </div>
+                )}
+                {status?.gatewayStatus && !loading && (
+                  <span className="text-[10px] font-mono text-muted-foreground/50 border border-border px-2 py-0.5">
+                    HTTP {status.gatewayStatus}
+                  </span>
+                )}
               </div>
-            );
-          })()}
 
-          {/* URL Field */}
-          <div className="mb-4">
-            <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Gateway URL</label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-blue-400 font-mono truncate select-all">
-                {status?.url || 'https://openclaw.veridancore.com'}
+              {!loading && status?.diagnostic && (() => {
+                const diagMap = {
+                  openclaw_online: { bg: 'bg-primary/5 border-primary/20', text: 'text-primary', label: '✓ OpenClaw Online' },
+                  cloudflare_protected_reachable: { bg: 'bg-amber-500/5 border-amber-500/20', text: 'text-amber-400', label: '⚡ Cloudflare Access Protected · Reachable' },
+                  gateway_unreachable: { bg: 'bg-destructive/5 border-destructive/20', text: 'text-destructive', label: '✗ OpenClaw Gateway Unreachable' },
+                  gateway_error: { bg: 'bg-destructive/5 border-destructive/20', text: 'text-destructive', label: '✗ Gateway Server Error' },
+                  backend_unreachable: { bg: 'bg-secondary/50 border-border', text: 'text-muted-foreground', label: '— Backend Unreachable' },
+                };
+                const cfg = diagMap[status.diagnostic] || diagMap.backend_unreachable;
+                return (
+                  <div className={`mb-4 px-3 py-2.5 border ${cfg.bg}`}>
+                    <div className={`text-[11px] font-semibold font-mono mb-0.5 ${cfg.text}`}>{cfg.label}</div>
+                    <div className="text-[10px] text-muted-foreground/60 font-mono">{status.diagnosticDetail}</div>
+                  </div>
+                );
+              })()}
+
+              <div className="mb-4">
+                <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Gateway URL</label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-blue-400 font-mono truncate select-all">
+                    {status?.url || 'https://openclaw.veridancore.com'}
+                  </div>
+                  <button type="button" onClick={handleCopy} className="px-2.5 py-1.5 border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
+                    <Copy className="w-3 h-3" />
+                  </button>
+                  {copied && <span className="text-[10px] text-primary">Copied!</span>}
+                </div>
               </div>
+
+              <div className="mb-4">
+                <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">WebSocket URL</label>
+                <div className="px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-blue-400/70 font-mono truncate">
+                  {status?.wsUrl || 'wss://openclaw.veridancore.com'}
+                </div>
+              </div>
+
+              {status?.lastChecked && (
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 mb-4">
+                  <Clock className="w-3 h-3" />
+                  Last checked: {new Date(status.lastChecked).toLocaleTimeString()}
+                </div>
+              )}
+
+              <div className="mb-3">
+                <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2">Veridan Safe Bridge · SESSION_STATUS</div>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div className="bg-secondary/30 border border-border px-3 py-2">
+                    <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Bridge</div>
+                    <div className={bridgeStatus?.status === 'success' ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
+                      {bridgeStatus?.status === 'success' ? 'Connected' : bridgeStatus?.status || '—'}
+                    </div>
+                  </div>
+                  <div className="bg-secondary/30 border border-border px-3 py-2">
+                    <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Session Active</div>
+                    <div className={bridgeStatus?.raw?.session_active ? 'text-primary font-semibold' : 'text-muted-foreground'}>
+                      {bridgeStatus?.raw?.session_active !== undefined ? String(bridgeStatus.raw.session_active) : '—'}
+                    </div>
+                  </div>
+                  <div className="col-span-2 bg-secondary/30 border border-border px-3 py-2">
+                    <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Current URL</div>
+                    <div className="text-blue-400 font-mono truncate">{bridgeStatus?.raw?.current_url || bridgeStatus?.targetUrl || '—'}</div>
+                  </div>
+                  {bridgeStatus?.error && (
+                    <div className="col-span-2 bg-destructive/5 border border-destructive/20 px-3 py-2">
+                      <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Error</div>
+                      <div className="text-destructive font-mono text-[10px] break-all">{bridgeStatus.error}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-5 text-[10px]">
+                <div className="bg-secondary/30 border border-border px-3 py-2">
+                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Gateway</div>
+                  <div className={online ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>{online ? 'Reachable' : 'Unreachable'}</div>
+                </div>
+                <div className="bg-secondary/30 border border-border px-3 py-2">
+                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">CF Access</div>
+                  <div className={status?.protected ? 'text-amber-400 font-semibold' : 'text-muted-foreground/50'}>
+                    {status?.protected ? 'Protected (expected)' : online ? 'Open' : '—'}
+                  </div>
+                </div>
+                <div className="bg-secondary/30 border border-border px-3 py-2">
+                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Browser Automation</div>
+                  <div className="text-primary font-semibold">Operational</div>
+                </div>
+                <div className="bg-secondary/30 border border-border px-3 py-2">
+                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Version</div>
+                  <div className="text-foreground font-mono">{status?.version || '2026.5.2'}</div>
+                </div>
+              </div>
+
               <button
-                onClick={handleCopy}
-                className="px-2.5 py-1.5 border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                type="button"
+                onClick={handleOpen}
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90 transition-colors"
               >
-                <Copy className="w-3 h-3" />
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open OpenClaw Control
               </button>
-              {copied && <span className="text-[10px] text-primary">Copied!</span>}
             </div>
-          </div>
 
-          {/* WebSocket URL */}
-          <div className="mb-4">
-            <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">WebSocket URL</label>
-            <div className="px-3 py-1.5 bg-secondary/50 border border-border text-[11px] text-blue-400/70 font-mono truncate">
-              {status?.wsUrl || 'wss://openclaw.veridancore.com'}
-            </div>
-          </div>
-
-          {/* Last Checked */}
-          {status?.lastChecked && (
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 mb-4">
-              <Clock className="w-3 h-3" />
-              Last checked: {new Date(status.lastChecked).toLocaleTimeString()}
-            </div>
-          )}
-
-          {/* Bridge Status Grid */}
-          <div className="mb-3">
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2">Veridan Safe Bridge · SESSION_STATUS</div>
-            <div className="grid grid-cols-2 gap-2 text-[10px]">
-              <div className="bg-secondary/30 border border-border px-3 py-2">
-                <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Bridge</div>
-                <div className={bridgeStatus?.status === 'success' ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
-                  {bridgeStatus?.status === 'success' ? 'Connected' : bridgeStatus?.status || '—'}
+            <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/20 px-4 py-3">
+              <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-[11px] font-semibold text-amber-500 mb-0.5">Protected by Cloudflare Access</div>
+                <div className="text-[10px] text-muted-foreground/70">
+                  Authentication is enforced at the gateway layer. This panel does not bypass or store Cloudflare credentials. X-Frame-Options: DENY is set at the gateway.
                 </div>
               </div>
-              <div className="bg-secondary/30 border border-border px-3 py-2">
-                <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Session Active</div>
-                <div className={bridgeStatus?.raw?.session_active ? 'text-primary font-semibold' : 'text-muted-foreground'}>
-                  {bridgeStatus?.raw?.session_active !== undefined ? String(bridgeStatus.raw.session_active) : '—'}
-                </div>
-              </div>
-              <div className="col-span-2 bg-secondary/30 border border-border px-3 py-2">
-                <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Current URL</div>
-                <div className="text-blue-400 font-mono truncate">{bridgeStatus?.raw?.current_url || bridgeStatus?.targetUrl || '—'}</div>
-              </div>
-              {bridgeStatus?.pageTitle && (
-                <div className="col-span-2 bg-secondary/30 border border-border px-3 py-2">
-                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Page Title</div>
-                  <div className="text-foreground">{bridgeStatus.pageTitle}</div>
-                </div>
-              )}
-              {bridgeStatus?.error && (
-                <div className="col-span-2 bg-destructive/5 border border-destructive/20 px-3 py-2">
-                  <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Error</div>
-                  <div className="text-destructive font-mono text-[10px] break-all">{bridgeStatus.error}</div>
-                </div>
-              )}
             </div>
-          </div>
 
-          {/* Gateway / CF Status Grid */}
-          <div className="grid grid-cols-2 gap-2 mb-5 text-[10px]">
-            <div className="bg-secondary/30 border border-border px-3 py-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Gateway</div>
-              <div className={online ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
-                {online ? 'Reachable' : 'Unreachable'}
+            <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 px-4 py-3">
+              <Terminal className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+              <div className="text-[10px] text-muted-foreground/70 font-mono">
+                Stable backend baseline saved at <span className="text-primary">/root/VERIDAN_OPENCLAW_STABLE_BASELINE.md</span>
               </div>
             </div>
-            <div className="bg-secondary/30 border border-border px-3 py-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Gateway Access</div>
-              <div className={status?.protected ? 'text-amber-400 font-semibold' : 'text-muted-foreground/50'}>
-                {status?.protected ? 'CF Access Protected (expected)' : online ? 'Open' : '—'}
-              </div>
-            </div>
-            <div className="bg-secondary/30 border border-border px-3 py-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Browser Automation</div>
-              <div className="text-primary font-semibold">Operational</div>
-            </div>
-            <div className="bg-secondary/30 border border-border px-3 py-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">CDP</div>
-              <div className="text-foreground">Ready · Port {status?.cdpPort || 18800}</div>
-            </div>
-            <div className="bg-secondary/30 border border-border px-3 py-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">OpenClaw Version</div>
-              <div className="text-foreground font-mono">{status?.version || '2026.5.2'}</div>
-            </div>
-            <div className="bg-secondary/30 border border-border px-3 py-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Mode</div>
-              <div className="text-foreground capitalize">{status?.mode?.replace('-', ' ') || 'external-control'}</div>
+
+            <div className="text-[9px] text-muted-foreground/30 text-center uppercase tracking-widest">
+              Status polling every 15 seconds · Read-only mode
             </div>
           </div>
+        )}
 
-          {/* Primary Launch Button */}
-          <div className="flex gap-2">
-            <button
-              onClick={handleOpen}
-              className="flex items-center gap-1.5 px-5 py-2.5 bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90 transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              Open OpenClaw Control
-            </button>
-          </div>
-        </div>
-
-        {/* Security Notice */}
-        <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/20 px-4 py-3">
-          <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-          <div>
-            <div className="text-[11px] font-semibold text-amber-500 mb-0.5">Protected by Cloudflare Access</div>
-            <div className="text-[10px] text-muted-foreground/70">
-              Authentication is enforced at the gateway layer. This panel does not bypass or store Cloudflare credentials.
-              Embedded iframes are disabled — X-Frame-Options: DENY is set at the gateway.
-            </div>
-          </div>
-        </div>
-
-        {/* Baseline Note */}
-        <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 px-4 py-3">
-          <Terminal className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-          <div className="text-[10px] text-muted-foreground/70 font-mono">
-            Stable backend baseline saved at <span className="text-primary">/root/VERIDAN_OPENCLAW_STABLE_BASELINE.md</span>
-          </div>
-        </div>
-
-        {/* Poll indicator */}
-        <div className="text-[9px] text-muted-foreground/30 text-center uppercase tracking-widest">
-          Status polling every 15 seconds · Read-only mode
-        </div>
-      </div>}
-
-      </div>{/* end flex-1 panel container */}
+      </div>
     </div>
   );
 }
