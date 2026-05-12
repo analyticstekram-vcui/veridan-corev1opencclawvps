@@ -3,16 +3,63 @@ import { base44 } from '@/api/base44Client';
 import { Shield, ChevronDown, ChevronRight, Filter, Download, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 
-// Safe date formatting helper
-const formatDate = (dateString, formatStr = 'MMM dd HH:mm') => {
-  if (!dateString) return '—';
+// Robust safe date formatting helpers
+const normalizeDate = (value) => {
+  if (!value) return null;
+  
+  // Handle null/undefined
+  if (value === null || value === undefined) return null;
+  
+  // Handle empty string
+  if (typeof value === 'string' && value.trim() === '') return null;
+  
+  // Handle numeric timestamps (ms or seconds)
+  if (typeof value === 'number') {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date;
+    return null;
+  }
+  
+  // Handle Date objects
+  if (value instanceof Date) {
+    if (!Number.isNaN(value.getTime())) return value;
+    return null;
+  }
+  
+  // Handle ISO strings and date strings
+  if (typeof value === 'string') {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date;
+    return null;
+  }
+  
+  // Handle Firestore/Base44 timestamp objects {_seconds, _nanoseconds}
+  if (typeof value === 'object' && value._seconds) {
+    const date = new Date(value._seconds * 1000);
+    if (!Number.isNaN(date.getTime())) return date;
+    return null;
+  }
+  
+  return null;
+};
+
+const safeFormatDate = (dateValue, formatStr = 'MMM dd HH:mm') => {
+  const date = normalizeDate(dateValue);
+  if (!date) return '—';
+  
   try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '—';
-    return format(date, formatStr);
+    if (!Number.isNaN(date.getTime())) {
+      return format(date, formatStr);
+    }
   } catch {
     return '—';
   }
+  
+  return '—';
+};
+
+const safeFormatDateTime = (dateValue) => {
+  return safeFormatDate(dateValue, 'yyyy-MM-dd HH:mm:ss');
 };
 
 const COMMAND_STATUS_CONFIG = {
@@ -54,7 +101,7 @@ function CommandRow({ command, expanded, onToggle }) {
             <div className="text-[9px] text-slate-400 flex items-center gap-3">
               <span>{command.commandType}</span>
               <span>{command.operator}</span>
-              <span className="text-[8px] text-slate-500">{formatDate(command.createdAt, 'MMM dd HH:mm')}</span>
+              <span className="text-[8px] text-slate-500">{safeFormatDate(command.createdAt, 'MMM dd HH:mm')}</span>
             </div>
           </div>
         </div>
@@ -80,7 +127,7 @@ function CommandRow({ command, expanded, onToggle }) {
             </div>
             <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
               <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Timestamp</div>
-              <div className="text-slate-300 font-mono">{formatDate(command.createdAt, 'yyyy-MM-dd HH:mm:ss')}</div>
+              <div className="text-slate-300 font-mono">{safeFormatDateTime(command.createdAt)}</div>
             </div>
             <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
               <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Operator</div>
@@ -141,13 +188,13 @@ function CommandRow({ command, expanded, onToggle }) {
             {command.approvedAt && (
               <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
                 <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Approved At</div>
-                <div className="text-slate-300 font-mono text-[8px]">{formatDate(command.approvedAt, 'yyyy-MM-dd HH:mm:ss')}</div>
+                <div className="text-slate-300 font-mono text-[8px]">{safeFormatDateTime(command.approvedAt)}</div>
               </div>
             )}
             {command.executedAt && (
               <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
                 <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Executed At</div>
-                <div className="text-slate-300 font-mono text-[8px]">{formatDate(command.executedAt, 'yyyy-MM-dd HH:mm:ss')}</div>
+                <div className="text-slate-300 font-mono text-[8px]">{safeFormatDateTime(command.executedAt)}</div>
               </div>
             )}
             {command.deniedBy && (
@@ -327,13 +374,19 @@ export default function CommandAuditTrailPanel() {
     }));
   };
 
-  // Filter commands
+  // Filter commands with safe timestamp comparison
   const filteredCommands = commands.filter(cmd => {
     if (filters.status !== 'all' && cmd.status !== filters.status) return false;
     if (filters.riskLevel !== 'all' && cmd.riskLevel !== filters.riskLevel) return false;
     if (filters.commandType !== 'all' && cmd.commandType !== filters.commandType) return false;
     if (filters.operator !== 'all' && cmd.operator !== filters.operator) return false;
     return true;
+  }).sort((a, b) => {
+    // Safe sort by timestamp (newer first)
+    const dateA = normalizeDate(a.createdAt);
+    const dateB = normalizeDate(b.createdAt);
+    if (!dateA || !dateB) return 0;
+    return dateB.getTime() - dateA.getTime();
   });
 
   // Calculate summary stats
