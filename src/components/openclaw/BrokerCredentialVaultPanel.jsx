@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Shield, AlertTriangle, Filter, Lock, TrendingUp, ChevronDown, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { format, isPast } from 'date-fns';
+import { checkBrokerVaultReadiness } from '@/lib/openclawVerification';
 
 const STATUS_CONFIG = {
   NOT_CONNECTED: { label: 'NOT CONNECTED', color: 'text-slate-400 border-slate-400/30 bg-slate-400/5' },
@@ -322,6 +323,7 @@ export default function BrokerCredentialVaultPanel() {
     return true;
   }).sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
 
+  // Stats computed from shared verification helper (used by System Verify)
   const stats = {
     total: credentials.length,
     vaulted: credentials.filter(c => c.credentialStatus === 'VAULTED').length,

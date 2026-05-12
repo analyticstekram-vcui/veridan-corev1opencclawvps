@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle2, XCircle, AlertTriangle, Shield, Lock, Zap, OctagonX, AlertCircle } from 'lucide-react';
 import LiveBridgeDryRun from './LiveBridgeDryRun';
+import { checkLiveExecutionLockout, formatLockoutStatus } from '@/lib/openclawVerification';
 
 const CHECKLIST = [
   {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Shield, AlertTriangle, CheckCircle2, AlertCircle, Lock, Search } from 'lucide-react';
 import { format } from 'date-fns';
+import { verifySecretEnforcement, formatSecretStatus } from '@/lib/openclawVerification';
 
 // Required secrets metadata - THIS IS METADATA ONLY, NEVER ACTUAL VALUES
 const REQUIRED_SECRETS = [
@@ -177,44 +178,28 @@ export default function BackendSecretEnforcementPanel() {
 
         // Build secret verification status
         const secretStatuses = [];
-        const detectedViolations = [];
-
         for (const secretDef of REQUIRED_SECRETS) {
           const meta = metadataMap[secretDef.name];
-          
-          // Determine status
           let status = 'UNKNOWN';
           let frontendExposed = false;
           let backendAvailable = true;
 
-          // Check if metadata exists
           if (meta) {
             if (meta.status === 'CONFIGURED') {
               status = 'CONFIGURED';
-            } else if (meta.status === 'NOT_CONFIGURED') {
+            } else if (meta.status === 'NOT_CONFIGURED' || meta.status === 'DISABLED') {
               status = 'MISSING';
               backendAvailable = false;
-              detectedViolations.push(`${secretDef.name} is not configured`);
             } else if (meta.status === 'ROTATION_DUE') {
               status = 'ROTATION_DUE';
-              detectedViolations.push(`${secretDef.name} rotation is overdue`);
-            } else if (meta.status === 'DISABLED') {
-              status = 'MISSING';
+            }
+            if (meta.storageLocation === 'hardcoded' || meta.storageLocation === 'unknown') {
               backendAvailable = false;
             }
-
-            // Check storage location
-            if (meta.storageLocation === 'hardcoded' || meta.storageLocation === 'unknown') {
-              detectedViolations.push(`${secretDef.name} has uncertain storage location`);
-            }
           } else {
-            // No metadata - this is a violation
             status = 'MISSING';
             backendAvailable = false;
-            detectedViolations.push(`${secretDef.name} has no metadata registry entry`);
           }
-
-          // Frontend exposure check: metadata-only; no actual values scanned or displayed
 
           secretStatuses.push({
             ...secretDef,
@@ -225,22 +210,12 @@ export default function BackendSecretEnforcementPanel() {
         }
 
         setSecrets(secretStatuses);
-        setViolations(detectedViolations);
 
-        // Determine overall enforcement status
-        // BLOCKED only on hard failures: confirmed missing/exposed, not just absent metadata
-        const missingCount = secretStatuses.filter(s => !s.backendAvailable && s.required && s.status === 'MISSING').length;
-        const exposedCount = secretStatuses.filter(s => s.frontendExposed).length;
-        // UNKNOWN without metadata is a WARN, not a hard BLOCKED
-        const unknownCount = secretStatuses.filter(s => s.status === 'UNKNOWN').length;
-
-        if (missingCount > 0 || exposedCount > 0) {
-          setEnforcementStatus('SECRET_ENFORCEMENT_BLOCKED');
-        } else if (unknownCount > 0 || secretStatuses.some(s => s.status === 'ROTATION_DUE')) {
-          setEnforcementStatus('SECRET_ENFORCEMENT_WARN');
-        } else {
-          setEnforcementStatus('SECRET_ENFORCEMENT_PASS');
-        }
+        // Use shared verification helper to get enforcement status
+        const result = await verifySecretEnforcement();
+        const statusMap = { BLOCKED: 'SECRET_ENFORCEMENT_BLOCKED', WARN: 'SECRET_ENFORCEMENT_WARN', PASS: 'SECRET_ENFORCEMENT_PASS' };
+        setEnforcementStatus(statusMap[result.status] || 'SECRET_ENFORCEMENT_UNKNOWN');
+        setViolations(result.violations);
       } catch (err) {
         console.error('Error verifying secrets:', err);
       } finally {
