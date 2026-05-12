@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertTriangle, ChevronDown, ChevronRight, ShieldAlert, Eye, Save, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, ShieldAlert, Eye, Save, CheckCircle2, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 
 const REVIEW_OPTIONS = [
@@ -9,6 +9,9 @@ const REVIEW_OPTIONS = [
   { value: 'REVIEWED_POLICY_EXCEPTION', label: 'Policy Exception', color: 'text-blue-400 border-blue-400/40 bg-blue-400/10' },
   { value: 'REVIEWED_REQUIRES_INVESTIGATION', label: 'Requires Investigation', color: 'text-destructive border-destructive/40 bg-destructive/10' },
 ];
+
+// Only the 3 actionable review statuses (excludes UNREVIEWED)
+const ACTIONABLE_REVIEW_OPTIONS = REVIEW_OPTIONS.filter(o => o.value !== 'UNREVIEWED');
 
 const FILTERS = ['ALL', 'UNREVIEWED', 'REVIEWED_SAFE_HISTORICAL', 'REVIEWED_POLICY_EXCEPTION', 'REVIEWED_REQUIRES_INVESTIGATION', 'REAL', 'LIVE'];
 
@@ -142,7 +145,12 @@ function CommandReviewCard({ command, savedReview, onSaved }) {
             <div className="flex flex-wrap items-center gap-1.5">
               <ReviewBadge mode={command.executionMode} />
               <span className={`text-[9px] px-1.5 py-0.5 border rounded font-semibold ${reviewOpt.color}`}>{reviewOpt.label}</span>
-              {savedReview && <span className="text-[8px] text-primary/60 border border-primary/20 px-1 py-0.5">SAVED</span>}
+              {savedReview?.reviewedAt && (
+                <span className="text-[8px] text-primary/60 border border-primary/20 bg-primary/5 px-1.5 py-0.5 font-mono">
+                  ✓ saved {fmtDate(savedReview.reviewedAt).slice(0, 10)}
+                  {savedReview.reviewer ? ` · ${savedReview.reviewer}` : ''}
+                </span>
+              )}
             </div>
             <div className="text-[11px] text-foreground font-mono truncate">{command.commandType || '—'}</div>
             <div className="text-[9px] text-blue-400 font-mono truncate">{command.targetUrl || '—'}</div>
@@ -245,11 +253,12 @@ function CommandReviewCard({ command, savedReview, onSaved }) {
               <div>
                 <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Review Status</label>
                 <select
-                  value={reviewStatus}
+                  value={reviewStatus === 'UNREVIEWED' ? '' : reviewStatus}
                   onChange={e => setReviewStatus(e.target.value)}
                   className="w-full bg-secondary/50 border border-border text-[10px] font-mono text-foreground px-2 py-1.5 outline-none focus:border-primary/50"
                 >
-                  {REVIEW_OPTIONS.map(opt => (
+                  <option value="" disabled>— select classification —</option>
+                  {ACTIONABLE_REVIEW_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.value}</option>
                   ))}
                 </select>
@@ -283,31 +292,31 @@ function CommandReviewCard({ command, savedReview, onSaved }) {
               </div>
             )}
 
-            {/* Save buttons */}
+            {/* Quick-classify buttons */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {['REVIEWED_SAFE_HISTORICAL', 'REVIEWED_POLICY_EXCEPTION', 'REVIEWED_REQUIRES_INVESTIGATION'].map(val => {
-                const opt = REVIEW_OPTIONS.find(o => o.value === val);
-                return (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => { setReviewStatus(val); }}
-                    className={`px-2.5 py-1 text-[9px] border transition-colors ${reviewStatus === val ? opt.color : 'border-border text-muted-foreground hover:bg-secondary/50'}`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
+              {ACTIONABLE_REVIEW_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setReviewStatus(opt.value)}
+                  className={`px-2.5 py-1 text-[9px] border transition-colors ${reviewStatus === opt.value ? opt.color : 'border-border text-muted-foreground hover:bg-secondary/50'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-[9px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                disabled={saving || reviewStatus === 'UNREVIEWED'}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-[9px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saved ? <CheckCircle2 className="w-3 h-3" /> : <Save className="w-3 h-3" />}
-                {saving ? 'Saving…' : saved ? 'Saved!' : isDirty ? 'Save Review' : 'Re-save'}
+                {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Review'}
               </button>
             </div>
+            {reviewStatus === 'UNREVIEWED' && (
+              <div className="text-[8px] text-amber-500/70 mt-1">Select a classification above before saving.</div>
+            )}
           </div>
         </div>
       )}
@@ -365,19 +374,43 @@ export default function LegacyExecutionReviewPanel() {
   return (
     <div className="space-y-4 font-mono">
 
-      {/* ── Next Action block ── */}
-      <div className="border border-primary/30 bg-primary/5 px-4 py-3 space-y-2">
-        <div className="text-[10px] font-semibold text-primary uppercase tracking-wider">Next Operational Step</div>
-        <ol className="space-y-1 text-[10px] text-foreground/80 list-none">
-          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">1.</span> Expand each legacy record below to inspect its payload, audit log, and execution metadata.</li>
-          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">2.</span> Classify using the <span className="text-foreground font-semibold">Review Status</span> selector: <span className="text-primary">REVIEWED_SAFE_HISTORICAL</span>, <span className="text-blue-400">REVIEWED_POLICY_EXCEPTION</span>, or <span className="text-destructive">REVIEWED_REQUIRES_INVESTIGATION</span>.</li>
-          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">3.</span> Add a reviewer identifier and note, then click <span className="text-foreground font-semibold">Save Review</span> to persist the classification.</li>
-          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">4.</span> Once all records are classified, proceed to the <span className="text-foreground font-semibold">Production Checklist</span> tab.</li>
-        </ol>
-        <div className="text-[9px] text-muted-foreground/50 border-t border-primary/20 pt-2 mt-1">
-          Reviews saved to <span className="text-primary">OpenClawLegacyReview</span> entity · Original command records are never modified
+      {/* ── Completion banner (shown when all reviewed) ── */}
+      {!loading && counters.total > 0 && counters.unreviewed === 0 && (
+        <div className="border border-primary/50 bg-primary/10 px-4 py-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-primary" />
+            <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">LEGACY_REVIEW_COMPLETE</span>
+          </div>
+          <div className="text-[10px] text-primary/80">
+            All {counters.total} legacy record{counters.total !== 1 ? 's' : ''} have been classified and saved to <span className="font-semibold">OpenClawLegacyReview</span>.
+            Original command records are preserved and unmodified. You may now proceed to the Production Checklist.
+          </div>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('openclaw:navigate', { detail: 'production_checklist' }))}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-[9px] font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <ArrowRight className="w-3 h-3" />
+            Go to Production Checklist
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* ── Next Action block ── */}
+      {(loading || counters.unreviewed > 0) && (
+        <div className="border border-primary/30 bg-primary/5 px-4 py-3 space-y-2">
+          <div className="text-[10px] font-semibold text-primary uppercase tracking-wider">Next Operational Step</div>
+          <ol className="space-y-1 text-[10px] text-foreground/80 list-none">
+            <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">1.</span> Expand each legacy record below to inspect its payload, audit log, and execution metadata.</li>
+            <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">2.</span> Use the quick-classify buttons (<span className="text-primary">Safe Historical</span>, <span className="text-blue-400">Policy Exception</span>, <span className="text-destructive">Requires Investigation</span>) or the dropdown to select a classification.</li>
+            <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">3.</span> Add a reviewer identifier and note, then click <span className="text-foreground font-semibold">Save Review</span>. The review is persisted to <span className="text-primary">OpenClawLegacyReview</span> — the original <span className="text-foreground">OpenClawCommand</span> record is never modified.</li>
+            <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">4.</span> Once all {counters.total} record{counters.total !== 1 ? 's' : ''} show a saved classification, the <span className="text-foreground font-semibold">LEGACY_REVIEW_COMPLETE</span> banner will appear and you can proceed to Production Checklist.</li>
+          </ol>
+          <div className="text-[9px] text-amber-500/70 border-t border-primary/20 pt-2 mt-1">
+            {counters.unreviewed} of {counters.total} record{counters.total !== 1 ? 's' : ''} still unreviewed
+          </div>
+        </div>
+      )}
 
       {/* Warning banner */}
       <div className="flex items-start gap-3 px-4 py-3 bg-destructive/5 border border-destructive/30">
