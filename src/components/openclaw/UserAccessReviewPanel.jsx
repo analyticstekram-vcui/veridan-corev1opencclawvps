@@ -58,23 +58,23 @@ function AccessReviewCard({ review, onSaved }) {
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+          {expanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <User className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-[10px] font-semibold text-foreground truncate">{review.userEmail}</span>
+              <User className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[10px] font-semibold text-slate-200 truncate">{review.userEmail}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[8px] px-1.5 py-0.5 border border-border bg-secondary/30 text-foreground rounded font-semibold">{roleMeta?.displayName || review.assignedRole}</span>
+              <span className="text-[8px] px-1.5 py-0.5 border border-border bg-secondary/30 text-slate-300 rounded font-semibold">{roleMeta?.displayName || review.assignedRole}</span>
               <span className={`text-[8px] px-1.5 py-0.5 border font-semibold rounded ${cfg.color}`}>{cfg.label}</span>
             </div>
           </div>
         </div>
         <div className="text-right shrink-0 space-y-0.5">
           {review.reviewedAt && (
-            <div className="text-[8px] text-muted-foreground/60 font-mono">{format(new Date(review.reviewedAt), 'MMM dd')}</div>
+            <div className="text-[8px] text-slate-400 font-mono">{format(new Date(review.reviewedAt), 'MMM dd')}</div>
           )}
-          <div className="text-[8px] text-muted-foreground/40">{rolePerms.length} permissions</div>
+          <div className="text-[8px] text-slate-500 font-semibold">{rolePerms.length} permissions</div>
         </div>
       </div>
 
@@ -84,52 +84,52 @@ function AccessReviewCard({ review, onSaved }) {
           {/* Basic info */}
           <div className="grid grid-cols-2 gap-2 text-[10px]">
             <div className="bg-card border border-border/30 px-2 py-1.5">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">User Email</div>
-              <div className="text-foreground font-mono">{review.userEmail}</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">User Email</div>
+              <div className="text-slate-200 font-mono">{review.userEmail}</div>
             </div>
             <div className="bg-card border border-border/30 px-2 py-1.5">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Assigned Role</div>
-              <div className="text-foreground">{roleMeta?.displayName || review.assignedRole}</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">Assigned Role</div>
+              <div className="text-slate-200">{roleMeta?.displayName || review.assignedRole}</div>
             </div>
             {review.reviewedAt && (
               <>
                 <div className="bg-card border border-border/30 px-2 py-1.5">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Last Reviewed</div>
-                  <div className="text-foreground font-mono">{format(new Date(review.reviewedAt), 'yyyy-MM-dd HH:mm')}</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">Last Reviewed</div>
+                  <div className="text-slate-200 font-mono">{format(new Date(review.reviewedAt), 'yyyy-MM-dd HH:mm')}</div>
                 </div>
                 <div className="bg-card border border-border/30 px-2 py-1.5">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Reviewed By</div>
-                  <div className="text-foreground text-[9px]">{review.reviewedBy || '—'}</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">Reviewed By</div>
+                  <div className="text-slate-200 text-[9px]">{review.reviewedBy || '—'}</div>
                 </div>
               </>
             )}
             {review.expiresAt && (
               <div className="col-span-2 bg-card border border-border/30 px-2 py-1.5">
-                <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Access Expires</div>
-                <div className="text-foreground font-mono">{format(new Date(review.expiresAt), 'yyyy-MM-dd')}</div>
+                <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">Access Expires</div>
+                <div className="text-slate-200 font-mono">{format(new Date(review.expiresAt), 'yyyy-MM-dd')}</div>
               </div>
             )}
             {review.lastAccessedAt && (
               <div className="col-span-2 bg-card border border-border/30 px-2 py-1.5">
-                <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Last Accessed</div>
-                <div className="text-foreground font-mono">{format(new Date(review.lastAccessedAt), 'yyyy-MM-dd HH:mm')}</div>
+                <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">Last Accessed</div>
+                <div className="text-slate-200 font-mono">{format(new Date(review.lastAccessedAt), 'yyyy-MM-dd HH:mm')}</div>
               </div>
             )}
           </div>
 
           {/* Granted permissions */}
           <div>
-            <div className="text-[9px] font-semibold text-foreground mb-2 uppercase tracking-wider">Permissions</div>
+            <div className="text-[9px] font-semibold text-slate-200 mb-2 uppercase tracking-wider">Permissions</div>
             <div className="space-y-1">
               {rolePerms.length > 0 ? (
                 rolePerms.map((perm, i) => (
                   <div key={i} className="flex items-center gap-2 text-[9px] px-2 py-1 bg-card border border-primary/20 rounded">
                     <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
-                    <span className="text-foreground/80">{perm}</span>
+                    <span className="text-slate-300">{perm}</span>
                   </div>
                 ))
               ) : (
-                <div className="text-[9px] text-muted-foreground/50 px-2 py-1">No permissions granted</div>
+                <div className="text-[9px] text-slate-500 px-2 py-1 font-semibold">No permissions granted</div>
               )}
             </div>
           </div>
@@ -138,11 +138,11 @@ function AccessReviewCard({ review, onSaved }) {
           {editing ? (
             <div className="border border-primary/20 bg-primary/5 p-3 space-y-3">
               <div>
-                <label className="text-[8px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Review Status</label>
+                <label className="text-[8px] uppercase tracking-widest text-slate-400 block mb-1 font-semibold">Review Status</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full bg-card border border-border text-[10px] font-mono text-foreground px-2 py-1.5 outline-none focus:border-primary/50"
+                  className="w-full bg-card border border-border text-[10px] font-mono text-slate-200 px-2 py-1.5 outline-none focus:border-primary/50"
                 >
                   <option value="PENDING">Pending Review</option>
                   <option value="APPROVED">Approved</option>
@@ -151,13 +151,13 @@ function AccessReviewCard({ review, onSaved }) {
                 </select>
               </div>
               <div>
-                <label className="text-[8px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Review Notes</label>
+                <label className="text-[8px] uppercase tracking-widest text-slate-400 block mb-1 font-semibold">Review Notes</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Add justification, findings, or notes..."
                   rows={2}
-                  className="w-full bg-card border border-border text-[10px] font-mono text-foreground px-2 py-1.5 outline-none focus:border-primary/50 placeholder:text-muted-foreground/30 resize-none"
+                  className="w-full bg-card border border-border text-[10px] font-mono text-slate-200 px-2 py-1.5 outline-none focus:border-primary/50 placeholder:text-slate-500 resize-none"
                 />
               </div>
               <div className="flex gap-2 justify-end">
@@ -206,13 +206,13 @@ function AccessReviewCard({ review, onSaved }) {
 
           {/* Denial reason (if denied) */}
           {status === 'DENIED' && review.accessDenialReason && (
-            <div className="flex items-start gap-2 px-3 py-2 bg-destructive/5 border border-destructive/20 rounded">
-              <AlertTriangle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
-              <div className="text-[9px] text-destructive">
-                <div className="font-semibold mb-0.5">Denial Reason</div>
-                <div>{review.accessDenialReason}</div>
-              </div>
-            </div>
+          <div className="flex items-start gap-2 px-3 py-2 bg-destructive/5 border border-destructive/20 rounded">
+          <AlertTriangle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+          <div className="text-[9px] text-destructive/80">
+            <div className="font-semibold mb-0.5">Denial Reason</div>
+            <div className="text-slate-300">{review.accessDenialReason}</div>
+          </div>
+          </div>
           )}
         </div>
       )}
@@ -284,19 +284,19 @@ export default function UserAccessReviewPanel() {
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Total Users</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Total Users</div>
           <div className="text-[14px] font-semibold text-foreground">{summaryStats.total}</div>
         </div>
         <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-          <div className="text-primary/60 uppercase tracking-wider mb-1 text-[8px]">Approved</div>
+          <div className="text-primary/70 uppercase tracking-wider mb-1 text-[8px] font-semibold">Approved</div>
           <div className="text-[14px] font-semibold text-primary">{summaryStats.approved}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">Pending</div>
+          <div className="text-amber-500/70 uppercase tracking-wider mb-1 text-[8px] font-semibold">Pending</div>
           <div className="text-[14px] font-semibold text-amber-500">{summaryStats.pending}</div>
         </div>
         <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-          <div className="text-destructive/60 uppercase tracking-wider mb-1 text-[8px]">Denied</div>
+          <div className="text-destructive/70 uppercase tracking-wider mb-1 text-[8px] font-semibold">Denied</div>
           <div className="text-[14px] font-semibold text-destructive">{summaryStats.denied}</div>
         </div>
       </div>
@@ -305,10 +305,10 @@ export default function UserAccessReviewPanel() {
       <div className="flex flex-wrap gap-1.5">
         {['ALL', 'APPROVED', 'PENDING', 'DENIED'].map(f => (
           <button key={f} type="button" onClick={() => setFilter(f)}
-            className={`px-3 py-1 text-[9px] border transition-colors whitespace-nowrap rounded ${
+            className={`px-3 py-1 text-[9px] border transition-colors whitespace-nowrap rounded font-semibold ${
               filter === f
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-slate-200 hover:bg-secondary/50'
             }`}
           >
             {f} ({f === 'ALL' ? summaryStats.total : f === 'APPROVED' ? summaryStats.approved : f === 'PENDING' ? summaryStats.pending : summaryStats.denied})
@@ -319,9 +319,9 @@ export default function UserAccessReviewPanel() {
       {/* Reviews list */}
       <div className="space-y-2">
         {loading ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">Loading access reviews…</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">Loading access reviews…</div>
         ) : filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} access reviews found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} access reviews found</div>
         ) : (
           filtered.map(review => (
             <AccessReviewCard

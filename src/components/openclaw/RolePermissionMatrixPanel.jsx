@@ -20,8 +20,8 @@ function PermissionCell({ role, permission, hasPermission: permitted }) {
       permitted && !isLiveExecution
         ? 'bg-primary/10 text-primary'
         : isLiveExecution
-        ? 'bg-destructive/5 text-destructive/50 line-through'
-        : 'bg-muted/5 text-muted-foreground/30'
+        ? 'bg-destructive/5 text-destructive/70 line-through'
+        : 'bg-muted/5 text-slate-400'
     }`}>
       {permitted && !isLiveExecution ? (
         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -72,9 +72,9 @@ export default function RolePermissionMatrixPanel() {
           return (
             <div key={roleKey} className="border border-border/50 rounded-lg bg-card/50 p-3 space-y-2">
               <div className="text-[10px] font-semibold text-foreground">{roleMeta.displayName}</div>
-              <div className="text-[8px] text-muted-foreground/70 line-clamp-2">{roleMeta.description}</div>
+              <div className="text-[8px] text-slate-300 line-clamp-2">{roleMeta.description}</div>
               <div className="flex items-center justify-between pt-1 border-t border-border/30">
-                <span className="text-[8px] text-muted-foreground/50 uppercase tracking-wider">Permissions</span>
+                <span className="text-[8px] text-slate-400 uppercase tracking-wider font-semibold">Permissions</span>
                 <span className="text-[9px] font-semibold text-primary">{perms.length}</span>
               </div>
             </div>
@@ -86,11 +86,11 @@ export default function RolePermissionMatrixPanel() {
       <div className="border border-border/50 rounded-lg bg-card overflow-hidden">
         {/* Header row with role names */}
         <div className="flex">
-          <div className="w-48 flex-shrink-0 bg-secondary/20 border-r border-b border-border/30 px-3 py-3 font-semibold text-[10px] uppercase tracking-wider text-foreground">
+          <div className="w-48 flex-shrink-0 bg-secondary/20 border-r border-b border-border/30 px-3 py-3 font-semibold text-[10px] uppercase tracking-wider text-slate-200">
             Permission
           </div>
           {Object.entries(ROLE_METADATA).map(([roleKey, roleMeta]) => (
-            <div key={roleKey} className="flex-1 min-w-24 bg-secondary/10 border-r border-b border-border/30 px-2 py-3 font-semibold text-[9px] uppercase tracking-wider text-foreground text-center">
+            <div key={roleKey} className="flex-1 min-w-24 bg-secondary/10 border-r border-b border-border/30 px-2 py-3 font-semibold text-[9px] uppercase tracking-wider text-slate-200 text-center">
               {roleMeta.displayName}
             </div>
           ))}
@@ -101,7 +101,7 @@ export default function RolePermissionMatrixPanel() {
           <div key={category}>
             {/* Category header */}
             <div className="flex bg-secondary/5 border-b border-border/20">
-              <div className="w-48 flex-shrink-0 px-3 py-2 font-semibold text-[8px] uppercase tracking-widest text-muted-foreground/60">
+              <div className="w-48 flex-shrink-0 px-3 py-2 font-semibold text-[8px] uppercase tracking-widest text-slate-400">
                 {category}
               </div>
               <div className="flex-1" />
@@ -120,12 +120,12 @@ export default function RolePermissionMatrixPanel() {
                       onClick={() => setExpandedPermission(isExpanded ? null : perm)}
                     >
                       <div>
-                        <div className="text-[9px] font-semibold text-foreground">{meta.label}</div>
+                        <div className="text-[9px] font-semibold text-slate-200">{meta.label}</div>
                         {meta.critical && (
-                          <div className="text-[8px] text-destructive/70 mt-0.5">⚠️ Critical</div>
+                          <div className="text-[8px] text-destructive/80 mt-0.5 font-semibold">⚠️ Critical</div>
                         )}
                       </div>
-                      <div className="text-muted-foreground/50 group-hover:text-muted-foreground">
+                      <div className="text-slate-500 group-hover:text-slate-300">
                         {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                       </div>
                     </div>
@@ -146,7 +146,7 @@ export default function RolePermissionMatrixPanel() {
                     <div className="flex border-t border-border/20 bg-secondary/5">
                       <div className="w-48 flex-shrink-0 border-r border-border/30 px-3 py-2 bg-card/50" />
                       <div className="flex-1 px-3 py-2 col-span-5">
-                        <div className="text-[9px] text-muted-foreground/70 space-y-1">
+                        <div className="text-[9px] text-slate-300 space-y-1">
                           {perm === 'canViewOpenClaw' && (
                             <>
                               <div><span className="font-semibold">Access:</span> View OpenClaw Control panels based on role</div>
@@ -207,15 +207,15 @@ export default function RolePermissionMatrixPanel() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[9px]">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-            <span className="text-foreground/80">Permission Granted</span>
+            <span className="text-slate-300">Permission Granted</span>
           </div>
           <div className="flex items-center gap-2">
-            <Eye className="w-3.5 h-3.5 text-muted-foreground/30" />
-            <span className="text-muted-foreground/70">Permission Denied</span>
+            <Eye className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-slate-300">Permission Denied</span>
           </div>
           <div className="flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5 text-destructive/50 line-through" />
-            <span className="text-destructive/70">Permanently Disabled</span>
+            <Lock className="w-3.5 h-3.5 text-destructive/70 line-through" />
+            <span className="text-destructive/80">Permanently Disabled</span>
           </div>
         </div>
       </div>
