@@ -3,6 +3,18 @@ import { base44 } from '@/api/base44Client';
 import { Shield, ChevronDown, ChevronRight, Filter, Download, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 
+// Safe date formatting helper
+const formatDate = (dateString, formatStr = 'MMM dd HH:mm') => {
+  if (!dateString) return '—';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
+    return format(date, formatStr);
+  } catch {
+    return '—';
+  }
+};
+
 const COMMAND_STATUS_CONFIG = {
   pending: { color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'PENDING APPROVAL' },
   approved: { color: 'text-primary', bg: 'bg-primary/5 border-primary/20', label: 'APPROVED' },
@@ -42,7 +54,7 @@ function CommandRow({ command, expanded, onToggle }) {
             <div className="text-[9px] text-slate-400 flex items-center gap-3">
               <span>{command.commandType}</span>
               <span>{command.operator}</span>
-              <span className="text-[8px] text-slate-500">{format(new Date(command.createdAt), 'MMM dd HH:mm')}</span>
+              <span className="text-[8px] text-slate-500">{formatDate(command.createdAt, 'MMM dd HH:mm')}</span>
             </div>
           </div>
         </div>
@@ -68,7 +80,7 @@ function CommandRow({ command, expanded, onToggle }) {
             </div>
             <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
               <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Timestamp</div>
-              <div className="text-slate-300 font-mono">{format(new Date(command.createdAt), 'yyyy-MM-dd HH:mm:ss')}</div>
+              <div className="text-slate-300 font-mono">{formatDate(command.createdAt, 'yyyy-MM-dd HH:mm:ss')}</div>
             </div>
             <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
               <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Operator</div>
@@ -129,13 +141,13 @@ function CommandRow({ command, expanded, onToggle }) {
             {command.approvedAt && (
               <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
                 <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Approved At</div>
-                <div className="text-slate-300 font-mono text-[8px]">{format(new Date(command.approvedAt), 'yyyy-MM-dd HH:mm:ss')}</div>
+                <div className="text-slate-300 font-mono text-[8px]">{formatDate(command.approvedAt, 'yyyy-MM-dd HH:mm:ss')}</div>
               </div>
             )}
             {command.executedAt && (
               <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
                 <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Executed At</div>
-                <div className="text-slate-300 font-mono text-[8px]">{format(new Date(command.executedAt), 'yyyy-MM-dd HH:mm:ss')}</div>
+                <div className="text-slate-300 font-mono text-[8px]">{formatDate(command.executedAt, 'yyyy-MM-dd HH:mm:ss')}</div>
               </div>
             )}
             {command.deniedBy && (
