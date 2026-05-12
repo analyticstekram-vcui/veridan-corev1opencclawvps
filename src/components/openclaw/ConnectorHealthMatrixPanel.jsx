@@ -210,10 +210,10 @@ function ConnectorRow({ connector }) {
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-slate-400" /> : <ChevronRight className="w-3 h-3 shrink-0 text-slate-400" />}
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-foreground">{connector.name}</div>
-            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mt-0.5">{connector.category}</div>
+            <div className="text-[8px] uppercase tracking-widest text-slate-400 mt-0.5 font-semibold">{connector.category}</div>
           </div>
         </div>
 
@@ -234,15 +234,15 @@ function ConnectorRow({ connector }) {
           {/* Mode and status grid */}
           <div className="grid grid-cols-3 gap-2 text-[9px]">
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Mode</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Mode</div>
               <div className="text-foreground font-mono">{connector.mode}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Status</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Status</div>
               <div className="text-foreground font-mono">{connector.status}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Safe to Execute</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Safe to Execute</div>
               <div className={`font-semibold ${connector.safeToExecute ? 'text-primary' : 'text-destructive'}`}>
                 {connector.safeToExecute ? 'YES' : 'NO'}
               </div>
@@ -251,25 +251,25 @@ function ConnectorRow({ connector }) {
 
           {/* Evidence */}
           <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Evidence</div>
+            <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Evidence</div>
             <div className="text-foreground/80">{connector.evidence}</div>
           </div>
 
           {/* Metadata grid */}
           <div className="grid grid-cols-2 gap-2 text-[9px]">
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Last Checked</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Last Checked</div>
               <div className="text-foreground font-mono">{format(new Date(connector.lastChecked), 'HH:mm:ss')}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Related Component</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Related Component</div>
               <div className="text-blue-400 font-mono text-[8px] break-all">{connector.relatedComponent}</div>
             </div>
           </div>
 
           {/* Notes */}
           <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Notes</div>
+            <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Notes</div>
             <div className="text-foreground/80 text-[9px]">{connector.notes}</div>
           </div>
 
@@ -307,10 +307,10 @@ export default function ConnectorHealthMatrixPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Connector Health Matrix</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Connector Health Matrix</div>
           <div className="text-[13px] font-semibold text-foreground">OpenClaw Dependencies & Readiness Status</div>
-        </div>
-        <span className="text-[9px] text-muted-foreground/30">{filtered.length} of {summaryStats.total} shown</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold">{filtered.length} of {summaryStats.total} shown</span>
       </div>
 
       {/* Summary counters */}
@@ -347,10 +347,10 @@ export default function ConnectorHealthMatrixPanel() {
           <button
             key={opt}
             onClick={() => setFilter(opt)}
-            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors font-semibold ${
               filter === opt
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             {opt}
@@ -361,18 +361,18 @@ export default function ConnectorHealthMatrixPanel() {
       {/* Connectors list */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} connectors found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} connectors found</div>
         ) : (
           filtered.map(connector => <ConnectorRow key={connector.id} connector={connector} />)
         )}
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <Shield className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <Shield className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Connector Matrix is read-only</div>
-          <div>Trading and broker connectors are placeholders until separately approved, credentialed, tested, and governed.</div>
+          <div className="font-semibold mb-1 text-foreground">Connector Matrix is read-only</div>
+          <div className="text-slate-400">Trading and broker connectors are placeholders until separately approved, credentialed, tested, and governed.</div>
         </div>
       </div>
     </div>
