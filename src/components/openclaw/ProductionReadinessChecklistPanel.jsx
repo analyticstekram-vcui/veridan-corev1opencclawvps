@@ -572,6 +572,28 @@ function ChecklistItemCard({ item, expanded, onToggle, savedReview, onReviewSave
   const [reviewNote, setReviewNote] = useState(savedReview?.reviewNote || '');
   const [saving, setSaving] = useState(false);
 
+  // Auto-suggested note based on item evidence/status
+  const autoSuggestedNote = (() => {
+    if (item.status === 'COMPLETE') return `Verified and operational: ${item.evidence}`;
+    if (item.status === 'PARTIAL') return `Partial implementation: ${item.evidence} — ${item.nextAction}`;
+    if (item.status === 'BLOCKED') return `Blocked by: ${item.nextAction}`;
+    if (item.status === 'NOT_STARTED') return `No evidence yet. Required: ${item.nextAction}`;
+    return '';
+  })();
+
+  // Determine if item can be safely auto-marked COMPLETE
+  const canAutoComplete = item.status === 'COMPLETE' && !isProdRequired && item.priority !== 'CRITICAL';
+  
+  // Determine safe action based on evidence
+  const getSafeActions = () => {
+    const actions = [];
+    if (canAutoComplete) actions.push({ label: 'Mark COMPLETE (verified)', status: 'COMPLETE', auto: true });
+    if (item.status === 'PARTIAL' || item.status === 'NOT_STARTED') actions.push({ label: 'Mark PARTIAL (in progress)', status: 'PARTIAL', auto: false });
+    if (item.status === 'BLOCKED' || item.nextAction?.includes('Requires')) actions.push({ label: 'Mark BLOCKED (requires action)', status: 'BLOCKED', auto: false });
+    if (item.priority === 'CRITICAL' || isProdRequired) actions.push({ label: 'Requires operator decision', status: null, auto: false });
+    return actions;
+  };
+
   const handleSaveReview = async (newStatus) => {
     setSaving(true);
     try {
@@ -678,22 +700,56 @@ function ChecklistItemCard({ item, expanded, onToggle, savedReview, onReviewSave
               {savedReview?.reviewedAt && <span className="text-[8px] text-primary/50 ml-auto border border-primary/20 px-1.5 py-0.5">Saved {format(new Date(savedReview.reviewedAt), 'MM/dd HH:mm')}</span>}
             </div>
 
+            {/* Inline guidance */}
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded text-[8px] text-muted-foreground/70 space-y-1">
+              <div><span className="font-semibold">COMPLETE</span> — Only if verified and working. Auto-suggested: {canAutoComplete ? 'Yes, evidence clear' : 'No, requires verification'}</div>
+              <div><span className="font-semibold">PARTIAL</span> — Evidence exists but more work needed. {item.status === 'PARTIAL' ? '(Current status)' : ''}</div>
+              <div><span className="font-semibold">BLOCKED</span> — Dependency prevents it. {item.status === 'BLOCKED' ? '(Current status)' : ''}</div>
+              <div><span className="font-semibold">NOT_STARTED</span> — No evidence yet. {item.status === 'NOT_STARTED' ? '(Current status)' : ''}</div>
+            </div>
+
+            {/* Safe quick actions */}
+            <div className="space-y-1.5">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Quick Safe Actions</div>
+              <div className="flex flex-wrap gap-1.5">
+                {getSafeActions().map((action, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      if (action.status) {
+                        setReviewStatus(action.status);
+                        if (action.auto || action.status === 'PARTIAL' || action.status === 'BLOCKED') {
+                          setReviewNote(autoSuggestedNote);
+                          handleSaveReview(action.status);
+                        }
+                      }
+                    }}
+                    disabled={saving}
+                    className={`px-2 py-1 text-[8px] border rounded font-semibold transition-colors whitespace-nowrap ${
+                      action.status ? 'border-primary text-primary bg-primary/10 hover:bg-primary/20' : 'border-border text-muted-foreground cursor-default'
+                    }`}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Manual status selection */}
             <div>
-              <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Review Status</label>
+              <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Manual Review Status (if needed)</label>
               <div className="flex flex-wrap gap-1.5">
                 {['COMPLETE', 'PARTIAL', 'NOT_STARTED', 'BLOCKED'].map(status => (
                   <button
                     key={status}
                     type="button"
-                    onClick={() => {
-                      setReviewStatus(status);
-                      if (!needsNote(status) || reviewNote) handleSaveReview(status);
-                    }}
-                    disabled={saving || (needsNote(status) && !reviewNote)}
+                    onClick={() => setReviewStatus(status)}
+                    disabled={saving}
                     className={`px-2 py-1 text-[9px] border rounded font-semibold transition-colors ${
                       reviewStatus === status
                         ? 'bg-primary text-primary-foreground border-primary'
-                        : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50 disabled:opacity-40 disabled:cursor-not-allowed'
+                        : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                     }`}
                   >
                     {status}
@@ -702,16 +758,27 @@ function ChecklistItemCard({ item, expanded, onToggle, savedReview, onReviewSave
               </div>
             </div>
 
-            {(item.priority === 'CRITICAL' || needsNote(reviewStatus)) && (
+            {/* Resolution note with auto-suggestion */}
+            {(item.priority === 'CRITICAL' || needsNote(reviewStatus) || reviewNote || canAutoComplete) && (
               <div>
-                <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Resolution Note</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40">Resolution Note</label>
+                  <button
+                    type="button"
+                    onClick={() => setReviewNote(autoSuggestedNote)}
+                    className="text-[8px] text-primary/80 hover:text-primary border-b border-primary/30"
+                  >
+                    Use auto-suggested
+                  </button>
+                </div>
                 <textarea
                   value={reviewNote}
                   onChange={(e) => setReviewNote(e.target.value)}
-                  placeholder="Document your resolution rationale..."
+                  placeholder={autoSuggestedNote || 'Document your resolution...'}
                   rows={2}
                   className="w-full bg-secondary/50 border border-border text-[10px] font-mono text-foreground px-2 py-1.5 outline-none focus:border-primary/50 placeholder:text-muted-foreground/30 resize-none"
                 />
+                {canAutoComplete && <div className="text-[8px] text-primary/70 mt-1">✓ Clear evidence for auto-completion</div>}
               </div>
             )}
 
@@ -787,16 +854,28 @@ export default function ProductionReadinessChecklistPanel() {
     notStarted: CHECKLIST_ITEMS.filter(i => reviews[i.name]?.reviewStatus === 'NOT_STARTED' || i.status === 'NOT_STARTED').length,
     blocked: CHECKLIST_ITEMS.filter(i => reviews[i.name]?.reviewStatus === 'BLOCKED' || i.status === 'BLOCKED').length,
     critical: CHECKLIST_ITEMS.filter(i => i.priority === 'CRITICAL').length,
+    unresolvedCritical: CHECKLIST_ITEMS.filter(i => i.priority === 'CRITICAL' && (reviews[i.name]?.reviewStatus || i.status) !== 'COMPLETE').length,
+    prodRequired: CHECKLIST_ITEMS.filter(i => i.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r))).length,
+    unresolvedProdRequired: CHECKLIST_ITEMS.filter(i => i.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r)) && (reviews[i.name]?.reviewStatus || i.status) !== 'COMPLETE').length,
   };
 
-  const readinessPercentage = Math.round(((summaryStats.complete + summaryStats.partial * 0.5) / summaryStats.total) * 100);
+  const readinessPercentage = Math.min(100, Math.round(((summaryStats.complete + summaryStats.partial * 0.5) / summaryStats.total) * 100));
   
   let readinessStatus = 'NOT_PRODUCTION_READY';
+  // PRODUCTION_READY only if all items COMPLETE
   if (summaryStats.complete === summaryStats.total) {
     readinessStatus = 'PRODUCTION_READY';
-  } else if (summaryStats.blocked === 0 && summaryStats.notStarted === 0 && readinessPercentage >= 80) {
+  }
+  // NOT_PRODUCTION_READY if any BLOCKED, unresolved CRITICAL, or unresolved PRODUCTION_REQUIRED
+  else if (summaryStats.blocked > 0 || summaryStats.unresolvedCritical > 0 || summaryStats.unresolvedProdRequired > 0) {
+    readinessStatus = 'NOT_PRODUCTION_READY';
+  }
+  // READ_ONLY_READY if no blocked, no unresolved critical, good coverage
+  else if (readinessPercentage >= 80) {
     readinessStatus = 'READ_ONLY_READY';
-  } else if (summaryStats.blocked === 0 && readinessPercentage >= 60) {
+  }
+  // BROWSER_ACTIONS_PENDING if reasonable progress
+  else if (readinessPercentage >= 60) {
     readinessStatus = 'BROWSER_ACTIONS_PENDING';
   }
 
