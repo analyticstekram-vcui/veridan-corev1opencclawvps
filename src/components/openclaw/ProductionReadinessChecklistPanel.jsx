@@ -947,13 +947,26 @@ export default function ProductionReadinessChecklistPanel() {
   const readinessPercentage = Math.min(100, Math.round(((summaryStats.complete + summaryStats.partial * 0.5) / summaryStats.total) * 100));
   
   let readinessStatus = 'NOT_PRODUCTION_READY';
-  // PRODUCTION_READY only if all items COMPLETE
-  if (summaryStats.complete === summaryStats.total) {
+  let readinessBlockReason = null;
+  
+  // PRODUCTION_READY only if all items COMPLETE AND no BLOCKED items AND no unresolved CRITICAL/PRODUCTION_REQUIRED
+  if (summaryStats.complete === summaryStats.total && summaryStats.blocked === 0 && summaryStats.unresolvedCritical === 0 && summaryStats.unresolvedProdRequired === 0) {
     readinessStatus = 'PRODUCTION_READY';
   }
-  // NOT_PRODUCTION_READY if any BLOCKED, unresolved CRITICAL, or unresolved PRODUCTION_REQUIRED
-  else if (summaryStats.blocked > 0 || summaryStats.unresolvedCritical > 0 || summaryStats.unresolvedProdRequired > 0) {
+  // NOT_PRODUCTION_READY if any BLOCKED
+  else if (summaryStats.blocked > 0) {
     readinessStatus = 'NOT_PRODUCTION_READY';
+    readinessBlockReason = `${summaryStats.blocked} BLOCKED item${summaryStats.blocked !== 1 ? 's' : ''} prevent production readiness`;
+  }
+  // NOT_PRODUCTION_READY if unresolved CRITICAL
+  else if (summaryStats.unresolvedCritical > 0) {
+    readinessStatus = 'NOT_PRODUCTION_READY';
+    readinessBlockReason = `${summaryStats.unresolvedCritical} unresolved CRITICAL item${summaryStats.unresolvedCritical !== 1 ? 's' : ''} prevent production readiness`;
+  }
+  // NOT_PRODUCTION_READY if unresolved PRODUCTION_REQUIRED
+  else if (summaryStats.unresolvedProdRequired > 0) {
+    readinessStatus = 'NOT_PRODUCTION_READY';
+    readinessBlockReason = `${summaryStats.unresolvedProdRequired} unresolved production-required item${summaryStats.unresolvedProdRequired !== 1 ? 's' : ''} prevent production readiness`;
   }
   // READ_ONLY_READY if no blocked, no unresolved critical, good coverage
   else if (readinessPercentage >= 80) {
@@ -1132,18 +1145,69 @@ export default function ProductionReadinessChecklistPanel() {
       </div>
 
       {/* Auto-Review Status Panel */}
-      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+      <div className={`rounded-lg p-4 space-y-3 border ${readinessStatus === 'PRODUCTION_READY' ? 'bg-primary/10 border-primary/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
         <div className="flex items-start gap-3">
-          <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+          {readinessStatus === 'PRODUCTION_READY' ? (
+            <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+          ) : (
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          )}
           <div className="flex-1">
-            <div className="text-[11px] font-semibold text-primary mb-1">✓ AUTO-REVIEW COMPLETED</div>
-            <div className="text-[10px] text-primary/80 space-y-1">
-              <div>Safe checklist review ran automatically on page load and has saved audit-only review records for items with clear evidence.</div>
-              <div className="text-primary/70">No user action needed for safe review. {getUnresolvedBySeverity().length > 0 ? `${getUnresolvedBySeverity().length} item${getUnresolvedBySeverity().length !== 1 ? 's' : ''} below still require external work.` : 'All items are complete.'}</div>
+            <div className={`text-[11px] font-semibold mb-2 ${readinessStatus === 'PRODUCTION_READY' ? 'text-primary' : 'text-amber-500'}`}>
+              {readinessStatus === 'PRODUCTION_READY' ? '✓ PRODUCTION_READY' : '⚠️ NOT_PRODUCTION_READY'}
+            </div>
+            <div className={`text-[10px] space-y-2 ${readinessStatus === 'PRODUCTION_READY' ? 'text-primary/80' : 'text-amber-500/80'}`}>
+              <div><span className="font-semibold">Auto-review status:</span> Completed on page load. Safe review records saved for {summaryStats.complete} items with clear evidence.</div>
+              <div className={`${readinessStatus === 'PRODUCTION_READY' ? 'text-primary/70' : 'text-amber-500/80 font-semibold'}`}>
+                {readinessStatus === 'PRODUCTION_READY' ? (
+                  'All items complete. System is production-ready.'
+                ) : (
+                  <>
+                    <div>{readinessBlockReason || `${getUnresolvedBySeverity().length} item${getUnresolvedBySeverity().length !== 1 ? 's' : ''} still require external work.`}</div>
+                    <div className="text-[9px] mt-1">See "Items still needing external work" section below.</div>
+                  </>
+                )}
+              </div>
+              <div className="text-[9px] text-muted-foreground/60">No manual action needed for safe review—auto-review already completed.</div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Items still needing external work - Positioned high for visibility */}
+      {(() => {
+        const unresolved = getUnresolvedBySeverity();
+        return unresolved.length > 0 ? (
+          <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+            <div className="text-[11px] font-semibold text-foreground">Items still needing external work</div>
+            <div className="space-y-2">
+              {unresolved.slice(0, 15).map((item, i) => {
+                const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+                const statusColor = effectiveStatus === 'BLOCKED' ? 'text-destructive border-destructive/30 bg-destructive/5' :
+                                   effectiveStatus === 'NOT_STARTED' ? 'text-blue-400 border-blue-400/30 bg-blue-400/5' :
+                                   'text-amber-500 border-amber-500/30 bg-amber-500/5';
+                return (
+                  <div key={i} className="flex items-start gap-3 px-3 py-2.5 bg-card/50 border border-border/30 rounded">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="font-semibold text-foreground text-[10px] flex-1">{item.name}</div>
+                        <span className={`text-[8px] px-2 py-0.5 border rounded font-semibold whitespace-nowrap ${statusColor}`}>
+                          {effectiveStatus}
+                        </span>
+                      </div>
+                      <div className="text-[9px] text-muted-foreground/70">
+                        <div><span className="font-semibold">Category:</span> {item.category}</div>
+                        <div className="mt-1"><span className="font-semibold">Next action:</span> {item.nextAction}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {unresolved.length > 15 && <div className="text-[8px] text-muted-foreground/50 text-center py-1">+ {unresolved.length - 15} more items</div>}
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       {/* Optional Manual Re-run and Filter Controls */}
       <div className="bg-secondary/20 border border-border rounded-lg p-4 space-y-3">
@@ -1217,43 +1281,6 @@ export default function ProductionReadinessChecklistPanel() {
           </div>
         );
       })()}
-
-      {/* Items still needing external work */}
-      {(() => {
-        const unresolved = getUnresolvedBySeverity();
-        return unresolved.length > 0 ? (
-          <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
-            <div className="text-[11px] font-semibold text-foreground">Items still needing external work</div>
-            <div className="space-y-2">
-              {unresolved.slice(0, 15).map((item, i) => {
-                const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
-                const statusColor = effectiveStatus === 'BLOCKED' ? 'text-destructive border-destructive/30 bg-destructive/5' :
-                                   effectiveStatus === 'NOT_STARTED' ? 'text-blue-400 border-blue-400/30 bg-blue-400/5' :
-                                   'text-amber-500 border-amber-500/30 bg-amber-500/5';
-                return (
-                  <div key={i} className="flex items-start gap-3 px-3 py-2.5 bg-card/50 border border-border/30 rounded">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="font-semibold text-foreground text-[10px] flex-1">{item.name}</div>
-                        <span className={`text-[8px] px-2 py-0.5 border rounded font-semibold whitespace-nowrap ${statusColor}`}>
-                          {effectiveStatus}
-                        </span>
-                      </div>
-                      <div className="text-[9px] text-muted-foreground/70">
-                        <div><span className="font-semibold">Category:</span> {item.category}</div>
-                        <div className="mt-1"><span className="font-semibold">Next action:</span> {item.nextAction}</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {unresolved.length > 15 && <div className="text-[8px] text-muted-foreground/50 text-center py-1">+ {unresolved.length - 15} more items</div>}
-            </div>
-          </div>
-        ) : null;
-      })()}
-
-
 
       {/* System Review Results */}
       {systemReviewResults && (
