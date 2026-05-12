@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Shield, CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import OperatorGuidancePanel from './OperatorGuidancePanel';
