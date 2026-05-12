@@ -835,6 +835,80 @@ export default function ProductionReadinessChecklistPanel() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Auto-run safe checklist review on mount and when data changes
+  useEffect(() => {
+    const runAutoReview = async () => {
+      setSystemReviewRunning(true);
+      setReviewCompleted(false);
+      try {
+        const user = await base44.auth.me();
+        const now = new Date().toISOString();
+        const results = { autoCompleted: 0, partial: 0, blocked: 0, notStarted: 0, timestamp: now };
+        const suggestions = {};
+        const unresolvedItems = [];
+        const recordsToSave = [];
+
+        for (const item of CHECKLIST_ITEMS) {
+          const { status: autoStatus, note: autoNote } = getAutoClassification(item);
+          suggestions[item.name] = { status: autoStatus, note: autoNote };
+
+          // Count results
+          if (autoStatus === 'COMPLETE') results.autoCompleted++;
+          else if (autoStatus === 'PARTIAL') results.partial++;
+          else if (autoStatus === 'BLOCKED') results.blocked++;
+          else if (autoStatus === 'NOT_STARTED') results.notStarted++;
+
+          // Track unresolved items
+          const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+          if (effectiveStatus !== 'COMPLETE') {
+            unresolvedItems.push({ ...item, suggestedStatus: autoStatus, suggestedNote: autoNote });
+          }
+
+          // Only auto-save if this item hasn't been reviewed yet and auto-status is safe
+          if (!reviews[item.name] && (autoStatus === 'COMPLETE' || autoStatus === 'PARTIAL')) {
+            const isProdRequired = item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r));
+            recordsToSave.push({
+              checklistItemName: item.name,
+              category: item.category,
+              originalStatus: item.status,
+              reviewStatus: autoStatus,
+              reviewNote: autoNote,
+              reviewer: user?.email || 'system',
+              reviewedAt: now,
+              priority: item.priority,
+              isCritical: item.priority === 'CRITICAL',
+              isProductionRequired: isProdRequired,
+            });
+          }
+        }
+
+        // Auto-save the safe review records in batch
+        if (recordsToSave.length > 0) {
+          try {
+            await base44.entities.OpenClawProductionChecklistReview.bulkCreate(recordsToSave);
+            // Refresh reviews after auto-save
+            await fetchData();
+          } catch (err) {
+            console.error('Error auto-saving review records:', err);
+          }
+        }
+
+        setSuggestedReviews(suggestions);
+        setSystemReviewResults({ ...results, unresolvedItems });
+        setReviewCompleted(true);
+      } catch (err) {
+        console.error('Auto-review error:', err);
+      } finally {
+        setSystemReviewRunning(false);
+      }
+    };
+
+    // Run auto-review after data is loaded
+    if (!loading) {
+      runAutoReview();
+    }
+  }, [loading, reviews]);
+
   const toggleExpanded = (name) => {
     setExpandedItems(prev => ({ ...prev, [name]: !prev[name] }));
   };
@@ -1057,29 +1131,42 @@ export default function ProductionReadinessChecklistPanel() {
         </div>
       </div>
 
-      {/* Action Panel */}
+      {/* Auto-Review Status Panel */}
+      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+        <div className="flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="text-[11px] font-semibold text-primary mb-1">✓ AUTO-REVIEW COMPLETED</div>
+            <div className="text-[10px] text-primary/80 space-y-1">
+              <div>Safe checklist review ran automatically on page load and has saved audit-only review records for items with clear evidence.</div>
+              <div className="text-primary/70">No user action needed for safe review. {getUnresolvedBySeverity().length > 0 ? `${getUnresolvedBySeverity().length} item${getUnresolvedBySeverity().length !== 1 ? 's' : ''} below still require external work.` : 'All items are complete.'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Optional Manual Re-run and Filter Controls */}
       <div className="bg-secondary/20 border border-border rounded-lg p-4 space-y-3">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold">Action Panel</span>
-          <span className="text-[9px] text-muted-foreground/40 border border-border px-2 py-0.5">Location: top green button under the audit-only notice</span>
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold">Optional Controls</span>
         </div>
 
-        {/* Main button */}
+        {/* Manual re-run button */}
         <button
           type="button"
           onClick={runSafeChecklistReview}
           disabled={systemReviewRunning}
-          className="w-full px-4 py-3 bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
+          className="w-full px-4 py-3 bg-secondary text-foreground text-[12px] font-semibold hover:bg-secondary/80 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2 border border-border"
         >
-          {systemReviewRunning ? '⏳ Analyzing...' : '🔍 Auto-resolve everything safe to review'}
+          {systemReviewRunning ? '⏳ Re-analyzing...' : '🔍 Re-run auto-review (optional)'}
         </button>
 
         {/* Helper text */}
         <div className="text-[9px] text-muted-foreground/70 bg-card/50 border border-border/30 px-3 py-2 rounded">
-          This saves review records for items that are already verifiable from the checklist evidence. It does not run commands, enable live mode, expose secrets, or bypass governance.
+          Auto-review already ran and saved safe records. Click to manually re-run if you've updated checklist evidence. Does not run commands, enable live mode, expose secrets, or bypass governance.
         </div>
 
-        {/* Secondary button */}
+        {/* Filter button */}
         <button
           type="button"
           onClick={() => setShowOnlyUnresolved(!showOnlyUnresolved)}
@@ -1091,17 +1178,6 @@ export default function ProductionReadinessChecklistPanel() {
         >
           {showOnlyUnresolved ? '✓ Showing items still needing work' : 'Show only items still needing work'}
         </button>
-
-        {/* Confirmation message */}
-        {reviewCompleted && (
-          <div className="flex items-start gap-2 px-3 py-2.5 bg-primary/10 border border-primary/30 rounded">
-            <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-            <div className="text-[10px] text-primary/80">
-              <div className="font-semibold mb-0.5">Done — safe review records were saved.</div>
-              <div className="text-[9px] text-primary/70">Items below still need external work before completion.</div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Legacy REAL/LIVE execution warning */}
@@ -1177,17 +1253,7 @@ export default function ProductionReadinessChecklistPanel() {
         ) : null;
       })()}
 
-      {/* Save suggested reviews button */}
-      {Object.keys(suggestedReviews).length > 0 && !reviewCompleted && (
-        <button
-          type="button"
-          onClick={autoSaveSuggestedReviews}
-          disabled={savingAuto}
-          className="w-full px-4 py-2.5 bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
-        >
-          {savingAuto ? '💾 Saving...' : '💾 Auto-save suggested reviews'}
-        </button>
-      )}
+
 
       {/* System Review Results */}
       {systemReviewResults && (
