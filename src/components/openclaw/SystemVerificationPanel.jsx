@@ -690,6 +690,57 @@ export default function SystemVerificationPanel() {
   const prodBlockingFailed = failedChecks.filter(c => c.prodBlocking);
   const warnChecks = allChecks.filter(c => results[c.id]?.status === 'warn');
 
+  // Build blocking issues with operator guidance
+  const blockingIssues = [];
+
+  // BLOCKING issues (production-blocking failures)
+  for (const check of allChecks) {
+    const result = results[check.id];
+    if (result?.status === 'fail' && check.prodBlocking) {
+      blockingIssues.push({
+        severity: 'BLOCKING',
+        name: check.name,
+        panel: check.panel,
+        why: check.why || 'Critical for production safety',
+        action: result.suggestedFix || 'Review check details and remediate',
+        fixType: determineFixType(check.id),
+      });
+    }
+  }
+
+  // WARNING issues (failures or warnings on important checks)
+  for (const check of allChecks) {
+    const result = results[check.id];
+    if ((result?.status === 'warn' || (result?.status === 'fail' && !check.prodBlocking)) && !check.id.includes('nav_')) {
+      blockingIssues.push({
+        severity: 'WARNING',
+        name: check.name,
+        panel: check.panel,
+        why: check.why || 'Important for system stability',
+        action: result.suggestedFix || result.explanation || 'Review check details',
+        fixType: determineFixType(check.id),
+      });
+    }
+  }
+
+  // Helper to determine fix type
+  const determineFixType = (checkId) => {
+    if (checkId.includes('backend')) return 'Backend Fix';
+    if (checkId.includes('secret') || checkId.includes('api_key') || checkId.includes('token')) return 'Secret/Credential Setup';
+    if (checkId.includes('cloudflare')) return 'Cloudflare Setup';
+    if (checkId.includes('broker') || checkId.includes('vault')) return 'Broker Vault Setup';
+    if (checkId.includes('live') || checkId.includes('lockout')) return 'Governance/Policy';
+    if (checkId.includes('gateway')) return 'VPS/Gateway';
+    return 'Manual Setup';
+  };
+
+  // Sort issues: BLOCKING first, then WARNING
+  blockingIssues.sort((a, b) => {
+    if (a.severity === 'BLOCKING' && b.severity !== 'BLOCKING') return -1;
+    if (a.severity !== 'BLOCKING' && b.severity === 'BLOCKING') return 1;
+    return 0;
+  });
+
   let systemStatus = 'SYSTEM VERIFIED';
   let statusColor = 'text-primary';
   let statusBg = 'bg-primary/5 border-primary/20';
@@ -723,6 +774,67 @@ export default function SystemVerificationPanel() {
         verificationResults={results}
         backendStatus={{ passed: Object.values(results).filter(r => r?.status === 'pass').length > 0 }}
       />
+
+      {/* Blocking Issues Section */}
+      {blockingIssues.length > 0 && (
+        <div className="space-y-3 bg-card/30 border border-border/50 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <div className="text-[12px] font-semibold text-destructive uppercase tracking-wider">
+              {blockingIssues.filter(i => i.severity === 'BLOCKING').length} Blocking Issue{blockingIssues.filter(i => i.severity === 'BLOCKING').length !== 1 ? 's' : ''}
+              {blockingIssues.filter(i => i.severity === 'WARNING').length > 0 && ` · ${blockingIssues.filter(i => i.severity === 'WARNING').length} Warning${blockingIssues.filter(i => i.severity === 'WARNING').length !== 1 ? 's' : ''}`}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {blockingIssues.map((issue, idx) => (
+              <div key={idx} className={`border rounded-lg p-3 space-y-2 ${
+                issue.severity === 'BLOCKING'
+                  ? 'bg-destructive/5 border-destructive/20'
+                  : 'bg-amber-500/5 border-amber-500/20'
+              }`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-[11px] font-semibold ${issue.severity === 'BLOCKING' ? 'text-destructive' : 'text-amber-500'}`}>
+                      {issue.name}
+                    </div>
+                    <div className="text-[9px] text-foreground/60 mt-0.5">
+                      <span className="font-semibold">Panel:</span> {issue.panel}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`text-[8px] px-2 py-0.5 border rounded font-semibold ${
+                      issue.severity === 'BLOCKING'
+                        ? 'bg-destructive/10 border-destructive/30 text-destructive'
+                        : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                    }`}>
+                      {issue.severity}
+                    </span>
+                    <span className="text-[8px] px-2 py-0.5 border border-border/50 bg-secondary/30 text-muted-foreground rounded">
+                      {issue.fixType}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[9px]">
+                  <div>
+                    <div className="font-semibold text-foreground/80 mb-0.5">Why it matters</div>
+                    <div className="text-foreground/70">{issue.why}</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-foreground/80 mb-0.5">Next action</div>
+                    <div className="text-foreground/70">{issue.action}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-[8px] text-muted-foreground/70 border-t border-border/30 pt-3 mt-3">
+            All blocking issues must be resolved before production deployment. Read-only verification only. No commands executed, secrets exposed, or governance bypassed.
+          </div>
+        </div>
+      )}
 
       {/* Status Banner */}
       <div className={`border rounded-lg px-4 py-3 ${statusBg}`}>
