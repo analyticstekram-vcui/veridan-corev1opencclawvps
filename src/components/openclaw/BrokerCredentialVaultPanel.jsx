@@ -62,7 +62,7 @@ function BrokerRow({ credential, expanded, onToggle }) {
   const statusCfg = STATUS_CONFIG[credential.credentialStatus] || STATUS_CONFIG.NOT_CONNECTED;
   const riskCfg = RISK_CONFIG[credential.riskTier] || RISK_CONFIG.medium;
   const readinessBadge = getReadinessBadge(credential);
-  const rotationDue = credential.nextRotationDue && isPast(new Date(credential.nextRotationDue));
+  const rotationDue = (() => { try { return credential.nextRotationDue && isPast(new Date(credential.nextRotationDue)); } catch { return false; } })();
 
   return (
     <div className="border border-border/50 rounded bg-card/30 overflow-hidden">
@@ -80,7 +80,7 @@ function BrokerRow({ credential, expanded, onToggle }) {
               {rotationDue && <span className="text-[8px] px-1.5 py-0.5 border border-amber-500/30 bg-amber-500/5 text-amber-500 rounded">ROTATION DUE</span>}
             </div>
             <div className="text-[9px] text-slate-400 flex items-center gap-3">
-              <span>{credential.environment.toUpperCase()}</span>
+              <span>{credential.environment?.toUpperCase() ?? '—'}</span>
               {credential.allowedScopes?.length > 0 && <span>{credential.allowedScopes.length} scopes</span>}
             </div>
           </div>
@@ -104,7 +104,7 @@ function BrokerRow({ credential, expanded, onToggle }) {
             </div>
             <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
               <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Environment</div>
-              <div className="text-slate-300 uppercase font-semibold">{credential.environment}</div>
+              <div className="text-slate-300 uppercase font-semibold">{credential.environment ?? '—'}</div>
             </div>
             <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
               <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Credential Status</div>
@@ -328,7 +328,7 @@ export default function BrokerCredentialVaultPanel() {
         <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
         <div className="text-[10px] text-destructive/80">
           <div className="font-semibold mb-0.5">⚠️ This vault stores credential metadata only. Real broker credentials never stored or displayed here.</div>
-          <div className="text-[9px] text-destructive/70">Broker API keys, account numbers, usernames, passwords, and tokens must remain in backend vault/KMS (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault, HSM). This panel tracks connectivity status, scope allowances, and trading mode restrictions only. Live trading is permanently blocked across all environments.</div>
+          <div className="text-[9px] text-destructive/70">Broker API keys, account numbers, usernames, passwords, and tokens must remain in backend vault/KMS (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault, HSM). This panel tracks connectivity status, scope allowances, and trading mode restrictions only. Live trading is permanently blocked across all environments. For production readiness verification, see System Verify tab.</div>
         </div>
       </div>
 

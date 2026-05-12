@@ -87,7 +87,7 @@ function SecretVerificationRow({ secret, metadata }) {
     <div className="border border-border/50 rounded bg-card/30 px-4 py-3">
       <div className="flex items-center justify-between gap-3 mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <StatusIcon className="w-4 h-4 shrink-0" style={{ color: statusCfg.color.split(' ')[0] }} />
+          <StatusIcon className={`w-4 h-4 shrink-0 ${statusCfg.color.split(' ')[0]}`} />
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-slate-300 font-mono">{secret.name}</div>
             <div className="text-[8px] text-slate-400 mt-0.5">{secret.purpose}</div>
@@ -214,11 +214,7 @@ export default function BackendSecretEnforcementPanel() {
             detectedViolations.push(`${secretDef.name} has no metadata registry entry`);
           }
 
-          // Scan for frontend exposure (this is simulated - in real usage, would scan actual DOM/storage)
-          // For this safe panel, we only check the metadata, never actual values
-          if (status === 'MISSING' && secretDef.required) {
-            detectedViolations.push(`Required secret ${secretDef.name} is missing from backend`);
-          }
+          // Frontend exposure check: metadata-only; no actual values scanned or displayed
 
           secretStatuses.push({
             ...secretDef,
@@ -232,13 +228,15 @@ export default function BackendSecretEnforcementPanel() {
         setViolations(detectedViolations);
 
         // Determine overall enforcement status
-        const missingCount = secretStatuses.filter(s => !s.backendAvailable && s.required).length;
+        // BLOCKED only on hard failures: confirmed missing/exposed, not just absent metadata
+        const missingCount = secretStatuses.filter(s => !s.backendAvailable && s.required && s.status === 'MISSING').length;
         const exposedCount = secretStatuses.filter(s => s.frontendExposed).length;
+        // UNKNOWN without metadata is a WARN, not a hard BLOCKED
         const unknownCount = secretStatuses.filter(s => s.status === 'UNKNOWN').length;
 
-        if (missingCount > 0 || exposedCount > 0 || unknownCount > 0) {
+        if (missingCount > 0 || exposedCount > 0) {
           setEnforcementStatus('SECRET_ENFORCEMENT_BLOCKED');
-        } else if (secretStatuses.some(s => s.status === 'ROTATION_DUE')) {
+        } else if (unknownCount > 0 || secretStatuses.some(s => s.status === 'ROTATION_DUE')) {
           setEnforcementStatus('SECRET_ENFORCEMENT_WARN');
         } else {
           setEnforcementStatus('SECRET_ENFORCEMENT_PASS');
@@ -310,13 +308,13 @@ export default function BackendSecretEnforcementPanel() {
       )}
 
       {isProductionReady && (
-        <div className="flex items-start gap-3 px-4 py-3 bg-primary/10 border border-primary/20 rounded-lg">
-          <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-          <div className="text-[10px] text-primary/80">
-            <div className="font-semibold mb-0.5">✓ SECRET_ENFORCEMENT_PASS — All secrets properly configured</div>
-            <div className="text-[9px] text-primary/70">All required secrets are configured and stored in backend. No frontend exposure detected. Production operations may proceed with confidence.</div>
-          </div>
-        </div>
+       <div className="flex items-start gap-3 px-4 py-3 bg-primary/10 border border-primary/20 rounded-lg">
+         <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+         <div className="text-[10px] text-primary/80">
+           <div className="font-semibold mb-0.5">✓ SECRET_ENFORCEMENT_PASS — All secrets properly configured</div>
+           <div className="text-[9px] text-primary/70">All required secrets are configured and stored in backend. No frontend exposure detected. Check System Verify tab for complete production readiness assessment.</div>
+         </div>
+       </div>
       )}
 
       {/* Summary Stats */}

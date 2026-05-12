@@ -20,7 +20,7 @@ const RISK_CONFIG = {
 function SecretRow({ secret, expanded, onToggle }) {
   const statusCfg = STATUS_CONFIG[secret.status] || STATUS_CONFIG.NOT_CONFIGURED;
   const riskCfg = RISK_CONFIG[secret.riskTier] || RISK_CONFIG.medium;
-  const rotationDue = secret.nextRotationDue && isPast(new Date(secret.nextRotationDue));
+  const rotationDue = (() => { try { return secret.nextRotationDue && isPast(new Date(secret.nextRotationDue)); } catch { return false; } })();
 
   return (
     <div className="border border-border/50 rounded bg-card/30 overflow-hidden">
@@ -253,7 +253,7 @@ export default function SecretVaultRegistryPanel() {
   const stats = {
     total: secrets.length,
     configured: secrets.filter(s => s.status === 'CONFIGURED').length,
-    rotationDue: secrets.filter(s => s.nextRotationDue && isPast(new Date(s.nextRotationDue))).length,
+    rotationDue: secrets.filter(s => { try { return s.nextRotationDue && isPast(new Date(s.nextRotationDue)); } catch { return false; } }).length,
     disabled: secrets.filter(s => s.status === 'DISABLED').length,
     highRisk: secrets.filter(s => s.riskTier === 'high' || s.riskTier === 'critical').length,
   };
@@ -277,7 +277,7 @@ export default function SecretVaultRegistryPanel() {
         <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
         <div className="text-[10px] text-destructive/80">
           <div className="font-semibold mb-0.5">⚠️ This registry is metadata-only. Actual secrets never displayed or stored here.</div>
-          <div className="text-[9px] text-destructive/70">Secret values must remain in backend environment variables, managed secret vaults (AWS Secrets Manager, HashiCorp Vault), key management services (KMS), or hardware security modules (HSM). This panel provides rotation tracking and ownership metadata only. Never store, log, or transmit actual secret values.</div>
+          <div className="text-[9px] text-destructive/70">Secret values must remain in backend environment variables, managed secret vaults (AWS Secrets Manager, HashiCorp Vault), key management services (KMS), or hardware security modules (HSM). This panel provides rotation tracking and ownership metadata only. Never store, log, or transmit actual secret values. For production readiness verification, see System Verify tab.</div>
         </div>
       </div>
 

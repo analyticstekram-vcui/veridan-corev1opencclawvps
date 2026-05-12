@@ -977,9 +977,10 @@ export default function ProductionReadinessChecklistPanel() {
     readinessStatus = 'BROWSER_ACTIONS_PENDING';
   }
 
-  const allReviewedComplete = CHECKLIST_ITEMS.every(item => reviews[item.name]?.reviewStatus === 'COMPLETE');
   const [systemReviewRunning, setSystemReviewRunning] = useState(false);
   const [systemReviewResults, setSystemReviewResults] = useState(null);
+
+  const allReviewedComplete = CHECKLIST_ITEMS.every(item => reviews[item.name]?.reviewStatus === 'COMPLETE');
 
   // Auto-classification logic
   const getAutoClassification = (item) => {
@@ -1468,6 +1469,7 @@ export default function ProductionReadinessChecklistPanel() {
           <div className="text-[10px] text-primary/80">
             <div className="font-semibold mb-1">✓ PRODUCTION_CHECKLIST_REVIEW_COMPLETE</div>
             <div className="text-[9px] text-primary/70">All {CHECKLIST_ITEMS.length} checklist items have been reviewed and marked COMPLETE by an operator. This is readiness review completion only, not live execution approval. All governance, legacy review, and safety constraints remain in effect.</div>
+            <div className="text-[9px] text-primary/60 mt-1 border-t border-primary/20 pt-1">For final production readiness determination, check System Verify tab — checklist review alone does not override System Verify failures.</div>
           </div>
         </div>
       )}
