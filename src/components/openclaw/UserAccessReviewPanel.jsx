@@ -225,6 +225,8 @@ export default function UserAccessReviewPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [currentUser, setCurrentUser] = useState(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState(null);
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -239,6 +241,21 @@ export default function UserAccessReviewPanel() {
       console.error('Failed to fetch reviews:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSeedReviews = async () => {
+    setSeeding(true);
+    try {
+      const response = await base44.functions.invoke('seedAccessReviews', {});
+      setSeedResult(response.data);
+      if (response.data.status === 'success') {
+        setTimeout(() => fetchReviews(), 500);
+      }
+    } catch (err) {
+      setSeedResult({ status: 'error', message: err.message });
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -271,6 +288,57 @@ export default function UserAccessReviewPanel() {
         </div>
         <Shield className="w-5 h-5 text-primary" />
       </div>
+
+      {/* Seed button (if no reviews) */}
+      {reviews.length === 0 && !seedResult && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="text-[10px] text-amber-500/80">
+              <div className="font-semibold mb-1">No access reviews yet.</div>
+              <div className="text-[9px] text-amber-500/70 mb-2">Initialize default seed reviews for OWNER, ADMIN, OPERATOR, AUDITOR, and READ_ONLY roles.</div>
+            </div>
+            <button
+              type="button"
+              onClick={handleSeedReviews}
+              disabled={seeding}
+              className="px-3 py-1.5 text-[9px] border border-amber-500 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors disabled:opacity-50 font-semibold rounded"
+            >
+              {seeding ? 'Initializing...' : '+ Initialize Default Reviews'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Seed result message */}
+      {seedResult && (
+        <div className={`flex items-start gap-3 px-4 py-3 rounded-lg border ${
+          seedResult.status === 'success'
+            ? 'bg-primary/5 border-primary/20'
+            : seedResult.status === 'already_seeded'
+            ? 'bg-blue-400/5 border-blue-400/20'
+            : 'bg-destructive/5 border-destructive/20'
+        }`}>
+          <div className="text-[10px]">
+            <div className={`font-semibold mb-0.5 ${
+              seedResult.status === 'success' ? 'text-primary' :
+              seedResult.status === 'already_seeded' ? 'text-blue-400' :
+              'text-destructive'
+            }`}>
+              {seedResult.status === 'success' ? '✓ Seed reviews created' :
+               seedResult.status === 'already_seeded' ? 'ℹ Seed reviews exist' :
+               '✗ Error initializing'}
+            </div>
+            <div className={`text-[9px] ${
+              seedResult.status === 'success' ? 'text-primary/70' :
+              seedResult.status === 'already_seeded' ? 'text-blue-400/70' :
+              'text-destructive/70'
+            }`}>
+              {seedResult.message}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Info banner */}
       <div className="flex items-start gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
@@ -316,6 +384,37 @@ export default function UserAccessReviewPanel() {
         ))}
       </div>
 
+      {/* Role guidance */}
+      <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+        <div className="text-[11px] font-semibold text-foreground mb-3 uppercase tracking-wider">Role Assignment Guidance</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[9px]">
+          <div className="border border-border/50 bg-card/30 px-3 py-2 rounded space-y-1">
+            <div className="font-semibold text-foreground">OWNER</div>
+            <div className="text-slate-400">Full platform access including connector management, checklist reviews, command approvals, and audit access. Live execution remains disabled.</div>
+          </div>
+          <div className="border border-border/50 bg-card/30 px-3 py-2 rounded space-y-1">
+            <div className="font-semibold text-foreground">ADMIN</div>
+            <div className="text-slate-400">System administration: connectors, approvals, checklist reviews, audits. No execution privileges. Governance constraints always enforced.</div>
+          </div>
+          <div className="border border-border/50 bg-card/30 px-3 py-2 rounded space-y-1">
+            <div className="font-semibold text-foreground">OPERATOR</div>
+            <div className="text-slate-400">Command approvals, read-only tests, checklist reviews, audit access. Cannot manage connectors or system settings.</div>
+          </div>
+          <div className="border border-border/50 bg-card/30 px-3 py-2 rounded space-y-1">
+            <div className="font-semibold text-foreground">AUDITOR</div>
+            <div className="text-slate-400">Read-only audit and monitoring. View logs, commands, workflows, and historical execution records. No approvals or system changes.</div>
+          </div>
+          <div className="border border-border/50 bg-card/30 px-3 py-2 rounded space-y-1">
+            <div className="font-semibold text-foreground">READ_ONLY</div>
+            <div className="text-slate-400">System visibility only. View panels, status, and overview data. No audit access, no execution, no modifications.</div>
+          </div>
+          <div className="border border-border/50 bg-destructive/5 border-destructive/20 px-3 py-2 rounded space-y-1">
+            <div className="font-semibold text-destructive">LIVE EXECUTION</div>
+            <div className="text-destructive/80">Disabled for all roles. All operations remain in SIMULATED or READ_ONLY mode. No role can enable live execution.</div>
+          </div>
+        </div>
+      </div>
+
       {/* Reviews list */}
       <div className="space-y-2">
         {loading ? (
@@ -334,11 +433,11 @@ export default function UserAccessReviewPanel() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg text-[9px] text-primary/80">
-        <Shield className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg text-[9px] text-slate-300">
+        <Shield className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-0.5">Access control is enforced server-side.</div>
-          <div className="text-[8px] text-primary/70">Reviews are persistent records of access approvals and denials. Denials prevent panel access. All governance and safety constraints are applied at the backend level.</div>
+          <div className="font-semibold mb-0.5 text-foreground">Access control is enforced server-side.</div>
+          <div className="text-[8px] text-slate-400">Reviews are persistent records of access approvals and denials. Denials prevent panel access. Live execution is globally disabled. All governance and safety constraints are applied at the backend level.</div>
         </div>
       </div>
     </div>
