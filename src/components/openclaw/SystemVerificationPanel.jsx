@@ -684,6 +684,17 @@ export default function SystemVerificationPanel() {
     }));
   };
 
+  // Helper to determine fix type
+  const determineFixType = (checkId) => {
+    if (checkId.includes('backend')) return 'Backend Fix';
+    if (checkId.includes('secret') || checkId.includes('api_key') || checkId.includes('token')) return 'Secret/Credential Setup';
+    if (checkId.includes('cloudflare')) return 'Cloudflare Setup';
+    if (checkId.includes('broker') || checkId.includes('vault')) return 'Broker Vault Setup';
+    if (checkId.includes('live') || checkId.includes('lockout')) return 'Governance/Policy';
+    if (checkId.includes('gateway')) return 'VPS/Gateway';
+    return 'Manual Setup';
+  };
+
   // Calculate overall system status
   const allChecks = VERIFICATION_GROUPS.flatMap(g => g.checks);
   const failedChecks = allChecks.filter(c => results[c.id]?.status === 'fail');
@@ -722,17 +733,6 @@ export default function SystemVerificationPanel() {
       });
     }
   }
-
-  // Helper to determine fix type
-  const determineFixType = (checkId) => {
-    if (checkId.includes('backend')) return 'Backend Fix';
-    if (checkId.includes('secret') || checkId.includes('api_key') || checkId.includes('token')) return 'Secret/Credential Setup';
-    if (checkId.includes('cloudflare')) return 'Cloudflare Setup';
-    if (checkId.includes('broker') || checkId.includes('vault')) return 'Broker Vault Setup';
-    if (checkId.includes('live') || checkId.includes('lockout')) return 'Governance/Policy';
-    if (checkId.includes('gateway')) return 'VPS/Gateway';
-    return 'Manual Setup';
-  };
 
   // Sort issues: BLOCKING first, then WARNING
   blockingIssues.sort((a, b) => {
