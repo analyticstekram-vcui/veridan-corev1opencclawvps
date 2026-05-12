@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
 import { Shield, CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 
 // Master verification checks organized by category
@@ -124,6 +125,19 @@ const VERIFICATION_GROUPS = [
       { id: 'lockout_kill_switch', name: 'Emergency kill switch is operational', panel: 'Execution Readiness', prodBlocking: true, why: 'Kill switch is emergency safety mechanism.' },
       { id: 'lockout_no_bypass', name: 'No way to bypass live execution lockout', panel: 'All Panels', prodBlocking: true, why: 'Lockout must be un-bypassable via UI.' },
       { id: 'lockout_mode_simulated', name: 'Execution mode is SIMULATED by default', panel: 'Status', prodBlocking: true, why: 'System must default to safe SIMULATED mode.' },
+    ],
+  },
+  {
+    id: 'backend_enforcement',
+    name: 'Backend Enforcement',
+    description: 'Verifies backend validation and policy enforcement is operational',
+    checks: [
+      { id: 'backend_enforcement_tests', name: 'Backend validation test suite passes', panel: 'System Verify', prodBlocking: true, why: 'Backend must pass all validation tests: live blocking, domain allowlist, secrets, RBAC, audit, HMAC.' },
+      { id: 'backend_policy_live_disabled', name: 'Backend policy: LIVE_EXECUTION_ENABLED = false', panel: 'System Verify', prodBlocking: true, why: 'Backend must enforce live execution disabled at policy level.' },
+      { id: 'backend_policy_simulated_only', name: 'Backend policy: SIMULATED_MODE_ONLY = true', panel: 'System Verify', prodBlocking: true, why: 'Backend must enforce SIMULATED mode only.' },
+      { id: 'backend_policy_rbac', name: 'Backend policy: REQUIRE_RBAC = true', panel: 'System Verify', prodBlocking: true, why: 'Backend must enforce role-based access control.' },
+      { id: 'backend_policy_audit_logging', name: 'Backend policy: REQUIRE_AUDIT_LOGGING = true', panel: 'System Verify', prodBlocking: true, why: 'Backend must enforce audit logging for governance.' },
+      { id: 'backend_policy_hmac', name: 'Backend policy: REQUIRE_HMAC_SIGNATURES = true', panel: 'System Verify', prodBlocking: true, why: 'Backend must enforce HMAC signatures for command integrity.' },
     ],
   },
 ];
@@ -303,8 +317,20 @@ export default function SystemVerificationPanel() {
      setRunning(true);
      const newResults = {};
 
-    // Run all verification checks
-    const pageText = document.body.innerText;
+     try {
+       // Query backend enforcement for validation test results
+       const enforcementRes = await base44.functions.invoke('openclawEnforcement', { action: 'run_all_tests' });
+       const enforcementTests = enforcementRes.data?.results || [];
+
+       // Query backend policy
+       const policyRes = await base44.functions.invoke('openclawEnforcement', { action: 'get_policy' });
+       const policy = policyRes.data?.policy;
+     } catch (err) {
+       console.error('Failed to query backend enforcement:', err);
+     }
+
+     // Run all verification checks
+     const pageText = document.body.innerText;
 
     // Navigation Structure - check for actual tab buttons/elements
     const navPanelNames = [
@@ -583,6 +609,63 @@ export default function SystemVerificationPanel() {
       explanation: 'Verifies execution mode is SIMULATED by default (never LIVE on startup).',
       suggestedFix: simulatedModeIndicators.length === 0 ? 'Backend must enforce SIMULATED mode on initialization.' : undefined,
     };
+
+    // Backend enforcement checks (from openclawEnforcement)
+    try {
+      const enforcementRes = await base44.functions.invoke('openclawEnforcement', { action: 'run_all_tests' });
+      const enforcementTests = enforcementRes.data?.results || [];
+      const allTestsPassed = enforcementTests.every(t => t.passed);
+      
+      newResults.backend_enforcement_tests = {
+        status: allTestsPassed ? 'pass' : 'fail',
+        explanation: 'Backend validation test suite must pass: live blocking, domain allowlist, secret detection, RBAC, audit logging, HMAC signatures.',
+        details: `${enforcementTests.filter(t => t.passed).length}/${enforcementTests.length} tests passed`,
+        suggestedFix: !allTestsPassed ? 'Review failed validation tests in backend enforcement logs.' : undefined,
+      };
+
+      const policyRes = await base44.functions.invoke('openclawEnforcement', { action: 'get_policy' });
+      const policy = policyRes.data?.policy;
+      
+      if (policy) {
+        newResults.backend_policy_live_disabled = {
+          status: policy.LIVE_EXECUTION_ENABLED === false ? 'pass' : 'fail',
+          explanation: 'Backend policy must have LIVE_EXECUTION_ENABLED = false.',
+          details: `Backend setting: LIVE_EXECUTION_ENABLED = ${policy.LIVE_EXECUTION_ENABLED}`,
+        };
+
+        newResults.backend_policy_simulated_only = {
+          status: policy.SIMULATED_MODE_ONLY === true ? 'pass' : 'fail',
+          explanation: 'Backend policy must enforce SIMULATED_MODE_ONLY = true.',
+          details: `Backend setting: SIMULATED_MODE_ONLY = ${policy.SIMULATED_MODE_ONLY}`,
+        };
+
+        newResults.backend_policy_rbac = {
+          status: policy.REQUIRE_RBAC === true ? 'pass' : 'fail',
+          explanation: 'Backend policy must require RBAC.',
+          details: `Backend setting: REQUIRE_RBAC = ${policy.REQUIRE_RBAC}`,
+        };
+
+        newResults.backend_policy_audit_logging = {
+          status: policy.REQUIRE_AUDIT_LOGGING === true ? 'pass' : 'fail',
+          explanation: 'Backend policy must require audit logging for all commands.',
+          details: `Backend setting: REQUIRE_AUDIT_LOGGING = ${policy.REQUIRE_AUDIT_LOGGING}`,
+        };
+
+        newResults.backend_policy_hmac = {
+          status: policy.REQUIRE_HMAC_SIGNATURES === true ? 'pass' : 'fail',
+          explanation: 'Backend policy must require HMAC signatures for command integrity.',
+          details: `Backend setting: REQUIRE_HMAC_SIGNATURES = ${policy.REQUIRE_HMAC_SIGNATURES}`,
+        };
+      }
+    } catch (err) {
+      console.error('Failed to query backend enforcement:', err);
+      newResults.backend_enforcement_unavailable = {
+        status: 'warn',
+        explanation: 'Backend enforcement module is not responding.',
+        details: err.message,
+        suggestedFix: 'Ensure openclawEnforcement function is deployed and accessible.',
+      };
+    }
 
     setResults(newResults);
     setLastRunTime(new Date().toLocaleString());

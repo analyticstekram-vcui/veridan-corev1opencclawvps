@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Clock, Lock, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 
+const AlertTriangle2 = AlertTriangle; // Alias for use in JSX
+
 const CHECKLIST_ITEMS = [
   // Security
   {
@@ -948,10 +950,38 @@ export default function ProductionReadinessChecklistPanel() {
   
   let readinessStatus = 'NOT_PRODUCTION_READY';
   let readinessBlockReason = null;
+  const [backendEnforcementStatus, setBackendEnforcementStatus] = useState(null);
+
+  // Check backend enforcement on mount
+  useEffect(() => {
+    const checkBackendEnforcement = async () => {
+      try {
+        const res = await base44.functions.invoke('openclawEnforcement', { action: 'run_all_tests' });
+        const tests = res.data?.results || [];
+        const allPassed = tests.every(t => t.passed);
+        setBackendEnforcementStatus({ passed: allPassed, tests });
+      } catch (err) {
+        console.error('Failed to check backend enforcement:', err);
+        setBackendEnforcementStatus({ passed: false, error: err.message });
+      }
+    };
+    checkBackendEnforcement();
+  }, []);
   
-  // PRODUCTION_READY only if all items COMPLETE AND no BLOCKED items AND no unresolved CRITICAL/PRODUCTION_REQUIRED
-  if (summaryStats.complete === summaryStats.total && summaryStats.blocked === 0 && summaryStats.unresolvedCritical === 0 && summaryStats.unresolvedProdRequired === 0) {
+  // PRODUCTION_READY only if all items COMPLETE AND no BLOCKED AND no unresolved CRITICAL AND backend enforcement PASSES
+  if (
+    summaryStats.complete === summaryStats.total &&
+    summaryStats.blocked === 0 &&
+    summaryStats.unresolvedCritical === 0 &&
+    summaryStats.unresolvedProdRequired === 0 &&
+    backendEnforcementStatus?.passed === true
+  ) {
     readinessStatus = 'PRODUCTION_READY';
+  }
+  // NOT_PRODUCTION_READY if backend enforcement fails
+  else if (backendEnforcementStatus?.passed === false) {
+    readinessStatus = 'NOT_PRODUCTION_READY';
+    readinessBlockReason = 'Backend enforcement validation failed. See System Verify tab.';
   }
   // NOT_PRODUCTION_READY if any BLOCKED
   else if (summaryStats.blocked > 0) {
@@ -1144,6 +1174,33 @@ export default function ProductionReadinessChecklistPanel() {
           <div className="text-[9px] text-primary/70">It records operator review progress. It does not enable live execution, execute commands, or bypass governance.</div>
         </div>
       </div>
+
+      {/* Backend Enforcement Status */}
+      {backendEnforcementStatus && (
+        <div className={`rounded-lg p-4 space-y-3 border ${backendEnforcementStatus.passed ? 'bg-primary/5 border-primary/30' : 'bg-destructive/5 border-destructive/30'}`}>
+          <div className="flex items-start gap-3">
+            {backendEnforcementStatus.passed ? (
+              <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1">
+              <div className={`text-[11px] font-semibold mb-1 ${backendEnforcementStatus.passed ? 'text-primary' : 'text-destructive'}`}>
+                {backendEnforcementStatus.passed ? '✓ BACKEND_ENFORCEMENT_ACTIVE' : '⚠️ BACKEND_ENFORCEMENT_FAILED'}
+              </div>
+              <div className={`text-[10px] space-y-1 ${backendEnforcementStatus.passed ? 'text-primary/80' : 'text-destructive/90'}`}>
+                <div>
+                  {backendEnforcementStatus.passed
+                    ? `Backend validation tests passing: ${backendEnforcementStatus.tests?.filter(t => t.passed).length}/${backendEnforcementStatus.tests?.length || 0}`
+                    : backendEnforcementStatus.error
+                    ? `Error: ${backendEnforcementStatus.error}`
+                    : `Failed tests: ${backendEnforcementStatus.tests?.filter(t => !t.passed).map(t => t.scenario_name).join(', ')}`}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Auto-Review Status Panel */}
       <div className={`rounded-lg p-4 space-y-3 border ${readinessStatus === 'PRODUCTION_READY' ? 'bg-primary/10 border-primary/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
