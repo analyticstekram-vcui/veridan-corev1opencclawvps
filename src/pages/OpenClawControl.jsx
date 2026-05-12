@@ -140,23 +140,21 @@ export default function OpenClawControl() {
         </div>
       </div>
 
-      {/* ── Tab strip ── horizontally scrollable, never clipped, above content */}
+      {/* ── Tab strip ── wrapping rows, fully visible, no horizontal scroll */}
       <div
-        style={{ flexShrink: 0, position: 'relative', zIndex: 10, overflowX: 'auto', overflowY: 'visible' }}
-        className="border-b border-border bg-card"
+        style={{ flexShrink: 0, position: 'relative', zIndex: 10 }}
+        className="border-b border-border bg-card px-2 py-2"
       >
-        <div style={{ display: 'flex', gap: '4px', padding: '6px 8px', width: 'max-content' }}>
-          {/* External links */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+          {/* External page links */}
           <Link
             to="/command-queue"
-            style={{ flexShrink: 0 }}
             className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap"
           >
             <List className="w-3 h-3" /> Command Queue
           </Link>
           <Link
             to="/browser-session"
-            style={{ flexShrink: 0 }}
             className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap"
           >
             <Monitor className="w-3 h-3" /> Browser Session
@@ -167,7 +165,7 @@ export default function OpenClawControl() {
             <button
               key={id}
               type="button"
-              style={{ flexShrink: 0, cursor: 'pointer' }}
+              style={{ cursor: 'pointer' }}
               onClick={() => handleTabClick(id)}
               className={`px-3 py-1.5 text-[11px] border transition-colors whitespace-nowrap ${
                 activeView === id
