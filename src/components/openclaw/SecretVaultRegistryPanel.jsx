@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useState as React_useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Shield, AlertTriangle, Filter, Lock, RotateCw, ChevronDown, ChevronRight } from 'lucide-react';
 import { format, isPast } from 'date-fns';
@@ -20,7 +21,15 @@ const RISK_CONFIG = {
 function SecretRow({ secret, expanded, onToggle }) {
   const statusCfg = STATUS_CONFIG[secret.status] || STATUS_CONFIG.NOT_CONFIGURED;
   const riskCfg = RISK_CONFIG[secret.riskTier] || RISK_CONFIG.medium;
-  const rotationDue = (() => { try { return secret.nextRotationDue && isPast(new Date(secret.nextRotationDue)); } catch { return false; } })();
+  const rotationDue = (() => {
+    try {
+      if (!secret?.nextRotationDue) return false;
+      const dueDate = typeof secret.nextRotationDue === 'string' ? new Date(secret.nextRotationDue) : secret.nextRotationDue;
+      return !isNaN(dueDate.getTime()) && isPast(dueDate);
+    } catch {
+      return false;
+    }
+  })();
 
   return (
     <div className="border border-border/50 rounded bg-card/30 overflow-hidden">
@@ -91,21 +100,35 @@ function SecretRow({ secret, expanded, onToggle }) {
               <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Owner</div>
               <div className="text-slate-300 truncate">{secret.owner || '—'}</div>
             </div>
-            {secret.lastRotatedAt && (
-              <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
-                <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Last Rotated</div>
-                <div className="text-slate-300 font-mono">{format(new Date(secret.lastRotatedAt), 'MMM dd, yyyy')}</div>
-              </div>
-            )}
-            {secret.nextRotationDue && (
-              <div className={`bg-card/50 border px-2 py-1.5 rounded ${rotationDue ? 'border-amber-500/30' : 'border-border/30'}`}>
-                <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Next Rotation Due</div>
-                <div className={`font-mono ${rotationDue ? 'text-amber-500 font-semibold' : 'text-slate-300'}`}>
-                  {format(new Date(secret.nextRotationDue), 'MMM dd, yyyy')}
-                  {rotationDue && ' (OVERDUE)'}
-                </div>
-              </div>
-            )}
+            {secret.lastRotatedAt && (() => {
+              try {
+                const date = typeof secret.lastRotatedAt === 'string' ? new Date(secret.lastRotatedAt) : secret.lastRotatedAt;
+                return !isNaN(date.getTime()) ? (
+                  <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Last Rotated</div>
+                    <div className="text-slate-300 font-mono">{format(date, 'MMM dd, yyyy')}</div>
+                  </div>
+                ) : null;
+              } catch {
+                return null;
+              }
+            })()}
+            {secret.nextRotationDue && (() => {
+              try {
+                const date = typeof secret.nextRotationDue === 'string' ? new Date(secret.nextRotationDue) : secret.nextRotationDue;
+                return !isNaN(date.getTime()) ? (
+                  <div className={`bg-card/50 border px-2 py-1.5 rounded ${rotationDue ? 'border-amber-500/30' : 'border-border/30'}`}>
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Next Rotation Due</div>
+                    <div className={`font-mono ${rotationDue ? 'text-amber-500 font-semibold' : 'text-slate-300'}`}>
+                      {format(date, 'MMM dd, yyyy')}
+                      {rotationDue && ' (OVERDUE)'}
+                    </div>
+                  </div>
+                ) : null;
+              } catch {
+                return null;
+              }
+            })()}
           </div>
 
           {secret.notes && (

@@ -62,7 +62,15 @@ function BrokerRow({ credential, expanded, onToggle }) {
   const statusCfg = STATUS_CONFIG[credential.credentialStatus] || STATUS_CONFIG.NOT_CONNECTED;
   const riskCfg = RISK_CONFIG[credential.riskTier] || RISK_CONFIG.medium;
   const readinessBadge = getReadinessBadge(credential);
-  const rotationDue = (() => { try { return credential.nextRotationDue && isPast(new Date(credential.nextRotationDue)); } catch { return false; } })();
+  const rotationDue = (() => {
+    try {
+      if (!credential?.nextRotationDue) return false;
+      const dueDate = typeof credential.nextRotationDue === 'string' ? new Date(credential.nextRotationDue) : credential.nextRotationDue;
+      return !isNaN(dueDate.getTime()) && isPast(dueDate);
+    } catch {
+      return false;
+    }
+  })();
 
   return (
     <div className="border border-border/50 rounded bg-card/30 overflow-hidden">
@@ -138,21 +146,35 @@ function BrokerRow({ credential, expanded, onToggle }) {
                 <div className="text-slate-300 font-mono text-[8px] truncate">{credential.secretReferenceId}</div>
               </div>
             )}
-            {credential.lastVerifiedAt && (
-              <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
-                <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Last Verified</div>
-                <div className="text-slate-300 font-mono">{format(new Date(credential.lastVerifiedAt), 'MMM dd, yyyy')}</div>
-              </div>
-            )}
-            {credential.nextRotationDue && (
-              <div className={`bg-card/50 border px-2 py-1.5 rounded ${rotationDue ? 'border-amber-500/30' : 'border-border/30'}`}>
-                <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Next Rotation Due</div>
-                <div className={`font-mono ${rotationDue ? 'text-amber-500 font-semibold' : 'text-slate-300'}`}>
-                  {format(new Date(credential.nextRotationDue), 'MMM dd, yyyy')}
-                  {rotationDue && ' (OVERDUE)'}
-                </div>
-              </div>
-            )}
+            {credential.lastVerifiedAt && (() => {
+              try {
+                const date = typeof credential.lastVerifiedAt === 'string' ? new Date(credential.lastVerifiedAt) : credential.lastVerifiedAt;
+                return !isNaN(date.getTime()) ? (
+                  <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Last Verified</div>
+                    <div className="text-slate-300 font-mono">{format(date, 'MMM dd, yyyy')}</div>
+                  </div>
+                ) : null;
+              } catch {
+                return null;
+              }
+            })()}
+            {credential.nextRotationDue && (() => {
+              try {
+                const date = typeof credential.nextRotationDue === 'string' ? new Date(credential.nextRotationDue) : credential.nextRotationDue;
+                return !isNaN(date.getTime()) ? (
+                  <div className={`bg-card/50 border px-2 py-1.5 rounded ${rotationDue ? 'border-amber-500/30' : 'border-border/30'}`}>
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Next Rotation Due</div>
+                    <div className={`font-mono ${rotationDue ? 'text-amber-500 font-semibold' : 'text-slate-300'}`}>
+                      {format(date, 'MMM dd, yyyy')}
+                      {rotationDue && ' (OVERDUE)'}
+                    </div>
+                  </div>
+                ) : null;
+              } catch {
+                return null;
+              }
+            })()}
           </div>
 
           {credential.allowedScopes && credential.allowedScopes.length > 0 && (

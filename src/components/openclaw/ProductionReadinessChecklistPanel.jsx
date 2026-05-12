@@ -952,17 +952,20 @@ export default function ProductionReadinessChecklistPanel() {
   let readinessBlockReason = null;
   const [backendEnforcementStatus, setBackendEnforcementStatus] = useState(null);
 
-  // Check backend enforcement on mount
+  // Check backend enforcement on mount (required for production readiness)
   useEffect(() => {
     const checkBackendEnforcement = async () => {
       try {
         const res = await base44.functions.invoke('openclawEnforcement', { action: 'run_all_tests' });
-        const tests = res.data?.results || [];
-        const allPassed = tests.every(t => t.passed);
-        setBackendEnforcementStatus({ passed: allPassed, tests });
+        if (res?.data?.results) {
+          const tests = res.data.results;
+          const allPassed = tests && tests.length > 0 && tests.every(t => t?.passed === true);
+          setBackendEnforcementStatus({ passed: allPassed, tests, count: tests?.length || 0 });
+        } else {
+          setBackendEnforcementStatus({ passed: false, error: 'No test results returned', tests: [] });
+        }
       } catch (err) {
-        console.error('Failed to check backend enforcement:', err);
-        setBackendEnforcementStatus({ passed: false, error: err.message });
+        setBackendEnforcementStatus({ passed: false, error: err?.message || 'Unknown error', tests: [] });
       }
     };
     checkBackendEnforcement();
@@ -1163,6 +1166,15 @@ export default function ProductionReadinessChecklistPanel() {
         <div>
           <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Production Readiness</div>
           <div className="text-[13px] font-semibold text-foreground">Pre-Production Checklist</div>
+        </div>
+      </div>
+
+      {/* System Verify Dependency Banner */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-blue-400/5 border border-blue-400/20 rounded-lg">
+        <AlertTriangle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+        <div className="text-[10px] text-blue-400/80">
+          <div className="font-semibold mb-0.5">🔗 Production Checklist is linked to System Verify.</div>
+          <div className="text-[9px] text-blue-400/70">Checklist alone does NOT grant production readiness. System Verify tab is the true source of truth. Backend enforcement must pass, all safety gates must be green, and all prerequisites must be met.</div>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Shield, CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import OperatorGuidancePanel from './OperatorGuidancePanel';
 
 // Master verification checks organized by category
 const VERIFICATION_GROUPS = [
@@ -711,11 +712,17 @@ export default function SystemVerificationPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Master Verification Dashboard</div>
-          <div className="text-[13px] font-semibold text-foreground">OpenClaw Control System Status</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">System Verification — Source of Truth</div>
+          <div className="text-[13px] font-semibold text-foreground">OpenClaw Control Production Readiness</div>
         </div>
         <Shield className="w-5 h-5 text-primary" />
       </div>
+
+      {/* Operator Guidance */}
+      <OperatorGuidancePanel
+        verificationResults={results}
+        backendStatus={{ passed: Object.values(results).filter(r => r?.status === 'pass').length > 0 }}
+      />
 
       {/* Status Banner */}
       <div className={`border rounded-lg px-4 py-3 ${statusBg}`}>
@@ -776,12 +783,12 @@ export default function SystemVerificationPanel() {
         ))}
       </div>
 
-      {/* Footer Notice */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-secondary/10 border border-border/50 rounded-lg text-[9px] text-slate-400">
-        <Shield className="w-3 h-3 shrink-0 mt-0.5" />
+      {/* Footer Notice — Authority Statement */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg text-[9px] text-primary/80">
+        <Shield className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold text-foreground mb-0.5">Verification does not prove production readiness.</div>
-          <div className="text-[8px] text-slate-400">It verifies visible UI and safety configuration only. Backend, deployment, secrets management, broker integrations, and operational procedures still require controlled validation and testing.</div>
+          <div className="font-semibold text-primary mb-0.5">System Verify is the Single Source of Truth.</div>
+          <div className="text-[8px] text-primary/70">Production Checklist and all other panels report to this verification. PRODUCTION_READY status is granted only when ALL backend enforcement tests pass and all safety gates are green. No panel, checklist review, or operator action can bypass this gateway.</div>
         </div>
       </div>
     </div>

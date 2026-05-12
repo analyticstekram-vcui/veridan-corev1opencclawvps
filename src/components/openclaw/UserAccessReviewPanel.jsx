@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { ROLE_METADATA, ROLE_PERMISSIONS } from '@/lib/rbac';
 import { ChevronDown, ChevronRight, Shield, AlertTriangle, CheckCircle2, Clock, User } from 'lucide-react';
@@ -7,11 +7,11 @@ import { format } from 'date-fns';
 function AccessReviewCard({ review, onSaved }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [status, setStatus] = useState(review?.reviewStatus || 'PENDING');
-  const [notes, setNotes] = useState(review?.reviewNotes || '');
+  const [status, setStatus] = useState(() => review?.reviewStatus || 'PENDING');
+  const [notes, setNotes] = useState(() => review?.reviewNotes || '');
   const [saving, setSaving] = useState(false);
-  const roleMeta = ROLE_METADATA[review?.assignedRole];
-  const rolePerms = ROLE_PERMISSIONS[review?.assignedRole] || [];
+  const roleMeta = ROLE_METADATA[review?.assignedRole] || {};
+  const rolePerms = (ROLE_PERMISSIONS && ROLE_PERMISSIONS[review?.assignedRole]) || [];
 
   const handleSave = async () => {
     setSaving(true);
