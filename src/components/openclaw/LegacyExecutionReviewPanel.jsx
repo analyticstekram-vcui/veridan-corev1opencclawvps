@@ -93,7 +93,9 @@ function CommandReviewCard({ command, savedReview, onSaved }) {
     try { return format(new Date(d), 'yyyy-MM-dd HH:mm:ss'); } catch { return d; }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (overrideStatus) => {
+    const statusToSave = overrideStatus || reviewStatus;
+    if (!statusToSave || statusToSave === 'UNREVIEWED') return;
     setSaving(true);
     try {
       const now = new Date().toISOString();
@@ -103,7 +105,7 @@ function CommandReviewCard({ command, savedReview, onSaved }) {
         executionMode: command.executionMode,
         commandType: command.commandType,
         originalStatus: command.status,
-        reviewStatus,
+        reviewStatus: statusToSave,
         reviewer,
         reviewNote,
         reviewedAt: now,
@@ -118,6 +120,7 @@ function CommandReviewCard({ command, savedReview, onSaved }) {
         await base44.entities.OpenClawLegacyReview.create(payload);
       }
 
+      if (overrideStatus) setReviewStatus(overrideStatus);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       if (onSaved) onSaved();
@@ -292,14 +295,15 @@ function CommandReviewCard({ command, savedReview, onSaved }) {
               </div>
             )}
 
-            {/* Quick-classify buttons */}
+            {/* Quick-classify buttons — set status AND persist in one action */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {ACTIONABLE_REVIEW_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setReviewStatus(opt.value)}
-                  className={`px-2.5 py-1 text-[9px] border transition-colors ${reviewStatus === opt.value ? opt.color : 'border-border text-muted-foreground hover:bg-secondary/50'}`}
+                  disabled={saving}
+                  onClick={() => handleSave(opt.value)}
+                  className={`px-2.5 py-1 text-[9px] border transition-colors disabled:opacity-50 ${reviewStatus === opt.value && savedReview?.reviewStatus === opt.value ? opt.color : 'border-border text-muted-foreground hover:bg-secondary/50'}`}
                 >
                   {opt.label}
                 </button>
@@ -425,6 +429,20 @@ export default function LegacyExecutionReviewPanel() {
           </div>
         </div>
       </div>
+
+      {/* Latest review timestamp */}
+      {Object.values(savedReviews).length > 0 && (() => {
+        const latest = Object.values(savedReviews).reduce((a, b) =>
+          (a.reviewedAt || '') > (b.reviewedAt || '') ? a : b
+        );
+        return latest?.reviewedAt ? (
+          <div className="text-[9px] text-primary/60 font-mono border border-primary/20 bg-primary/5 px-3 py-1.5">
+            ✓ Latest review saved: {format(new Date(latest.reviewedAt), 'yyyy-MM-dd HH:mm:ss')}
+            {latest.reviewer ? ` · by ${latest.reviewer}` : ''}
+            {` · ${counters.total - counters.unreviewed} of ${counters.total} classified`}
+          </div>
+        ) : null;
+      })()}
 
       {/* Summary counters (from saved reviews) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-[10px]">
