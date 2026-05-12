@@ -27,8 +27,10 @@ import UnifiedOpenClawOverviewPanel from '@/components/openclaw/UnifiedOpenClawO
 import LegacyExecutionReviewPanel from '@/components/openclaw/LegacyExecutionReviewPanel';
 import RolePermissionMatrixPanel from '@/components/openclaw/RolePermissionMatrixPanel';
 import UserAccessReviewPanel from '@/components/openclaw/UserAccessReviewPanel';
+import SystemVerificationPanel from '@/components/openclaw/SystemVerificationPanel';
 
 const TABS = [
+  { id: 'system_verify', label: '✓ System Verify' },
   { id: 'overview', label: '📊 Overview' },
   { id: 'status', label: 'Status' },
   { id: 'safe_bridge', label: '⚡ Safe Command Test' },
@@ -187,6 +189,10 @@ export default function OpenClawControl() {
 
       {/* ── Panel area ── scrollable, fills remaining height */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}>
+
+        {activeView === 'system_verify' && (
+          <div className="p-6"><SystemVerificationPanel /></div>
+        )}
 
         {activeView === 'overview' && (
           <div className="p-6"><UnifiedOpenClawOverviewPanel /></div>
