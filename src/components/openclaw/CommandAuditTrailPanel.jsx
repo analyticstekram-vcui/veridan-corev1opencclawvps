@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Shield, ChevronDown, ChevronRight, Filter, Download, Lock } from 'lucide-react';
+import { Shield, ChevronDown, ChevronRight, Filter, Download, Lock, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 
 // Robust safe date formatting helpers
@@ -62,6 +62,25 @@ const safeFormatDateTime = (dateValue) => {
   return safeFormatDate(dateValue, 'yyyy-MM-dd HH:mm:ss');
 };
 
+// Validate command record structure and data integrity
+const validateCommand = (cmd) => {
+  const issues = [];
+  
+  if (!cmd.id) issues.push('Missing command ID');
+  if (!cmd.status) issues.push('Missing execution status');
+  if (!cmd.commandType) issues.push('Missing command type');
+  if (!cmd.operator) issues.push('Missing operator');
+  
+  // Check timestamp validity
+  const createdDate = normalizeDate(cmd.createdAt);
+  if (cmd.createdAt && !createdDate) issues.push('Invalid createdAt timestamp');
+  
+  if (cmd.approvedAt && !normalizeDate(cmd.approvedAt)) issues.push('Invalid approvedAt timestamp');
+  if (cmd.executedAt && !normalizeDate(cmd.executedAt)) issues.push('Invalid executedAt timestamp');
+  
+  return { isValid: issues.length === 0, issues };
+};
+
 const COMMAND_STATUS_CONFIG = {
   pending: { color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'PENDING APPROVAL' },
   approved: { color: 'text-primary', bg: 'bg-primary/5 border-primary/20', label: 'APPROVED' },
@@ -83,6 +102,7 @@ const RISK_CONFIG = {
 function CommandRow({ command, expanded, onToggle }) {
   const statusCfg = COMMAND_STATUS_CONFIG[command.status] || COMMAND_STATUS_CONFIG.pending;
   const riskCfg = RISK_CONFIG[command.riskLevel] || RISK_CONFIG.low;
+  const { isValid, issues } = validateCommand(command);
 
   return (
     <div className="border border-border/50 rounded overflow-hidden bg-card/30">
@@ -114,7 +134,20 @@ function CommandRow({ command, expanded, onToggle }) {
       </div>
 
       {expanded && (
-        <div className="border-t border-border/30 bg-secondary/10 px-4 py-3 space-y-3 text-[9px]">
+         <div className="border-t border-border/30 bg-secondary/10 px-4 py-3 space-y-3 text-[9px]">
+          {/* Data Validation Warning */}
+          {!isValid && (
+            <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-[8px] text-amber-500/90">
+                <div className="font-semibold mb-1">⚠ Record contains invalid or missing fields:</div>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  {issues.map((issue, i) => <li key={i}>{issue}</li>)}
+                </ul>
+                <div className="mt-1 text-[7px] text-amber-500/70">Audit trail may be corrupted. Contact system administrator.</div>
+              </div>
+            </div>
+          )}
           {/* Command Details */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
@@ -258,16 +291,17 @@ function CommandRow({ command, expanded, onToggle }) {
 }
 
 export default function CommandAuditTrailPanel() {
-  const [commands, setCommands] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedIds, setExpandedIds] = useState({});
-  const [filters, setFilters] = useState({
-    status: 'all',
-    riskLevel: 'all',
-    commandType: 'all',
-    operator: 'all',
-    dateRange: 'all',
-  });
+   const [commands, setCommands] = useState([]);
+   const [loading, setLoading] = useState(true);
+   const [expandedIds, setExpandedIds] = useState({});
+   const [filters, setFilters] = useState({
+     status: 'all',
+     riskLevel: 'all',
+     commandType: 'all',
+     operator: 'all',
+     dateRange: 'all',
+   });
+   const [dataIssues, setDataIssues] = useState([]);
 
   const fetchAuditTrail = async () => {
     setLoading(true);
@@ -355,12 +389,19 @@ export default function CommandAuditTrailPanel() {
         auditCommands.push(...mockCommands);
       }
 
+      // Validate records and track issues
+      const recordIssues = auditCommands
+        .map((cmd, idx) => ({ cmd, idx, ...validateCommand(cmd) }))
+        .filter(r => !r.isValid);
+
+      setDataIssues(recordIssues);
       setCommands(auditCommands);
-    } catch (err) {
+      } catch (err) {
       console.error('Error fetching audit trail:', err);
-    } finally {
+      setDataIssues([{ error: err.message }]);
+      } finally {
       setLoading(false);
-    }
+      }
   };
 
   useEffect(() => {
@@ -423,6 +464,20 @@ export default function CommandAuditTrailPanel() {
           <div className="text-[9px] text-primary/70">This panel provides permanent audit visibility into all proposed, approved, denied, executed, failed, blocked, and simulated commands. No secrets, credentials, or API keys are displayed. All integrity fields are recorded for compliance and forensic analysis.</div>
         </div>
       </div>
+
+      {/* Data Issues Warning */}
+      {dataIssues.length > 0 && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+          <div className="text-[10px] text-destructive/80">
+            <div className="font-semibold mb-1">⚠ Data integrity issues detected</div>
+            <div className="text-[9px] text-destructive/70 mb-1">
+              {dataIssues.length} record{dataIssues.length !== 1 ? 's' : ''} contain invalid or missing fields. Expand affected records to see details.
+            </div>
+            <div className="text-[8px] text-destructive/60">Expand individual records (marked with ⚠) to review issues and verify hash-chain integrity.</div>
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
@@ -530,11 +585,19 @@ export default function CommandAuditTrailPanel() {
           <div className="text-[10px] text-slate-400 font-semibold">Loading audit trail...</div>
         </div>
       ) : filteredCommands.length === 0 ? (
-        <div className="border border-border/50 rounded-lg bg-card/30 px-6 py-12 text-center space-y-2">
+        <div className="border border-border/50 rounded-lg bg-card/30 px-6 py-12 text-center space-y-3">
           <div className="text-[11px] text-slate-400 font-semibold">No commands in audit trail yet.</div>
           <div className="text-[9px] text-slate-400 max-w-sm mx-auto">
-            When OpenClaw commands are proposed, approved, executed, or blocked, they will appear here with full audit details including timestamps, operators, approval status, and integrity hashes.
+            {commands.length === 0 
+              ? 'When OpenClaw commands are proposed, approved, executed, or blocked, they will appear here with full audit details including timestamps, operators, approval status, and integrity hashes.'
+              : `No commands match the current filters. Adjust filters or refresh to reload data.`
+            }
           </div>
+          {commands.length === 0 && (
+            <div className="pt-2 border-t border-border/30 mt-4 text-[8px] text-slate-500">
+              Demo audit records are loaded automatically on first page view.
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
