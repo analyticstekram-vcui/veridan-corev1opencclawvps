@@ -806,6 +806,9 @@ export default function ProductionReadinessChecklistPanel() {
   const [legacyReviews, setLegacyReviews] = useState([]);
   const [reviews, setReviews] = useState({});
   const [loading, setLoading] = useState(true);
+  const [showOnlyUnresolved, setShowOnlyUnresolved] = useState(false);
+  const [suggestedReviews, setSuggestedReviews] = useState({});
+  const [savingAuto, setSavingAuto] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -836,12 +839,19 @@ export default function ProductionReadinessChecklistPanel() {
   };
 
   const filtered = CHECKLIST_ITEMS.filter(item => {
+    const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+    
+    // If showing only unresolved, filter to incomplete items
+    if (showOnlyUnresolved && effectiveStatus === 'COMPLETE') {
+      return false;
+    }
+
     if (filter === 'ALL') return true;
-    if (filter === 'UNRESOLVED') return reviews[item.name]?.reviewStatus !== 'COMPLETE' && item.status !== 'COMPLETE';
-    if (filter === 'COMPLETE') return item.status === 'COMPLETE' && reviews[item.name]?.reviewStatus === 'COMPLETE';
-    if (filter === 'PARTIAL') return item.status === 'PARTIAL' || reviews[item.name]?.reviewStatus === 'PARTIAL';
-    if (filter === 'NOT_STARTED') return item.status === 'NOT_STARTED' || reviews[item.name]?.reviewStatus === 'NOT_STARTED';
-    if (filter === 'BLOCKED') return item.status === 'BLOCKED' || reviews[item.name]?.reviewStatus === 'BLOCKED';
+    if (filter === 'UNRESOLVED') return effectiveStatus !== 'COMPLETE';
+    if (filter === 'COMPLETE') return effectiveStatus === 'COMPLETE';
+    if (filter === 'PARTIAL') return effectiveStatus === 'PARTIAL';
+    if (filter === 'NOT_STARTED') return effectiveStatus === 'NOT_STARTED';
+    if (filter === 'BLOCKED') return effectiveStatus === 'BLOCKED';
     if (filter === 'CRITICAL') return item.priority === 'CRITICAL';
     if (filter === 'PRODUCTION_REQUIRED') return item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r));
     return true;
@@ -883,124 +893,125 @@ export default function ProductionReadinessChecklistPanel() {
   const [systemReviewRunning, setSystemReviewRunning] = useState(false);
   const [systemReviewResults, setSystemReviewResults] = useState(null);
 
+  // Auto-classification logic
+  const getAutoClassification = (item) => {
+    const evidencePatterns = {
+      complete: /verified|complete|passing|protected|enabled|configured|no action needed|disabled by default|immutable|audit complete|already complete|operational|functional|deployed/i,
+      blocked: /live execution|payment.*execution|transfer execution|broker execution|broker.*keys|click|type|navigation|mutations|remain blocked|governance approval|live mode/i,
+    };
+
+    let status = 'NOT_STARTED';
+    let note = '';
+
+    // Check for BLOCKED conditions
+    if (item.status === 'BLOCKED' || evidencePatterns.blocked.test(item.evidence) || evidencePatterns.blocked.test(item.nextAction)) {
+      status = 'BLOCKED';
+      note = `Governance constraint: ${item.nextAction}`;
+    }
+    // Check for COMPLETE with clear evidence
+    else if (item.status === 'COMPLETE' && evidencePatterns.complete.test(item.evidence)) {
+      status = 'COMPLETE';
+      note = `Verified: ${item.evidence}`;
+    }
+    // Check for PARTIAL
+    else if (item.status === 'PARTIAL' || (item.status === 'COMPLETE' && item.priority === 'CRITICAL') || item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r))) {
+      // If COMPLETE but CRITICAL or PRODUCTION_REQUIRED, downgrade to PARTIAL for extra caution
+      if (item.status === 'COMPLETE' && (item.priority === 'CRITICAL' || item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r)))) {
+        status = 'PARTIAL';
+        note = `Evidence exists but CRITICAL/PRODUCTION_REQUIRED: operator verification needed. ${item.nextAction}`;
+      } else {
+        status = 'PARTIAL';
+        note = `Partial implementation: ${item.evidence} — ${item.nextAction}`;
+      }
+    }
+    // NOT_STARTED
+    else {
+      status = 'NOT_STARTED';
+      note = `No evidence: ${item.nextAction}`;
+    }
+
+    return { status, note };
+  };
+
   const runSafeChecklistReview = async () => {
     setSystemReviewRunning(true);
     try {
       const user = await base44.auth.me();
       const now = new Date().toISOString();
-      const results = { autoCompleted: 0, partial: 0, blocked: 0, operatorRequired: 0, timestamp: now };
+      const results = { autoCompleted: 0, partial: 0, blocked: 0, notStarted: 0, timestamp: now };
+      const suggestions = {};
       const unresolvedItems = [];
 
       for (const item of CHECKLIST_ITEMS) {
-        let autoStatus = null;
-        let reason = '';
-
-        // Smart evidence mapping
-        if (item.name === 'Safety tests 7/7 passing' && item.evidence.includes('7/7 passed')) {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Read-only bridge passing' && item.evidence.includes('functional')) {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Mutation commands blocked' && item.evidence.includes('rejected')) {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Live mode disabled by default' && item.evidence.includes('SIMULATED')) {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Cloudflare Access enabled' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'No secrets in frontend code' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'OpenAI API key not rendered in UI' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Cloudflare Access policy configured' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'X-Frame-Options header set to DENY' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Trace IDs generated for all operations' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Executed command audit view' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Manual approval workflow' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Risk matrix visible and enforced' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Policy registry visible and immutable' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Emergency stop UI button' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'System status read command' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Logs fetch command' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Session list command' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Simulation scenarios (10/10)' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Operator runbook' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.name === 'Export snapshots to Markdown/JSON' && item.status === 'COMPLETE') {
-          autoStatus = 'REVIEW_COMPLETE';
-        } else if (item.status === 'PARTIAL') {
-          autoStatus = 'REVIEW_PARTIAL';
-          reason = 'Partial evidence exists, requires verification';
-        } else if (item.status === 'BLOCKED') {
-          autoStatus = 'REVIEW_BLOCKED';
-          reason = 'Dependency or governance constraint prevents completion';
-        } else if (item.status === 'NOT_STARTED') {
-          autoStatus = 'REVIEW_NOT_STARTED';
-          reason = 'No evidence or implementation yet';
-        } else {
-          autoStatus = 'OPERATOR_ACTION_REQUIRED';
-          reason = 'Requires external verification or operator decision';
-        }
-
-        // Determine if external verification needed
-        const needsExternal = ['secrets management', 'role-based', 'session timeout', 'immutable audit', 'multi-signature', 'broker', 'trading', 'banking', 'deployment sop'].some(
-          keyword => item.name.toLowerCase().includes(keyword) || item.category.toLowerCase().includes(keyword)
-        );
-
-        if (needsExternal && autoStatus !== 'REVIEW_COMPLETE') {
-          autoStatus = 'OPERATOR_ACTION_REQUIRED';
-          reason = 'Requires operator or external verification';
-        }
+        const { status: autoStatus, note: autoNote } = getAutoClassification(item);
+        suggestions[item.name] = { status: autoStatus, note: autoNote };
 
         // Count results
-        if (autoStatus === 'REVIEW_COMPLETE') results.autoCompleted++;
-        else if (autoStatus === 'REVIEW_PARTIAL') results.partial++;
-        else if (autoStatus === 'REVIEW_BLOCKED') results.blocked++;
-        else if (autoStatus === 'OPERATOR_ACTION_REQUIRED') {
-          results.operatorRequired++;
-          unresolvedItems.push({ ...item, autoStatus, reason });
-        }
+        if (autoStatus === 'COMPLETE') results.autoCompleted++;
+        else if (autoStatus === 'PARTIAL') results.partial++;
+        else if (autoStatus === 'BLOCKED') results.blocked++;
+        else if (autoStatus === 'NOT_STARTED') results.notStarted++;
 
-        // Create or update review
-        const existingReview = reviews[item.name];
+        // Track unresolved items
+        const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+        if (effectiveStatus !== 'COMPLETE') {
+          unresolvedItems.push({ ...item, suggestedStatus: autoStatus, suggestedNote: autoNote });
+        }
+      }
+
+      setSuggestedReviews(suggestions);
+      setSystemReviewResults({ ...results, unresolvedItems });
+    } catch (err) {
+      console.error('System review error:', err);
+    } finally {
+      setSystemReviewRunning(false);
+    }
+  };
+
+  const autoSaveSuggestedReviews = async () => {
+    setSavingAuto(true);
+    try {
+      const user = await base44.auth.me();
+      const now = new Date().toISOString();
+      let savedCount = 0;
+
+      for (const item of CHECKLIST_ITEMS) {
+        const suggested = suggestedReviews[item.name];
+        if (!suggested) continue;
+
+        const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+        // Only save if unresolved
+        if (effectiveStatus === 'COMPLETE') continue;
+
+        const isProdRequired = item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r));
         const payload = {
-          checklistItemKey: item.name,
-          itemTitle: item.name,
+          checklistItemName: item.name,
           category: item.category,
           originalStatus: item.status,
-          reviewStatus: autoStatus,
-          reviewer: 'system-safe-review',
+          reviewStatus: suggested.status,
+          reviewNote: suggested.note,
+          reviewer: user?.email || 'system',
           reviewedAt: now,
           priority: item.priority,
-          evidenceSummary: item.evidence,
-          unresolvedReason: reason,
-          nextAction: item.nextAction,
-          sourceSnapshot: { status: item.status, category: item.category, priority: item.priority, evidence: '[REDACTED]' },
+          isCritical: item.priority === 'CRITICAL',
+          isProductionRequired: isProdRequired,
         };
 
+        const existingReview = reviews[item.name];
         if (existingReview?.id) {
           await base44.entities.OpenClawProductionChecklistReview.update(existingReview.id, payload);
         } else {
           await base44.entities.OpenClawProductionChecklistReview.create(payload);
         }
+        savedCount++;
       }
 
-      setSystemReviewResults({ ...results, unresolvedItems });
       await fetchData();
+      setSuggestedReviews({});
     } catch (err) {
-      console.error('System review error:', err);
+      console.error('Auto-save error:', err);
     } finally {
-      setSystemReviewRunning(false);
+      setSavingAuto(false);
     }
   };
 
@@ -1052,53 +1063,107 @@ export default function ProductionReadinessChecklistPanel() {
         );
       })()}
 
-      {/* Run Safe Checklist Review Button */}
+      {/* Audit-Only Banner */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-[10px] text-primary/80">
+          <div className="font-semibold mb-0.5">Checklist review is audit-only.</div>
+          <div className="text-[9px] text-primary/70">It records operator review progress. It does not enable live execution, execute commands, or bypass governance.</div>
+        </div>
+      </div>
+
+      {/* Auto-review Buttons */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={runSafeChecklistReview}
+          disabled={systemReviewRunning}
+          className="px-4 py-2.5 bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
+        >
+          {systemReviewRunning ? '⏳ Analyzing...' : '🔍 Auto-resolve safe checklist items'}
+        </button>
+        {Object.keys(suggestedReviews).length > 0 && (
+          <button
+            type="button"
+            onClick={autoSaveSuggestedReviews}
+            disabled={savingAuto}
+            className="px-4 py-2.5 bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
+          >
+            {savingAuto ? '💾 Saving...' : '💾 Auto-save suggested reviews'}
+          </button>
+        )}
+      </div>
+
+      {/* Filter for unresolved items */}
       <button
         type="button"
-        onClick={runSafeChecklistReview}
-        disabled={systemReviewRunning}
-        className="w-full px-4 py-2.5 bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
+        onClick={() => setShowOnlyUnresolved(!showOnlyUnresolved)}
+        className={`px-4 py-2 text-[11px] border transition-colors rounded-lg ${
+          showOnlyUnresolved
+            ? 'border-primary text-primary bg-primary/10'
+            : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+        }`}
       >
-        {systemReviewRunning ? '⏳ Running Safe Checklist Review...' : '▶ Run Safe Checklist Review'}
+        {showOnlyUnresolved ? '✓ Showing only unresolved items' : 'Show only items I still need to fix'}
       </button>
 
       {/* System Review Results */}
       {systemReviewResults && (
         <div className="bg-secondary/20 border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-[11px] font-semibold text-foreground">System Review Results</div>
+            <div className="text-[11px] font-semibold text-foreground">Suggested Review Classification</div>
             <span className="text-[9px] text-muted-foreground/50">{format(new Date(systemReviewResults.timestamp), 'MM/dd HH:mm')}</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
             <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-              <div className="text-primary/60 uppercase tracking-wider mb-1 text-[8px]">Auto Completed</div>
+              <div className="text-primary/60 uppercase tracking-wider mb-1 text-[8px]">COMPLETE</div>
               <div className="text-[14px] font-semibold text-primary">{systemReviewResults.autoCompleted}</div>
             </div>
             <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-              <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">Partial</div>
+              <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">PARTIAL</div>
               <div className="text-[14px] font-semibold text-amber-500">{systemReviewResults.partial}</div>
             </div>
             <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-              <div className="text-destructive/60 uppercase tracking-wider mb-1 text-[8px]">Blocked</div>
+              <div className="text-destructive/60 uppercase tracking-wider mb-1 text-[8px]">BLOCKED</div>
               <div className="text-[14px] font-semibold text-destructive">{systemReviewResults.blocked}</div>
             </div>
-            <div className="bg-orange-500/5 border border-orange-500/20 px-3 py-2 rounded">
-              <div className="text-orange-500/60 uppercase tracking-wider mb-1 text-[8px]">Operator Action</div>
-              <div className="text-[14px] font-semibold text-orange-500">{systemReviewResults.operatorRequired}</div>
+            <div className="bg-blue-400/5 border border-blue-400/20 px-3 py-2 rounded">
+              <div className="text-blue-400/60 uppercase tracking-wider mb-1 text-[8px]">NOT_STARTED</div>
+              <div className="text-[14px] font-semibold text-blue-400">{systemReviewResults.notStarted}</div>
             </div>
           </div>
           {systemReviewResults.unresolvedItems.length > 0 && (
             <div className="border-t border-border/30 pt-3 space-y-2">
-              <div className="text-[11px] font-semibold text-foreground">What Still Needs Operator Action</div>
+              <div className="text-[11px] font-semibold text-foreground">What I still need to change</div>
               <div className="space-y-2 text-[9px]">
-                {systemReviewResults.unresolvedItems.slice(0, 5).map((item, i) => (
-                  <div key={i} className="bg-card/50 border border-border/30 px-3 py-2 rounded">
-                    <div className="font-semibold text-foreground/80 mb-0.5">{item.name}</div>
-                    <div className="text-[8px] text-muted-foreground/60 mb-1"><span className="font-semibold">Why not auto-completed:</span> {item.reason}</div>
-                    <div className="text-[8px] text-primary/80"><span className="font-semibold">Next action:</span> {item.nextAction}</div>
-                  </div>
-                ))}
-                {systemReviewResults.unresolvedItems.length > 5 && <div className="text-[8px] text-muted-foreground/50">+ {systemReviewResults.unresolvedItems.length - 5} more items</div>}
+                {systemReviewResults.unresolvedItems
+                  .sort((a, b) => {
+                    const order = { BLOCKED: 0, CRITICAL: 1, PRODUCTION_REQUIRED: 2, PARTIAL: 3, NOT_STARTED: 4 };
+                    const aKey = a.priority === 'CRITICAL' ? 'CRITICAL' : a.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r)) ? 'PRODUCTION_REQUIRED' : a.suggestedStatus;
+                    const bKey = b.priority === 'CRITICAL' ? 'CRITICAL' : b.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r)) ? 'PRODUCTION_REQUIRED' : b.suggestedStatus;
+                    return (order[aKey] || 5) - (order[bKey] || 5);
+                  })
+                  .slice(0, 10)
+                  .map((item, i) => (
+                    <div key={i} className="bg-card/50 border border-border/30 px-3 py-2.5 rounded space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-semibold text-foreground/80 flex-1">{item.name}</div>
+                        <span className={`text-[8px] px-1.5 py-0.5 border rounded font-semibold whitespace-nowrap ${
+                          item.suggestedStatus === 'COMPLETE' ? 'border-primary/30 bg-primary/5 text-primary' :
+                          item.suggestedStatus === 'PARTIAL' ? 'border-amber-500/30 bg-amber-500/5 text-amber-500' :
+                          item.suggestedStatus === 'BLOCKED' ? 'border-destructive/30 bg-destructive/5 text-destructive' :
+                          'border-blue-400/30 bg-blue-400/5 text-blue-400'
+                        }`}>
+                          {item.suggestedStatus}
+                        </span>
+                      </div>
+                      <div className="text-[8px] text-muted-foreground/70"><span className="font-semibold">Current status:</span> {item.status}</div>
+                      <div className="text-[8px] text-muted-foreground/70"><span className="font-semibold">Required evidence:</span> {item.evidence}</div>
+                      <div className="text-[8px] text-primary/80"><span className="font-semibold">Next action:</span> {item.nextAction}</div>
+                      <div className="text-[8px] text-primary/70 border-l-2 border-primary/30 pl-2 italic">💭 {item.suggestedNote}</div>
+                    </div>
+                  ))}
+                {systemReviewResults.unresolvedItems.length > 10 && <div className="text-[8px] text-muted-foreground/50">+ {systemReviewResults.unresolvedItems.length - 10} more items</div>}
               </div>
             </div>
           )}
@@ -1305,8 +1370,8 @@ export default function ProductionReadinessChecklistPanel() {
       <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />
         <div>
-          <div className="font-semibold mb-1">Checklist is a readiness-tracking tool.</div>
-          <div>Operator reviews are persisted separately. Original checklist definitions are immutable. No commands are executed, rerun, or mutated. No governance is bypassed. No live execution is enabled by marking items complete.</div>
+          <div className="font-semibold mb-1">Checklist is audit-only.</div>
+          <div>Operator reviews are persisted to OpenClawProductionChecklistReview. Original checklist definitions remain immutable. No commands are executed, no credentials exposed, no live mode enabled, and no governance bypassed.</div>
         </div>
       </div>
     </div>
