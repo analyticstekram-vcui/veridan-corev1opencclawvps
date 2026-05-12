@@ -28,9 +28,11 @@ import LegacyExecutionReviewPanel from '@/components/openclaw/LegacyExecutionRev
 import RolePermissionMatrixPanel from '@/components/openclaw/RolePermissionMatrixPanel';
 import UserAccessReviewPanel from '@/components/openclaw/UserAccessReviewPanel';
 import SystemVerificationPanel from '@/components/openclaw/SystemVerificationPanel';
+import CommandAuditTrailPanel from '@/components/openclaw/CommandAuditTrailPanel';
 
 const TABS = [
   { id: 'system_verify', label: '✓ System Verify' },
+  { id: 'audit_trail', label: '🔐 Audit Trail' },
   { id: 'overview', label: '📊 Overview' },
   { id: 'status', label: 'Status' },
   { id: 'safe_bridge', label: '⚡ Safe Command Test' },
@@ -192,6 +194,10 @@ export default function OpenClawControl() {
 
         {activeView === 'system_verify' && (
           <div className="p-6"><SystemVerificationPanel /></div>
+        )}
+
+        {activeView === 'audit_trail' && (
+          <div className="p-6"><CommandAuditTrailPanel /></div>
         )}
 
         {activeView === 'overview' && (
