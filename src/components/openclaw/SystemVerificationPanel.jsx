@@ -327,6 +327,7 @@ export default function SystemVerificationPanel() {
    const [lastRunTime, setLastRunTime] = useState(null);
    const [snapshotHash, setSnapshotHash] = useState(null);
    const [hashCopied, setHashCopied] = useState(false);
+   const [snapshotHistory, setSnapshotHistory] = useState([]);
 
    const runVerification = async () => {
      setRunning(true);
@@ -757,7 +758,50 @@ export default function SystemVerificationPanel() {
 
   useEffect(() => {
     runVerification();
+    loadSnapshotHistory();
   }, []);
+
+  const loadSnapshotHistory = () => {
+    try {
+      const stored = localStorage.getItem('systemVerifySnapshotHistory');
+      if (stored) {
+        const history = JSON.parse(stored);
+        setSnapshotHistory(history);
+      }
+    } catch (err) {
+      console.error('Error loading snapshot history:', err);
+    }
+  };
+
+  const saveSnapshotToHistory = (hash) => {
+    try {
+      const metadata = {
+        hash,
+        readinessStatus: overallReadiness,
+        blockingIssueCount: prodBlockingFailed.length,
+        manualReviewItemCount: manualReviewItemCount,
+        failedTestCount: failedTests,
+        backendEnforcementPassed,
+        exportedAt: new Date().toISOString(),
+      };
+
+      const stored = localStorage.getItem('systemVerifySnapshotHistory') || '[]';
+      const history = JSON.parse(stored);
+      history.unshift(metadata); // Add to beginning
+      const trimmed = history.slice(0, 10); // Keep only latest 10
+      localStorage.setItem('systemVerifySnapshotHistory', JSON.stringify(trimmed));
+      setSnapshotHistory(trimmed);
+    } catch (err) {
+      console.error('Error saving snapshot to history:', err);
+    }
+  };
+
+  const clearSnapshotHistory = () => {
+    if (confirm('Clear all snapshot history from local storage?')) {
+      localStorage.removeItem('systemVerifySnapshotHistory');
+      setSnapshotHistory([]);
+    }
+  };
 
   const toggleExpanded = (checkId) => {
     setExpandedChecks(prev => ({
@@ -828,6 +872,7 @@ export default function SystemVerificationPanel() {
     URL.revokeObjectURL(url);
 
     setSnapshotHash(hash);
+    saveSnapshotToHistory(hash);
   };
 
   // Helper to determine fix type
@@ -1192,6 +1237,62 @@ export default function SystemVerificationPanel() {
             </button>
           </div>
           <div className="text-[8px] text-primary/70">Hash proves snapshot integrity. If hash changes after export, the file was modified.</div>
+        </div>
+      )}
+
+      {/* Verification Snapshot History */}
+      {snapshotHistory.length > 0 && (
+        <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-semibold text-foreground">Verification Snapshot History</div>
+            <button
+              type="button"
+              onClick={clearSnapshotHistory}
+              className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors font-semibold rounded"
+            >
+              Clear History
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-[9px]">
+              <thead className="border-b border-border/30">
+                <tr className="text-muted-foreground/60 uppercase tracking-widest">
+                  <th className="text-left px-3 py-2 font-semibold">Exported At</th>
+                  <th className="text-left px-3 py-2 font-semibold">Status</th>
+                  <th className="text-center px-3 py-2 font-semibold">Blocking</th>
+                  <th className="text-center px-3 py-2 font-semibold">Manual Review</th>
+                  <th className="text-center px-3 py-2 font-semibold">Failed Tests</th>
+                  <th className="text-center px-3 py-2 font-semibold">Backend</th>
+                  <th className="text-left px-3 py-2 font-semibold">Hash (first 16 chars)</th>
+                </tr>
+              </thead>
+              <tbody className="space-y-1">
+                {snapshotHistory.map((snapshot, idx) => {
+                  const statusColor = snapshot.readinessStatus === 'READY' ? 'text-primary' :
+                                     snapshot.readinessStatus === 'REVIEW REQUIRED' ? 'text-amber-500' :
+                                     'text-destructive';
+                  return (
+                    <tr key={idx} className="border-b border-border/20 hover:bg-secondary/20 transition-colors">
+                      <td className="px-3 py-2 text-foreground/80 font-mono">{new Date(snapshot.exportedAt).toLocaleString()}</td>
+                      <td className={`px-3 py-2 font-semibold ${statusColor}`}>{snapshot.readinessStatus}</td>
+                      <td className="px-3 py-2 text-center">{snapshot.blockingIssueCount}</td>
+                      <td className="px-3 py-2 text-center">{snapshot.manualReviewItemCount}</td>
+                      <td className="px-3 py-2 text-center">{snapshot.failedTestCount}</td>
+                      <td className={`px-3 py-2 text-center font-semibold ${snapshot.backendEnforcementPassed ? 'text-primary' : 'text-destructive'}`}>
+                        {snapshot.backendEnforcementPassed ? '✓' : '✗'}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-foreground/60">{snapshot.hash.substring(0, 16)}...</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="text-[8px] text-muted-foreground/60 border-t border-border/30 pt-2">
+            Latest 10 snapshots stored locally. Metadata only—no sensitive verification data. Clear history anytime to reset.
+          </div>
         </div>
       )}
 
