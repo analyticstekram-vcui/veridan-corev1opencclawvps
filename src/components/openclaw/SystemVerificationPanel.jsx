@@ -325,6 +325,8 @@ export default function SystemVerificationPanel() {
    const [running, setRunning] = useState(false);
    const [expandedChecks, setExpandedChecks] = useState({});
    const [lastRunTime, setLastRunTime] = useState(null);
+   const [snapshotHash, setSnapshotHash] = useState(null);
+   const [hashCopied, setHashCopied] = useState(false);
 
    const runVerification = async () => {
      setRunning(true);
@@ -764,7 +766,24 @@ export default function SystemVerificationPanel() {
     }));
   };
 
-  const exportVerificationSnapshot = () => {
+  const generateSHA256Hash = async (str) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  };
+
+  const copyHashToClipboard = () => {
+    if (snapshotHash) {
+      navigator.clipboard.writeText(snapshotHash);
+      setHashCopied(true);
+      setTimeout(() => setHashCopied(false), 2000);
+    }
+  };
+
+  const exportVerificationSnapshot = async () => {
     const snapshot = {
       exportedAt: new Date().toISOString(),
       lastVerifiedAt: lastRunTime,
@@ -790,7 +809,15 @@ export default function SystemVerificationPanel() {
     };
 
     const jsonStr = JSON.stringify(snapshot, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const hash = await generateSHA256Hash(jsonStr);
+    
+    const snapshotWithHash = {
+      ...snapshot,
+      snapshotHash: hash,
+    };
+
+    const finalJsonStr = JSON.stringify(snapshotWithHash, null, 2);
+    const blob = new Blob([finalJsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -799,6 +826,8 @@ export default function SystemVerificationPanel() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    setSnapshotHash(hash);
   };
 
   // Helper to determine fix type
@@ -1145,6 +1174,26 @@ export default function SystemVerificationPanel() {
           {lastRunTime && <div className="mt-0.5">Last run: {lastRunTime}</div>}
         </div>
       </div>
+
+      {/* Snapshot Hash Display */}
+      {snapshotHash && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+          <div className="text-[9px] uppercase tracking-widest text-primary/60 font-semibold">Snapshot Integrity Hash (SHA-256)</div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-[8px] font-mono bg-secondary/50 border border-border/30 px-2 py-1.5 rounded break-all text-foreground/80">
+              {snapshotHash}
+            </code>
+            <button
+              type="button"
+              onClick={copyHashToClipboard}
+              className="px-2 py-1.5 text-[8px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded whitespace-nowrap"
+            >
+              {hashCopied ? '✓ Copied' : 'Copy'}
+            </button>
+          </div>
+          <div className="text-[8px] text-primary/70">Hash proves snapshot integrity. If hash changes after export, the file was modified.</div>
+        </div>
+      )}
 
       {/* System Verify Logic Test Results */}
       <div className="border border-primary/20 bg-primary/5 rounded-lg p-4 space-y-3">
