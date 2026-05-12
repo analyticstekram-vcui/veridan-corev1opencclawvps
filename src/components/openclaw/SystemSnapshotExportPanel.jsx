@@ -268,7 +268,7 @@ export default function SystemSnapshotExportPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">System Snapshot / Export</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">System Snapshot / Export</div>
           <div className="text-[13px] font-semibold text-foreground">OpenClaw Control State Export</div>
         </div>
       </div>
@@ -285,7 +285,7 @@ export default function SystemSnapshotExportPanel() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Last Snapshot</div>
+              <div className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Last Snapshot</div>
               <div className="text-[10px] font-mono text-foreground mt-0.5">{format(new Date(snapshot.timestamp), 'HH:mm:ss')}</div>
             </div>
           </div>
@@ -293,19 +293,19 @@ export default function SystemSnapshotExportPanel() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[9px]">
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Commands</div>
+              <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Commands</div>
               <div className="text-[12px] font-semibold text-foreground">{snapshot.commandQueue.totalApproved}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Executed</div>
+              <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Executed</div>
               <div className="text-[12px] font-semibold text-primary">{snapshot.executedCommands.totalExecuted}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Workflows</div>
+              <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Workflows</div>
               <div className="text-[12px] font-semibold text-foreground">{snapshot.workflowSummary.totalWorkflows}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Connectors</div>
+              <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Connectors</div>
               <div className="text-[12px] font-semibold text-primary">{snapshot.connectorHealth.onlineReady}/{snapshot.connectorHealth.totalConnectors}</div>
             </div>
           </div>
@@ -351,7 +351,7 @@ export default function SystemSnapshotExportPanel() {
         <div className="space-y-2">
           <button
             onClick={() => setShowRawJson(!showRawJson)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors rounded"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] border border-border text-slate-400 hover:text-foreground hover:bg-secondary/50 transition-colors rounded font-semibold"
           >
             {showRawJson ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
             {showRawJson ? 'Hide' : 'Show'} Raw JSON
@@ -370,7 +370,7 @@ export default function SystemSnapshotExportPanel() {
       {/* Markdown preview */}
       {snapshot && (
         <div className="space-y-2">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold">Markdown Preview</div>
+          <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Markdown Preview</div>
           <div className="bg-secondary/20 border border-border rounded-lg p-4 text-[9px] text-foreground/80 whitespace-pre-wrap font-mono max-h-96 overflow-auto">
             {snapshotToMarkdown(snapshot)}
           </div>
@@ -378,11 +378,11 @@ export default function SystemSnapshotExportPanel() {
       )}
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Snapshot exports safe operational metadata only</div>
-          <div>Secrets, credentials, tokens, and sensitive keys are redacted. All exports mark execution as SIMULATED.</div>
+          <div className="font-semibold mb-1 text-foreground">Snapshot exports safe operational metadata only</div>
+          <div className="text-slate-400">Secrets, credentials, tokens, and sensitive keys are redacted. All exports mark execution as SIMULATED.</div>
         </div>
       </div>
     </div>

@@ -22,12 +22,12 @@ function LogLine({ entry }) {
       <span className={`shrink-0 w-[50px] text-[9px] uppercase tracking-widest font-semibold ${cfg.color}`}>
         {cfg.prefix}
       </span>
-      <span className="text-muted-foreground/50 shrink-0 w-[80px] truncate text-[10px]">{entry.source}</span>
+      <span className="text-slate-400 shrink-0 w-[80px] truncate text-[10px]">{entry.source}</span>
       <span className="flex-1 break-all">{entry.message}</span>
       {(entry.workflowId || entry.commandId || entry.nodeId) && (
         <span className="shrink-0 text-[9px] text-muted-foreground/30 hidden group-hover:inline">
           {[entry.workflowId && `wf:${entry.workflowId.slice(-6)}`, entry.commandId && `cmd:${entry.commandId.slice(-6)}`, entry.nodeId && `node:${entry.nodeId}`].filter(Boolean).join(' · ')}
-        </span>
+          </span>
       )}
     </div>
   );
@@ -40,7 +40,7 @@ function FilterBar({ filters, onChange, onClear, onExport, running, onToggle }) 
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/60 flex-wrap">
-      <span className="text-[9px] uppercase tracking-widest text-muted-foreground/40">Filters:</span>
+      <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Filters:</span>
       <input className={inputCls} placeholder="workflow ID" value={filters.workflowId || ''} onChange={e => set('workflowId', e.target.value.trim())} />
       <input className={inputCls} placeholder="command ID"  value={filters.commandId  || ''} onChange={e => set('commandId',  e.target.value.trim())} />
       <input className={inputCls} placeholder="node ID"     value={filters.nodeId     || ''} onChange={e => set('nodeId',     e.target.value.trim())} />
@@ -154,10 +154,10 @@ export default function LiveLogsPanel() {
       <div className="shrink-0 px-4 py-2.5 border-b border-border bg-card flex items-center gap-3">
         <Terminal className="w-4 h-4 text-primary" />
         <span className="text-[12px] font-semibold text-foreground">Live Logs</span>
-        <span className="text-[9px] uppercase tracking-widest text-muted-foreground/40">tail -f · {lineCount} lines received</span>
+        <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">tail -f · {lineCount} lines received</span>
         <div className="ml-auto flex items-center gap-2">
           <div className={`w-1.5 h-1.5 rounded-full ${running ? 'bg-primary animate-pulse' : 'bg-muted-foreground/30'}`} />
-          <span className="text-[9px] uppercase tracking-widest text-muted-foreground/50">{running ? 'STREAMING' : 'PAUSED'}</span>
+          <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">{running ? 'STREAMING' : 'PAUSED'}</span>
         </div>
       </div>
 
@@ -179,7 +179,7 @@ export default function LiveLogsPanel() {
         {visibleLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 gap-2 text-center">
             <Terminal className="w-6 h-6 text-muted-foreground/20" />
-            <span className="text-[11px] text-muted-foreground/40">Waiting for log entries…</span>
+            <span className="text-[11px] text-slate-400 font-semibold">Waiting for log entries…</span>
           </div>
         ) : (
           <>
@@ -191,14 +191,14 @@ export default function LiveLogsPanel() {
 
       {/* Bottom bar */}
       <div className="shrink-0 border-t border-border bg-card/60 px-3 py-1.5 flex items-center gap-3">
-        <span className="text-[9px] text-muted-foreground/40">{visibleLogs.length} lines shown</span>
+        <span className="text-[9px] text-slate-400 font-semibold">{visibleLogs.length} lines shown</span>
         {!autoScroll && (
           <button onClick={() => { setAutoScroll(true); bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
             className="flex items-center gap-1 text-[9px] text-primary hover:underline ml-auto">
             <ChevronDown className="w-3 h-3" /> Jump to bottom
           </button>
         )}
-        <span className="text-[9px] text-muted-foreground/30 ml-auto uppercase tracking-widest">
+        <span className="text-[9px] text-slate-400 ml-auto uppercase tracking-widest font-semibold">
           Polling every {POLL_MS / 1000}s · max 500 lines · SSE-ready
         </span>
       </div>

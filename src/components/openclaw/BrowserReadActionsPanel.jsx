@@ -75,10 +75,10 @@ function ActionCard({ action, result, loading, onRun, expandedId, onToggle }) {
         onClick={() => onToggle(action.id)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {isExpanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
+          {isExpanded ? <ChevronDown className="w-3 h-3 shrink-0 text-slate-400" /> : <ChevronRight className="w-3 h-3 shrink-0 text-slate-400" />}
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-foreground">{action.name}</div>
-            <div className="text-[8px] text-muted-foreground/50 mt-0.5 line-clamp-1">{action.description}</div>
+            <div className="text-[8px] text-slate-400 mt-0.5 line-clamp-1 font-semibold">{action.description}</div>
           </div>
         </div>
 
@@ -100,15 +100,15 @@ function ActionCard({ action, result, loading, onRun, expandedId, onToggle }) {
           {/* Action details */}
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Risk Tier</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Risk Tier</div>
               <div className="text-[9px] text-foreground font-semibold">{action.riskTier}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Mode</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Mode</div>
               <div className="text-[9px] text-primary font-semibold">SIMULATED</div>
             </div>
             <div className="col-span-2 bg-secondary/30 border border-border px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Expected Output</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Expected Output</div>
               <div className="text-[9px] text-foreground/80">{action.expectedOutput}</div>
             </div>
           </div>
@@ -116,7 +116,7 @@ function ActionCard({ action, result, loading, onRun, expandedId, onToggle }) {
           {/* Selector input if allowed */}
           {action.allowSelector && (
             <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-1">CSS Selector (optional)</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">CSS Selector (optional)</div>
               <input
                 type="text"
                 value={selector}
@@ -132,25 +132,25 @@ function ActionCard({ action, result, loading, onRun, expandedId, onToggle }) {
             <div className="space-y-2 border-t border-border/20 pt-3">
               <div className="grid grid-cols-3 gap-2 text-[9px]">
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Timestamp</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Timestamp</div>
                   <div className="text-foreground font-mono text-[8px]">{result.timestamp ? format(new Date(result.timestamp), 'HH:mm:ss') : '—'}</div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Status</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Status</div>
                   <div className={`font-semibold text-[8px] ${result.ok ? 'text-primary' : 'text-destructive'}`}>
                     {result.status}
                   </div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Trace ID</div>
-                  <div className="text-muted-foreground font-mono text-[8px] truncate">{result.traceId?.slice(0, 12)}...</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Trace ID</div>
+                  <div className="text-slate-400 font-mono text-[8px] truncate">{result.traceId?.slice(0, 12)}...</div>
                 </div>
               </div>
 
               {/* Result JSON */}
               {result.result && (
                 <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Result</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Result</div>
                   <pre className="text-[8px] text-foreground/70 overflow-x-auto font-mono bg-secondary/50 p-2 rounded">
                     {JSON.stringify(result.result, null, 2).slice(0, 400)}
                     {JSON.stringify(result.result, null, 2).length > 400 ? '\n...' : ''}
@@ -226,32 +226,32 @@ export default function BrowserReadActionsPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Browser Read Actions</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Browser Read Actions</div>
           <div className="text-[13px] font-semibold text-foreground">Read-Only Browser Inspection · Simulated Mode</div>
         </div>
-        <span className="text-[9px] text-muted-foreground/30">{filtered.length} of {summaryStats.total} shown</span>
+        <span className="text-[9px] text-slate-400 font-semibold">{filtered.length} of {summaryStats.total} shown</span>
       </div>
 
       {/* Summary counters */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Total</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Total</div>
           <div className="text-[14px] font-semibold text-foreground">{summaryStats.total}</div>
         </div>
         <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-          <div className="text-primary/60 uppercase tracking-wider mb-1 text-[8px]">Available</div>
+          <div className="text-primary uppercase tracking-wider mb-1 text-[8px] font-semibold">Available</div>
           <div className="text-[14px] font-semibold text-primary">{summaryStats.available}</div>
         </div>
         <div className="bg-blue-400/5 border border-blue-400/20 px-3 py-2 rounded">
-          <div className="text-blue-400/60 uppercase tracking-wider mb-1 text-[8px]">Simulated</div>
+          <div className="text-blue-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Simulated</div>
           <div className="text-[14px] font-semibold text-blue-400">{summaryStats.simulated}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">Blocked</div>
+          <div className="text-amber-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Blocked</div>
           <div className="text-[14px] font-semibold text-amber-500">{summaryStats.blocked}</div>
         </div>
         <div className="bg-green-500/5 border border-green-500/20 px-3 py-2 rounded">
-          <div className="text-green-500/60 uppercase tracking-wider mb-1 text-[8px]">Successful Runs</div>
+          <div className="text-green-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Successful Runs</div>
           <div className="text-[14px] font-semibold text-green-500">{summaryStats.successful}</div>
         </div>
       </div>
@@ -262,10 +262,10 @@ export default function BrowserReadActionsPanel() {
           <button
             key={opt}
             onClick={() => setFilter(opt)}
-            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors font-semibold ${
               filter === opt
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             {opt}
@@ -276,7 +276,7 @@ export default function BrowserReadActionsPanel() {
       {/* Action cards */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} actions found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} actions found</div>
         ) : (
           filtered.map(action => (
             <ActionCard
@@ -293,11 +293,11 @@ export default function BrowserReadActionsPanel() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <Eye className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <Eye className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Browser Read Actions are inspection-only</div>
-          <div>They do not modify browser state, enable live execution, or bypass governance. All reads are simulated with mock data in this phase.</div>
+          <div className="font-semibold mb-1 text-foreground">Browser Read Actions are inspection-only</div>
+          <div className="text-slate-400">They do not modify browser state, enable live execution, or bypass governance. All reads are simulated with mock data in this phase.</div>
         </div>
       </div>
     </div>

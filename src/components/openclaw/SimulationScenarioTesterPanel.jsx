@@ -121,10 +121,10 @@ function ScenarioCard({ scenario, status, onRun, loading }) {
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-slate-400" /> : <ChevronRight className="w-3 h-3 shrink-0 text-slate-400" />}
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-foreground">{scenario.name}</div>
-            <div className="text-[8px] text-muted-foreground/50 mt-0.5 line-clamp-1">{scenario.purpose}</div>
+            <div className="text-[8px] text-slate-400 mt-0.5 line-clamp-1 font-semibold">{scenario.purpose}</div>
           </div>
         </div>
 
@@ -144,25 +144,25 @@ function ScenarioCard({ scenario, status, onRun, loading }) {
           {/* Purpose and outcome */}
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Purpose</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Purpose</div>
               <div className="text-foreground/80 text-[9px]">{scenario.purpose}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Expected Outcome</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Expected Outcome</div>
               <div className="text-foreground/80 text-[9px]">{scenario.expectedOutcome}</div>
             </div>
           </div>
 
           {/* Involved panels */}
           <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Involved Panels/Functions</div>
+            <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Involved Panels/Functions</div>
             <div className="text-blue-400 text-[9px]">{scenario.involvedPanels}</div>
           </div>
 
           {/* Tags */}
           <div className="flex flex-wrap gap-1">
             {scenario.tags.map(tag => (
-              <span key={tag} className="text-[8px] px-1.5 py-0.5 border border-border/30 bg-secondary/50 text-muted-foreground rounded">
+              <span key={tag} className="text-[8px] px-1.5 py-0.5 border border-border/30 bg-secondary/50 text-slate-400 rounded font-semibold">
                 {tag}
               </span>
             ))}
@@ -173,25 +173,25 @@ function ScenarioCard({ scenario, status, onRun, loading }) {
             <div className="space-y-2 border-t border-border/20 pt-3">
               <div className="grid grid-cols-3 gap-2 text-[9px]">
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Last Run</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Last Run</div>
                   <div className="text-foreground font-mono text-[8px]">{status.timestamp ? format(new Date(status.timestamp), 'HH:mm:ss') : '—'}</div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Result</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Result</div>
                   <div className={`font-semibold text-[8px] ${status.pass ? 'text-primary' : status.status === 'WARNING' ? 'text-amber-500' : 'text-destructive'}`}>
                     {status.pass ? 'PASS' : status.status === 'WARNING' ? 'WARNING' : 'FAIL'}
                   </div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Trace ID</div>
-                  <div className="text-muted-foreground font-mono text-[8px] truncate">{status.traceId?.slice(0, 12)}...</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Trace ID</div>
+                  <div className="text-slate-400 font-mono text-[8px] truncate">{status.traceId?.slice(0, 12)}...</div>
                 </div>
               </div>
 
               {/* Result JSON */}
               {status.resultJson && (
                 <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Result JSON</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Result JSON</div>
                   <pre className="text-[8px] text-foreground/70 overflow-x-auto font-mono bg-secondary/50 p-2 rounded">
                     {JSON.stringify(status.resultJson, null, 2).slice(0, 500)}...
                   </pre>
@@ -373,33 +373,33 @@ export default function SimulationScenarioTesterPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Simulation Scenario Tester</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Simulation Scenario Tester</div>
           <div className="text-[13px] font-semibold text-foreground">Safe Governance & Readiness Testing</div>
         </div>
-        <span className="text-[9px] text-muted-foreground/30">{filtered.length} of {summaryStats.total} shown</span>
+        <span className="text-[9px] text-slate-400 font-semibold">{filtered.length} of {summaryStats.total} shown</span>
       </div>
 
       {/* Summary counters */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Total</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Total</div>
           <div className="text-[14px] font-semibold text-foreground">{summaryStats.total}</div>
         </div>
         <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-          <div className="text-primary/60 uppercase tracking-wider mb-1 text-[8px]">Passing</div>
+          <div className="text-primary uppercase tracking-wider mb-1 text-[8px] font-semibold">Passing</div>
           <div className="text-[14px] font-semibold text-primary">{summaryStats.passing}</div>
         </div>
         <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-          <div className="text-destructive/60 uppercase tracking-wider mb-1 text-[8px]">Failing</div>
+          <div className="text-destructive uppercase tracking-wider mb-1 text-[8px] font-semibold">Failing</div>
           <div className="text-[14px] font-semibold text-destructive">{summaryStats.failing}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">Warnings</div>
+          <div className="text-amber-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Warnings</div>
           <div className="text-[14px] font-semibold text-amber-500">{summaryStats.warning}</div>
         </div>
         <div className="bg-muted/5 border border-muted/20 px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Not Run</div>
-          <div className="text-[14px] font-semibold text-muted-foreground">{summaryStats.notRun}</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Not Run</div>
+          <div className="text-[14px] font-semibold text-slate-300">{summaryStats.notRun}</div>
         </div>
       </div>
 
@@ -409,10 +409,10 @@ export default function SimulationScenarioTesterPanel() {
           <button
             key={opt}
             onClick={() => setFilter(opt)}
-            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors font-semibold ${
               filter === opt
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             {opt}
@@ -423,7 +423,7 @@ export default function SimulationScenarioTesterPanel() {
       {/* Scenarios list */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} scenarios found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} scenarios found</div>
         ) : (
           filtered.map(scenario => (
             <ScenarioCard
@@ -438,11 +438,11 @@ export default function SimulationScenarioTesterPanel() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Simulations are safe testing only</div>
-          <div>Simulations do not grant permissions, enable live mode, or execute mutation commands. All simulation execution is SIMULATED mode.</div>
+          <div className="font-semibold mb-1 text-foreground">Simulations are safe testing only</div>
+          <div className="text-slate-400">Simulations do not grant permissions, enable live mode, or execute mutation commands. All simulation execution is SIMULATED mode.</div>
         </div>
       </div>
     </div>

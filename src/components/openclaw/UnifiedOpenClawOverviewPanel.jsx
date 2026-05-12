@@ -45,15 +45,15 @@ function ModuleCard({ module, status = 'unknown', metric = '—', timestamp = nu
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-slate-400" /> : <ChevronRight className="w-3 h-3 shrink-0 text-slate-400" />}
           <div className="flex-1 min-w-0">
             <div className="text-[10px] font-semibold text-foreground">{module.icon} {module.name}</div>
-            <div className="text-[8px] text-muted-foreground/50 mt-0.5 line-clamp-1">{module.description}</div>
+            <div className="text-[8px] text-slate-400 mt-0.5 line-clamp-1 font-semibold">{module.description}</div>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[8px] text-muted-foreground/70 font-mono">{metric}</span>
+          <span className="text-[8px] text-slate-400 font-mono font-semibold">{metric}</span>
           <span className={`text-[8px] px-1.5 py-0.5 border rounded font-semibold whitespace-nowrap ${cfg.bg} ${cfg.color}`}>
             {cfg.label}
           </span>
@@ -64,13 +64,13 @@ function ModuleCard({ module, status = 'unknown', metric = '—', timestamp = nu
         <div className="border-t border-border/30 bg-secondary/5 px-3 py-2.5 space-y-1.5 text-[9px]">
           {timestamp && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground/50">Last Updated</span>
+              <span className="text-slate-400 font-semibold">Last Updated</span>
               <span className="text-foreground font-mono">{format(new Date(timestamp), 'HH:mm:ss')}</span>
             </div>
           )}
           {evidence && (
             <div className="flex flex-col gap-0.5">
-              <span className="text-muted-foreground/50">Evidence</span>
+              <span className="text-slate-400 font-semibold">Evidence</span>
               <div className="bg-secondary/30 border border-border/50 px-2 py-1 rounded text-[8px] text-foreground/70 font-mono line-clamp-2">
                 {evidence}
               </div>
@@ -178,33 +178,33 @@ export default function UnifiedOpenClawOverviewPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">OpenClaw Control</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">OpenClaw Control</div>
           <div className="text-[13px] font-semibold text-foreground">Unified Overview Dashboard</div>
         </div>
-        <div className="text-[9px] text-muted-foreground/30">{loading ? 'Syncing...' : 'Ready'}</div>
+        <div className="text-[9px] text-slate-400 font-semibold">{loading ? 'Syncing...' : 'Ready'}</div>
       </div>
 
       {/* Top status cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-[10px]">
         <div className={`border px-3 py-2.5 rounded ${systemHealthy ? 'bg-primary/5 border-primary/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
-          <div className={`${systemHealthy ? 'text-primary/60' : 'text-amber-500/60'} uppercase tracking-wider mb-1 text-[8px]`}>Overall Status</div>
+          <div className={`${systemHealthy ? 'text-primary' : 'text-amber-500'} uppercase tracking-wider mb-1 text-[8px] font-semibold`}>Overall Status</div>
           <div className={`text-[12px] font-semibold ${systemHealthy ? 'text-primary' : 'text-amber-500'}`}>
             {loading ? 'LOADING' : systemHealthy ? 'HEALTHY' : 'CAUTION'}
           </div>
         </div>
 
         <div className="bg-blue-400/5 border border-blue-400/20 px-3 py-2.5 rounded">
-          <div className="text-blue-400/60 uppercase tracking-wider mb-1 text-[8px]">Execution Mode</div>
+          <div className="text-blue-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Execution Mode</div>
           <div className="text-[12px] font-semibold text-blue-400">{status?.mode || 'SIMULATED'}</div>
         </div>
 
         <div className="bg-secondary/20 border border-border px-3 py-2.5 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Production Ready</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Production Ready</div>
           <div className="text-[12px] font-semibold text-foreground">NOT READY</div>
         </div>
 
         <div className="bg-orange-500/5 border border-orange-500/20 px-3 py-2.5 rounded">
-          <div className="text-orange-500/60 uppercase tracking-wider mb-1 text-[8px]">Risk Posture</div>
+          <div className="text-orange-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Risk Posture</div>
           <div className="text-[12px] font-semibold text-orange-500">{counters.critical > 0 ? 'CRITICAL' : counters.highRisk > 0 ? 'HIGH' : 'NORMAL'}</div>
         </div>
       </div>
@@ -232,23 +232,23 @@ export default function UnifiedOpenClawOverviewPanel() {
       {/* Summary counters */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Total Commands</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Total Commands</div>
           <div className="text-[13px] font-semibold text-foreground">{counters.totalCommands}</div>
         </div>
         <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-          <div className="text-primary/60 uppercase tracking-wider mb-1 text-[8px]">Approved</div>
+          <div className="text-primary uppercase tracking-wider mb-1 text-[8px] font-semibold">Approved</div>
           <div className="text-[13px] font-semibold text-primary">{counters.approved}</div>
         </div>
         <div className="bg-green-500/5 border border-green-500/20 px-3 py-2 rounded">
-          <div className="text-green-500/60 uppercase tracking-wider mb-1 text-[8px]">Executed</div>
+          <div className="text-green-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Executed</div>
           <div className="text-[13px] font-semibold text-green-500">{counters.executed}</div>
         </div>
         <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-          <div className="text-destructive/60 uppercase tracking-wider mb-1 text-[8px]">Blocked</div>
+          <div className="text-destructive uppercase tracking-wider mb-1 text-[8px] font-semibold">Blocked</div>
           <div className="text-[13px] font-semibold text-destructive">{counters.blocked}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">Pending Workflows</div>
+          <div className="text-amber-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Pending Workflows</div>
           <div className="text-[13px] font-semibold text-amber-500">{counters.activeWorkflows}</div>
         </div>
       </div>
@@ -318,7 +318,7 @@ export default function UnifiedOpenClawOverviewPanel() {
             {expandedJson ? <ChevronDown className="w-3 h-3 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
             <span className="text-[10px] font-semibold text-foreground">Raw Overview State (JSON)</span>
           </div>
-          <span className="text-[8px] text-muted-foreground/50">Collapsible</span>
+          <span className="text-[8px] text-slate-400 font-semibold">Collapsible</span>
         </div>
         {expandedJson && (
           <div className="border-t border-border/30 bg-secondary/5 px-3 py-2.5">
@@ -330,11 +330,11 @@ export default function UnifiedOpenClawOverviewPanel() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <Eye className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <Eye className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Overview Dashboard is read-only</div>
-          <div>It summarizes all OpenClaw Control panels. Navigate to specific panels to approve commands, run tests, or manage system state. No governance bypass · No unsafe actions.</div>
+          <div className="font-semibold mb-1 text-foreground">Overview Dashboard is read-only</div>
+          <div className="text-slate-400">It summarizes all OpenClaw Control panels. Navigate to specific panels to approve commands, run tests, or manage system state. No governance bypass · No unsafe actions.</div>
         </div>
       </div>
     </div>

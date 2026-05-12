@@ -69,7 +69,7 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">OpenClaw Telemetry</div>
+          <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">OpenClaw Telemetry</div>
           <div className="flex items-center gap-2">
             <Radio className="w-3.5 h-3.5 text-primary animate-pulse" />
             <span className="text-[12px] font-semibold text-foreground">
@@ -79,7 +79,7 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
         </div>
         <div className="flex items-center gap-3">
           {lastRefresh && (
-            <span className="text-[10px] text-muted-foreground/40">
+            <span className="text-[10px] text-slate-400 font-semibold">
               Updated {lastRefresh.toLocaleTimeString()}
             </span>
           )}
@@ -111,7 +111,7 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
           { label: 'Requests/bucket (1m)', metric: 'count', window: '1m' },
         ].map(({ label, metric, window: w }) => (
           <div key={label} className="bg-card border border-border p-3">
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-2">{label}</div>
+            <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">{label}</div>
             <TelemetrySparkline recentEvents={snapshot?.recentEvents} window={w} metric={metric} />
           </div>
         ))}
@@ -119,13 +119,13 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
 
       {/* 1m / 5m / 15m metric table */}
       <div className="bg-card border border-border">
-        <div className="px-4 py-2 border-b border-border text-[9px] uppercase tracking-widest text-muted-foreground/50">Rolling Window Metrics</div>
+        <div className="px-4 py-2 border-b border-border text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Rolling Window Metrics</div>
         <div className="overflow-auto">
           <table className="w-full text-[11px] font-mono">
             <thead>
               <tr className="border-b border-border/50">
                 {['Window', 'Requests', 'Success Rate', 'Avg Latency', 'Error Rate'].map(h => (
-                  <th key={h} className="px-4 py-2 text-left text-[9px] uppercase tracking-widest text-muted-foreground/50 font-normal">{h}</th>
+                  <th key={h} className="px-4 py-2 text-left text-[9px] uppercase tracking-widest text-slate-400 font-semibold">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -134,7 +134,7 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
                 const m = metrics[w] || {};
                 return (
                   <tr key={w} className="border-b border-border/30 hover:bg-secondary/20 transition-colors">
-                    <td className="px-4 py-2 text-muted-foreground">{w}</td>
+                    <td className="px-4 py-2 text-slate-400 font-semibold">{w}</td>
                     <td className="px-4 py-2 text-foreground">{m.requestCount ?? '—'}</td>
                     <td className={`px-4 py-2 font-semibold ${(m.successRate ?? 1) >= 0.8 ? 'text-primary' : 'text-destructive'}`}>
                       {m.successRate != null ? `${(m.successRate * 100).toFixed(1)}%` : '—'}
@@ -142,7 +142,7 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
                     <td className={`px-4 py-2 ${(m.avgLatency ?? 0) > 400 ? 'text-amber-500' : 'text-foreground'}`}>
                       {m.avgLatency != null ? `${m.avgLatency}ms` : '—'}
                     </td>
-                    <td className={`px-4 py-2 ${(m.errorRate ?? 0) > 0.2 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    <td className={`px-4 py-2 ${(m.errorRate ?? 0) > 0.2 ? 'text-destructive' : 'text-slate-400'}`}>
                       {m.errorRate != null ? `${(m.errorRate * 100).toFixed(1)}%` : '—'}
                     </td>
                   </tr>
@@ -155,11 +155,11 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
 
       {/* Live Stream */}
       <div>
-        <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-2">Live Event Stream</div>
+        <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Live Event Stream</div>
         <TelemetryLiveStream events={events} />
       </div>
 
-      <div className="text-[9px] text-muted-foreground/30 text-center uppercase tracking-widest">
+      <div className="text-[9px] text-slate-400 text-center uppercase tracking-widest font-semibold">
         Telemetry is read-only · No control actions · Polling every {POLL_MS / 1000}s
       </div>
     </div>

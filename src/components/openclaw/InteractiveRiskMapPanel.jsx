@@ -69,10 +69,10 @@ function HighRiskCommandRow({ command, expanded, onToggle }) {
         onClick={() => onToggle(command.id)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-slate-400" /> : <ChevronRight className="w-3 h-3 shrink-0 text-slate-400" />}
           <div className="flex-1 min-w-0">
             <div className="text-[10px] font-semibold text-foreground truncate">{command.commandType || 'Unknown'}</div>
-            <div className="text-[8px] text-muted-foreground/50 mt-0.5">{command.id}</div>
+            <div className="text-[8px] text-slate-400 mt-0.5 font-semibold">{command.id}</div>
           </div>
         </div>
 
@@ -90,19 +90,19 @@ function HighRiskCommandRow({ command, expanded, onToggle }) {
         <div className="border-t border-border/30 bg-secondary/5 px-4 py-2.5 space-y-2 text-[9px]">
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[7px] uppercase tracking-widest text-muted-foreground/50 mb-1">Created</div>
+              <div className="text-[7px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Created</div>
               <div className="text-[8px] text-foreground font-mono">{command.created_date ? format(new Date(command.created_date), 'HH:mm:ss') : '—'}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[7px] uppercase tracking-widest text-muted-foreground/50 mb-1">Requested By</div>
+              <div className="text-[7px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Requested By</div>
               <div className="text-[8px] text-foreground truncate">{command.requestedBy || '—'}</div>
             </div>
             <div className="col-span-2 bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[7px] uppercase tracking-widest text-muted-foreground/50 mb-1">Target URL</div>
+              <div className="text-[7px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Target URL</div>
               <div className="text-[8px] text-blue-400 font-mono truncate">{command.targetUrl || '—'}</div>
             </div>
             <div className="col-span-2 bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[7px] uppercase tracking-widest text-muted-foreground/50 mb-1">Status</div>
+              <div className="text-[7px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Status</div>
               <div className="text-[8px] text-foreground font-semibold capitalize">{command.status}</div>
             </div>
           </div>
@@ -174,7 +174,7 @@ export default function InteractiveRiskMapPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Interactive Risk Map</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Interactive Risk Map</div>
           <div className="text-[13px] font-semibold text-foreground">Command Risk Distribution & Analysis</div>
         </div>
       </div>
@@ -182,19 +182,19 @@ export default function InteractiveRiskMapPanel() {
       {/* Risk summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Total Commands</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Total Commands</div>
           <div className="text-[14px] font-semibold text-foreground">{summaryStats.total}</div>
         </div>
         <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-          <div className="text-destructive/60 uppercase tracking-wider mb-1 text-[8px]">Critical</div>
+          <div className="text-destructive uppercase tracking-wider mb-1 text-[8px] font-semibold">Critical</div>
           <div className="text-[14px] font-semibold text-destructive">{summaryStats.critical}</div>
         </div>
         <div className="bg-orange-500/5 border border-orange-500/20 px-3 py-2 rounded">
-          <div className="text-orange-500/60 uppercase tracking-wider mb-1 text-[8px]">High Risk</div>
+          <div className="text-orange-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">High Risk</div>
           <div className="text-[14px] font-semibold text-orange-500">{summaryStats.high}</div>
         </div>
         <div className="bg-blue-400/5 border border-blue-400/20 px-3 py-2 rounded">
-          <div className="text-blue-400/60 uppercase tracking-wider mb-1 text-[8px]">Pending</div>
+          <div className="text-blue-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Pending</div>
           <div className="text-[14px] font-semibold text-blue-400">{summaryStats.pending}</div>
         </div>
       </div>
@@ -203,7 +203,7 @@ export default function InteractiveRiskMapPanel() {
       {loading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-4 h-4 text-primary animate-spin mr-2" />
-          <span className="text-[10px] text-muted-foreground">Loading commands...</span>
+          <span className="text-[10px] text-slate-400 font-semibold">Loading commands...</span>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -219,20 +219,20 @@ export default function InteractiveRiskMapPanel() {
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             <div className="text-[11px] font-semibold text-foreground">High-Risk Commands for Review</div>
           </div>
-          <span className="text-[9px] text-muted-foreground/30">{filteredCommands.length} commands</span>
+          <span className="text-[9px] text-slate-400 font-semibold">{filteredCommands.length} commands</span>
         </div>
 
         {/* Risk filter */}
         <div className="flex items-center gap-1.5">
           {['ALL', 'CRITICAL', 'HIGH'].map(opt => (
-            <button
-              key={opt}
-              onClick={() => setRiskFilter(opt)}
-              className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors ${
-                riskFilter === opt
-                  ? 'border-primary text-primary bg-primary/10'
-                  : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-              }`}
+              <button
+                key={opt}
+                onClick={() => setRiskFilter(opt)}
+                className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors font-semibold ${
+                  riskFilter === opt
+                    ? 'border-primary text-primary bg-primary/10'
+                    : 'border-border text-slate-400 hover:text-foreground hover:bg-secondary/50'
+                }`}
             >
               {opt}
             </button>
@@ -242,7 +242,7 @@ export default function InteractiveRiskMapPanel() {
         {/* Command list */}
         <div className="space-y-2">
           {filteredCommands.length === 0 ? (
-            <div className="px-4 py-6 text-center text-[10px] text-muted-foreground/40">
+            <div className="px-4 py-6 text-center text-[10px] text-slate-400 font-semibold">
               {loading ? 'Loading...' : 'No high-risk commands found'}
             </div>
           ) : (
@@ -259,11 +259,11 @@ export default function InteractiveRiskMapPanel() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <TrendingUp className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <TrendingUp className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Risk Map is read-only. It visualizes pending command risk distribution.</div>
-          <div>Use the Command Queue panel to approve or deny high-risk commands. Drill down to review command details before approval.</div>
+          <div className="font-semibold mb-1 text-foreground">Risk Map is read-only. It visualizes pending command risk distribution.</div>
+          <div className="text-slate-400">Use the Command Queue panel to approve or deny high-risk commands. Drill down to review command details before approval.</div>
         </div>
       </div>
     </div>

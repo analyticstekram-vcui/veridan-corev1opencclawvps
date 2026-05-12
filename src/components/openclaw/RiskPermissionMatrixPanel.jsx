@@ -306,10 +306,10 @@ function ActionRow({ action }) {
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-slate-400" /> : <ChevronRight className="w-3 h-3 shrink-0 text-slate-400" />}
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold font-mono text-foreground">{action.name}</div>
-            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mt-0.5">{action.category}</div>
+            <div className="text-[8px] uppercase tracking-widest text-slate-400 mt-0.5 font-semibold">{action.category}</div>
           </div>
         </div>
 
@@ -329,23 +329,23 @@ function ActionRow({ action }) {
           {/* Mode support grid */}
           <div className="grid grid-cols-4 gap-2 text-[9px]">
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Simulated</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Simulated</div>
               <div className={`font-semibold ${action.allowedSimulated ? 'text-primary' : 'text-destructive'}`}>
                 {action.allowedSimulated ? 'YES' : 'NO'}
               </div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Read-Only</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Read-Only</div>
               <div className={`font-semibold ${action.allowedReadOnly ? 'text-blue-400' : 'text-destructive'}`}>
                 {action.allowedReadOnly ? 'YES' : 'NO'}
               </div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Live</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Live</div>
               <div className="text-destructive font-semibold">NO</div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Approval</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Approval</div>
               <div className={`font-semibold ${action.approvalRequired ? 'text-amber-500' : 'text-primary'}`}>
                 {action.approvalRequired ? 'YES' : 'NO'}
               </div>
@@ -355,15 +355,15 @@ function ActionRow({ action }) {
           {/* Reason and related policy */}
           <div className="space-y-2">
             <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Reason</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Reason</div>
               <div className="text-foreground/80">{action.reason}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Related Policy</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Related Policy</div>
               <div className="text-blue-400 text-[9px]">{action.relatedPolicy}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Safe Execution Notes</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Safe Execution Notes</div>
               <div className="text-foreground/80 text-[9px]">{action.notes}</div>
             </div>
           </div>
@@ -409,36 +409,36 @@ export default function RiskPermissionMatrixPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Risk & Permission Matrix</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Risk & Permission Matrix</div>
           <div className="text-[13px] font-semibold text-foreground">Action Permissions by Risk Tier & Execution Mode</div>
         </div>
-        <span className="text-[9px] text-muted-foreground/30">{filtered.length} of {summaryStats.total} shown</span>
+        <span className="text-[9px] text-slate-400 font-semibold">{filtered.length} of {summaryStats.total} shown</span>
       </div>
 
       {/* Summary counters */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Total</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Total</div>
           <div className="text-[14px] font-semibold text-foreground">{summaryStats.total}</div>
         </div>
         <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-          <div className="text-primary/60 uppercase tracking-wider mb-1 text-[8px]">Allowed</div>
+          <div className="text-primary uppercase tracking-wider mb-1 text-[8px] font-semibold">Allowed</div>
           <div className="text-[14px] font-semibold text-primary">{summaryStats.allowed}</div>
         </div>
         <div className="bg-blue-500/5 border border-blue-500/20 px-3 py-2 rounded">
-          <div className="text-blue-400/60 uppercase tracking-wider mb-1 text-[8px]">Read-Only Only</div>
+          <div className="text-blue-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Read-Only Only</div>
           <div className="text-[14px] font-semibold text-blue-400">{summaryStats.readOnlyOnly}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">Simulated Only</div>
+          <div className="text-amber-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Simulated Only</div>
           <div className="text-[14px] font-semibold text-amber-500">{summaryStats.simulatedOnly}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">Blocked</div>
+          <div className="text-amber-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Blocked</div>
           <div className="text-[14px] font-semibold text-amber-500">{summaryStats.blocked}</div>
         </div>
         <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-          <div className="text-destructive/60 uppercase tracking-wider mb-1 text-[8px]">Forbidden</div>
+          <div className="text-destructive uppercase tracking-wider mb-1 text-[8px] font-semibold">Forbidden</div>
           <div className="text-[14px] font-semibold text-destructive">{summaryStats.forbidden}</div>
         </div>
       </div>
@@ -449,10 +449,10 @@ export default function RiskPermissionMatrixPanel() {
           <button
             key={opt}
             onClick={() => setFilter(opt)}
-            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors font-semibold ${
               filter === opt
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             {opt}
@@ -463,18 +463,18 @@ export default function RiskPermissionMatrixPanel() {
       {/* Actions list */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} actions found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} actions found</div>
         ) : (
           filtered.map(action => <ActionRow key={action.id} action={action} />)
         )}
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <Zap className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <Zap className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Risk Matrix is read-only</div>
-          <div>It describes permissions only; it does not grant permissions or execute commands. LIVE mode is globally disabled.</div>
+          <div className="font-semibold mb-1 text-foreground">Risk Matrix is read-only</div>
+          <div className="text-slate-400">It describes permissions only; it does not grant permissions or execute commands. LIVE mode is globally disabled.</div>
         </div>
       </div>
     </div>

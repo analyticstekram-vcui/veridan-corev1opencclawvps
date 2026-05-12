@@ -44,16 +44,16 @@ function AddNodeForm({ onAdded, onCancel }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Node ID<span className="text-destructive">*</span></label>
+          <label className="text-[9px] uppercase tracking-widest text-slate-400 block mb-1 font-semibold">Node ID<span className="text-destructive">*</span></label>
           <input className={inputCls} value={form.nodeId} onChange={e => set('nodeId', e.target.value)} placeholder="node-us-east-1" />
         </div>
         <div>
-          <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">URL<span className="text-destructive">*</span></label>
+          <label className="text-[9px] uppercase tracking-widest text-slate-400 block mb-1 font-semibold">URL<span className="text-destructive">*</span></label>
           <input className={inputCls} value={form.url} onChange={e => set('url', e.target.value)} placeholder="https://node.example.com" />
         </div>
       </div>
       <div>
-        <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Capabilities</label>
+        <label className="text-[9px] uppercase tracking-widest text-slate-400 block mb-1 font-semibold">Capabilities</label>
         <div className="flex flex-wrap gap-1.5">
           {CAP_IDS.map(c => (
             <button key={c} type="button" onClick={() => toggleCap(c)}
@@ -64,7 +64,7 @@ function AddNodeForm({ onAdded, onCancel }) {
         </div>
       </div>
       <div>
-        <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Scopes</label>
+        <label className="text-[9px] uppercase tracking-widest text-slate-400 block mb-1 font-semibold">Scopes</label>
         <div className="flex gap-2">
           {SCOPE_OPTIONS.map(s => (
             <button key={s} type="button" onClick={() => toggleScope(s)}
@@ -75,7 +75,7 @@ function AddNodeForm({ onAdded, onCancel }) {
         </div>
       </div>
       <div>
-        <label className="text-[9px] uppercase tracking-widest text-muted-foreground/50 block mb-1">Notes</label>
+        <label className="text-[9px] uppercase tracking-widest text-slate-400 block mb-1 font-semibold">Notes</label>
         <input className={inputCls} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional description" />
       </div>
       {error && <div className="text-[11px] text-destructive flex items-center gap-1.5"><AlertTriangle className="w-3 h-3" />{error}</div>}
@@ -103,7 +103,7 @@ function NodeCard({ node, onHealthCheck, onRemove, checking }) {
             <span className="text-[12px] font-semibold text-foreground">{node.nodeId}</span>
             <span className={`px-1.5 py-0.5 border text-[9px] uppercase tracking-wider ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
           </div>
-          <div className="text-[10px] text-muted-foreground/50 truncate mt-0.5">{node.url}</div>
+          <div className="text-[10px] text-slate-400 truncate mt-0.5 font-semibold">{node.url}</div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <button onClick={() => onHealthCheck(node)} disabled={checking}
@@ -125,7 +125,7 @@ function NodeCard({ node, onHealthCheck, onRemove, checking }) {
           { label: 'Last Check', value: node.lastHealthCheck ? new Date(node.lastHealthCheck).toLocaleTimeString() : '—', alert: false },
         ].map(({ label, value, alert }) => (
           <div key={label} className="px-3 py-2">
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">{label}</div>
+            <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">{label}</div>
             <div className={`text-[11px] font-semibold ${alert ? 'text-amber-500' : 'text-foreground'}`}>{value}</div>
           </div>
         ))}
@@ -134,24 +134,24 @@ function NodeCard({ node, onHealthCheck, onRemove, checking }) {
       {/* Capabilities + Scopes */}
       <div className="px-4 py-2.5 flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[9px] uppercase tracking-widest text-muted-foreground/40">Caps:</span>
+          <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Caps:</span>
           {(node.capabilities || []).length === 0
-            ? <span className="text-[9px] text-muted-foreground/30">none</span>
-            : (node.capabilities || []).map(c => (
-                <code key={c} className="text-[9px] px-1.5 py-0.5 bg-secondary/50 border border-border text-muted-foreground">{c}</code>
+            ? <span className="text-[9px] text-slate-400 font-semibold">none</span>
+              : (node.capabilities || []).map(c => (
+                  <code key={c} className="text-[9px] px-1.5 py-0.5 bg-secondary/50 border border-border text-slate-300">{c}</code>
               ))
           }
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[9px] uppercase tracking-widest text-muted-foreground/40">Scopes:</span>
+          <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Scopes:</span>
           {(node.scopes || []).length === 0
-            ? <span className="text-[9px] text-muted-foreground/30">none</span>
+            ? <span className="text-[9px] text-slate-400 font-semibold">none</span>
             : (node.scopes || []).map(s => (
                 <span key={s} className="text-[9px] px-1.5 py-0.5 border border-border text-accent">{s}</span>
               ))
           }
         </div>
-        {node.notes && <span className="text-[9px] text-muted-foreground/40 italic">{node.notes}</span>}
+        {node.notes && <span className="text-[9px] text-slate-400 italic">{node.notes}</span>}
       </div>
     </div>
   );
@@ -205,7 +205,7 @@ export default function NodeRegistryPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">OpenClaw Node Registry</div>
+          <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">OpenClaw Node Registry</div>
           <div className="flex items-center gap-2">
             <Server className="w-3.5 h-3.5 text-primary" />
             <span className="text-[12px] font-semibold text-foreground">{nodes.length} node{nodes.length !== 1 ? 's' : ''} registered</span>
@@ -235,7 +235,7 @@ export default function NodeRegistryPanel() {
               <div key={k} className={`flex items-center gap-2 px-3 py-2 border ${cfg.bg}`}>
                 <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                 <span className={`text-[10px] font-semibold ${cfg.color}`}>{count}</span>
-                <span className="text-[9px] uppercase tracking-widest text-muted-foreground/50">{k}</span>
+                <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">{k}</span>
               </div>
             );
           })}
@@ -251,7 +251,7 @@ export default function NodeRegistryPanel() {
       ) : nodes.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-40 gap-3 border border-border bg-card">
           <Server className="w-8 h-8 text-muted-foreground/20" />
-          <div className="text-[11px] text-muted-foreground/40">No nodes registered. Add a node to begin routing.</div>
+          <div className="text-[11px] text-slate-400 font-semibold">No nodes registered. Add a node to begin routing.</div>
         </div>
       ) : (
         <div className="space-y-3">
@@ -267,7 +267,7 @@ export default function NodeRegistryPanel() {
         </div>
       )}
 
-      <div className="text-[9px] text-muted-foreground/30 text-center uppercase tracking-widest">
+      <div className="text-[9px] text-slate-400 text-center uppercase tracking-widest font-semibold">
         Routing: capability match → node health → latency · Events: OPENCLAW_NODE_ADDED · OPENCLAW_NODE_HEALTH_CHANGED
       </div>
     </div>

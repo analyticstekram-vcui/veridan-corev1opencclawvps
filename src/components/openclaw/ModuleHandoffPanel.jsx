@@ -362,10 +362,10 @@ function ModuleCard({ handoff, onToggle, expanded }) {
         onClick={() => onToggle(handoff.id)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-slate-400" /> : <ChevronRight className="w-3 h-3 shrink-0 text-slate-400" />}
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-foreground">{handoff.moduleName}</div>
-            <div className="text-[8px] text-muted-foreground/50 mt-0.5 line-clamp-1">{handoff.description}</div>
+            <div className="text-[8px] text-slate-400 mt-0.5 line-clamp-1 font-semibold">{handoff.description}</div>
           </div>
         </div>
 
@@ -495,33 +495,33 @@ export default function ModuleHandoffPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Module Handoff Status</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Module Handoff Status</div>
           <div className="text-[13px] font-semibold text-foreground">Integration Roadmap · Veridan Core Modules</div>
         </div>
-        <span className="text-[9px] text-muted-foreground/30">{filtered.length} of {summaryStats.total} shown</span>
+        <span className="text-[9px] text-slate-400 font-semibold">{filtered.length} of {summaryStats.total} shown</span>
       </div>
 
       {/* Summary counters */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Total</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Total</div>
           <div className="text-[14px] font-semibold text-foreground">{summaryStats.total}</div>
         </div>
         <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-          <div className="text-primary/60 uppercase tracking-wider mb-1 text-[8px]">Ready</div>
+          <div className="text-primary uppercase tracking-wider mb-1 text-[8px] font-semibold">Ready</div>
           <div className="text-[14px] font-semibold text-primary">{summaryStats.ready}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">Planned</div>
+          <div className="text-amber-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Planned</div>
           <div className="text-[14px] font-semibold text-amber-500">{summaryStats.planned}</div>
         </div>
         <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-          <div className="text-destructive/60 uppercase tracking-wider mb-1 text-[8px]">Blocked</div>
+          <div className="text-destructive uppercase tracking-wider mb-1 text-[8px] font-semibold">Blocked</div>
           <div className="text-[14px] font-semibold text-destructive">{summaryStats.blocked}</div>
         </div>
         <div className="bg-muted/5 border border-muted/20 px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Not Connected</div>
-          <div className="text-[14px] font-semibold text-muted-foreground">{summaryStats.notConnected}</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Not Connected</div>
+          <div className="text-[14px] font-semibold text-slate-300">{summaryStats.notConnected}</div>
         </div>
       </div>
 
@@ -531,10 +531,10 @@ export default function ModuleHandoffPanel() {
           <button
             key={opt}
             onClick={() => setFilter(opt)}
-            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors font-semibold ${
               filter === opt
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             {opt.replace(/_/g, ' ')}
@@ -545,7 +545,7 @@ export default function ModuleHandoffPanel() {
       {/* Handoff cards */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} handoffs found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} handoffs found</div>
         ) : (
           filtered.map(handoff => (
             <ModuleCard
@@ -559,11 +559,11 @@ export default function ModuleHandoffPanel() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Module handoffs describe permitted future integrations only</div>
-          <div>They do not activate connectors or enable live execution. All handoffs require explicit approval and governance enforcement.</div>
+          <div className="font-semibold mb-1 text-foreground">Module handoffs describe permitted future integrations only</div>
+          <div className="text-slate-400">They do not activate connectors or enable live execution. All handoffs require explicit approval and governance enforcement.</div>
         </div>
       </div>
     </div>

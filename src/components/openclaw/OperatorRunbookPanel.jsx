@@ -260,10 +260,10 @@ function RunbookSection({ section }) {
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-slate-400" /> : <ChevronRight className="w-3 h-3 shrink-0 text-slate-400" />}
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-foreground">{section.title}</div>
-            <div className="text-[8px] text-muted-foreground/50 mt-0.5 line-clamp-1">{section.purpose}</div>
+            <div className="text-[8px] text-slate-400 mt-0.5 line-clamp-1 font-semibold">{section.purpose}</div>
           </div>
         </div>
 
@@ -280,17 +280,17 @@ function RunbookSection({ section }) {
         <div className="border-t border-border/30 bg-secondary/5 px-4 py-3 space-y-4 text-[10px]">
           {/* Purpose */}
           <div className="bg-secondary/30 border border-border px-3 py-2 rounded">
-            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Purpose</div>
+            <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Purpose</div>
             <div className="text-foreground/80">{section.purpose}</div>
           </div>
 
           {/* Steps */}
           <div className="space-y-2">
-            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-2">Steps</div>
+            <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Steps</div>
             <ol className="space-y-1.5 bg-secondary/30 border border-border rounded p-3">
               {section.steps.map((step, idx) => (
                 <li key={idx} className="flex gap-2.5">
-                  <span className="text-muted-foreground/60 font-semibold shrink-0">{idx + 1}.</span>
+                  <span className="text-slate-400 font-semibold shrink-0">{idx + 1}.</span>
                   <span className="text-foreground/80">{step}</span>
                 </li>
               ))}
@@ -300,15 +300,15 @@ function RunbookSection({ section }) {
           {/* Expected, warnings, corrective */}
           <div className="grid grid-cols-3 gap-2 text-[9px]">
             <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-primary/60 mb-1.5 font-semibold">Expected Good State</div>
+              <div className="text-[8px] uppercase tracking-widest text-primary mb-1.5 font-semibold">Expected Good State</div>
               <div className="text-foreground/80 text-[9px]">{section.expectedGoodState}</div>
             </div>
             <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-amber-500/60 mb-1.5 font-semibold">Warning Signs</div>
+              <div className="text-[8px] uppercase tracking-widest text-amber-500 mb-1.5 font-semibold">Warning Signs</div>
               <div className="text-foreground/80 text-[9px]">{section.warningSigns}</div>
             </div>
             <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-destructive/60 mb-1.5 font-semibold">Corrective Actions</div>
+              <div className="text-[8px] uppercase tracking-widest text-destructive mb-1.5 font-semibold">Corrective Actions</div>
               <div className="text-foreground/80 text-[9px]">{section.correctiveActions}</div>
             </div>
           </div>
@@ -316,11 +316,11 @@ function RunbookSection({ section }) {
           {/* Metadata footer */}
           <div className="grid grid-cols-2 gap-2 text-[9px]">
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Related Panel</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Related Panel</div>
               <div className="text-blue-400 font-mono text-[8px]">{section.relatedPanel}</div>
             </div>
             <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Severity</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Severity</div>
               <div className={`font-semibold ${cfg.color}`}>{section.severity}</div>
             </div>
           </div>
@@ -350,28 +350,28 @@ export default function OperatorRunbookPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Operator Runbook</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Operator Runbook</div>
           <div className="text-[13px] font-semibold text-foreground">Step-by-Step Safety Procedures for OpenClaw Control</div>
         </div>
-        <span className="text-[9px] text-muted-foreground/30">{filtered.length} of {summaryStats.total} shown</span>
+        <span className="text-[9px] text-slate-400 font-semibold">{filtered.length} of {summaryStats.total} shown</span>
       </div>
 
       {/* Summary counters */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1 text-[8px]">Total Sections</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Total Sections</div>
           <div className="text-[14px] font-semibold text-foreground">{summaryStats.total}</div>
         </div>
         <div className="bg-blue-500/5 border border-blue-500/20 px-3 py-2 rounded">
-          <div className="text-blue-400/60 uppercase tracking-wider mb-1 text-[8px]">Info</div>
+          <div className="text-blue-400 uppercase tracking-wider mb-1 text-[8px] font-semibold">Info</div>
           <div className="text-[14px] font-semibold text-blue-400">{summaryStats.info}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1 text-[8px]">Warnings</div>
+          <div className="text-amber-500 uppercase tracking-wider mb-1 text-[8px] font-semibold">Warnings</div>
           <div className="text-[14px] font-semibold text-amber-500">{summaryStats.warning}</div>
         </div>
         <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-          <div className="text-destructive/60 uppercase tracking-wider mb-1 text-[8px]">Critical</div>
+          <div className="text-destructive uppercase tracking-wider mb-1 text-[8px] font-semibold">Critical</div>
           <div className="text-[14px] font-semibold text-destructive">{summaryStats.critical}</div>
         </div>
       </div>
@@ -382,10 +382,10 @@ export default function OperatorRunbookPanel() {
           <button
             key={opt}
             onClick={() => setFilter(opt)}
-            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors font-semibold ${
               filter === opt
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             {opt}
@@ -396,18 +396,18 @@ export default function OperatorRunbookPanel() {
       {/* Runbook sections */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} sections found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} sections found</div>
         ) : (
           filtered.map(section => <RunbookSection key={section.id} section={section} />)
         )}
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Runbook is procedural guidance only</div>
-          <div>It does not execute commands or change permissions. Always follow all steps before operating OpenClaw Control.</div>
+          <div className="font-semibold mb-1 text-foreground">Runbook is procedural guidance only</div>
+          <div className="text-slate-400">It does not execute commands or change permissions. Always follow all steps before operating OpenClaw Control.</div>
         </div>
       </div>
     </div>
