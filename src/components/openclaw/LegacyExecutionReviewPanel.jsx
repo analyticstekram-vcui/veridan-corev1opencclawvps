@@ -255,6 +255,20 @@ export default function LegacyExecutionReviewPanel() {
   return (
     <div className="space-y-4 font-mono">
 
+      {/* ── Next Action block ── */}
+      <div className="border border-primary/30 bg-primary/5 px-4 py-3 space-y-2">
+        <div className="text-[10px] font-semibold text-primary uppercase tracking-wider">Next Operational Step</div>
+        <ol className="space-y-1 text-[10px] text-foreground/80 list-none">
+          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">1.</span> Expand each legacy record below to inspect its payload, audit log, and execution metadata.</li>
+          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">2.</span> Classify the record locally using the <span className="text-foreground font-semibold">Review Status</span> selector: <span className="text-primary">REVIEWED_SAFE_HISTORICAL</span>, <span className="text-blue-400">REVIEWED_POLICY_EXCEPTION</span>, or <span className="text-destructive">REVIEWED_REQUIRES_INVESTIGATION</span>.</li>
+          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">3.</span> Add a review note and your operator identifier to document the rationale.</li>
+          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">4.</span> Once all records are classified, proceed to the <span className="text-foreground font-semibold">Production Checklist</span> tab to continue readiness assessment.</li>
+        </ol>
+        <div className="text-[9px] text-muted-foreground/50 border-t border-primary/20 pt-2 mt-1">
+          Review status and notes are session-local only · Not persisted · No execution facts are modified
+        </div>
+      </div>
+
       {/* Warning banner */}
       <div className="flex items-start gap-3 px-4 py-3 bg-destructive/5 border border-destructive/30">
         <ShieldAlert className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
