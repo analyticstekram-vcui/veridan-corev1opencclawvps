@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Shield, CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import OperatorGuidancePanel from './OperatorGuidancePanel';
@@ -695,51 +696,60 @@ export default function SystemVerificationPanel() {
     return 'Manual Setup';
   };
 
-  // Calculate overall system status
-  const allChecks = VERIFICATION_GROUPS.flatMap(g => g.checks);
-  const failedChecks = allChecks.filter(c => results[c.id]?.status === 'fail');
-  const prodBlockingFailed = failedChecks.filter(c => c.prodBlocking);
-  const warnChecks = allChecks.filter(c => results[c.id]?.status === 'warn');
+  // Memoize blocking issues calculation to avoid temporal dead zone
+  const { allChecks, failedChecks, prodBlockingFailed, warnChecks, blockingIssues } = useMemo(() => {
+    const checks = VERIFICATION_GROUPS.flatMap(g => g.checks);
+    const failed = checks.filter(c => results[c.id]?.status === 'fail');
+    const prodBlocking = failed.filter(c => c.prodBlocking);
+    const warns = checks.filter(c => results[c.id]?.status === 'warn');
 
-  // Build blocking issues with operator guidance
-  const blockingIssues = [];
+    const issues = [];
 
-  // BLOCKING issues (production-blocking failures)
-  for (const check of allChecks) {
-    const result = results[check.id];
-    if (result?.status === 'fail' && check.prodBlocking) {
-      blockingIssues.push({
-        severity: 'BLOCKING',
-        name: check.name,
-        panel: check.panel,
-        why: check.why || 'Critical for production safety',
-        action: result.suggestedFix || 'Review check details and remediate',
-        fixType: determineFixType(check.id),
-      });
+    // BLOCKING issues
+    for (const check of checks) {
+      const result = results[check.id];
+      if (result?.status === 'fail' && check.prodBlocking) {
+        issues.push({
+          severity: 'BLOCKING',
+          name: check.name,
+          panel: check.panel,
+          why: check.why || 'Critical for production safety',
+          action: result.suggestedFix || 'Review check details and remediate',
+          fixType: determineFixType(check.id),
+        });
+      }
     }
-  }
 
-  // WARNING issues (failures or warnings on important checks)
-  for (const check of allChecks) {
-    const result = results[check.id];
-    if ((result?.status === 'warn' || (result?.status === 'fail' && !check.prodBlocking)) && !check.id.includes('nav_')) {
-      blockingIssues.push({
-        severity: 'WARNING',
-        name: check.name,
-        panel: check.panel,
-        why: check.why || 'Important for system stability',
-        action: result.suggestedFix || result.explanation || 'Review check details',
-        fixType: determineFixType(check.id),
-      });
+    // WARNING issues
+    for (const check of checks) {
+      const result = results[check.id];
+      if ((result?.status === 'warn' || (result?.status === 'fail' && !check.prodBlocking)) && !check.id.includes('nav_')) {
+        issues.push({
+          severity: 'WARNING',
+          name: check.name,
+          panel: check.panel,
+          why: check.why || 'Important for system stability',
+          action: result.suggestedFix || result.explanation || 'Review check details',
+          fixType: determineFixType(check.id),
+        });
+      }
     }
-  }
 
-  // Sort issues: BLOCKING first, then WARNING
-  blockingIssues.sort((a, b) => {
-    if (a.severity === 'BLOCKING' && b.severity !== 'BLOCKING') return -1;
-    if (a.severity !== 'BLOCKING' && b.severity === 'BLOCKING') return 1;
-    return 0;
-  });
+    // Sort: BLOCKING first, then WARNING
+    issues.sort((a, b) => {
+      if (a.severity === 'BLOCKING' && b.severity !== 'BLOCKING') return -1;
+      if (a.severity !== 'BLOCKING' && b.severity === 'BLOCKING') return 1;
+      return 0;
+    });
+
+    return {
+      allChecks: checks,
+      failedChecks: failed,
+      prodBlockingFailed: prodBlocking,
+      warnChecks: warns,
+      blockingIssues: issues,
+    };
+  }, [results]);
 
   let systemStatus = 'SYSTEM VERIFIED';
   let statusColor = 'text-primary';
