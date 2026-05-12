@@ -90,193 +90,211 @@ export default function OpenClawControl() {
 
   const online = status?.online;
 
+  const TABS = [
+    ['overview', '📊 Overview'],
+    ['status', 'Status'],
+    ['safe_bridge', '⚡ Safe Command Test'],
+    ['safety_tests', '🛡️ Safety Tests'],
+    ['readiness_gate', '🔐 Readiness Gate'],
+    ['approval_workflow', 'Approval Workflow'],
+    ['policy_registry', 'Policy Registry'],
+    ['connectors', 'Connectors'],
+    ['risk_matrix', 'Risk Matrix'],
+    ['runbook', 'Runbook'],
+    ['simulations', 'Simulations'],
+    ['snapshot', 'Snapshot'],
+    ['handoff', 'Handoff'],
+    ['production_checklist', 'Production Checklist'],
+    ['browser_read', 'Browser Read'],
+    ['risk_map', 'Risk Map'],
+    ['audit', 'Executed Commands'],
+    ['workflows', 'Workflows'],
+    ['nodes', 'Node Registry'],
+    ['logs', 'Live Logs'],
+    ['readiness', 'Execution Readiness'],
+    ['telemetry', 'Telemetry'],
+  ];
+
+  const handleTabClick = (id) => {
+    console.log('TAB CLICKED', id);
+    setActiveView(id);
+    console.log('ACTIVE TAB', id);
+  };
+
   return (
-    <div className="min-h-screen bg-background font-mono">
-      {/* Header */}
-      <div className="border-b border-border bg-card px-6 py-3 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center">
-          <Terminal className="w-4 h-4 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-sm font-semibold tracking-wider text-foreground">OPENCLAW CONTROL</h1>
-          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">Gateway monitor · Governance queue · Veridan Core</p>
+    <div className="h-screen flex flex-col bg-background font-mono overflow-hidden">
+      {/* Title bar */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center">
+            <Terminal className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-sm font-semibold tracking-wider text-foreground">OPENCLAW CONTROL</h1>
+            <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">Gateway monitor · Governance queue · Veridan Core</p>
+          </div>
         </div>
       </div>
-        {/* View Toggle */}
-        <div className="flex gap-1 flex-wrap">
+
+      {/* Tab strip — separate row, horizontally scrollable */}
+      <div className="shrink-0 border-b border-border bg-card/80 px-2 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex gap-1 py-2 w-max">
           <Link to="/command-queue"
-            className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5">
+            className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap">
             <List className="w-3 h-3" /> Command Queue
           </Link>
           <Link to="/browser-session"
-            className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5">
+            className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap">
             <Monitor className="w-3 h-3" /> Browser Session
           </Link>
-          {[['overview', '📊 Overview'], ['status', 'Status'], ['safe_bridge', '⚡ Safe Command Test'], ['safety_tests', '🛡️ Safety Tests'], ['readiness_gate', '🔐 Readiness Gate'], ['approval_workflow', 'Approval Workflow'], ['policy_registry', 'Policy Registry'], ['connectors', 'Connectors'], ['risk_matrix', 'Risk Matrix'], ['runbook', 'Runbook'], ['simulations', 'Simulations'], ['snapshot', 'Snapshot'], ['handoff', 'Handoff'], ['production_checklist', 'Production Checklist'], ['browser_read', 'Browser Read'], ['risk_map', 'Risk Map'], ['audit', 'Executed Commands'], ['workflows', 'Workflows'], ['nodes', 'Node Registry'], ['logs', 'Live Logs'], ['readiness', 'Execution Readiness'], ['telemetry', 'Telemetry']].map(([id, label]) => (
-            <button key={id} onClick={() => setActiveView(id)}
-              className={`px-3 py-1.5 text-[11px] border transition-colors ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
+          {TABS.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => handleTabClick(id)}
+              className={`px-3 py-1.5 text-[11px] border transition-colors whitespace-nowrap cursor-pointer select-none ${activeView === id ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}
+            >
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Overview View */}
+      {/* Panel content — fills remaining space */}
+      <div className="flex-1 overflow-auto min-h-0">
+
       {activeView === 'overview' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <UnifiedOpenClawOverviewPanel />
         </div>
       )}
 
-      {/* Safe Command Bridge View */}
       {activeView === 'safe_bridge' && (
-        <div className="overflow-auto h-[calc(100vh-56px)]">
+        <div className="h-full">
           <SafeCommandBridge />
         </div>
       )}
 
-      {/* Execution Safety Tests View */}
       {activeView === 'safety_tests' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <ExecutionSafetyTests />
         </div>
       )}
 
-      {/* Execution Readiness Gate View */}
       {activeView === 'readiness_gate' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <ExecutionReadinessGate />
         </div>
       )}
 
-      {/* Command Approval Workflow Panel */}
       {activeView === 'approval_workflow' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <CommandApprovalWorkflowPanel />
         </div>
       )}
 
-      {/* Governance Policy Registry Panel */}
       {activeView === 'policy_registry' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <GovernancePolicyRegistryPanel />
         </div>
       )}
 
-      {/* Connector Health Matrix Panel */}
       {activeView === 'connectors' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <ConnectorHealthMatrixPanel />
         </div>
       )}
 
-      {/* Risk & Permission Matrix Panel */}
       {activeView === 'risk_matrix' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <RiskPermissionMatrixPanel />
         </div>
       )}
 
-      {/* Operator Runbook Panel */}
       {activeView === 'runbook' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <OperatorRunbookPanel />
         </div>
       )}
 
-      {/* Simulation Scenario Tester Panel */}
       {activeView === 'simulations' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <SimulationScenarioTesterPanel />
         </div>
       )}
 
-      {/* System Snapshot / Export Panel */}
       {activeView === 'snapshot' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <SystemSnapshotExportPanel />
         </div>
       )}
 
-      {/* Module Handoff Panel */}
       {activeView === 'handoff' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <ModuleHandoffPanel />
         </div>
       )}
 
-      {/* Production Readiness Checklist Panel */}
       {activeView === 'production_checklist' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <ProductionReadinessChecklistPanel />
         </div>
       )}
 
-      {/* Browser Read Actions Panel */}
       {activeView === 'browser_read' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <BrowserReadActionsPanel />
         </div>
       )}
 
-      {/* Interactive Risk Map Panel */}
       {activeView === 'risk_map' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <InteractiveRiskMapPanel />
         </div>
       )}
 
-      {/* Executed Commands Audit View */}
       {activeView === 'audit' && (
-        <div className="p-6 overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <ExecutedCommandAuditView />
         </div>
       )}
 
-      {/* Command Queue View */}
       {activeView === 'queue' && (
-        <div className="h-[calc(100vh-56px)]">
+        <div className="h-full">
           <CommandQueuePanel currentUser={currentUser} />
         </div>
       )}
 
-      {/* Workflows View */}
       {activeView === 'workflows' && (
-        <div className="h-[calc(100vh-56px)]">
+        <div className="h-full">
           <WorkflowPanel currentUser={currentUser} executionMode="SIMULATED" executionPaused={false} />
         </div>
       )}
 
-      {/* Node Registry View */}
       {activeView === 'nodes' && (
-        <div className="overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <NodeRegistryPanel />
         </div>
       )}
 
-      {/* Live Logs View */}
       {activeView === 'logs' && (
-        <div className="h-[calc(100vh-56px)]">
+        <div className="h-full">
           <LiveLogsPanel />
         </div>
       )}
 
-      {/* Execution Readiness View */}
       {activeView === 'readiness' && (
-        <div className="overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <ExecutionReadinessPanel gatewayOnline={status?.online} />
         </div>
       )}
 
-      {/* Telemetry View */}
       {activeView === 'telemetry' && (
-        <div className="overflow-auto h-[calc(100vh-56px)]">
+        <div className="p-6">
           <TelemetryPanel executionMode="SIMULATED" gatewayOnline={status?.online} />
         </div>
       )}
 
-      {/* Status View */}
       {activeView === 'status' && <div className="p-6 max-w-2xl space-y-4">
         {/* Status Card */}
         <div className="bg-card border border-border p-5">
@@ -470,6 +488,8 @@ export default function OpenClawControl() {
           Status polling every 15 seconds · Read-only mode
         </div>
       </div>}
+
+      </div>{/* end flex-1 panel container */}
     </div>
   );
 }
