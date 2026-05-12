@@ -784,6 +784,19 @@ export default function ProductionReadinessChecklistPanel() {
         )}
       </div>
 
+      {/* ─── How to read this checklist ─── */}
+      <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+        <div className="text-[11px] font-semibold text-foreground">How to read this checklist</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[9px] text-foreground/80">
+          <div><span className="inline-block bg-primary/10 border border-primary/30 px-2 py-0.5 rounded text-[8px] font-semibold text-primary mr-1.5">COMPLETE</span> Verified and working</div>
+          <div><span className="inline-block bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded text-[8px] font-semibold text-amber-500 mr-1.5">PARTIAL</span> Evidence exists, more work needed</div>
+          <div><span className="inline-block bg-blue-400/10 border border-blue-400/30 px-2 py-0.5 rounded text-[8px] font-semibold text-blue-400 mr-1.5">NOT STARTED</span> No validation yet</div>
+          <div><span className="inline-block bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded text-[8px] font-semibold text-destructive mr-1.5">BLOCKED</span> Prevents readiness</div>
+          <div><span className="text-orange-500 font-semibold">CRITICAL</span> High priority, required for safety</div>
+          <div><span className="text-destructive font-semibold">PRODUCTION_REQUIRED</span> Must complete before live operation</div>
+        </div>
+      </div>
+
       {/* Summary counters */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
@@ -812,22 +825,42 @@ export default function ProductionReadinessChecklistPanel() {
         </div>
       </div>
 
+      {/* ── Next required actions ── */}
+      {(() => {
+        const urgent = CHECKLIST_ITEMS.filter(i => i.status === 'BLOCKED' || i.status === 'NOT_STARTED' || (i.priority === 'CRITICAL' && i.status !== 'COMPLETE'));
+        const partial = CHECKLIST_ITEMS.filter(i => i.status === 'PARTIAL');
+        const allItems = [...urgent, ...partial];
+        return allItems.length > 0 ? (
+          <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+            <div className="text-[11px] font-semibold text-foreground">Next required actions</div>
+            <div className="space-y-2 text-[9px]">
+              {allItems.slice(0, 5).map((item, i) => {
+                const statusCfg = STATUS_CONFIG[item.status];
+                const isProd = item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r));
+                return (
+                  <div key={i} className="flex items-start gap-2 p-2 bg-card/50 border border-border/30 rounded">
+                    <div className="text-[8px] font-semibold text-muted-foreground/60 shrink-0 uppercase tracking-wider min-w-fit">
+                      {item.status === 'BLOCKED' && '🚫'}
+                      {item.status === 'NOT_STARTED' && '⏳'}
+                      {item.status === 'PARTIAL' && '⚙️'}
+                      {item.priority === 'CRITICAL' && item.status !== 'COMPLETE' && '⚠️'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-foreground/80">{item.name}</div>
+                      <div className="text-[8px] text-muted-foreground/60 mt-0.5">{item.nextAction}</div>
+                      {isProd && <div className="text-[8px] text-destructive/70 mt-0.5 font-semibold">Production-required · {item.category}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+              {allItems.length === 0 && <div className="text-[9px] text-primary/80">✓ No critical actions remaining. All items are complete or on track.</div>}
+              {allItems.length > 5 && <div className="text-[8px] text-muted-foreground/50 pt-1">+ {allItems.length - 5} more items below · Use filter to drill down</div>}
+            </div>
+          </div>
+        ) : null;
+      })()}
+
       {/* Filter bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2">
-        {FILTER_OPTIONS.map(opt => (
-          <button
-            key={opt}
-            onClick={() => setFilter(opt)}
-            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors ${
-              filter === opt
-                ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-            }`}
-          >
-            {opt.replace(/_/g, ' ')}
-          </button>
-        ))}
-      </div>
 
       {/* Checklist items */}
       <div className="space-y-2">
