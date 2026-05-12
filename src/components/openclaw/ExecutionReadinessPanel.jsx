@@ -125,7 +125,7 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
       {/* Header + Mode Indicator */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-1">Execution Readiness</div>
+          <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Execution Readiness</div>
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${hasBlocked ? 'bg-destructive' : overallReady ? 'bg-primary' : 'bg-amber-500'}`} />
             <span className={`text-sm font-semibold ${hasBlocked ? 'text-destructive' : overallReady ? 'text-primary' : 'text-amber-500'}`}>
@@ -163,7 +163,7 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
               <Icon className={`w-4 h-4 shrink-0 ${cfg.color}`} />
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] text-foreground">{item.label}</div>
-                <div className="text-[10px] text-muted-foreground/50">{item.description}</div>
+                  <div className="text-[10px] text-slate-400">{item.description}</div>
               </div>
               <span className={`px-2 py-0.5 border text-[9px] uppercase tracking-wider ${cfg.bg} ${cfg.color}`}>
                 {cfg.label}
@@ -178,10 +178,10 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Zap className={`w-3.5 h-3.5 ${isLive ? 'text-destructive' : 'text-muted-foreground/50'}`} />
-              <div className="text-[12px] font-semibold text-foreground">Enable Live Execution</div>
-            </div>
-            <div className="text-[10px] text-muted-foreground/60">
+              <Zap className={`w-3.5 h-3.5 ${isLive ? 'text-destructive' : 'text-slate-400'}`} />
+               <div className="text-[12px] font-semibold text-foreground">Enable Live Execution</div>
+              </div>
+              <div className="text-[10px] text-slate-400">
               Routes approved commands to OpenClaw gateway via HMAC-signed requests.<br />
               Allowlist: <span className="text-foreground">system.status, logs.fetch, session.list</span>
             </div>
@@ -195,9 +195,9 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
             <div className={`w-12 h-6 rounded-full border flex items-center px-0.5 transition-all duration-200 ${
               isLive ? 'bg-destructive/20 border-destructive/50 justify-end' : 'bg-secondary border-border justify-start'
             }`}>
-              <div className={`w-5 h-5 rounded-full transition-all duration-200 ${isLive ? 'bg-destructive' : 'bg-muted-foreground/30'}`} />
-            </div>
-            {!isLive && <Lock className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-amber-500 transition-colors" />}
+              <div className={`w-5 h-5 rounded-full transition-all duration-200 ${isLive ? 'bg-destructive' : 'bg-slate-500'}`} />
+              </div>
+              {!isLive && <Lock className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-500 transition-colors" />}
           </button>
         </div>
 
@@ -217,10 +217,10 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
        <div className="flex items-center justify-between gap-4">
          <div>
            <div className="flex items-center gap-2 mb-1">
-             <OctagonX className={`w-3.5 h-3.5 ${executionPaused ? 'text-destructive' : 'text-muted-foreground/50'}`} />
+             <OctagonX className={`w-3.5 h-3.5 ${executionPaused ? 'text-destructive' : 'text-slate-400'}`} />
              <div className="text-[12px] font-semibold text-foreground">Emergency Kill Switch</div>
            </div>
-           <div className="text-[10px] text-muted-foreground/60">
+           <div className="text-[10px] text-slate-400">
              Immediately blocks all execution globally and reverts to simulated mode.<br />
              Logs <span className="text-foreground">OPENCLAW_EXECUTION_BLOCKED_GLOBAL</span>.
            </div>
@@ -240,11 +240,11 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
 
       {/* Live Bridge Dry Run */}
       <div className="border border-border bg-card p-5">
-       <div className="text-[11px] font-semibold text-foreground mb-4 uppercase tracking-wider">Live Bridge Dry Run</div>
+       <div className="text-[11px] font-semibold text-slate-200 mb-4 uppercase tracking-wider">Live Bridge Dry Run</div>
        <LiveBridgeDryRun />
       </div>
 
-      <div className="text-[9px] text-muted-foreground/30 text-center uppercase tracking-widest">
+      <div className="text-[9px] text-slate-400 text-center uppercase tracking-widest font-semibold">
        {isLive ? 'Live execution active · HMAC signed · Allowlist enforced · Rate limited' : 'Simulation mode · No real commands sent to OpenClaw'}
       </div>
 
@@ -256,9 +256,9 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
               <Zap className="w-4 h-4 text-destructive" />
               <span className="text-[13px] font-semibold text-destructive">Enable Live Execution?</span>
             </div>
-            <div className="px-5 py-4 space-y-3 text-[11px] text-muted-foreground/80">
+            <div className="px-5 py-4 space-y-3 text-[11px] text-slate-300">
               <p>You are about to enable <span className="text-destructive font-semibold">LIVE</span> execution mode. Real commands will be dispatched to the OpenClaw gateway.</p>
-              <ul className="space-y-1 text-[10px] text-muted-foreground/60 list-disc ml-4">
+              <ul className="space-y-1 text-[10px] text-slate-400 list-disc ml-4">
                 <li>Only allowlisted commands will be sent</li>
                 <li>All requests are HMAC signed</li>
                 <li>Rate limit: 5 commands/minute</li>
@@ -267,7 +267,7 @@ export default function ExecutionReadinessPanel({ gatewayOnline }) {
               <p className="text-amber-500 text-[10px]">This action will be audited.</p>
             </div>
             <div className="px-5 py-3 border-t border-border flex gap-2 justify-end">
-              <button onClick={() => setShowConfirmModal(false)} className="px-4 py-1.5 border border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
+              <button onClick={() => setShowConfirmModal(false)} className="px-4 py-1.5 border border-border text-[11px] text-slate-400 hover:text-foreground hover:bg-secondary/50 transition-colors font-semibold">
                 Cancel
               </button>
               <button onClick={confirmGoLive} className="px-4 py-1.5 bg-destructive text-destructive-foreground text-[11px] hover:bg-destructive/90 transition-colors">

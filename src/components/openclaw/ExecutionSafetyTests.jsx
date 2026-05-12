@@ -118,7 +118,7 @@ function TestRow({ test, result, loading, onRun }) {
               <span className={`text-[10px] font-semibold ${statusColor}`}>{statusIcon}</span>
               <span className="text-[11px] font-semibold text-foreground">{test.name}</span>
             </div>
-            <div className="text-[9px] text-muted-foreground/60 ml-5">
+            <div className="text-[9px] text-slate-400 ml-5">
               Expected: <span className="text-muted-foreground">{test.expectedResult}</span>
               {result && (
                 <>
@@ -141,32 +141,32 @@ function TestRow({ test, result, loading, onRun }) {
           <div className="mt-2 ml-5 space-y-1 text-[9px]">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <div className="bg-secondary/20 border border-border/20 px-2 py-1">
-                <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Validation Status</div>
+                <div className="text-slate-400 uppercase tracking-wider text-[8px] mb-0.5 font-semibold">Validation Status</div>
                 <div className={`font-mono text-[8px] ${result.backendValidationStatus === 'PASSED' ? 'text-primary' : result.backendValidationStatus === 'BLOCKED' ? 'text-destructive' : 'text-amber-500'}`}>
                   {result.backendValidationStatus}
                 </div>
               </div>
               <div className="bg-secondary/20 border border-border/20 px-2 py-1">
-                <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Execution Status</div>
+                <div className="text-slate-400 uppercase tracking-wider text-[8px] mb-0.5 font-semibold">Execution Status</div>
                 <div className="font-mono text-[8px] text-foreground">{result.executionStatus || '—'}</div>
               </div>
               <div className="bg-secondary/20 border border-border/20 px-2 py-1">
-                <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Mode</div>
+                <div className="text-slate-400 uppercase tracking-wider text-[8px] mb-0.5 font-semibold">Mode</div>
                 <div className="font-mono text-[8px] text-foreground">{result.executionMode || '—'}</div>
               </div>
               <div className="bg-secondary/20 border border-border/20 px-2 py-1">
-                <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Trace</div>
+                <div className="text-slate-400 uppercase tracking-wider text-[8px] mb-0.5 font-semibold">Trace</div>
                 <div className="font-mono text-[8px] text-muted-foreground/70 truncate">{result.auditTraceId?.slice(0, 12)}...</div>
               </div>
               {result.error && (
                 <div className="col-span-2 md:col-span-4 bg-destructive/5 border border-destructive/20 px-2 py-1">
-                  <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Error</div>
+                  <div className="text-slate-400 uppercase tracking-wider text-[8px] mb-0.5 font-semibold">Error</div>
                   <div className="font-mono text-[8px] text-destructive break-all">{result.error}</div>
                 </div>
               )}
               {result.validationErrors && result.validationErrors.length > 0 && (
                 <div className="col-span-2 md:col-span-4 bg-destructive/5 border border-destructive/20 px-2 py-1">
-                  <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Validation Errors</div>
+                  <div className="text-slate-400 uppercase tracking-wider text-[8px] mb-0.5 font-semibold">Validation Errors</div>
                   <ul className="space-y-0.5">
                     {result.validationErrors.map((err, idx) => (
                       <li key={idx} className="font-mono text-[8px] text-destructive">• {err}</li>
@@ -176,13 +176,13 @@ function TestRow({ test, result, loading, onRun }) {
               )}
               {result.controlledBlockReason && (
                 <div className="col-span-2 md:col-span-4 bg-amber-500/5 border border-amber-500/20 px-2 py-1">
-                  <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Block Reason</div>
+                  <div className="text-slate-400 uppercase tracking-wider text-[8px] mb-0.5 font-semibold">Block Reason</div>
                   <div className="font-mono text-[8px] text-amber-500">{result.controlledBlockReason}</div>
                 </div>
               )}
               {result.transportError && (
                 <div className="col-span-2 md:col-span-4 bg-destructive/5 border border-destructive/20 px-2 py-1">
-                  <div className="text-muted-foreground/60 uppercase tracking-wider text-[8px] mb-0.5">Transport Error</div>
+                  <div className="text-slate-400 uppercase tracking-wider text-[8px] mb-0.5 font-semibold">Transport Error</div>
                   <div className="font-mono text-[8px] text-destructive">{result.transportError}</div>
                 </div>
               )}
@@ -351,12 +351,12 @@ export default function ExecutionSafetyTests() {
           <AlertTriangle className="w-4 h-4 text-amber-500" />
           <div>
             <div className="text-[11px] font-semibold text-foreground">Execution Safety Tests</div>
-            <div className="text-[9px] text-muted-foreground/60">Validate proposal validation and governance enforcement</div>
+            <div className="text-[9px] text-slate-400">Validate proposal validation and governance enforcement</div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
+          </div>
+          <div className="flex items-center gap-2">
           {totalRun > 0 && (
-            <div className="text-[10px] px-2 py-1 border border-border text-muted-foreground/70 font-mono">
+            <div className="text-[10px] px-2 py-1 border border-border text-slate-400 font-mono font-semibold">
               {passedCount}/{totalRun} passed
             </div>
           )}
@@ -374,7 +374,7 @@ export default function ExecutionSafetyTests() {
       {/* Info banner */}
       <div className="px-4 py-2.5 border-b border-border/20 bg-secondary/10 flex items-start gap-2">
         <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
-        <div className="text-[9px] text-muted-foreground/70 leading-relaxed">
+        <div className="text-[9px] text-slate-400 leading-relaxed font-semibold">
           These tests validate that the backend endpoint correctly enforces governance rules, domain allowlists, and command restrictions.
           Expected BLOCKED results indicate successful governance enforcement. Execution mode is SIMULATED by default.
         </div>
@@ -395,7 +395,7 @@ export default function ExecutionSafetyTests() {
 
       {/* Footer */}
       {totalRun === 0 && (
-        <div className="px-4 py-6 text-center text-[10px] text-muted-foreground/50">
+        <div className="px-4 py-6 text-center text-[10px] text-slate-400 font-semibold">
           Run tests to validate safety checks and governance enforcement.
         </div>
       )}

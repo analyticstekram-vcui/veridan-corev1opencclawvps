@@ -83,13 +83,13 @@ function WorkflowCard({ proposal, command, index, onExecuteReadOnly }) {
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {expanded ? <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="w-4 h-4 shrink-0 text-slate-400" /> : <ChevronRight className="w-4 h-4 shrink-0 text-slate-400" />}
           
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-foreground truncate">
               {command?.commandType || proposal?.proposalId || 'Workflow'}
             </div>
-            <div className="text-[9px] text-muted-foreground/60 mt-0.5">
+            <div className="text-[9px] text-slate-400 mt-0.5 font-semibold">
               Proposal: {proposal?.proposalId?.slice(0, 12) || '—'} · Command: {command?.commandId?.slice(0, 12) || '—'}
             </div>
           </div>
@@ -112,7 +112,7 @@ function WorkflowCard({ proposal, command, index, onExecuteReadOnly }) {
         <div className="border-t border-border/30 bg-secondary/10 px-4 py-4 space-y-4">
           {/* Workflow stages */}
           <div>
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-3">Workflow Stages</div>
+            <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Workflow Stages</div>
             <div className="space-y-2">
               {Object.entries(stageIcons).map(([stageNum, stageInfo]) => {
                 const Icon = stageInfo.icon;
@@ -120,7 +120,7 @@ function WorkflowCard({ proposal, command, index, onExecuteReadOnly }) {
                 return (
                   <div key={stageNum} className="flex items-center gap-3">
                     <Icon className={`w-3 h-3 shrink-0 ${isComplete ? stageInfo.color : 'text-muted-foreground/30'}`} />
-                    <div className={`text-[10px] ${isComplete ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                    <div className={`text-[10px] ${isComplete ? 'text-foreground' : 'text-slate-400'}`}>
                       {stageInfo.label}
                     </div>
                     {isComplete && <div className="text-[8px] text-primary ml-auto">✓</div>}
@@ -144,25 +144,25 @@ function WorkflowCard({ proposal, command, index, onExecuteReadOnly }) {
           {/* Proposal details */}
           {proposal && (
             <div>
-              <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2">Proposal Details</div>
+              <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Proposal Details</div>
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Proposal ID</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Proposal ID</div>
                   <div className="text-foreground font-mono text-[9px] truncate">{proposal.proposalId}</div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Status</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Status</div>
                   <div className="text-foreground font-mono text-[9px]">{proposal.status}</div>
                 </div>
                 {proposal.createdBy && (
                   <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Created By</div>
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Created By</div>
                     <div className="text-foreground text-[9px]">{proposal.createdBy}</div>
                   </div>
                 )}
                 {proposal.reviewedBy && (
                   <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Reviewed By</div>
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Reviewed By</div>
                     <div className="text-foreground text-[9px]">{proposal.reviewedBy}</div>
                   </div>
                 )}
@@ -173,37 +173,37 @@ function WorkflowCard({ proposal, command, index, onExecuteReadOnly }) {
           {/* Command details */}
           {command && (
             <div>
-              <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2">Command Details</div>
+              <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Command Details</div>
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Command ID</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Command ID</div>
                   <div className="text-foreground font-mono text-[9px] truncate">{command.commandId}</div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Command Type</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Command Type</div>
                   <div className="text-blue-400 font-mono text-[9px]">{command.commandType}</div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Risk Tier</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Risk Tier</div>
                   <div className={`font-mono text-[9px] ${command.riskLevel === 'low' ? 'text-primary' : 'text-amber-500'}`}>
                     {command.riskLevel?.toUpperCase() || '—'}
                   </div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Governance Mode</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Governance Mode</div>
                   <div className="text-foreground font-mono text-[9px]">{command.governanceMode || 'SAFE_REQUIRES_APPROVAL'}</div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Execution Mode</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Execution Mode</div>
                   <div className="text-foreground font-mono text-[9px]">{command.executionMode || 'SIMULATED'}</div>
                 </div>
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Command Status</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Command Status</div>
                   <div className="text-foreground font-mono text-[9px]">{command.status}</div>
                 </div>
                 {command.targetUrl && (
                   <div className="col-span-2 bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Target URL</div>
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Target URL</div>
                     <div className="text-blue-400 font-mono text-[9px] break-all">{command.targetUrl}</div>
                   </div>
                 )}
@@ -213,23 +213,23 @@ function WorkflowCard({ proposal, command, index, onExecuteReadOnly }) {
 
           {/* Timestamps */}
           <div>
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2">Timeline</div>
+            <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Timeline</div>
             <div className="grid grid-cols-2 gap-2 text-[10px]">
               {proposal?.created_date && (
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Proposal Created</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Proposal Created</div>
                   <div className="text-foreground font-mono text-[9px]">{format(new Date(proposal.created_date), 'HH:mm:ss')}</div>
                 </div>
               )}
               {command?.approvedAt && (
                 <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Approved At</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Approved At</div>
                   <div className="text-foreground font-mono text-[9px]">{format(new Date(command.approvedAt), 'HH:mm:ss')}</div>
                 </div>
               )}
               {command?.executedAt && (
                 <div className="col-span-2 bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                  <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Executed At</div>
+                  <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Executed At</div>
                   <div className="text-foreground font-mono text-[9px]">{format(new Date(command.executedAt), 'yyyy-MM-dd HH:mm:ss')}</div>
                 </div>
               )}
@@ -239,17 +239,17 @@ function WorkflowCard({ proposal, command, index, onExecuteReadOnly }) {
           {/* Audit trace and response */}
           <div className="grid grid-cols-2 gap-2 text-[10px]">
             <div className="col-span-2 bg-secondary/30 border border-border px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Audit Trace ID</div>
-              <div className="text-muted-foreground/60 font-mono text-[9px] truncate">{auditTraceId}</div>
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Audit Trace ID</div>
+              <div className="text-slate-400 font-mono text-[9px] truncate">{auditTraceId}</div>
             </div>
           </div>
 
           {/* Response payload */}
           {command?.result && (
             <div>
-              <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2">Response Payload</div>
+              <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Response Payload</div>
               <div className="bg-secondary/30 border border-border px-2 py-1.5 rounded">
-                <pre className="text-[8px] font-mono text-muted-foreground/70 whitespace-pre-wrap break-words max-h-32 overflow-auto">
+                <pre className="text-[8px] font-mono text-slate-400 whitespace-pre-wrap break-words max-h-32 overflow-auto">
                   {JSON.stringify(command.result, null, 2)}
                 </pre>
               </div>
@@ -258,10 +258,10 @@ function WorkflowCard({ proposal, command, index, onExecuteReadOnly }) {
 
           {/* Full JSON */}
           <details className="text-[9px]">
-            <summary className="cursor-pointer text-muted-foreground/50 hover:text-muted-foreground uppercase tracking-widest text-[8px]">
+            <summary className="cursor-pointer text-slate-400 hover:text-slate-300 uppercase tracking-widest text-[8px] font-semibold">
               Full Workflow JSON
             </summary>
-            <pre className="mt-2 bg-secondary/30 border border-border/30 px-2 py-1.5 overflow-auto max-h-48 text-muted-foreground/60 font-mono text-[8px] leading-tight rounded">
+            <pre className="mt-2 bg-secondary/30 border border-border/30 px-2 py-1.5 overflow-auto max-h-48 text-slate-400 font-mono text-[8px] leading-tight rounded">
               {JSON.stringify({ proposal, command }, null, 2)}
             </pre>
           </details>
@@ -411,36 +411,36 @@ export default function CommandApprovalWorkflowPanel() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground/50 mb-1">Command Approval Workflow</div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Command Approval Workflow</div>
           <div className="text-[13px] font-semibold text-foreground">Full Lifecycle: Proposal → Review → Command → Execution → Audit</div>
         </div>
-        <span className="text-[9px] text-muted-foreground/30">{filtered.length} of {summaryStats.total} shown</span>
+        <span className="text-[9px] text-slate-400 font-semibold">{filtered.length} of {summaryStats.total} shown</span>
       </div>
 
       {/* Summary counters */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2 rounded">
-          <div className="text-muted-foreground/50 uppercase tracking-wider mb-1">Total</div>
+          <div className="text-slate-400 uppercase tracking-wider mb-1 font-semibold">Total</div>
           <div className="text-[14px] font-semibold text-foreground">{summaryStats.total}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1">Pending</div>
+          <div className="text-amber-400 uppercase tracking-wider mb-1 font-semibold">Pending</div>
           <div className="text-[14px] font-semibold text-amber-400">{summaryStats.pending}</div>
         </div>
         <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-          <div className="text-primary/60 uppercase tracking-wider mb-1">Ready</div>
+          <div className="text-primary uppercase tracking-wider mb-1 font-semibold">Ready</div>
           <div className="text-[14px] font-semibold text-primary">{summaryStats.readyToExecute}</div>
         </div>
         <div className="bg-primary/5 border border-primary/20 px-3 py-2 rounded">
-          <div className="text-primary/60 uppercase tracking-wider mb-1">Executed</div>
+          <div className="text-primary uppercase tracking-wider mb-1 font-semibold">Executed</div>
           <div className="text-[14px] font-semibold text-primary">{summaryStats.executed}</div>
         </div>
         <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 rounded">
-          <div className="text-destructive/60 uppercase tracking-wider mb-1">Blocked</div>
+          <div className="text-destructive uppercase tracking-wider mb-1 font-semibold">Blocked</div>
           <div className="text-[14px] font-semibold text-destructive">{summaryStats.blocked}</div>
         </div>
         <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2 rounded">
-          <div className="text-amber-500/60 uppercase tracking-wider mb-1">Failed</div>
+          <div className="text-amber-400 uppercase tracking-wider mb-1 font-semibold">Failed</div>
           <div className="text-[14px] font-semibold text-amber-500">{summaryStats.failed}</div>
         </div>
       </div>
@@ -451,10 +451,10 @@ export default function CommandApprovalWorkflowPanel() {
           <button
             key={opt}
             onClick={() => setFilter(opt)}
-            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-[9px] border rounded whitespace-nowrap transition-colors font-semibold ${
               filter === opt
                 ? 'border-primary text-primary bg-primary/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                : 'border-border text-slate-400 hover:text-foreground hover:bg-secondary/50'
             }`}
           >
             {opt}
@@ -465,9 +465,9 @@ export default function CommandApprovalWorkflowPanel() {
       {/* Workflows */}
       <div className="space-y-3">
         {loading ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">Loading workflows...</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">Loading workflows...</div>
         ) : filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} workflows found</div>
+          <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-semibold">No {filter.toLowerCase()} workflows found</div>
         ) : (
           filtered.map((workflow, idx) => (
             <WorkflowCard
@@ -510,11 +510,11 @@ export default function CommandApprovalWorkflowPanel() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
-        <Shield className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-slate-300">
+        <Shield className="w-3 h-3 shrink-0 mt-0.5 text-primary" />
         <div>
-          <div className="font-semibold mb-1">Read-only audit workflow</div>
-          <div>Execution remains SIMULATED. No live commands or mutation commands are permitted from this panel.</div>
+          <div className="font-semibold mb-1 text-foreground">Read-only audit workflow</div>
+          <div className="text-slate-400">Execution remains SIMULATED. No live commands or mutation commands are permitted from this panel.</div>
         </div>
       </div>
     </div>
