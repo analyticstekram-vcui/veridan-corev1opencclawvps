@@ -1,0 +1,70 @@
+{
+  "name": "OpenClawProductionChecklistReview",
+  "type": "object",
+  "properties": {
+    "checklistItemName": {
+      "type": "string",
+      "description": "Name of the checklist item being reviewed"
+    },
+    "category": {
+      "type": "string",
+      "description": "Category of the checklist item"
+    },
+    "originalStatus": {
+      "type": "string",
+      "enum": [
+        "COMPLETE",
+        "PARTIAL",
+        "NOT_STARTED",
+        "BLOCKED"
+      ],
+      "description": "Status from original checklist definition"
+    },
+    "reviewStatus": {
+      "type": "string",
+      "enum": [
+        "COMPLETE",
+        "PARTIAL",
+        "NOT_STARTED",
+        "BLOCKED"
+      ],
+      "default": "NOT_STARTED",
+      "description": "Operator review status"
+    },
+    "reviewNote": {
+      "type": "string",
+      "description": "Operator resolution notes"
+    },
+    "reviewer": {
+      "type": "string",
+      "description": "Email or identifier of the operator"
+    },
+    "reviewedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when review was saved"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ],
+      "description": "Priority from original checklist"
+    },
+    "isCritical": {
+      "type": "boolean",
+      "description": "True if item has CRITICAL priority"
+    },
+    "isProductionRequired": {
+      "type": "boolean",
+      "description": "True if item is required before production"
+    }
+  },
+  "required": [
+    "checklistItemName",
+    "originalStatus"
+  ]
+}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Clock, Lock, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
 
 const CHECKLIST_ITEMS = [
   // Security
@@ -563,10 +564,49 @@ const PRIORITY_COLORS = {
 
 const FILTER_OPTIONS = ['ALL', 'COMPLETE', 'PARTIAL', 'NOT_STARTED', 'BLOCKED', 'CRITICAL', 'PRODUCTION_REQUIRED'];
 
-function ChecklistItemCard({ item, expanded, onToggle }) {
+function ChecklistItemCard({ item, expanded, onToggle, savedReview, onReviewSaved }) {
   const statusCfg = STATUS_CONFIG[item.status];
   const StatusIcon = statusCfg.icon;
   const isProdRequired = item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r));
+  const [reviewStatus, setReviewStatus] = useState(savedReview?.reviewStatus || item.status);
+  const [reviewNote, setReviewNote] = useState(savedReview?.reviewNote || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveReview = async (newStatus) => {
+    setSaving(true);
+    try {
+      const now = new Date().toISOString();
+      const user = await base44.auth.me();
+      const payload = {
+        checklistItemName: item.name,
+        category: item.category,
+        originalStatus: item.status,
+        reviewStatus: newStatus,
+        reviewNote,
+        reviewer: user?.email || 'unknown',
+        reviewedAt: now,
+        priority: item.priority,
+        isCritical: item.priority === 'CRITICAL',
+        isProductionRequired: isProdRequired,
+      };
+
+      if (savedReview?.id) {
+        await base44.entities.OpenClawProductionChecklistReview.update(savedReview.id, payload);
+      } else {
+        await base44.entities.OpenClawProductionChecklistReview.create(payload);
+      }
+
+      setReviewStatus(newStatus);
+      if (onReviewSaved) onReviewSaved();
+    } catch (err) {
+      console.error('Failed to save review:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const needsNote = (newStatus) => ['BLOCKED', 'CRITICAL'].includes(item.priority) && newStatus !== 'COMPLETE';
+  const canSaveWithoutNote = reviewNote || !needsNote(reviewStatus);
 
   return (
     <div className="border border-border/50 rounded-lg bg-secondary/10 overflow-hidden">
@@ -630,6 +670,62 @@ function ChecklistItemCard({ item, expanded, onToggle }) {
               <div className="text-[8px] text-amber-500/80">{item.notes}</div>
             </div>
           )}
+
+          {/* ────── Operator Resolution Workflow ────── */}
+          <div className="border border-primary/20 bg-primary/5 p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Operator Resolution</span>
+              {savedReview?.reviewedAt && <span className="text-[8px] text-primary/50 ml-auto border border-primary/20 px-1.5 py-0.5">Saved {format(new Date(savedReview.reviewedAt), 'MM/dd HH:mm')}</span>}
+            </div>
+
+            <div>
+              <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Review Status</label>
+              <div className="flex flex-wrap gap-1.5">
+                {['COMPLETE', 'PARTIAL', 'NOT_STARTED', 'BLOCKED'].map(status => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => {
+                      setReviewStatus(status);
+                      if (!needsNote(status) || reviewNote) handleSaveReview(status);
+                    }}
+                    disabled={saving || (needsNote(status) && !reviewNote)}
+                    className={`px-2 py-1 text-[9px] border rounded font-semibold transition-colors ${
+                      reviewStatus === status
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50 disabled:opacity-40 disabled:cursor-not-allowed'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(item.priority === 'CRITICAL' || needsNote(reviewStatus)) && (
+              <div>
+                <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Resolution Note</label>
+                <textarea
+                  value={reviewNote}
+                  onChange={(e) => setReviewNote(e.target.value)}
+                  placeholder="Document your resolution rationale..."
+                  rows={2}
+                  className="w-full bg-secondary/50 border border-border text-[10px] font-mono text-foreground px-2 py-1.5 outline-none focus:border-primary/50 placeholder:text-muted-foreground/30 resize-none"
+                />
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => handleSaveReview(reviewStatus)}
+              disabled={saving || !canSaveWithoutNote}
+              className="w-full px-3 py-1.5 bg-primary text-primary-foreground text-[9px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : 'Save Resolution'}
+            </button>
+
+            {needsNote(reviewStatus) && !reviewNote && <div className="text-[8px] text-amber-500/70">Add a note before saving for CRITICAL/BLOCKED items.</div>}
+          </div>
         </div>
       )}
     </div>
@@ -641,24 +737,32 @@ export default function ProductionReadinessChecklistPanel() {
   const [expandedItems, setExpandedItems] = useState({});
   const [legacyCommands, setLegacyCommands] = useState([]);
   const [legacyReviews, setLegacyReviews] = useState([]);
+  const [reviews, setReviews] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  // Detect legacy REAL/LIVE execution commands and their reviews
-  React.useEffect(() => {
-    const fetchCommands = async () => {
-      try {
-        const [commands, reviews] = await Promise.all([
-          base44.entities.OpenClawCommand.list('-created_date', 100),
-          base44.entities.OpenClawLegacyReview.list('-reviewedAt', 500),
-        ]);
-        const legacy = commands.filter(c => c.executionMode === 'REAL' || c.executionMode === 'LIVE');
-        setLegacyCommands(legacy);
-        setLegacyReviews(reviews);
-      } catch (e) {
-        console.error('Error fetching legacy commands:', e);
+  const fetchData = async () => {
+    try {
+      const [commands, legReviews, checklistReviews] = await Promise.all([
+        base44.entities.OpenClawCommand.list('-created_date', 100),
+        base44.entities.OpenClawLegacyReview.list('-reviewedAt', 500),
+        base44.entities.OpenClawProductionChecklistReview.list('-reviewedAt', 500),
+      ]);
+      const legacy = commands.filter(c => c.executionMode === 'REAL' || c.executionMode === 'LIVE');
+      setLegacyCommands(legacy);
+      setLegacyReviews(legReviews);
+      const map = {};
+      for (const r of checklistReviews) {
+        if (r.checklistItemName) map[r.checklistItemName] = r;
       }
-    };
-    fetchCommands();
-  }, []);
+      setReviews(map);
+      setLoading(false);
+    } catch (e) {
+      console.error('Error fetching data:', e);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
 
   const toggleExpanded = (name) => {
     setExpandedItems(prev => ({ ...prev, [name]: !prev[name] }));
@@ -666,10 +770,11 @@ export default function ProductionReadinessChecklistPanel() {
 
   const filtered = CHECKLIST_ITEMS.filter(item => {
     if (filter === 'ALL') return true;
-    if (filter === 'COMPLETE') return item.status === 'COMPLETE';
-    if (filter === 'PARTIAL') return item.status === 'PARTIAL';
-    if (filter === 'NOT_STARTED') return item.status === 'NOT_STARTED';
-    if (filter === 'BLOCKED') return item.status === 'BLOCKED';
+    if (filter === 'UNRESOLVED') return reviews[item.name]?.reviewStatus !== 'COMPLETE' && item.status !== 'COMPLETE';
+    if (filter === 'COMPLETE') return item.status === 'COMPLETE' && reviews[item.name]?.reviewStatus === 'COMPLETE';
+    if (filter === 'PARTIAL') return item.status === 'PARTIAL' || reviews[item.name]?.reviewStatus === 'PARTIAL';
+    if (filter === 'NOT_STARTED') return item.status === 'NOT_STARTED' || reviews[item.name]?.reviewStatus === 'NOT_STARTED';
+    if (filter === 'BLOCKED') return item.status === 'BLOCKED' || reviews[item.name]?.reviewStatus === 'BLOCKED';
     if (filter === 'CRITICAL') return item.priority === 'CRITICAL';
     if (filter === 'PRODUCTION_REQUIRED') return item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r));
     return true;
@@ -677,10 +782,10 @@ export default function ProductionReadinessChecklistPanel() {
 
   const summaryStats = {
     total: CHECKLIST_ITEMS.length,
-    complete: CHECKLIST_ITEMS.filter(i => i.status === 'COMPLETE').length,
-    partial: CHECKLIST_ITEMS.filter(i => i.status === 'PARTIAL').length,
-    notStarted: CHECKLIST_ITEMS.filter(i => i.status === 'NOT_STARTED').length,
-    blocked: CHECKLIST_ITEMS.filter(i => i.status === 'BLOCKED').length,
+    complete: CHECKLIST_ITEMS.filter(i => reviews[i.name]?.reviewStatus === 'COMPLETE' || i.status === 'COMPLETE').length,
+    partial: CHECKLIST_ITEMS.filter(i => reviews[i.name]?.reviewStatus === 'PARTIAL' || i.status === 'PARTIAL').length,
+    notStarted: CHECKLIST_ITEMS.filter(i => reviews[i.name]?.reviewStatus === 'NOT_STARTED' || i.status === 'NOT_STARTED').length,
+    blocked: CHECKLIST_ITEMS.filter(i => reviews[i.name]?.reviewStatus === 'BLOCKED' || i.status === 'BLOCKED').length,
     critical: CHECKLIST_ITEMS.filter(i => i.priority === 'CRITICAL').length,
   };
 
@@ -695,6 +800,8 @@ export default function ProductionReadinessChecklistPanel() {
     readinessStatus = 'BROWSER_ACTIONS_PENDING';
   }
 
+  const allReviewedComplete = CHECKLIST_ITEMS.every(item => reviews[item.name]?.reviewStatus === 'COMPLETE');
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -705,7 +812,7 @@ export default function ProductionReadinessChecklistPanel() {
         </div>
       </div>
 
-      {/* Legacy REAL/LIVE execution warning — adapts based on review completion */}
+      {/* Legacy REAL/LIVE execution warning */}
       {legacyCommands.length > 0 && (() => {
         const reviewMap = {};
         for (const r of legacyReviews) { if (r.commandId) reviewMap[r.commandId] = r; }
@@ -784,7 +891,7 @@ export default function ProductionReadinessChecklistPanel() {
         )}
       </div>
 
-      {/* ─── How to read this checklist ─── */}
+      {/* ──── How to read this checklist ──── */}
       <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
         <div className="text-[11px] font-semibold text-foreground">How to read this checklist</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[9px] text-foreground/80">
@@ -827,23 +934,24 @@ export default function ProductionReadinessChecklistPanel() {
 
       {/* ── Next required actions ── */}
       {(() => {
-        const urgent = CHECKLIST_ITEMS.filter(i => i.status === 'BLOCKED' || i.status === 'NOT_STARTED' || (i.priority === 'CRITICAL' && i.status !== 'COMPLETE'));
-        const partial = CHECKLIST_ITEMS.filter(i => i.status === 'PARTIAL');
-        const allItems = [...urgent, ...partial];
+        const urgent = CHECKLIST_ITEMS.filter(i => (reviews[i.name]?.reviewStatus || i.status) !== 'COMPLETE' && ((reviews[i.name]?.reviewStatus || i.status) === 'BLOCKED' || i.priority === 'CRITICAL'));
+        const partial = CHECKLIST_ITEMS.filter(i => (reviews[i.name]?.reviewStatus || i.status) === 'PARTIAL' && (reviews[i.name]?.reviewStatus || i.status) !== 'BLOCKED');
+        const allItems = [...urgent, ...partial].slice(0, 5);
         return allItems.length > 0 ? (
           <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
-            <div className="text-[11px] font-semibold text-foreground">Next required actions</div>
+            <div className="text-[11px] font-semibold text-foreground">Next unresolved item</div>
             <div className="space-y-2 text-[9px]">
-              {allItems.slice(0, 5).map((item, i) => {
-                const statusCfg = STATUS_CONFIG[item.status];
+              {allItems.map((item, i) => {
+                const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+                const statusCfg = STATUS_CONFIG[effectiveStatus];
                 const isProd = item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r));
                 return (
                   <div key={i} className="flex items-start gap-2 p-2 bg-card/50 border border-border/30 rounded">
                     <div className="text-[8px] font-semibold text-muted-foreground/60 shrink-0 uppercase tracking-wider min-w-fit">
-                      {item.status === 'BLOCKED' && '🚫'}
-                      {item.status === 'NOT_STARTED' && '⏳'}
-                      {item.status === 'PARTIAL' && '⚙️'}
-                      {item.priority === 'CRITICAL' && item.status !== 'COMPLETE' && '⚠️'}
+                      {effectiveStatus === 'BLOCKED' && '🚫'}
+                      {effectiveStatus === 'NOT_STARTED' && '⏳'}
+                      {effectiveStatus === 'PARTIAL' && '⚙️'}
+                      {item.priority === 'CRITICAL' && effectiveStatus !== 'COMPLETE' && '⚠️'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-foreground/80">{item.name}</div>
@@ -853,18 +961,55 @@ export default function ProductionReadinessChecklistPanel() {
                   </div>
                 );
               })}
-              {allItems.length === 0 && <div className="text-[9px] text-primary/80">✓ No critical actions remaining. All items are complete or on track.</div>}
-              {allItems.length > 5 && <div className="text-[8px] text-muted-foreground/50 pt-1">+ {allItems.length - 5} more items below · Use filter to drill down</div>}
             </div>
           </div>
         ) : null;
       })()}
 
+      {/* ──── Completion Banner ──── */}
+      {allReviewedComplete && CHECKLIST_ITEMS.length > 0 && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-primary/10 border border-primary/30 rounded-lg">
+          <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <div className="text-[10px] text-primary/80">
+            <div className="font-semibold mb-1">✓ PRODUCTION_CHECKLIST_REVIEW_COMPLETE</div>
+            <div className="text-[9px] text-primary/70">All {CHECKLIST_ITEMS.length} checklist items have been reviewed and marked COMPLETE by an operator. This is readiness review completion only, not live execution approval. All governance, legacy review, and safety constraints remain in effect.</div>
+          </div>
+        </div>
+      )}
+
+      {/* ──── Resolve visible items guide ──── */}
+      <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+        <div className="text-[11px] font-semibold text-foreground">Resolve visible items</div>
+        <div className="text-[9px] text-foreground/80 space-y-2">
+          <div><span className="font-semibold">COMPLETE</span> means verified and working</div>
+          <div><span className="font-semibold">PARTIAL</span> means some evidence exists but more work is needed</div>
+          <div><span className="font-semibold">NOT_STARTED</span> means no evidence or work has started</div>
+          <div><span className="font-semibold">BLOCKED</span> means a dependency prevents completion</div>
+          <div><span className="font-semibold">CRITICAL</span> means high-priority production gate</div>
+          <div className="pt-2 border-t border-border/30 mt-2 text-primary/80">Changing review status records operator progress only. It does not execute commands, grant live access, expose secrets, or bypass governance.</div>
+        </div>
+      </div>
+
       {/* Filter bar */}
+      <div className="flex flex-wrap gap-1.5">
+        {[...FILTER_OPTIONS, 'UNRESOLVED'].map(f => (
+          <button key={f} type="button" onClick={() => setFilter(f)}
+            className={`px-3 py-1 text-[9px] border transition-colors whitespace-nowrap ${
+              filter === f
+                ? 'border-primary text-primary bg-primary/10'
+                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+            }`}
+          >
+            {f === 'UNRESOLVED' ? `UNRESOLVED (${CHECKLIST_ITEMS.filter(i => reviews[i.name]?.reviewStatus !== 'COMPLETE' && i.status !== 'COMPLETE').length})` : f}
+          </button>
+        ))}
+      </div>
 
       {/* Checklist items */}
       <div className="space-y-2">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">Loading checklist…</div>
+        ) : filtered.length === 0 ? (
           <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} items found</div>
         ) : (
           filtered.map(item => (
@@ -873,6 +1018,8 @@ export default function ProductionReadinessChecklistPanel() {
               item={item}
               expanded={expandedItems[item.name]}
               onToggle={toggleExpanded}
+              savedReview={reviews[item.name] || null}
+              onReviewSaved={fetchData}
             />
           ))
         )}
@@ -882,8 +1029,8 @@ export default function ProductionReadinessChecklistPanel() {
       <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />
         <div>
-          <div className="font-semibold mb-1">Checklist is read-only. It tracks readiness only.</div>
-          <div>It does not enable production execution. READ_ONLY_READY ≠ PRODUCTION_READY. Complete all critical items before live execution.</div>
+          <div className="font-semibold mb-1">Checklist is a readiness-tracking tool.</div>
+          <div>Operator reviews are persisted separately. Original checklist definitions are immutable. No commands are executed, rerun, or mutated. No governance is bypassed. No live execution is enabled by marking items complete.</div>
         </div>
       </div>
     </div>
