@@ -764,6 +764,43 @@ export default function SystemVerificationPanel() {
     }));
   };
 
+  const exportVerificationSnapshot = () => {
+    const snapshot = {
+      exportedAt: new Date().toISOString(),
+      lastVerifiedAt: lastRunTime,
+      overallReadiness,
+      summary: {
+        blockingIssueCount: prodBlockingFailed.length,
+        manualReviewItemCount: manualReviewItemCount,
+        failedTestCount: failedTests,
+        backendEnforcementPassed,
+        checksPassed: passCount,
+        totalChecks: totalCount,
+      },
+      testResults: [
+        { id: 'logic_blocking_isolation', label: 'Blocking issues are isolated to prod-blocking checks only', status: results.logic_blocking_isolation?.status },
+        { id: 'logic_manual_review_distinction', label: 'Manual review items do not affect production readiness', status: results.logic_manual_review_distinction?.status },
+        { id: 'logic_pass_excluded_from_warnings', label: 'Passed checks are never shown as warnings or issues', status: results.logic_pass_excluded_from_warnings?.status },
+        { id: 'logic_nav_checks_informational', label: 'Navigation checks are informational, do not block production', status: results.logic_nav_checks_informational?.status },
+        { id: 'logic_backend_enforcement_gate', label: 'Backend enforcement is the hard gate for production readiness', status: results.logic_backend_enforcement_gate?.status },
+      ],
+      blockingIssues: blockingIssues.filter(i => i.severity === 'BLOCKING'),
+      manualReviewItems: blockingIssues.filter(i => i.severity === 'WARNING'),
+      note: 'This snapshot is for audit and review only. No live OpenClaw actions were executed. All diagnostics are read-only.',
+    };
+
+    const jsonStr = JSON.stringify(snapshot, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `system-verify-snapshot-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Helper to determine fix type
   const determineFixType = (checkId) => {
     if (checkId.includes('backend')) return 'Backend Fix';
@@ -1083,16 +1120,26 @@ export default function SystemVerificationPanel() {
         </div>
       </div>
 
-      {/* Run Button & Last Run Time */}
+      {/* Run Button & Export Controls */}
       <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={runVerification}
-          disabled={running}
-          className="px-4 py-2 text-[10px] border border-primary bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 font-semibold rounded"
-        >
-          {running ? '⏳ Running verification...' : '▶ Re-run Full Verification'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={runVerification}
+            disabled={running}
+            className="px-4 py-2 text-[10px] border border-primary bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 font-semibold rounded"
+          >
+            {running ? '⏳ Running verification...' : '▶ Re-run Full Verification'}
+          </button>
+          <button
+            type="button"
+            onClick={exportVerificationSnapshot}
+            disabled={running}
+            className="px-4 py-2 text-[10px] border border-primary/50 bg-primary/5 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 font-semibold rounded"
+          >
+            ⬇ Export Snapshot
+          </button>
+        </div>
         <div className="text-[9px] text-slate-400 font-mono">
           {passCount} / {totalCount} checks passed
           {lastRunTime && <div className="mt-0.5">Last run: {lastRunTime}</div>}
