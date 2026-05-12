@@ -640,14 +640,19 @@ export default function ProductionReadinessChecklistPanel() {
   const [filter, setFilter] = useState('ALL');
   const [expandedItems, setExpandedItems] = useState({});
   const [legacyCommands, setLegacyCommands] = useState([]);
+  const [legacyReviews, setLegacyReviews] = useState([]);
 
-  // Detect legacy REAL/LIVE execution commands
+  // Detect legacy REAL/LIVE execution commands and their reviews
   React.useEffect(() => {
     const fetchCommands = async () => {
       try {
-        const commands = await base44.entities.OpenClawCommand.list('-created_date', 100);
+        const [commands, reviews] = await Promise.all([
+          base44.entities.OpenClawCommand.list('-created_date', 100),
+          base44.entities.OpenClawLegacyReview.list('-reviewedAt', 500),
+        ]);
         const legacy = commands.filter(c => c.executionMode === 'REAL' || c.executionMode === 'LIVE');
         setLegacyCommands(legacy);
+        setLegacyReviews(reviews);
       } catch (e) {
         console.error('Error fetching legacy commands:', e);
       }
@@ -700,24 +705,43 @@ export default function ProductionReadinessChecklistPanel() {
         </div>
       </div>
 
-      {/* Legacy REAL/LIVE execution warning */}
-      {legacyCommands.length > 0 && (
-        <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-          <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-          <div className="text-[10px] text-destructive">
-            <div className="font-semibold mb-1">⚠️ LEGACY_REAL_EXECUTION_RECORD Detected</div>
-            <div className="text-[9px] text-destructive/90 mb-2">
-              {legacyCommands.length} command{legacyCommands.length !== 1 ? 's' : ''} found with executionMode = REAL or LIVE. Current system policy is SIMULATED/READ_ONLY only.
+      {/* Legacy REAL/LIVE execution warning — adapts based on review completion */}
+      {legacyCommands.length > 0 && (() => {
+        const reviewMap = {};
+        for (const r of legacyReviews) { if (r.commandId) reviewMap[r.commandId] = r; }
+        const unreviewed = legacyCommands.filter(c => !reviewMap[c.id] || reviewMap[c.id].reviewStatus === 'UNREVIEWED').length;
+        const reviewed = legacyCommands.length - unreviewed;
+        const allReviewed = unreviewed === 0;
+
+        return allReviewed ? (
+          <div className="flex items-start gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
+            <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="text-[10px] text-primary/80">
+              <div className="font-semibold mb-1">✓ LEGACY RECORDS — HISTORICAL AUDIT COMPLETE</div>
+              <div className="text-[9px] text-primary/70 mb-1">
+                All {legacyCommands.length} legacy REAL/LIVE record{legacyCommands.length !== 1 ? 's' : ''} have been reviewed and classified. Original records are preserved and unmodified.
+              </div>
+              <div className="text-[9px] text-primary/60">Check Legacy Review tab for classification details. This notice is informational only.</div>
             </div>
-            <ul className="text-[9px] space-y-1 text-destructive/80 ml-4 list-disc">
-              <li>These records are NOT deleted or hidden</li>
-              <li>They will NOT be executed</li>
-              <li>Operator review is REQUIRED before production readiness can be considered</li>
-              <li>Check Executed Audit panel for full legacy record details</li>
-            </ul>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+            <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <div className="text-[10px] text-destructive">
+              <div className="font-semibold mb-1">⚠️ LEGACY_REAL_EXECUTION_RECORD — REVIEW REQUIRED</div>
+              <div className="text-[9px] text-destructive/90 mb-2">
+                {legacyCommands.length} command{legacyCommands.length !== 1 ? 's' : ''} with executionMode = REAL or LIVE ·
+                <span className="font-semibold"> {unreviewed} unreviewed</span>{reviewed > 0 ? ` · ${reviewed} reviewed` : ''}.
+              </div>
+              <ul className="text-[9px] space-y-1 text-destructive/80 ml-4 list-disc">
+                <li>These records are NOT deleted or hidden</li>
+                <li>They will NOT be executed</li>
+                <li>Operator review is REQUIRED in the Legacy Review tab before production readiness</li>
+              </ul>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Readiness score */}
       <div className="bg-secondary/20 border border-border rounded-lg p-4 space-y-3">

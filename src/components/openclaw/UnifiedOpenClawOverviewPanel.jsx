@@ -93,23 +93,26 @@ export default function UnifiedOpenClawOverviewPanel() {
   const [commands, setCommands] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [workflows, setWorkflows] = useState([]);
+  const [legacyReviews, setLegacyReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedJson, setExpandedJson] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statusRes, cmdRes, propRes, wfRes] = await Promise.allSettled([
+        const [statusRes, cmdRes, propRes, wfRes, reviewRes] = await Promise.allSettled([
           base44.functions.invoke('openclawStatus', {}),
           base44.entities.OpenClawCommand.list('-created_date', 100),
           base44.entities.OpenClawProposal.list('-created_date', 50),
           base44.entities.OpenClawWorkflow.list('-created_date', 50),
+          base44.entities.OpenClawLegacyReview.list('-reviewedAt', 500),
         ]);
 
         if (statusRes.status === 'fulfilled') setStatus(statusRes.value.data);
         if (cmdRes.status === 'fulfilled') setCommands(cmdRes.value || []);
         if (propRes.status === 'fulfilled') setProposals(propRes.value || []);
         if (wfRes.status === 'fulfilled') setWorkflows(wfRes.value || []);
+        if (reviewRes.status === 'fulfilled') setLegacyReviews(reviewRes.value || []);
       } catch (e) {
         console.error('Error fetching overview data:', e);
       } finally {
@@ -125,6 +128,14 @@ export default function UnifiedOpenClawOverviewPanel() {
     c.executionMode === 'REAL' || c.executionMode === 'LIVE'
   );
 
+  // Build review lookup by commandId
+  const reviewMap = {};
+  for (const r of legacyReviews) {
+    if (r.commandId) reviewMap[r.commandId] = r;
+  }
+  const legacyReviewed = legacyRealExecutionCommands.filter(c => reviewMap[c.id] && reviewMap[c.id].reviewStatus !== 'UNREVIEWED').length;
+  const legacyUnreviewed = legacyRealExecutionCommands.length - legacyReviewed;
+
   // Calculate counters
   const counters = {
     totalCommands: commands.length,
@@ -138,6 +149,8 @@ export default function UnifiedOpenClawOverviewPanel() {
     readyConnectors: 12, // Mock
     passingSims: 7, // Mock
     legacyRealExecutions: legacyRealExecutionCommands.length,
+    legacyReviewed,
+    legacyUnreviewed,
   };
 
   // Build overview state for JSON export
@@ -206,7 +219,7 @@ export default function UnifiedOpenClawOverviewPanel() {
           <div className="text-[10px] text-destructive/80">
             <div className="font-semibold mb-1">Active Alerts</div>
             <ul className="text-[9px] space-y-0.5">
-              {counters.legacyRealExecutions > 0 && <li>• ⚠️ LEGACY: {counters.legacyRealExecutions} command{counters.legacyRealExecutions !== 1 ? 's' : ''} with REAL/LIVE execution mode detected · Operator review required before production</li>}
+              {counters.legacyRealExecutions > 0 && <li>• ⚠️ LEGACY: {counters.legacyRealExecutions} command{counters.legacyRealExecutions !== 1 ? 's' : ''} with REAL/LIVE execution mode · <span className="text-amber-500">{counters.legacyUnreviewed} unreviewed</span> / <span className="text-primary">{counters.legacyReviewed} reviewed</span> · Go to Legacy Review tab</li>}
               {counters.critical > 0 && <li>• {counters.critical} critical-risk command{counters.critical !== 1 ? 's' : ''} pending review</li>}
               {counters.highRisk > 0 && <li>• {counters.highRisk} high-risk command{counters.highRisk !== 1 ? 's' : ''} require approval</li>}
               <li>• Production readiness: NOT READY · Multiple checks pending</li>

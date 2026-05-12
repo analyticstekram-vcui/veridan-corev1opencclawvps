@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertTriangle, ChevronDown, ChevronRight, ShieldAlert, Eye } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, ShieldAlert, Eye, Save, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 const REVIEW_OPTIONS = [
@@ -12,32 +12,122 @@ const REVIEW_OPTIONS = [
 
 const FILTERS = ['ALL', 'UNREVIEWED', 'REVIEWED_SAFE_HISTORICAL', 'REVIEWED_POLICY_EXCEPTION', 'REVIEWED_REQUIRES_INVESTIGATION', 'REAL', 'LIVE'];
 
+// Redact sensitive fields from a snapshot object
+const SENSITIVE_PATTERN = /token|key|secret|password|credential|auth|bearer|hmac/i;
+
+function redactSnapshot(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(redactSnapshot);
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (SENSITIVE_PATTERN.test(k)) {
+      out[k] = '[REDACTED]';
+    } else if (typeof v === 'object' && v !== null) {
+      out[k] = redactSnapshot(v);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+function buildSnapshot(command) {
+  const safe = {
+    commandId: command.id,
+    commandType: command.commandType,
+    executionMode: command.executionMode,
+    status: command.status,
+    riskLevel: command.riskLevel,
+    targetUrl: command.targetUrl,
+    approvedBy: command.approvedBy,
+    approvedAt: command.approvedAt,
+    executedAt: command.executedAt,
+    created_date: command.created_date,
+    resultSummary: command.result?.summary || command.resultSummary || null,
+    error: command.error || null,
+    auditLogLength: Array.isArray(command.auditLog) ? command.auditLog.length : 0,
+  };
+  return redactSnapshot(safe);
+}
+
 function ReviewBadge({ mode }) {
   if (mode === 'REAL') return (
     <span className="text-[9px] px-1.5 py-0.5 border border-destructive/50 bg-destructive/10 text-destructive font-semibold uppercase tracking-wider">
-      LEGACY_REAL_EXECUTION_RECORD
+      LEGACY_REAL
     </span>
   );
   if (mode === 'LIVE') return (
     <span className="text-[9px] px-1.5 py-0.5 border border-amber-500/50 bg-amber-500/10 text-amber-500 font-semibold uppercase tracking-wider">
-      LEGACY_LIVE_EXECUTION_RECORD
+      LEGACY_LIVE
     </span>
   );
   return null;
 }
 
-function CommandReviewCard({ command, localReview, onReviewChange }) {
+function CommandReviewCard({ command, savedReview, onSaved }) {
   const [expanded, setExpanded] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState(savedReview?.reviewStatus || 'UNREVIEWED');
+  const [reviewer, setReviewer] = useState(savedReview?.reviewer || '');
+  const [reviewNote, setReviewNote] = useState(savedReview?.reviewNote || '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const review = localReview || { status: 'UNREVIEWED', reviewNote: '', reviewedBy: '', reviewedAt: null };
-  const reviewOpt = REVIEW_OPTIONS.find(r => r.value === review.status) || REVIEW_OPTIONS[0];
+  // Sync if savedReview changes from parent
+  useEffect(() => {
+    if (savedReview) {
+      setReviewStatus(savedReview.reviewStatus || 'UNREVIEWED');
+      setReviewer(savedReview.reviewer || '');
+      setReviewNote(savedReview.reviewNote || '');
+    }
+  }, [savedReview?.id]);
+
+  const reviewOpt = REVIEW_OPTIONS.find(r => r.value === reviewStatus) || REVIEW_OPTIONS[0];
 
   const fmtDate = (d) => {
     if (!d) return '—';
     try { return format(new Date(d), 'yyyy-MM-dd HH:mm:ss'); } catch { return d; }
   };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const now = new Date().toISOString();
+      const payload = {
+        commandId: command.id,
+        legacyRecordId: command.id,
+        executionMode: command.executionMode,
+        commandType: command.commandType,
+        originalStatus: command.status,
+        reviewStatus,
+        reviewer,
+        reviewNote,
+        reviewedAt: now,
+        auditTraceId: command.id?.slice(0, 12),
+        sourceSnapshot: buildSnapshot(command),
+      };
+
+      if (savedReview?.id) {
+        await base44.entities.OpenClawLegacyReview.update(savedReview.id, payload);
+      } else {
+        payload.createdAt = now;
+        await base44.entities.OpenClawLegacyReview.create(payload);
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      if (onSaved) onSaved();
+    } catch (err) {
+      console.error('Failed to save review:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isDirty = reviewStatus !== (savedReview?.reviewStatus || 'UNREVIEWED') ||
+                  reviewer !== (savedReview?.reviewer || '') ||
+                  reviewNote !== (savedReview?.reviewNote || '');
 
   return (
     <div className="border border-border/40 bg-card mb-2">
@@ -52,6 +142,7 @@ function CommandReviewCard({ command, localReview, onReviewChange }) {
             <div className="flex flex-wrap items-center gap-1.5">
               <ReviewBadge mode={command.executionMode} />
               <span className={`text-[9px] px-1.5 py-0.5 border rounded font-semibold ${reviewOpt.color}`}>{reviewOpt.label}</span>
+              {savedReview && <span className="text-[8px] text-primary/60 border border-primary/20 px-1 py-0.5">SAVED</span>}
             </div>
             <div className="text-[11px] text-foreground font-mono truncate">{command.commandType || '—'}</div>
             <div className="text-[9px] text-blue-400 font-mono truncate">{command.targetUrl || '—'}</div>
@@ -80,7 +171,6 @@ function CommandReviewCard({ command, localReview, onReviewChange }) {
               ['Approved At', fmtDate(command.approvedAt)],
               ['Executed At', fmtDate(command.executedAt)],
               ['Created', fmtDate(command.created_date)],
-              ['Updated', fmtDate(command.updated_date)],
             ].map(([k, v]) => (
               <div key={k} className="bg-secondary/30 border border-border/40 px-2 py-1.5">
                 <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">{k}</div>
@@ -93,12 +183,6 @@ function CommandReviewCard({ command, localReview, onReviewChange }) {
                 <div className="font-mono text-blue-400 break-all text-[9px]">{command.targetUrl}</div>
               </div>
             )}
-            {(command.result?.summary || command.resultSummary) && (
-              <div className="col-span-2 md:col-span-3 bg-secondary/30 border border-border/40 px-2 py-1.5">
-                <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-0.5">Result Summary</div>
-                <div className="font-mono text-foreground/70 text-[9px]">{command.result?.summary || command.resultSummary}</div>
-              </div>
-            )}
             {command.error && (
               <div className="col-span-2 md:col-span-3 bg-destructive/5 border border-destructive/20 px-2 py-1.5">
                 <div className="text-[8px] uppercase tracking-widest text-destructive/50 mb-0.5">Error</div>
@@ -109,9 +193,7 @@ function CommandReviewCard({ command, localReview, onReviewChange }) {
 
           {/* Collapsible: Audit Log */}
           <div className="border border-border/30">
-            <button
-              type="button"
-              onClick={() => setShowAudit(!showAudit)}
+            <button type="button" onClick={() => setShowAudit(!showAudit)}
               className="w-full flex items-center gap-2 px-3 py-2 text-[9px] uppercase tracking-widest text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary/30 transition-colors"
             >
               {showAudit ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -122,7 +204,7 @@ function CommandReviewCard({ command, localReview, onReviewChange }) {
                 {Array.isArray(command.auditLog) && command.auditLog.length > 0 ? (
                   command.auditLog.map((entry, i) => (
                     <div key={i} className="text-[8px] font-mono text-muted-foreground/60 py-0.5 border-b border-border/10 last:border-0">
-                      <span className="text-muted-foreground/40 mr-2">{fmtDate(entry.timestamp)}</span>
+                      <span className="text-muted-foreground/40 mr-2">{entry.timestamp ? format(new Date(entry.timestamp), 'HH:mm:ss') : '—'}</span>
                       <span className="text-foreground/60">{entry.eventType || JSON.stringify(entry)}</span>
                     </div>
                   ))
@@ -133,39 +215,38 @@ function CommandReviewCard({ command, localReview, onReviewChange }) {
             )}
           </div>
 
-          {/* Collapsible: Full JSON */}
+          {/* Collapsible: Full JSON (redacted snapshot) */}
           <div className="border border-border/30">
-            <button
-              type="button"
-              onClick={() => setShowJson(!showJson)}
+            <button type="button" onClick={() => setShowJson(!showJson)}
               className="w-full flex items-center gap-2 px-3 py-2 text-[9px] uppercase tracking-widest text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary/30 transition-colors"
             >
               {showJson ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-              Full Command JSON
+              Safe Metadata Snapshot (Redacted)
             </button>
             {showJson && (
               <div className="border-t border-border/20 px-3 py-2 max-h-64 overflow-auto">
+                <div className="text-[8px] text-amber-500/60 mb-1">Sensitive fields (token/key/secret/password/credential/auth/bearer/hmac) are redacted.</div>
                 <pre className="text-[8px] font-mono text-muted-foreground/60 whitespace-pre-wrap break-words">
-                  {JSON.stringify(command, null, 2)}
+                  {JSON.stringify(buildSnapshot(command), null, 2)}
                 </pre>
               </div>
             )}
           </div>
 
-          {/* ── Review Controls (local UI only — NOT persisted) ── */}
-          <div className="border border-amber-500/20 bg-amber-500/5 p-3 space-y-3">
+          {/* ── Review Controls — persisted to OpenClawLegacyReview ── */}
+          <div className="border border-primary/20 bg-primary/5 p-3 space-y-3">
             <div className="flex items-center gap-2 mb-1">
-              <Eye className="w-3.5 h-3.5 text-amber-500" />
-              <span className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">Operator Review</span>
-              <span className="text-[8px] text-amber-500/60 border border-amber-500/30 px-1.5 py-0.5 ml-auto">UI-ONLY · NOT PERSISTED</span>
+              <Eye className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Operator Review</span>
+              <span className="text-[8px] text-primary/50 border border-primary/20 px-1.5 py-0.5 ml-auto">PERSISTED · AUDIT-ONLY</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Review Status</label>
                 <select
-                  value={review.status}
-                  onChange={e => onReviewChange(command.id, { ...review, status: e.target.value })}
+                  value={reviewStatus}
+                  onChange={e => setReviewStatus(e.target.value)}
                   className="w-full bg-secondary/50 border border-border text-[10px] font-mono text-foreground px-2 py-1.5 outline-none focus:border-primary/50"
                 >
                   {REVIEW_OPTIONS.map(opt => (
@@ -174,12 +255,12 @@ function CommandReviewCard({ command, localReview, onReviewChange }) {
                 </select>
               </div>
               <div>
-                <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Reviewed By</label>
+                <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Reviewer</label>
                 <input
                   type="text"
-                  value={review.reviewedBy}
-                  onChange={e => onReviewChange(command.id, { ...review, reviewedBy: e.target.value, reviewedAt: new Date().toISOString() })}
-                  placeholder="operator email"
+                  value={reviewer}
+                  onChange={e => setReviewer(e.target.value)}
+                  placeholder="operator email or identifier"
                   className="w-full bg-secondary/50 border border-border text-[10px] font-mono text-foreground px-2 py-1.5 outline-none focus:border-primary/50 placeholder:text-muted-foreground/30"
                 />
               </div>
@@ -188,19 +269,45 @@ function CommandReviewCard({ command, localReview, onReviewChange }) {
             <div>
               <label className="text-[8px] uppercase tracking-widest text-muted-foreground/40 block mb-1">Review Note</label>
               <textarea
-                value={review.reviewNote}
-                onChange={e => onReviewChange(command.id, { ...review, reviewNote: e.target.value })}
-                placeholder="Add operator review notes here..."
+                value={reviewNote}
+                onChange={e => setReviewNote(e.target.value)}
+                placeholder="Add operator review rationale..."
                 rows={2}
                 className="w-full bg-secondary/50 border border-border text-[10px] font-mono text-foreground px-2 py-1.5 outline-none focus:border-primary/50 placeholder:text-muted-foreground/30 resize-none"
               />
             </div>
 
-            {review.reviewedAt && (
+            {savedReview?.reviewedAt && (
               <div className="text-[8px] text-muted-foreground/40 font-mono">
-                Reviewed at: {fmtDate(review.reviewedAt)}
+                Last saved: {fmtDate(savedReview.reviewedAt)} {savedReview.reviewer ? `by ${savedReview.reviewer}` : ''}
               </div>
             )}
+
+            {/* Save buttons */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {['REVIEWED_SAFE_HISTORICAL', 'REVIEWED_POLICY_EXCEPTION', 'REVIEWED_REQUIRES_INVESTIGATION'].map(val => {
+                const opt = REVIEW_OPTIONS.find(o => o.value === val);
+                return (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => { setReviewStatus(val); }}
+                    className={`px-2.5 py-1 text-[9px] border transition-colors ${reviewStatus === val ? opt.color : 'border-border text-muted-foreground hover:bg-secondary/50'}`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-[9px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {saved ? <CheckCircle2 className="w-3 h-3" /> : <Save className="w-3 h-3" />}
+                {saving ? 'Saving…' : saved ? 'Saved!' : isDirty ? 'Save Review' : 'Re-save'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -210,32 +317,35 @@ function CommandReviewCard({ command, localReview, onReviewChange }) {
 
 export default function LegacyExecutionReviewPanel() {
   const [commands, setCommands] = useState([]);
+  const [savedReviews, setSavedReviews] = useState({}); // keyed by commandId
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
-  // Local-only review state — not persisted to DB
-  const [reviews, setReviews] = useState({});
 
-  useEffect(() => {
-    const fetchLegacy = async () => {
-      setLoading(true);
-      try {
-        const all = await base44.entities.OpenClawCommand.list('-created_date', 500);
-        const legacy = all.filter(c => c.executionMode === 'REAL' || c.executionMode === 'LIVE');
-        setCommands(legacy);
-      } catch (err) {
-        console.error('LegacyExecutionReviewPanel fetch error:', err);
-      } finally {
-        setLoading(false);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [allCmds, allReviews] = await Promise.all([
+        base44.entities.OpenClawCommand.list('-created_date', 500),
+        base44.entities.OpenClawLegacyReview.list('-reviewedAt', 500),
+      ]);
+      const legacy = allCmds.filter(c => c.executionMode === 'REAL' || c.executionMode === 'LIVE');
+      setCommands(legacy);
+      // Build lookup by commandId (latest review wins)
+      const reviewMap = {};
+      for (const r of allReviews) {
+        if (r.commandId) reviewMap[r.commandId] = r;
       }
-    };
-    fetchLegacy();
+      setSavedReviews(reviewMap);
+    } catch (err) {
+      console.error('LegacyExecutionReviewPanel fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleReviewChange = (id, review) => {
-    setReviews(prev => ({ ...prev, [id]: review }));
-  };
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const getReviewStatus = (id) => reviews[id]?.status || 'UNREVIEWED';
+  const getReviewStatus = (id) => savedReviews[id]?.reviewStatus || 'UNREVIEWED';
 
   const counters = {
     total: commands.length,
@@ -260,12 +370,12 @@ export default function LegacyExecutionReviewPanel() {
         <div className="text-[10px] font-semibold text-primary uppercase tracking-wider">Next Operational Step</div>
         <ol className="space-y-1 text-[10px] text-foreground/80 list-none">
           <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">1.</span> Expand each legacy record below to inspect its payload, audit log, and execution metadata.</li>
-          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">2.</span> Classify the record locally using the <span className="text-foreground font-semibold">Review Status</span> selector: <span className="text-primary">REVIEWED_SAFE_HISTORICAL</span>, <span className="text-blue-400">REVIEWED_POLICY_EXCEPTION</span>, or <span className="text-destructive">REVIEWED_REQUIRES_INVESTIGATION</span>.</li>
-          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">3.</span> Add a review note and your operator identifier to document the rationale.</li>
-          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">4.</span> Once all records are classified, proceed to the <span className="text-foreground font-semibold">Production Checklist</span> tab to continue readiness assessment.</li>
+          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">2.</span> Classify using the <span className="text-foreground font-semibold">Review Status</span> selector: <span className="text-primary">REVIEWED_SAFE_HISTORICAL</span>, <span className="text-blue-400">REVIEWED_POLICY_EXCEPTION</span>, or <span className="text-destructive">REVIEWED_REQUIRES_INVESTIGATION</span>.</li>
+          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">3.</span> Add a reviewer identifier and note, then click <span className="text-foreground font-semibold">Save Review</span> to persist the classification.</li>
+          <li className="flex items-start gap-2"><span className="text-primary font-bold shrink-0">4.</span> Once all records are classified, proceed to the <span className="text-foreground font-semibold">Production Checklist</span> tab.</li>
         </ol>
         <div className="text-[9px] text-muted-foreground/50 border-t border-primary/20 pt-2 mt-1">
-          Review status and notes are session-local only · Not persisted · No execution facts are modified
+          Reviews saved to <span className="text-primary">OpenClawLegacyReview</span> entity · Original command records are never modified
         </div>
       </div>
 
@@ -277,13 +387,13 @@ export default function LegacyExecutionReviewPanel() {
             Legacy Execution Records — Audit Review Only
           </div>
           <div className="text-[10px] text-destructive/70">
-            These records have <span className="font-semibold">executionMode = REAL or LIVE</span>. They are preserved for audit purposes.
+            These records have <span className="font-semibold">executionMode = REAL or LIVE</span>. They are preserved for audit.
             Review does not change execution facts, delete records, rerun commands, or enable live execution.
           </div>
         </div>
       </div>
 
-      {/* Summary counters */}
+      {/* Summary counters (from saved reviews) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-[10px]">
         <div className="bg-secondary/20 border border-border px-3 py-2">
           <div className="text-[8px] uppercase tracking-widest text-muted-foreground/40 mb-1">Legacy Total</div>
@@ -310,10 +420,7 @@ export default function LegacyExecutionReviewPanel() {
       {/* Filter bar */}
       <div className="flex flex-wrap gap-1.5">
         {FILTERS.map(f => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setFilter(f)}
+          <button key={f} type="button" onClick={() => setFilter(f)}
             className={`px-3 py-1 text-[9px] border transition-colors whitespace-nowrap ${
               filter === f
                 ? 'border-primary text-primary bg-primary/10'
@@ -331,17 +438,15 @@ export default function LegacyExecutionReviewPanel() {
           <div className="py-12 text-center text-[11px] text-muted-foreground/40">Loading legacy records…</div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-[11px] text-muted-foreground/40">
-            {commands.length === 0
-              ? 'No REAL or LIVE execution records found.'
-              : `No records match filter: ${filter}`}
+            {commands.length === 0 ? 'No REAL or LIVE execution records found.' : `No records match filter: ${filter}`}
           </div>
         ) : (
           filtered.map(cmd => (
             <CommandReviewCard
               key={cmd.id}
               command={cmd}
-              localReview={reviews[cmd.id]}
-              onReviewChange={handleReviewChange}
+              savedReview={savedReviews[cmd.id] || null}
+              onSaved={fetchData}
             />
           ))
         )}
@@ -351,8 +456,8 @@ export default function LegacyExecutionReviewPanel() {
       <div className="flex items-start gap-2 px-4 py-3 bg-secondary/10 border border-border/30 text-[9px] text-muted-foreground/50">
         <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500/50" />
         <div>
-          Legacy review preserves audit history. It does not modify execution facts, delete records, rerun commands, or enable live execution.
-          Review status and notes are <span className="text-amber-500/70 font-semibold">local session only</span> and are not persisted to the database.
+          Reviews are saved to <span className="text-primary/70 font-semibold">OpenClawLegacyReview</span>. Original <span className="text-foreground/60">OpenClawCommand</span> records are never modified.
+          No command rerun, deletion, live execution, or governance bypass.
         </div>
       </div>
     </div>

@@ -11,13 +11,15 @@ const statusConfig = {
   failed:   { icon: AlertTriangle, color: 'text-amber-500', label: 'Failed' },
 };
 
-function CommandRow({ command, index }) {
+function CommandRow({ command, index, savedReview }) {
   const [expanded, setExpanded] = useState(false);
   const cfg = statusConfig[command.status] || { icon: AlertTriangle, color: 'text-muted-foreground', label: command.status };
   const Icon = cfg.icon;
 
   const isReadOnly = ['system.status', 'logs.fetch', 'session.list'].includes(command.commandType);
   const isLegacyRealExecution = command.executionMode === 'REAL' || command.executionMode === 'LIVE';
+  const reviewStatus = savedReview?.reviewStatus || (isLegacyRealExecution ? 'UNREVIEWED' : null);
+  const reviewColor = reviewStatus ? REVIEW_STATUS_COLORS[reviewStatus] : null;
   const blockReason = command.error || null;
   const auditTraceId = command.readOnlyBridgeTraceId || command.id?.slice(0, 12);
   const executedAtTime = command.executedAt ? format(new Date(command.executedAt), 'HH:mm:ss') : '—';
@@ -68,9 +70,15 @@ function CommandRow({ command, index }) {
               <AlertTriangle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
               <div className="flex-1">
                 <div className="text-[9px] uppercase tracking-wider text-destructive/70 mb-0.5 font-semibold">LEGACY_REAL_EXECUTION_RECORD</div>
-                <div className="text-[9px] text-destructive/80">
-                  This command record has executionMode = {command.executionMode}. Current system policy is SIMULATED/READ_ONLY only. This record is preserved for audit purposes and will NOT be executed. Operator review required before production readiness can be considered.
+                <div className="text-[9px] text-destructive/80 mb-1.5">
+                  executionMode = {command.executionMode} · Preserved for audit · Will NOT be executed · Review in Legacy Review tab.
                 </div>
+                {reviewStatus && (
+                  <span className={`inline-flex items-center gap-1 text-[8px] px-1.5 py-0.5 border rounded font-semibold ${reviewColor}`}>
+                    {reviewStatus === 'UNREVIEWED' ? '⚠ ' : '✓ '}{reviewStatus}
+                    {savedReview?.reviewer ? ` · ${savedReview.reviewer}` : ''}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -153,8 +161,16 @@ function CommandRow({ command, index }) {
   );
 }
 
+const REVIEW_STATUS_COLORS = {
+  UNREVIEWED: 'text-amber-500 border-amber-500/40 bg-amber-500/10',
+  REVIEWED_SAFE_HISTORICAL: 'text-primary border-primary/40 bg-primary/10',
+  REVIEWED_POLICY_EXCEPTION: 'text-blue-400 border-blue-400/40 bg-blue-400/10',
+  REVIEWED_REQUIRES_INVESTIGATION: 'text-destructive border-destructive/40 bg-destructive/10',
+};
+
 export default function ExecutedCommandAuditView() {
   const [commands, setCommands] = useState([]);
+  const [reviewMap, setReviewMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [legacyRealCount, setLegacyRealCount] = useState(0);
@@ -163,12 +179,18 @@ export default function ExecutedCommandAuditView() {
     const fetchCommands = async () => {
       setLoading(true);
       try {
-        const data = await base44.entities.OpenClawCommand.list('-executedAt', 200);
+        const [data, reviews] = await Promise.all([
+          base44.entities.OpenClawCommand.list('-executedAt', 200),
+          base44.entities.OpenClawLegacyReview.list('-reviewedAt', 500),
+        ]);
         // Only show commands that have been executed or blocked
         const filtered = data.filter(c => c.executedAt && (c.status === 'executed' || c.status === 'blocked' || c.status === 'failed'));
         const legacy = data.filter(c => c.executionMode === 'REAL' || c.executionMode === 'LIVE');
         setCommands(filtered);
         setLegacyRealCount(legacy.length);
+        const map = {};
+        for (const r of reviews) { if (r.commandId) map[r.commandId] = r; }
+        setReviewMap(map);
       } catch (err) {
         console.error('Failed to fetch commands:', err);
       } finally {
@@ -245,7 +267,7 @@ export default function ExecutedCommandAuditView() {
         ) : filtered.length === 0 ? (
           <div className="px-4 py-8 text-center text-[10px] text-muted-foreground/40">No {filter.toLowerCase()} commands found</div>
         ) : (
-          filtered.map((cmd, idx) => <CommandRow key={idx} command={cmd} index={idx} />)
+          filtered.map((cmd, idx) => <CommandRow key={idx} command={cmd} index={idx} savedReview={reviewMap[cmd.id] || null} />)
         )}
       </div>
 

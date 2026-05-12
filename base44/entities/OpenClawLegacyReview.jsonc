@@ -1,0 +1,71 @@
+{
+  "name": "OpenClawLegacyReview",
+  "type": "object",
+  "properties": {
+    "commandId": {
+      "type": "string",
+      "description": "ID of the original OpenClawCommand record"
+    },
+    "legacyRecordId": {
+      "type": "string",
+      "description": "Alias for commandId, for legacy traceability"
+    },
+    "executionMode": {
+      "type": "string",
+      "enum": [
+        "REAL",
+        "LIVE"
+      ],
+      "description": "Execution mode of the original command"
+    },
+    "commandType": {
+      "type": "string",
+      "description": "Command type from the original record"
+    },
+    "originalStatus": {
+      "type": "string",
+      "description": "Status field from the original command record"
+    },
+    "reviewStatus": {
+      "type": "string",
+      "enum": [
+        "UNREVIEWED",
+        "REVIEWED_SAFE_HISTORICAL",
+        "REVIEWED_POLICY_EXCEPTION",
+        "REVIEWED_REQUIRES_INVESTIGATION"
+      ],
+      "default": "UNREVIEWED",
+      "description": "Operator review classification"
+    },
+    "reviewer": {
+      "type": "string",
+      "description": "Email or identifier of the reviewing operator"
+    },
+    "reviewNote": {
+      "type": "string",
+      "description": "Operator review rationale notes"
+    },
+    "reviewedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when review was saved"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when review record was created"
+    },
+    "auditTraceId": {
+      "type": "string",
+      "description": "Short trace identifier derived from commandId"
+    },
+    "sourceSnapshot": {
+      "type": "object",
+      "description": "Redacted safe metadata snapshot of the original command (no tokens, keys, secrets)"
+    }
+  },
+  "required": [
+    "commandId",
+    "reviewStatus"
+  ]
+}
