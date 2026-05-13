@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Phase1BridgePreviewTester from './Phase1BridgePreviewTester';
 import Phase3SignatureGenerator from './Phase3SignatureGenerator';
 import Phase4HmacPlan from './Phase4HmacPlan';
+import Phase4BHmacTestCases from './Phase4BHmacTestCases';
 import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp, Copy, AlertTriangle, Clock } from 'lucide-react';
 
 const REQUEST_SCHEMA = {
@@ -1899,6 +1900,9 @@ export default function SafeBridgeContractPreview() {
         </div>
       </div>
 
+      {/* Phase 4B Real HMAC Test Cases */}
+      <Phase4BHmacTestCases />
+
       {/* Phase 4 Real HMAC Plan */}
       <Phase4HmacPlan />
 
@@ -1906,8 +1910,8 @@ export default function SafeBridgeContractPreview() {
       <div className="flex items-start gap-2 px-4 py-3 bg-secondary/10 border border-border/50 rounded-lg text-[9px] text-slate-400">
         <Lock className="w-3 h-3 shrink-0 mt-0.5" />
         <div>
-          <div className="font-semibold text-foreground mb-0.5">Phases 1-3 locked. Phase 4 is planning only.</div>
-          <div className="text-[8px] text-slate-400">All validation rules, signing model, and safeguards are documented. Mock HMAC is active. Real HMAC secret is not configured. No OpenClaw calls in any phase. Execution remains disabled.</div>
+          <div className="font-semibold text-foreground mb-0.5">Phases 1-4B implemented. Signer endpoint (Phase 4C) not yet implemented.</div>
+          <div className="text-[8px] text-slate-400">Phase 4B real HMAC-SHA256 verification active. Signer endpoint disabled. Frontend cannot generate valid HMACs. All unsigned/invalid signature requests rejected. No OpenClaw calls. Execution remains DRY_RUN_ONLY.</div>
         </div>
       </div>
     </div>

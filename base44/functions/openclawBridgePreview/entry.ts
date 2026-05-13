@@ -27,7 +27,7 @@ const SUSPICIOUS_PATH_KEYWORDS = ['delete', 'transfer', 'withdraw', 'password', 
 
 const generateAuditId = () => `audit_${new Date().toISOString().split('T')[0]}_${Math.random().toString(36).substr(2, 9)}`;
 
-// Phase 3: Mock deterministic signature validation
+// Phase 4B: Real HMAC-SHA256 Signature Validation
 const buildCanonicalPayload = (requestId, proposalId, previewHash, operatorId, submittedAt, signedAt, commandType, targetUrl, riskTier, governanceMode, dryRun, liveExecution) => {
   return [
     requestId,
@@ -45,38 +45,59 @@ const buildCanonicalPayload = (requestId, proposalId, previewHash, operatorId, s
   ].join('|');
 };
 
-const generateMockSignature = async (canonical) => {
+// Timing-safe comparison for HMAC signatures
+const timingSafeCompare = (a, b) => {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+};
+
+// Real HMAC-SHA256 signature generation (server-side only)
+const generateHmacSignature = async (canonical, secret) => {
   const encoder = new TextEncoder();
-  const data = encoder.encode(canonical);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const keyData = encoder.encode(secret);
+  const dataBuffer = encoder.encode(canonical);
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signatureBuffer = await crypto.subtle.sign('HMAC', key, dataBuffer);
+  const hashArray = Array.from(new Uint8Array(signatureBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-const validateSignedRequest = async (body) => {
+const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret) => {
   const errors = [];
 
   // Check signature field existence
   if (!body.signature) {
     errors.push('signature field missing');
-    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
   // Check signingVersion
   if (!body.signingVersion) {
     errors.push('signingVersion field missing');
-    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
   if (body.signingVersion !== 'OPENCLAW_BRIDGE_V1') {
     errors.push(`signingVersion must be OPENCLAW_BRIDGE_V1, got ${body.signingVersion}`);
-    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
   // Check signedAt field existence
   if (!body.signedAt) {
     errors.push('signedAt field missing');
-    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
   // Validate signedAt is a valid ISO timestamp
@@ -85,11 +106,11 @@ const validateSignedRequest = async (body) => {
     signedAtDate = new Date(body.signedAt);
     if (isNaN(signedAtDate.getTime())) {
       errors.push('signedAt is not a valid ISO timestamp');
-      return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+      return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
     }
   } catch {
     errors.push('signedAt is not a valid ISO timestamp');
-    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
   // Check signedAt is not too old (older than 5 minutes)
@@ -97,14 +118,14 @@ const validateSignedRequest = async (body) => {
   const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
   if (signedAtDate < fiveMinutesAgo) {
     errors.push('signedAt is older than 5 minutes (signature expired)');
-    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
   // Check signedAt is not too far in future (more than 60 seconds)
   const sixtySecondsFromNow = new Date(now.getTime() + 60 * 1000);
   if (signedAtDate > sixtySecondsFromNow) {
     errors.push('signedAt is more than 60 seconds in the future');
-    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
   // Build canonical payload for signature verification
@@ -124,16 +145,20 @@ const validateSignedRequest = async (body) => {
     br.liveExecution
   );
 
-  // Generate expected mock signature
-  const expectedSignature = await generateMockSignature(canonical);
+  const mode = hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC';
 
-  // Compare signatures
-  if (body.signature !== expectedSignature) {
-    errors.push('signature does not match canonical payload hash (MOCK_SIGNATURE_VALIDATION)');
-    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+  // Phase 4B: Real HMAC verification (if secret is configured)
+  if (hmacSecretConfigured && hmacSecret) {
+    const expectedSignature = await generateHmacSignature(canonical, hmacSecret);
+    
+    // Timing-safe comparison to prevent timing attacks
+    if (!timingSafeCompare(body.signature, expectedSignature)) {
+      errors.push('signature does not match canonical payload (REAL_HMAC_VALIDATION)');
+      return { result: 'FAIL', errors, mode };
+    }
   }
 
-  return { result: 'PASS', errors: [], mode: 'MOCK_SIGNATURE_VALIDATION' };
+  return { result: 'PASS', errors: [], mode };
 };
 
 const isUrlAllowlisted = (urlString) => {
@@ -625,8 +650,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Phase 3: Signed request validation
-    const signatureCheck = await validateSignedRequest(body);
+    // Phase 3-4B: Signed request validation (Phase 4B: Real HMAC if secret configured)
+    const hmacSecret = Deno.env.get('OPENCLAW_BRIDGE_HMAC_SECRET');
+    const signatureCheck = await validateSignedRequest(body, hmacSecretCheck.configured, hmacSecret);
 
     if (signatureCheck.result === 'FAIL') {
       const validatedAt = new Date().toISOString();
@@ -650,7 +676,7 @@ Deno.serve(async (req) => {
           inputTextPresent: !!body.bridgeRequest?.inputText,
           hmacSecretConfigured: hmacSecretCheck.configured,
           secretExposed: false,
-          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
+          signatureMode: signatureCheck.mode,
           policyGateResult: 'PASS',
           policyGateMessages: [],
           replayCheckResult: 'PASS',
@@ -678,7 +704,7 @@ Deno.serve(async (req) => {
           validatedAt,
           hmacSecretConfigured: hmacSecretCheck.configured,
           secretExposed: false,
-          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
+          signatureMode: signatureCheck.mode,
           policyGateResult: 'PASS',
           policyGateMessages: [],
           replayCheckResult: 'PASS',
@@ -712,7 +738,7 @@ Deno.serve(async (req) => {
         inputTextPresent: !!body.bridgeRequest?.inputText,
         hmacSecretConfigured: hmacSecretCheck.configured,
         secretExposed: false,
-        signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
+        signatureMode: signatureCheck.mode,
         policyGateResult: 'PASS',
         policyGateMessages: [],
         replayCheckResult: 'PASS',
@@ -722,7 +748,7 @@ Deno.serve(async (req) => {
         signingVersion: body.signingVersion || null,
         signedAt: body.signedAt || null,
         signaturePresent: !!body.signature,
-        note: 'Phases 1-4A validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
+        note: 'Phases 1-4B validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
         });
         } catch (auditErr) {
         console.error('Failed to create audit record:', auditErr.message);
@@ -740,14 +766,14 @@ Deno.serve(async (req) => {
         validatedAt,
         hmacSecretConfigured: hmacSecretCheck.configured,
         secretExposed: false,
-        signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
+        signatureMode: signatureCheck.mode,
         policyGateResult: 'PASS',
         policyGateMessages: [],
         replayCheckResult: 'PASS',
         replayCheckMessages: [],
         signatureCheckResult: 'PASS',
         signatureCheckMessages: [],
-        note: 'Phases 1-4A validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
+        note: 'Phases 1-4B validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
         },
       { status: 200 }
     );

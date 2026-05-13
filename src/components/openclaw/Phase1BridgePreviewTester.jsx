@@ -91,8 +91,8 @@ export default function Phase1BridgePreviewTester({ proposal }) {
       <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded text-[9px] text-amber-500">
         <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
         <div>
-          <div className="font-semibold mb-0.5">PHASE 2: VALIDATION ONLY · NO EXECUTION</div>
-          <div className="text-[8px] text-amber-500/70">Backend policy gating + replay protection enabled. DRY_RUN_ONLY mode. No OpenClaw calls. No browser actions. No trading. No mutations.</div>
+          <div className="font-semibold mb-0.5">PHASE 4B: REAL HMAC VERIFIER ACTIVE · UNSIGNED REQUESTS REJECTED</div>
+          <div className="text-[8px] text-amber-500/70">Backend enforces real HMAC-SHA256 verification. Mock signatures no longer accepted. Signer endpoint not implemented yet. Frontend cannot generate valid signatures. All test requests will be rejected.</div>
         </div>
       </div>
 
