@@ -336,6 +336,251 @@ export default function Phase5DryRunBridgePlan() {
           </div>
         </div>
 
+        {/* Phase 5A Test Cases Spec */}
+        <div className="space-y-2">
+          <div className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider">Phase 5A: Dry-Run Bridge Route Test Cases Spec</div>
+          <div className="bg-card/50 border border-border/30 rounded-lg overflow-hidden">
+            {/* Test Overview */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Test Coverage Overview</div>
+              <div className="text-[8px] text-slate-400">
+                28 deterministic test cases covering acceptance, rejection, and safety scenarios. All tests are read-only. No OpenClaw calls. No execution.
+              </div>
+            </div>
+
+            {/* Acceptance Tests */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Acceptance Tests (2)</div>
+              <div className="text-[8px] text-slate-400 space-y-1">
+                <div>
+                  <span className="text-amber-500 font-semibold">T1:</span>
+                  <span> Valid signed READ request creates PREVIEW_ONLY dry-run record</span>
+                </div>
+                <div>
+                  <span className="text-amber-500 font-semibold">T2:</span>
+                  <span> Valid signed VERIFY request creates PREVIEW_ONLY dry-run record</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Request Body Validation Tests */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-destructive uppercase tracking-wider mb-1">Request Body Rejection Tests (3)</div>
+              <div className="text-[8px] text-slate-400 space-y-1">
+                <div>
+                  <span className="text-destructive font-semibold">T3:</span>
+                  <span> Missing signedRequest rejects with validation error</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T4:</span>
+                  <span> Missing operatorId rejects with validation error</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T5:</span>
+                  <span> Missing submittedAt rejects with validation error</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Phase 4 Signature Tests */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-destructive uppercase tracking-wider mb-1">Phase 4 Signature Rejection Tests (4)</div>
+              <div className="text-[8px] text-slate-400 space-y-1">
+                <div>
+                  <span className="text-destructive font-semibold">T6:</span>
+                  <span> Invalid HMAC signature rejects with HMAC_SIGNATURE_INVALID</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T7:</span>
+                  <span> Stale signedAt (&gt; 5 min) rejects with SIGNED_AT_EXPIRED</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T8:</span>
+                  <span> Future signedAt (&gt; 60 sec) rejects with SIGNED_AT_FUTURE</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T9:</span>
+                  <span> Tampered payload (e.g., targetUrl changed) rejects with HMAC_SIGNATURE_INVALID</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Phase 2 Protection Tests */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-destructive uppercase tracking-wider mb-1">Phase 2 Protection Rejection Tests (2)</div>
+              <div className="text-[8px] text-slate-400 space-y-1">
+                <div>
+                  <span className="text-destructive font-semibold">T10:</span>
+                  <span> Replay requestId rejects with DUPLICATE_REQUEST_ID</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T11:</span>
+                  <span> Replay previewHash rejects with DUPLICATE_PREVIEW_HASH</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Phase 2 Policy Gate Tests */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-destructive uppercase tracking-wider mb-1">Phase 2 Policy Gate Rejection Tests (4)</div>
+              <div className="text-[8px] text-slate-400 space-y-1">
+                <div>
+                  <span className="text-destructive font-semibold">T12:</span>
+                  <span> CLICK command rejects (write operation forbidden)</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T13:</span>
+                  <span> TYPE command rejects (keyboard input forbidden)</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T14:</span>
+                  <span> HIGH risk tier rejects</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T15:</span>
+                  <span> CRITICAL risk tier rejects</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Phase 1 Contract Validation Tests */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-destructive uppercase tracking-wider mb-1">Phase 1 Contract Validation Rejection Tests (9)</div>
+              <div className="text-[8px] text-slate-400 space-y-1">
+                <div>
+                  <span className="text-destructive font-semibold">T16:</span>
+                  <span> Non-allowlisted domain rejects</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T17:</span>
+                  <span> Suspicious URL path keyword rejects</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T18:</span>
+                  <span> liveExecution true rejects</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T19:</span>
+                  <span> dryRun false rejects</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T20:</span>
+                  <span> governanceMode != SAFE_REQUIRES_APPROVAL rejects</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T21:</span>
+                  <span> approvalStatus != APPROVED rejects</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T22:</span>
+                  <span> validationResult != PASS rejects</span>
+                </div>
+                <div>
+                  <span className="text-destructive font-semibold">T23:</span>
+                  <span> executionEligibility != ELIGIBLE_PREVIEW rejects</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Audit Trail Tests */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Audit Trail Tests (3)</div>
+              <div className="text-[8px] text-slate-400 space-y-1">
+                <div>
+                  <span className="text-amber-500 font-semibold">T24:</span>
+                  <span> Dry-run audit record created for accepted request (dryRunAuditId, requestId, acceptedForDryRun: true)</span>
+                </div>
+                <div>
+                  <span className="text-amber-500 font-semibold">T25:</span>
+                  <span> Dry-run audit record created for rejected request (dryRunAuditId, requestId, rejectedReason)</span>
+                </div>
+                <div>
+                  <span className="text-amber-500 font-semibold">T26:</span>
+                  <span> Audit record excludes secret, raw inputText, HMAC internals (secretExposed: false)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Safety Constraint Tests */}
+            <div className="px-3 py-2">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Safety Constraint Tests (3)</div>
+              <div className="text-[8px] text-slate-400 space-y-1">
+                <div>
+                  <span className="text-amber-500 font-semibold">T27:</span>
+                  <span> No OpenClaw call occurs (verified in function logs)</span>
+                </div>
+                <div>
+                  <span className="text-amber-500 font-semibold">T28:</span>
+                  <span> No browser/API/trading execution occurs (no side effects)</span>
+                </div>
+                <div>
+                  <span className="text-amber-500 font-semibold">T29:</span>
+                  <span> executionStatus is PREVIEW_ONLY (accepted) or REJECTED_NOT_EXECUTED (rejected) only</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Test Case Template */}
+        <div className="space-y-2">
+          <div className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider">Test Case Template</div>
+          <div className="bg-card/50 border border-border/30 rounded-lg px-3 py-2">
+            <div className="bg-secondary/30 rounded px-2 py-1.5 font-mono text-[8px] text-slate-400">
+              <div>{`{
+  testId: "T1",
+  testName: "Valid signed READ request creates PREVIEW_ONLY dry-run record",
+  category: "ACCEPTANCE|REJECTION|SAFETY",
+  expectedOutcome: "ACCEPTED|REJECTED",
+  expectedRejectedReason: string or null,
+  executionExpected: false   // Always false - no execution in Phase 5A
+}`}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Test Execution Rules */}
+        <div className="space-y-2">
+          <div className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider">Test Execution Rules</div>
+          <div className="bg-card/50 border border-border/30 rounded-lg px-3 py-2 text-[8px] text-slate-400 space-y-0.5">
+            <div>• All tests are deterministic (no randomness)</div>
+            <div>• All tests are read-only (no database mutations beyond audit)</div>
+            <div>• All tests have executionExpected: false</div>
+            <div>• Tests must run against test HMAC secret only</div>
+            <div>• Tests must NOT call real OpenClaw gateway</div>
+            <div>• Tests must NOT create real browser sessions</div>
+            <div>• Tests must validate all rejection reasons exactly</div>
+            <div>• Test suite must pass 100% before Phase 5A goes live</div>
+          </div>
+        </div>
+
+        {/* Test Coverage Summary */}
+        <div className="space-y-2">
+          <div className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider">Test Coverage Summary</div>
+          <div className="bg-card/50 border border-border/30 rounded-lg px-3 py-2 text-[8px] text-slate-400 space-y-0.5">
+            <div>Total test cases: 29</div>
+            <div>Acceptance tests: 2 (happy path)</div>
+            <div>Request body rejection: 3 tests</div>
+            <div>Phase 4 signature rejection: 4 tests</div>
+            <div>Phase 2 protection rejection: 2 tests</div>
+            <div>Phase 2 policy gate rejection: 4 tests</div>
+            <div>Phase 1 contract rejection: 9 tests</div>
+            <div>Audit trail tests: 3 tests</div>
+            <div>Safety constraint tests: 3 tests</div>
+          </div>
+        </div>
+
+        {/* Status Summary */}
+        <div className="border border-amber-500/20 bg-amber-500/10 rounded-lg px-3 py-2">
+          <div className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Phase 5A Test Status</div>
+          <div className="flex flex-wrap gap-1">
+            <span className="text-[7px] font-semibold text-amber-600 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded">SPEC_DEFINED</span>
+            <span className="text-[7px] font-semibold text-amber-600 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded">TESTS_NOT_IMPLEMENTED</span>
+            <span className="text-[7px] font-semibold text-amber-600 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded">OPENCLAW_NOT_CONNECTED</span>
+            <span className="text-[7px] font-semibold text-amber-600 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded">EXECUTION_DISABLED</span>
+          </div>
+        </div>
+
         {/* Phase 5 Roadmap */}
         <div className="space-y-2">
           <div className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider">Phase 5 Implementation Roadmap (Future)</div>
