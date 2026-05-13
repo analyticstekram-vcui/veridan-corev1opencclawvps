@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor, ChevronDown, ChevronRight } from 'lucide-react';
+import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor, ChevronDown, ChevronRight, Settings } from 'lucide-react';
 import SafeCommandBridge from '@/components/openclaw/SafeCommandBridge';
 import CommandQueuePanel from '@/components/openclaw/CommandQueuePanel';
 import ExecutionReadinessPanel from '@/components/openclaw/ExecutionReadinessPanel';
@@ -132,6 +132,7 @@ export default function OpenClawControl() {
   const [currentUser, setCurrentUser] = useState(null);
   const [bridgeStatus, setBridgeStatus] = useState(null);
   const [showAdvancedAudit, setShowAdvancedAudit] = useState(false);
+  const [operatorMode, setOperatorMode] = useState('SIMPLE');
   const intervalRef = useRef(null);
 
   // Listen for navigation events dispatched by child panels (e.g. quick links in Overview)
@@ -213,11 +214,35 @@ export default function OpenClawControl() {
         </div>
       </div>
 
-      {/* ── Tab strip ── organized by groups */}
+      {/* ── Tab strip ── organized by groups with Operator Mode toggle */}
       <div
         style={{ flexShrink: 0, position: 'relative', zIndex: 10 }}
         className="border-b border-border bg-card px-2 py-2 space-y-2"
       >
+        {/* Header: Operator Mode Toggle */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Settings className="w-3.5 h-3.5 text-slate-400" />
+            <div className="text-[9px] uppercase tracking-widest font-semibold text-slate-400">Operator Mode</div>
+          </div>
+          <div className="flex gap-1">
+            {['SIMPLE', 'ADVANCED'].map(mode => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setOperatorMode(mode)}
+                className={`px-2.5 py-1 text-[9px] border font-semibold transition-colors ${
+                  operatorMode === mode
+                    ? 'border-primary text-primary bg-primary/10'
+                    : 'border-border text-slate-400 hover:text-slate-200 hover:bg-secondary/50'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* External page links */}
         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
           <Link
@@ -234,8 +259,13 @@ export default function OpenClawControl() {
           </Link>
         </div>
 
-        {/* Tab groups */}
+        {/* Tab groups - filtered by Operator Mode */}
         {Object.entries(TAB_GROUPS).map(([groupKey, group]) => {
+          // In SIMPLE mode, hide Diagnostics and Advanced Audit Tools
+          if (operatorMode === 'SIMPLE' && (groupKey === 'diagnostics' || groupKey === 'advanced_audit')) {
+            return null;
+          }
+
           const isExpanded = groupKey !== 'advanced_audit' || showAdvancedAudit;
           return (
             <div key={groupKey}>
