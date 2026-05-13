@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // ============================================================================
-// PHASE 1: BACKEND ROUTE SCAFFOLD - DRY-RUN VALIDATION ONLY
+// PHASE 1: BACKEND ROUTE SCAFFOLD - DRY-RUN VALIDATION ONLY + AUDIT LOGGING
 // ============================================================================
 // WARNING: DO NOT CALL OPENCLAW HERE
 // WARNING: DO NOT EXECUTE ACTIONS HERE
@@ -125,8 +125,10 @@ Deno.serve(async (req) => {
   const receivedAt = new Date().toISOString();
   const auditId = generateAuditId();
   let requestId = null;
+  let base44 = null;
 
   try {
+    base44 = createClientFromRequest(req);
     // Only accept POST
     if (req.method !== 'POST') {
       return Response.json(
@@ -179,23 +181,72 @@ Deno.serve(async (req) => {
     const validation = validateBridgeRequest(body);
 
     if (!validation.isValid) {
+      const validatedAt = new Date().toISOString();
+      const rejectionReason = `Validation failed: ${validation.errors.join('; ')}`;
+      try {
+        await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
+          auditId,
+          requestId,
+          previewHash: body.previewHash || null,
+          operatorId: body.operatorId || null,
+          accepted: false,
+          rejectedReason: rejectionReason,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          targetUrl: body.bridgeRequest?.targetUrl || null,
+          commandType: body.bridgeRequest?.commandType || null,
+          riskTier: body.bridgeRequest?.riskTier || null,
+          receivedAt,
+          validatedAt,
+          validationMessages: validation.errors,
+          inputTextPresent: !!body.bridgeRequest?.inputText,
+          note: 'Request rejected. No OpenClaw call was made.',
+        });
+      } catch (auditErr) {
+        console.error('Failed to create rejection audit record:', auditErr.message);
+      }
+
       return Response.json(
         {
           accepted: false,
-          rejectedReason: `Validation failed: ${validation.errors.join('; ')}`,
+          rejectedReason: rejectionReason,
           requestId,
           bridgeMode: 'DRY_RUN_ONLY',
           executionStatus: 'REJECTED_NOT_EXECUTED',
           auditId,
           receivedAt,
-          validatedAt: new Date().toISOString(),
+          validatedAt,
           note: 'Request rejected. No OpenClaw call was made.',
         },
         { status: 400 }
       );
     }
 
-    // All validations passed
+    // All validations passed - log to audit
+    const validatedAt = new Date().toISOString();
+    try {
+      await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
+        auditId,
+        requestId,
+        previewHash: body.previewHash || null,
+        operatorId: body.operatorId || null,
+        accepted: true,
+        rejectedReason: null,
+        bridgeMode: 'DRY_RUN_ONLY',
+        executionStatus: 'NOT_EXECUTED',
+        targetUrl: body.bridgeRequest?.targetUrl || null,
+        commandType: body.bridgeRequest?.commandType || null,
+        riskTier: body.bridgeRequest?.riskTier || null,
+        receivedAt,
+        validatedAt,
+        validationMessages: [],
+        inputTextPresent: !!body.bridgeRequest?.inputText,
+        note: 'Dry-run validation only. No OpenClaw call was made.',
+      });
+    } catch (auditErr) {
+      console.error('Failed to create audit record:', auditErr.message);
+    }
+
     return Response.json(
       {
         accepted: true,
@@ -205,7 +256,7 @@ Deno.serve(async (req) => {
         executionStatus: 'NOT_EXECUTED',
         auditId,
         receivedAt,
-        validatedAt: new Date().toISOString(),
+        validatedAt,
         note: 'Dry-run validation only. No OpenClaw call was made.',
       },
       { status: 200 }

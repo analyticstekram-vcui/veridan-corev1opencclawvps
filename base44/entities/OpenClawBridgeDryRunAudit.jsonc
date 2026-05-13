@@ -1,0 +1,92 @@
+{
+  "name": "OpenClawBridgeDryRunAudit",
+  "type": "object",
+  "properties": {
+    "auditId": {
+      "type": "string",
+      "description": "Unique audit trail identifier"
+    },
+    "requestId": {
+      "type": "string",
+      "description": "Bridge request ID if provided"
+    },
+    "previewHash": {
+      "type": "string",
+      "description": "Bundle preview hash if provided"
+    },
+    "operatorId": {
+      "type": "string",
+      "description": "Email of operator who submitted the request"
+    },
+    "accepted": {
+      "type": "boolean",
+      "description": "Whether the request passed validation"
+    },
+    "rejectedReason": {
+      "type": "string",
+      "description": "Reason if rejected, null if accepted"
+    },
+    "bridgeMode": {
+      "type": "string",
+      "enum": [
+        "DRY_RUN_ONLY"
+      ],
+      "default": "DRY_RUN_ONLY",
+      "description": "Always DRY_RUN_ONLY for Phase 1"
+    },
+    "executionStatus": {
+      "type": "string",
+      "enum": [
+        "NOT_EXECUTED",
+        "REJECTED_NOT_EXECUTED"
+      ],
+      "description": "Execution status of the request"
+    },
+    "targetUrl": {
+      "type": "string",
+      "description": "Target URL from the bridge request if provided"
+    },
+    "commandType": {
+      "type": "string",
+      "description": "Command type (READ, NAVIGATE, EXTRACT, VERIFY, etc.) if provided"
+    },
+    "riskTier": {
+      "type": "string",
+      "description": "Risk tier (LOW, MEDIUM, HIGH, CRITICAL) if provided"
+    },
+    "receivedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when request was received"
+    },
+    "validatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when validation completed"
+    },
+    "validationMessages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of validation error messages if any"
+    },
+    "inputTextPresent": {
+      "type": "boolean",
+      "description": "True if inputText was provided for TYPE command (not stored)"
+    },
+    "note": {
+      "type": "string",
+      "description": "Standard note indicating dry-run only"
+    }
+  },
+  "required": [
+    "auditId",
+    "accepted",
+    "bridgeMode",
+    "executionStatus",
+    "receivedAt",
+    "validatedAt",
+    "note"
+  ]
+}
