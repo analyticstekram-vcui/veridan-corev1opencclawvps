@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Shield, CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import OperatorGuidancePanel from './OperatorGuidancePanel';
 import GateDecisionExporter from './GateDecisionExporter';
+import LocalGovernanceConsistencyAudit from './LocalGovernanceConsistencyAudit';
 
 // Master verification checks organized by category
 const VERIFICATION_GROUPS = [
@@ -1871,6 +1872,16 @@ export default function SystemVerificationPanel() {
           These tests validate that System Verify correctly distinguishes between production-blocking issues and manual review items. All tests are read-only diagnostics—no live commands, credentials, or governance actions are executed.
         </div>
       </div>
+
+      {/* Local Governance Consistency Audit */}
+      <LocalGovernanceConsistencyAudit
+        overallReadiness={overallReadiness}
+        backendEnforcementPassed={backendEnforcementPassed}
+        failedTests={failedTests}
+        manualReviewItemCount={manualReviewItemCount}
+        snapshotHistory={snapshotHistory}
+        approvalRecords={approvalRecords}
+      />
 
       {/* Verification Groups */}
       <div className="space-y-3">
