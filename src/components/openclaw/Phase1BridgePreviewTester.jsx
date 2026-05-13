@@ -181,9 +181,25 @@ export default function Phase1BridgePreviewTester({ proposal }) {
                 <div className="text-slate-400 text-[8px] font-semibold mb-0.5">EXECUTION STATUS</div>
                 <div className="text-foreground font-mono">{result.data.executionStatus}</div>
               </div>
+              <div>
+                <div className="text-slate-400 text-[8px] font-semibold mb-0.5">HMAC SECRET CONFIGURED</div>
+                <div className={`font-semibold ${result.data.hmacSecretConfigured ? 'text-primary' : 'text-destructive'}`}>
+                  {result.data.hmacSecretConfigured ? 'YES' : 'NO'}
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[8px] font-semibold mb-0.5">SECRET EXPOSED</div>
+                <div className={`font-semibold ${result.data.secretExposed ? 'text-destructive' : 'text-primary'}`}>
+                  {result.data.secretExposed ? 'YES' : 'NO (safe)'}
+                </div>
+              </div>
               <div className="col-span-2">
                 <div className="text-slate-400 text-[8px] font-semibold mb-0.5">AUDIT ID</div>
                 <div className="text-foreground font-mono text-[8px]">{result.data.auditId}</div>
+              </div>
+              <div className="col-span-2">
+                <div className="text-slate-400 text-[8px] font-semibold mb-0.5">SIGNATURE MODE</div>
+                <div className="text-foreground font-mono text-[8px]">{result.data.signatureMode}</div>
               </div>
             </div>
 

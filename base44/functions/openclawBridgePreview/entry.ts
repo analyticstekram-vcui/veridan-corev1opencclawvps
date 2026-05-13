@@ -1,11 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // ============================================================================
-// PHASES 1-3: BACKEND ROUTE SCAFFOLD - DRY-RUN VALIDATION ONLY + AUDIT LOGGING
+// PHASES 1-4A: BACKEND ROUTE SCAFFOLD - DRY-RUN VALIDATION ONLY + AUDIT LOGGING
 // ============================================================================
 // PHASE 1: Request structure & contract validation
 // PHASE 2: Policy gating + replay protection
 // PHASE 3: Signed request validation (MOCK signature, no HMAC yet)
+// PHASE 4A: HMAC secret configuration check (fail-closed if missing)
 // ============================================================================
 // WARNING: DO NOT CALL OPENCLAW HERE
 // WARNING: DO NOT EXECUTE ACTIONS HERE
@@ -312,6 +313,15 @@ const checkReplay = async (base44, requestId, previewHash) => {
   };
 };
 
+// Phase 4A: HMAC Secret Configuration Check
+const checkHmacSecretConfigured = () => {
+  const secret = Deno.env.get('OPENCLAW_BRIDGE_HMAC_SECRET');
+  return {
+    configured: !!secret && secret.length > 0,
+    // Note: never return actual secret value
+  };
+};
+
 Deno.serve(async (req) => {
   const receivedAt = new Date().toISOString();
   const auditId = generateAuditId();
@@ -364,6 +374,69 @@ Deno.serve(async (req) => {
     }
 
     // ========================================================================
+    // PHASE 4A: HMAC SECRET CONFIGURATION CHECK
+    // Fail-closed: if secret is missing, reject immediately
+    // ========================================================================
+    const hmacSecretCheck = checkHmacSecretConfigured();
+    
+    if (!hmacSecretCheck.configured) {
+      const validatedAt = new Date().toISOString();
+      const rejectionReason = 'HMAC_SECRET_NOT_CONFIGURED';
+      try {
+        await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
+          auditId,
+          requestId,
+          previewHash: body.previewHash || null,
+          operatorId: body.operatorId || null,
+          accepted: false,
+          rejectedReason: rejectionReason,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          targetUrl: body.bridgeRequest?.targetUrl || null,
+          commandType: body.bridgeRequest?.commandType || null,
+          riskTier: body.bridgeRequest?.riskTier || null,
+          receivedAt,
+          validatedAt,
+          validationMessages: [],
+          inputTextPresent: !!body.bridgeRequest?.inputText,
+          policyGateResult: null,
+          policyGateMessages: [],
+          replayCheckResult: null,
+          replayCheckMessages: [],
+          signatureCheckResult: null,
+          signatureCheckMessages: [],
+          signingVersion: null,
+          signedAt: null,
+          signaturePresent: false,
+          signatureMode: 'REAL_HMAC_VALIDATION',
+          hmacSecretConfigured: false,
+          secretExposed: false,
+          note: 'HMAC secret missing. No OpenClaw call was made.',
+        });
+      } catch (auditErr) {
+        console.error('Failed to create HMAC secret check audit record:', auditErr.message);
+      }
+
+      return Response.json(
+        {
+          accepted: false,
+          rejectedReason: 'HMAC_SECRET_NOT_CONFIGURED',
+          requestId,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          auditId,
+          receivedAt,
+          validatedAt,
+          hmacSecretConfigured: false,
+          secretExposed: false,
+          signatureMode: 'REAL_HMAC_VALIDATION',
+          note: 'HMAC secret missing. No OpenClaw call was made.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // ========================================================================
     // PHASE 1: VALIDATION ONLY
     // DO NOT CALL OPENCLAW
     // DO NOT EXECUTE ACTIONS
@@ -391,12 +464,15 @@ Deno.serve(async (req) => {
           validatedAt,
           validationMessages: validation.errors,
           inputTextPresent: !!body.bridgeRequest?.inputText,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
           policyGateResult: null,
           policyGateMessages: [],
           replayCheckResult: null,
           replayCheckMessages: [],
           note: 'Request rejected. No OpenClaw call was made.',
-        });
+          });
       } catch (auditErr) {
         console.error('Failed to create rejection audit record:', auditErr.message);
       }
@@ -411,6 +487,9 @@ Deno.serve(async (req) => {
           auditId,
           receivedAt,
           validatedAt,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
           policyGateResult: null,
           policyGateMessages: [],
           replayCheckResult: null,
@@ -444,18 +523,21 @@ Deno.serve(async (req) => {
           validatedAt,
           validationMessages: [],
           inputTextPresent: !!body.bridgeRequest?.inputText,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
           policyGateResult: 'FAIL',
           policyGateMessages: policyCheck.messages,
           replayCheckResult: null,
           replayCheckMessages: [],
           note: 'Request rejected by policy gate. No OpenClaw call was made.',
-        });
-      } catch (auditErr) {
-        console.error('Failed to create policy rejection audit record:', auditErr.message);
-      }
+          });
+          } catch (auditErr) {
+          console.error('Failed to create policy rejection audit record:', auditErr.message);
+          }
 
-      return Response.json(
-        {
+          return Response.json(
+          {
           accepted: false,
           rejectedReason: rejectionReason,
           requestId,
@@ -464,12 +546,15 @@ Deno.serve(async (req) => {
           auditId,
           receivedAt,
           validatedAt,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
           policyGateResult: 'FAIL',
           policyGateMessages: policyCheck.messages,
           replayCheckResult: null,
           replayCheckMessages: [],
           note: 'Request rejected by policy gate. No OpenClaw call was made.',
-        },
+          },
         { status: 400 }
       );
     }
@@ -497,6 +582,9 @@ Deno.serve(async (req) => {
           validatedAt,
           validationMessages: [],
           inputTextPresent: !!body.bridgeRequest?.inputText,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
           policyGateResult: 'PASS',
           policyGateMessages: [],
           replayCheckResult: 'FAIL',
@@ -506,15 +594,14 @@ Deno.serve(async (req) => {
           signingVersion: null,
           signedAt: null,
           signaturePresent: false,
-          signatureMode: null,
           note: 'Request rejected by replay check. No OpenClaw call was made.',
-        });
-      } catch (auditErr) {
-        console.error('Failed to create replay rejection audit record:', auditErr.message);
-      }
+          });
+          } catch (auditErr) {
+          console.error('Failed to create replay rejection audit record:', auditErr.message);
+          }
 
-      return Response.json(
-        {
+          return Response.json(
+          {
           accepted: false,
           rejectedReason: rejectionReason,
           requestId,
@@ -523,6 +610,9 @@ Deno.serve(async (req) => {
           auditId,
           receivedAt,
           validatedAt,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
           policyGateResult: 'PASS',
           policyGateMessages: [],
           replayCheckResult: 'FAIL',
@@ -530,7 +620,7 @@ Deno.serve(async (req) => {
           signatureCheckResult: null,
           signatureCheckMessages: [],
           note: 'Request rejected by replay check. No OpenClaw call was made.',
-        },
+          },
         { status: 400 }
       );
     }
@@ -558,6 +648,9 @@ Deno.serve(async (req) => {
           validatedAt,
           validationMessages: [],
           inputTextPresent: !!body.bridgeRequest?.inputText,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
           policyGateResult: 'PASS',
           policyGateMessages: [],
           replayCheckResult: 'PASS',
@@ -567,15 +660,14 @@ Deno.serve(async (req) => {
           signingVersion: body.signingVersion || null,
           signedAt: body.signedAt || null,
           signaturePresent: !!body.signature,
-          signatureMode: 'MOCK_SIGNATURE_VALIDATION',
           note: 'Request rejected by signature validation. No OpenClaw call was made.',
-        });
-      } catch (auditErr) {
-        console.error('Failed to create signature rejection audit record:', auditErr.message);
-      }
+          });
+          } catch (auditErr) {
+          console.error('Failed to create signature rejection audit record:', auditErr.message);
+          }
 
-      return Response.json(
-        {
+          return Response.json(
+          {
           accepted: false,
           rejectedReason: rejectionReason,
           requestId,
@@ -584,15 +676,17 @@ Deno.serve(async (req) => {
           auditId,
           receivedAt,
           validatedAt,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
           policyGateResult: 'PASS',
           policyGateMessages: [],
           replayCheckResult: 'PASS',
           replayCheckMessages: [],
           signatureCheckResult: 'FAIL',
           signatureCheckMessages: signatureCheck.errors,
-          signatureMode: 'MOCK_SIGNATURE_VALIDATION',
           note: 'Request rejected by signature validation. No OpenClaw call was made.',
-        },
+          },
         { status: 400 }
       );
     }
@@ -616,6 +710,9 @@ Deno.serve(async (req) => {
         validatedAt,
         validationMessages: [],
         inputTextPresent: !!body.bridgeRequest?.inputText,
+        hmacSecretConfigured: hmacSecretCheck.configured,
+        secretExposed: false,
+        signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
         policyGateResult: 'PASS',
         policyGateMessages: [],
         replayCheckResult: 'PASS',
@@ -625,15 +722,14 @@ Deno.serve(async (req) => {
         signingVersion: body.signingVersion || null,
         signedAt: body.signedAt || null,
         signaturePresent: !!body.signature,
-        signatureMode: 'MOCK_SIGNATURE_VALIDATION',
-        note: 'Phases 1-3 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
-      });
-    } catch (auditErr) {
-      console.error('Failed to create audit record:', auditErr.message);
-    }
+        note: 'Phases 1-4A validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
+        });
+        } catch (auditErr) {
+        console.error('Failed to create audit record:', auditErr.message);
+        }
 
-    return Response.json(
-      {
+        return Response.json(
+        {
         accepted: true,
         rejectedReason: null,
         requestId,
@@ -642,15 +738,17 @@ Deno.serve(async (req) => {
         auditId,
         receivedAt,
         validatedAt,
+        hmacSecretConfigured: hmacSecretCheck.configured,
+        secretExposed: false,
+        signatureMode: 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
         policyGateResult: 'PASS',
         policyGateMessages: [],
         replayCheckResult: 'PASS',
         replayCheckMessages: [],
         signatureCheckResult: 'PASS',
         signatureCheckMessages: [],
-        signatureMode: 'MOCK_SIGNATURE_VALIDATION',
-        note: 'Phases 1-3 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
-      },
+        note: 'Phases 1-4A validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
+        },
       { status: 200 }
     );
 
@@ -665,16 +763,18 @@ Deno.serve(async (req) => {
         auditId,
         receivedAt,
         validatedAt: new Date().toISOString(),
+        hmacSecretConfigured: false,
+        secretExposed: false,
+        signatureMode: 'REAL_HMAC_VALIDATION',
         policyGateResult: null,
         policyGateMessages: [],
         replayCheckResult: null,
         replayCheckMessages: [],
         signatureCheckResult: null,
         signatureCheckMessages: [],
-        signatureMode: null,
         note: 'Request rejected. No OpenClaw call was made.',
       },
       { status: 500 }
     );
   }
-});
+  });
