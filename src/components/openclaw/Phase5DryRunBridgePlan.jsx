@@ -344,7 +344,7 @@ export default function Phase5DryRunBridgePlan() {
             <div className="px-3 py-2 border-b border-border/20">
               <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Test Coverage Overview</div>
               <div className="text-[8px] text-slate-400">
-                28 deterministic test cases covering acceptance, rejection, and safety scenarios. All tests are read-only. No OpenClaw calls. No execution.
+                29 deterministic test cases covering acceptance, rejection, audit, and safety scenarios. All tests are read-only. No OpenClaw calls. No execution.
               </div>
             </div>
 
