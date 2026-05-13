@@ -686,19 +686,49 @@ export default function SystemVerificationPanel() {
     try {
       const enforcementRes = await base44.functions.invoke('openclawEnforcement', { action: 'run_all_tests' });
       const enforcementTests = enforcementRes?.data?.results || [];
-      const allTestsPassed = enforcementTests.length > 0 && enforcementTests.every(t => t.passed);
+
+      // Count results correctly: PASS if test outcome matches expected outcome
+      // expected-accept with accepted=true → PASS
+      // expected-reject with rejected result and correct reason → PASS
+      // expected-accept with rejected result → FAIL
+      // expected-reject with accepted result → FAIL
+      let acceptPassCount = 0;
+      let rejectPassCount = 0;
+      let failCount = 0;
+
+      enforcementTests.forEach(test => {
+        if (test.expected_type === 'accept') {
+          // Expected to be accepted
+          if (test.passed && test.accepted) {
+            acceptPassCount++;
+          } else {
+            failCount++;
+          }
+        } else if (test.expected_type === 'reject') {
+          // Expected to be rejected with specific reason
+          if (test.passed && test.rejected && (!test.expected_reason || test.actual_reason === test.expected_reason)) {
+            rejectPassCount++;
+          } else {
+            failCount++;
+          }
+        }
+      });
+
+      const allTestsPassed = failCount === 0 && enforcementTests.length > 0;
+      const totalTestCount = enforcementTests.length;
+      const totalPassCount = acceptPassCount + rejectPassCount;
 
       newResults.logic_backend_enforcement_gate = {
         status: allTestsPassed ? 'pass' : 'warn',
         explanation: 'Backend enforcement must pass for production readiness.',
-        details: enforcementTests.length > 0 ? `Backend tests: ${enforcementTests.filter(t => t.passed).length}/${enforcementTests.length} passed` : 'No backend enforcement results available',
+        details: totalTestCount > 0 ? `Backend tests: ${totalPassCount}/${totalTestCount} passed (${acceptPassCount} accept, ${rejectPassCount} reject, ${failCount} failed)` : 'No backend enforcement results available',
       };
 
       newResults.backend_enforcement_tests = {
         status: allTestsPassed ? 'pass' : 'fail',
-        explanation: 'Backend validation test suite must pass: live blocking, domain allowlist, secret detection, RBAC, audit logging, HMAC signatures.',
-        details: enforcementTests.length > 0 ? `${enforcementTests.filter(t => t.passed).length}/${enforcementTests.length} tests passed` : 'Unable to retrieve backend test results',
-        suggestedFix: !allTestsPassed && enforcementTests.length > 0 ? 'Review failed validation tests in backend enforcement logs.' : undefined,
+        explanation: 'Backend validation test suite must pass: expected outcomes match actual outcomes. PASS for valid accepts, expected rejections, HMAC validation, policy gates, replay protection, domain allowlists, signature integrity, secret redaction, audit trails.',
+        details: totalTestCount > 0 ? `${totalPassCount}/${totalTestCount} tests passed (${acceptPassCount} expected-accept, ${rejectPassCount} expected-reject) | ${failCount} failed` : 'Unable to retrieve backend test results',
+        suggestedFix: !allTestsPassed && enforcementTests.length > 0 ? `Review ${failCount} failed validation test${failCount !== 1 ? 's' : ''} where outcome did not match expected result.` : undefined,
       };
 
       const policyRes = await base44.functions.invoke('openclawEnforcement', { action: 'get_policy' });
