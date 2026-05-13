@@ -220,7 +220,7 @@ export default function OpenClawCommandProposalQueue() {
           </div>
         ) : (
           proposals.map(proposal => {
-            const cfg = statusConfig[proposal.status];
+            const cfg = statusConfig[proposal.status] || statusConfig.DRAFT;
             const StatusIcon = cfg.icon;
             return (
               <div key={proposal.id} className={`border rounded-lg p-3 ${cfg.bg}`}>
