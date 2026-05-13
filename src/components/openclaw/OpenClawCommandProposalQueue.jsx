@@ -3,14 +3,45 @@ import { AlertTriangle, Plus, CheckCircle2, XCircle, Clock, Trash2, Send } from 
 
 const COMMAND_TYPES = ['READ', 'CLICK', 'TYPE', 'NAVIGATE', 'EXTRACT', 'VERIFY'];
 const RISK_TIERS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-const STATUSES = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DENIED', 'EXPIRED'];
+const STATUSES = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DENIED', 'EXPIRED', 'EXPIRED_APPROVAL'];
+
+const EXPIRATION_HOURS = {
+  LOW: 24,
+  MEDIUM: 12,
+  HIGH: 4,
+  CRITICAL: 1,
+};
+
+const calculateExpirationTime = (riskTier) => {
+  const hours = EXPIRATION_HOURS[riskTier] || 24;
+  const expirationTime = new Date(Date.now() + hours * 60 * 60 * 1000);
+  return expirationTime.toISOString();
+};
+
+const isProposalExpired = (proposal) => {
+  if (!proposal.expirationAt) return false;
+  return new Date() > new Date(proposal.expirationAt);
+};
+
+const getTimeRemaining = (expirationAt) => {
+  if (!expirationAt) return null;
+  const remaining = new Date(expirationAt) - new Date();
+  if (remaining <= 0) return 'Expired';
+  
+  const hours = Math.floor(remaining / (1000 * 60 * 60));
+  const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+};
 
 const STATUS_CONFIG = {
   DRAFT: { icon: Clock, color: 'text-slate-400', bg: 'bg-slate-400/5 border-slate-400/20' },
   PENDING_APPROVAL: { icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20' },
   APPROVED: { icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/5 border-primary/20' },
   DENIED: { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20' },
-  EXPIRED: { icon: Clock, color: 'text-slate-500', bg: 'bg-slate-500/5 border-slate-500/20' },
+  EXPIRED: { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20' },
+  EXPIRED_APPROVAL: { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20' },
 };
 
 const RISK_COLORS = {
@@ -362,6 +393,15 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
         <td className="px-3 py-2">
           <ValidationBadge validation={validation} />
         </td>
+        <td className="px-3 py-2 text-[9px] font-mono">
+          {(proposal.status === 'PENDING_APPROVAL' || proposal.status === 'APPROVED') && proposal.expirationAt ? (
+            <span className={isProposalExpired(proposal) ? 'text-destructive font-semibold' : 'text-foreground/60'}>
+              {getTimeRemaining(proposal.expirationAt)}
+            </span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </td>
         <td className="px-3 py-2">
           <div className={`inline-flex items-center gap-1 text-[8px] px-2 py-0.5 border rounded font-semibold ${statusCfg.bg} ${statusCfg.color}`}>
             <StatusIcon className="w-2.5 h-2.5" />
@@ -420,12 +460,12 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
                     e.stopPropagation();
                     onApprove(index);
                   }}
-                  disabled={!canApprove}
-                  title={!canApprove ? canApprove === false ? 'Fix validation errors first' : 'CRITICAL risk requires manual review' : ''}
+                  disabled={!canApprove || isProposalExpired(proposal)}
+                  title={isProposalExpired(proposal) ? 'Proposal has expired' : !canApprove ? canApprove === false ? 'Fix validation errors first' : 'CRITICAL risk requires manual review' : ''}
                   className={`px-2 py-1 text-[8px] border rounded transition-colors ${
-                    canApprove
-                      ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'
-                      : 'border-primary/30 bg-primary/5 text-primary/50 cursor-not-allowed'
+                    !canApprove || isProposalExpired(proposal)
+                      ? 'border-primary/30 bg-primary/5 text-primary/50 cursor-not-allowed'
+                      : 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'
                   }`}
                 >
                   Approve
@@ -596,12 +636,14 @@ export default function OpenClawCommandProposalQueue() {
   const handleSubmitForApproval = (index) => {
     const updated = [...proposals];
     const oldStatus = updated[index].status;
+    const expirationAt = calculateExpirationTime(updated[index].riskTier);
     updated[index] = {
       ...updated[index],
       status: 'PENDING_APPROVAL',
+      expirationAt,
       auditEvents: [
         ...(updated[index].auditEvents || []),
-        createAuditEvent('SUBMITTED_FOR_APPROVAL', 'User', { previousStatus: oldStatus, nextStatus: 'PENDING_APPROVAL' }),
+        createAuditEvent('SUBMITTED_FOR_APPROVAL', 'User', { previousStatus: oldStatus, nextStatus: 'PENDING_APPROVAL', note: `Expires in ${EXPIRATION_HOURS[updated[index].riskTier]} hours` }),
       ],
     };
     saveProposals(updated);
@@ -610,6 +652,13 @@ export default function OpenClawCommandProposalQueue() {
   const handleApprove = (index) => {
     const updated = [...proposals];
     const oldStatus = updated[index].status;
+    
+    // Check if expired
+    if (isProposalExpired(updated[index])) {
+      alert('Cannot approve expired proposal.');
+      return;
+    }
+    
     updated[index] = {
       ...updated[index],
       status: 'APPROVED',
@@ -670,9 +719,41 @@ export default function OpenClawCommandProposalQueue() {
     saveProposals(updated);
   };
 
+  // Apply expiration status updates
+  const proposalsWithExpiration = proposals.map(p => {
+    if (isProposalExpired(p) && p.status === 'PENDING_APPROVAL') {
+      // Auto-expire PENDING_APPROVAL proposals
+      return {
+        ...p,
+        status: 'EXPIRED',
+        auditEvents: [
+          ...(p.auditEvents || []),
+          ...(p.auditEvents?.some(e => e.eventType === 'EXPIRED') ? [] : [createAuditEvent('EXPIRED', 'System', { previousStatus: 'PENDING_APPROVAL', nextStatus: 'EXPIRED', note: 'Automatically expired due to time limit' })]),
+        ],
+      };
+    }
+    if (isProposalExpired(p) && p.status === 'APPROVED') {
+      // Auto-expire APPROVED proposals
+      return {
+        ...p,
+        status: 'EXPIRED_APPROVAL',
+        auditEvents: [
+          ...(p.auditEvents || []),
+          ...(p.auditEvents?.some(e => e.eventType === 'EXPIRED_APPROVAL') ? [] : [createAuditEvent('EXPIRED_APPROVAL', 'System', { previousStatus: 'APPROVED', nextStatus: 'EXPIRED_APPROVAL', note: 'Automatically expired due to time limit' })]),
+        ],
+      };
+    }
+    return p;
+  });
+
+  // Save if any expired (only once)
+  if (proposalsWithExpiration.some((p, i) => proposals[i]?.status !== p.status)) {
+    saveProposals(proposalsWithExpiration);
+  }
+
   const filteredProposals = filterStatus === 'ALL'
-    ? proposals
-    : proposals.filter(p => p.status === filterStatus);
+    ? proposalsWithExpiration
+    : proposalsWithExpiration.filter(p => p.status === filterStatus);
 
   return (
     <div className="space-y-4">
@@ -795,6 +876,7 @@ export default function OpenClawCommandProposalQueue() {
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Risk</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Approval</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Validation</th>
+                <th className="text-left px-3 py-2 font-semibold text-foreground">Expires In</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Status</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Proposed</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Actions</th>
@@ -836,33 +918,33 @@ export default function OpenClawCommandProposalQueue() {
       <div className="border border-border/50 rounded-lg bg-secondary/10 p-3 space-y-2 text-[9px]">
         <div className="font-semibold text-foreground mb-2">Validation Rules</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[8px] text-foreground/80">
-          <div>
-            <div className="font-semibold text-primary mb-1">Required Fields:</div>
-            <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
-              <li>Title, Type, Reason, Proposed By, Risk Tier</li>
-            </ul>
-          </div>
-          <div>
-            <div className="font-semibold text-primary mb-1">URL Rules:</div>
-            <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
-              <li>HTTPS only, no localhost/127.0.0.1/private IPs</li>
-              <li>No file://, javascript:, or data: URIs</li>
-            </ul>
-          </div>
-          <div>
-            <div className="font-semibold text-primary mb-1">Selector Rules:</div>
-            <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
-              <li>Required for CLICK, TYPE, EXTRACT, VERIFY</li>
-              <li>Optional for READ, NAVIGATE</li>
-            </ul>
-          </div>
-          <div>
-            <div className="font-semibold text-primary mb-1">Input Text & Risk:</div>
-            <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
-              <li>Required for TYPE only</li>
-              <li>CLICK/TYPE min MEDIUM; CRITICAL stays PENDING</li>
-            </ul>
-          </div>
+        <div>
+          <div className="font-semibold text-primary mb-1">Required Fields:</div>
+          <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
+            <li>Title, Type, Reason, Proposed By, Risk Tier</li>
+          </ul>
+        </div>
+        <div>
+          <div className="font-semibold text-primary mb-1">URL Rules:</div>
+          <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
+            <li>HTTPS only, no localhost/127.0.0.1/private IPs</li>
+            <li>No file://, javascript:, or data: URIs</li>
+          </ul>
+        </div>
+        <div>
+          <div className="font-semibold text-primary mb-1">Selector Rules:</div>
+          <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
+            <li>Required for CLICK, TYPE, EXTRACT, VERIFY</li>
+            <li>Optional for READ, NAVIGATE</li>
+          </ul>
+        </div>
+        <div>
+          <div className="font-semibold text-primary mb-1">Expiration & Risk:</div>
+          <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
+            <li>LOW: 24h, MEDIUM: 12h, HIGH: 4h, CRITICAL: 1h</li>
+            <li>Expires when submitted for approval</li>
+          </ul>
+        </div>
         </div>
       </div>
 
