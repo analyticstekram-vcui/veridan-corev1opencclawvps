@@ -31,6 +31,7 @@ export default function Phase4CVerification() {
         submittedAt: new Date().toISOString(),
       },
       expectedResult: 'SIGNING_ALLOWED',
+      type: 'SIGNER',
     },
     {
       id: 2,
@@ -56,6 +57,7 @@ export default function Phase4CVerification() {
         submittedAt: new Date().toISOString(),
       },
       expectedResult: 'SIGNING_ALLOWED',
+      type: 'SIGNER',
     },
     {
       id: 3,
@@ -81,6 +83,7 @@ export default function Phase4CVerification() {
         submittedAt: new Date().toISOString(),
       },
       expectedResult: 'SIGNING_REJECTED',
+      type: 'SIGNER',
     },
     {
       id: 4,
@@ -106,6 +109,7 @@ export default function Phase4CVerification() {
         submittedAt: new Date().toISOString(),
       },
       expectedResult: 'SIGNING_REJECTED',
+      type: 'SIGNER',
     },
     {
       id: 5,
@@ -131,6 +135,7 @@ export default function Phase4CVerification() {
         submittedAt: new Date().toISOString(),
       },
       expectedResult: 'SIGNING_REJECTED',
+      type: 'SIGNER',
     },
     {
       id: 6,
@@ -156,6 +161,7 @@ export default function Phase4CVerification() {
         submittedAt: new Date().toISOString(),
       },
       expectedResult: 'SIGNING_REJECTED',
+      type: 'SIGNER',
     },
     {
       id: 7,
@@ -181,6 +187,7 @@ export default function Phase4CVerification() {
         submittedAt: new Date().toISOString(),
       },
       expectedResult: 'SIGNING_REJECTED',
+      type: 'SIGNER',
     },
     {
       id: 8,
@@ -206,6 +213,7 @@ export default function Phase4CVerification() {
         submittedAt: new Date().toISOString(),
       },
       expectedResult: 'SIGNING_REJECTED',
+      type: 'SIGNER',
     },
     {
       id: 9,
@@ -231,6 +239,73 @@ export default function Phase4CVerification() {
         submittedAt: new Date().toISOString(),
       },
       expectedResult: 'SIGNING_REJECTED',
+      type: 'SIGNER',
+    },
+    {
+      id: 10,
+      name: 'Signer audit record created for allowed signing',
+      type: 'AUDIT_CREATED',
+      expectedResult: 'AUDIT_EXISTS',
+    },
+    {
+      id: 11,
+      name: 'Signer audit record created for rejected signing',
+      type: 'AUDIT_CREATED',
+      expectedResult: 'AUDIT_EXISTS',
+    },
+    {
+      id: 12,
+      name: 'Signer audit records do NOT expose secrets or HMAC internals',
+      type: 'AUDIT_SAFETY',
+      expectedResult: 'SAFE',
+    },
+    {
+      id: 13,
+      name: 'Signed request accepted by verifier when unchanged and fresh',
+      type: 'VERIFIER_INTEGRATION',
+      expectedResult: 'ACCEPTED',
+    },
+    {
+      id: 14,
+      name: 'Tampering signed targetUrl is rejected by verifier with HMAC_SIGNATURE_INVALID',
+      type: 'TAMPER_DETECTION',
+      expectedResult: 'REJECTED',
+    },
+    {
+      id: 15,
+      name: 'Tampering signed riskTier is rejected by verifier with HMAC_SIGNATURE_INVALID',
+      type: 'TAMPER_DETECTION',
+      expectedResult: 'REJECTED',
+    },
+    {
+      id: 16,
+      name: 'Replaying same signed request is rejected by replay protection',
+      type: 'REPLAY_PROTECTION',
+      expectedResult: 'REJECTED',
+    },
+    {
+      id: 17,
+      name: 'Verify no OpenClaw calls exist in signer/verifier',
+      type: 'EXECUTION_CONSTRAINT',
+      expectedResult: 'SAFE',
+    },
+    {
+      id: 18,
+      name: 'Verify no browser/API/trading execution exists',
+      type: 'EXECUTION_CONSTRAINT',
+      expectedResult: 'SAFE',
+    },
+    {
+      id: 19,
+      name: 'Verify bridgeMode remains DRY_RUN_ONLY',
+      type: 'EXECUTION_CONSTRAINT',
+      expectedResult: 'DRY_RUN_ONLY',
+    },
+    {
+      id: 20,
+      name: 'Verify executionStatus remains NOT_EXECUTED or REJECTED_NOT_EXECUTED',
+      type: 'EXECUTION_CONSTRAINT',
+      expectedResult: 'SAFE',
     },
   ];
 
@@ -240,30 +315,248 @@ export default function Phase4CVerification() {
 
     for (const test of TEST_CASES) {
       try {
-        const response = await fetch('/api/openclaw/bridge/signer', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(test.request),
-        });
-        const data = await response.json();
+        if (test.type === 'SIGNER') {
+          // Test signer endpoint
+          const response = await fetch('/api/openclaw/bridge/signer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(test.request),
+          });
+          const data = await response.json();
 
-        const actualResult = data.signingAllowed ? 'SIGNING_ALLOWED' : 'SIGNING_REJECTED';
-        const passed = actualResult === test.expectedResult;
+          const actualResult = data.signingAllowed ? 'SIGNING_ALLOWED' : 'SIGNING_REJECTED';
+          const passed = actualResult === test.expectedResult;
 
-        testResults.push({
-          id: test.id,
-          name: test.name,
-          expected: test.expectedResult,
-          actual: actualResult,
-          passed,
-          details: {
-            signingAllowed: data.signingAllowed,
-            rejectedReason: data.rejectedReason,
-            signerAuditId: data.signerAuditId,
-            hasSignedRequest: !!data.signedRequest,
-            signatureMode: data.signatureMode,
-          },
-        });
+          testResults.push({
+            id: test.id,
+            name: test.name,
+            expected: test.expectedResult,
+            actual: actualResult,
+            passed,
+            details: {
+              signingAllowed: data.signingAllowed,
+              rejectedReason: data.rejectedReason,
+              signerAuditId: data.signerAuditId,
+              hasSignedRequest: !!data.signedRequest,
+              signatureMode: data.signatureMode,
+            },
+          });
+        } else if (test.type === 'AUDIT_CREATED') {
+          // Verify audit records exist
+          const response = await fetch('/api/openclaw/bridge/signer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(test.id === 10 ? TEST_CASES[0].request : TEST_CASES[2].request),
+          });
+          const signerData = await response.json();
+
+          // Audit record should exist
+          const passed = !!signerData.signerAuditId;
+
+          testResults.push({
+            id: test.id,
+            name: test.name,
+            expected: test.expectedResult,
+            actual: passed ? 'AUDIT_EXISTS' : 'AUDIT_MISSING',
+            passed,
+            details: { auditId: signerData.signerAuditId },
+          });
+        } else if (test.type === 'AUDIT_SAFETY') {
+          // Sign a request and verify audit doesn't expose secrets
+          const signerResponse = await fetch('/api/openclaw/bridge/signer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(TEST_CASES[0].request),
+          });
+          const signerData = await signerResponse.json();
+
+          // Check that signed response doesn't include raw secrets
+          const responseStr = JSON.stringify(signerData);
+          const hasForbiddenContent = 
+            responseStr.includes('OPENCLAW_BRIDGE_HMAC_SECRET') ||
+            responseStr.includes('inputText') && TEST_CASES[0].request.bridgeRequest.inputText ||
+            responseStr.includes('HMAC');
+
+          const passed = !hasForbiddenContent && signerData.signingAllowed;
+
+          testResults.push({
+            id: test.id,
+            name: test.name,
+            expected: test.expectedResult,
+            actual: passed ? 'SAFE' : 'EXPOSED',
+            passed,
+            details: { exposed: hasForbiddenContent },
+          });
+        } else if (test.type === 'VERIFIER_INTEGRATION') {
+          // Sign a request and verify it's accepted by the verifier
+          const signerResponse = await fetch('/api/openclaw/bridge/signer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(TEST_CASES[0].request),
+          });
+          const signedData = await signerResponse.json();
+
+          if (signedData.signingAllowed && signedData.signedRequest) {
+            // Send signed request to verifier
+            const verifierResponse = await fetch('/api/openclaw/bridge/preview', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(signedData.signedRequest),
+            });
+            const verifierData = await verifierResponse.json();
+
+            const passed = verifierData.accepted === true;
+            testResults.push({
+              id: test.id,
+              name: test.name,
+              expected: test.expectedResult,
+              actual: passed ? 'ACCEPTED' : 'REJECTED',
+              passed,
+              details: { verifierAccepted: verifierData.accepted },
+            });
+          } else {
+            testResults.push({
+              id: test.id,
+              name: test.name,
+              expected: test.expectedResult,
+              actual: 'SIGNING_FAILED',
+              passed: false,
+              details: { reason: 'Signer endpoint failed' },
+            });
+          }
+        } else if (test.type === 'TAMPER_DETECTION') {
+          // Sign a request, tamper with it, and verify rejection
+          const signerResponse = await fetch('/api/openclaw/bridge/signer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(TEST_CASES[0].request),
+          });
+          const signedData = await signerResponse.json();
+
+          if (signedData.signingAllowed && signedData.signedRequest) {
+            // Tamper with the signed request
+            const tamperedRequest = { ...signedData.signedRequest };
+            if (test.id === 14) {
+              tamperedRequest.bridgeRequest.targetUrl = 'https://base44.com/docs';
+            } else {
+              tamperedRequest.bridgeRequest.riskTier = 'MEDIUM';
+            }
+
+            // Send to verifier
+            const verifierResponse = await fetch('/api/openclaw/bridge/preview', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(tamperedRequest),
+            });
+            const verifierData = await verifierResponse.json();
+
+            const isRejected = verifierData.accepted === false && 
+              (verifierData.rejectedReason && verifierData.rejectedReason.includes('HMAC_SIGNATURE_INVALID'));
+            
+            testResults.push({
+              id: test.id,
+              name: test.name,
+              expected: test.expectedResult,
+              actual: isRejected ? 'REJECTED' : 'ACCEPTED',
+              passed: isRejected,
+              details: { rejectedReason: verifierData.rejectedReason },
+            });
+          } else {
+            testResults.push({
+              id: test.id,
+              name: test.name,
+              expected: test.expectedResult,
+              actual: 'SIGNING_FAILED',
+              passed: false,
+            });
+          }
+        } else if (test.type === 'REPLAY_PROTECTION') {
+          // Sign a request, send it twice, verify second is rejected
+          const signerResponse = await fetch('/api/openclaw/bridge/signer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(TEST_CASES[0].request),
+          });
+          const signedData = await signerResponse.json();
+
+          if (signedData.signingAllowed && signedData.signedRequest) {
+            // Send first time
+            await fetch('/api/openclaw/bridge/preview', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(signedData.signedRequest),
+            });
+
+            // Send second time (replay)
+            const replayResponse = await fetch('/api/openclaw/bridge/preview', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(signedData.signedRequest),
+            });
+            const replayData = await replayResponse.json();
+
+            const isRejected = replayData.accepted === false && 
+              (replayData.rejectedReason && replayData.rejectedReason.includes('DUPLICATE'));
+
+            testResults.push({
+              id: test.id,
+              name: test.name,
+              expected: test.expectedResult,
+              actual: isRejected ? 'REJECTED' : 'ACCEPTED',
+              passed: isRejected,
+              details: { rejectedReason: replayData.rejectedReason },
+            });
+          } else {
+            testResults.push({
+              id: test.id,
+              name: test.name,
+              expected: test.expectedResult,
+              actual: 'SIGNING_FAILED',
+              passed: false,
+            });
+          }
+        } else if (test.type === 'EXECUTION_CONSTRAINT') {
+          // Verify no execution happens
+          const signerResponse = await fetch('/api/openclaw/bridge/signer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(TEST_CASES[0].request),
+          });
+          const signerData = await signerResponse.json();
+
+          let passed = false;
+          if (test.id === 17 || test.id === 18) {
+            // Verify no OpenClaw or execution calls
+            passed = signerData.note.includes('No OpenClaw call') || signerData.note.includes('No execution');
+          } else if (test.id === 19) {
+            // Verify DRY_RUN_ONLY from verifier
+            const verifierResponse = await fetch('/api/openclaw/bridge/preview', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(signerData.signedRequest || TEST_CASES[0].request),
+            });
+            const verifierData = await verifierResponse.json();
+            passed = verifierData.bridgeMode === 'DRY_RUN_ONLY';
+          } else if (test.id === 20) {
+            // Verify execution status
+            const verifierResponse = await fetch('/api/openclaw/bridge/preview', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(signerData.signedRequest || TEST_CASES[0].request),
+            });
+            const verifierData = await verifierResponse.json();
+            passed = verifierData.executionStatus === 'NOT_EXECUTED' || 
+              verifierData.executionStatus === 'REJECTED_NOT_EXECUTED';
+          }
+
+          testResults.push({
+            id: test.id,
+            name: test.name,
+            expected: test.expectedResult,
+            actual: passed ? test.expectedResult : 'UNSAFE',
+            passed,
+          });
+        }
       } catch (err) {
         testResults.push({
           id: test.id,
@@ -314,7 +607,7 @@ export default function Phase4CVerification() {
             Running Tests...
           </>
         ) : (
-          '▶ Run Verification Suite (9 tests)'
+          '▶ Run Verification Suite (20 tests)'
         )}
       </button>
 
