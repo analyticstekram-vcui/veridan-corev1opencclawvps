@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp } from 'lucide-react';
 
 const REQUEST_SCHEMA = {
   requestId: { type: 'string', description: 'Unique bridge request identifier', required: true },
@@ -88,6 +88,125 @@ const EXAMPLE_REJECTED_RESPONSE = {
   resultSummary: 'Request rejected at validation gate. See rejectedReason for details.',
 };
 
+// Validation function for contract compliance
+const validateContractCompliance = (request) => {
+  const errors = [];
+
+  // Check required fields
+  if (!request.requestId) errors.push('requestId is required');
+  if (!request.proposalId) errors.push('proposalId is required');
+  if (!request.bundleHash) errors.push('bundleHash is required');
+  if (!request.commandType) errors.push('commandType is required');
+  if (!request.targetUrl) errors.push('targetUrl is required');
+
+  // Check URL scheme
+  if (request.targetUrl && !request.targetUrl.startsWith('https://')) {
+    errors.push('targetUrl must use https:// scheme');
+  }
+
+  // Check critical status fields
+  if (request.approvalStatus !== 'APPROVED') {
+    errors.push(`approvalStatus must be APPROVED, got ${request.approvalStatus}`);
+  }
+  if (request.validationResult !== 'PASS') {
+    errors.push(`validationResult must be PASS, got ${request.validationResult}`);
+  }
+  if (request.executionEligibility !== 'ELIGIBLE_PREVIEW') {
+    errors.push(`executionEligibility must be ELIGIBLE_PREVIEW, got ${request.executionEligibility}`);
+  }
+
+  // Check governance mode
+  if (request.governanceMode !== 'SAFE_REQUIRES_APPROVAL') {
+    errors.push(`governanceMode must be SAFE_REQUIRES_APPROVAL, got ${request.governanceMode}`);
+  }
+
+  // Check execution flags
+  if (request.dryRun !== true) {
+    errors.push('dryRun must be true (no live execution allowed)');
+  }
+  if (request.liveExecution !== false) {
+    errors.push('liveExecution must be false (no live execution allowed)');
+  }
+
+  // Check expiration
+  if (request.expirationAt) {
+    const expirationDate = new Date(request.expirationAt);
+    const now = new Date();
+    if (expirationDate <= now) {
+      errors.push(`expirationAt must be in the future (currently expired)`);
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
+// Test cases
+const TEST_CASES = [
+  {
+    name: 'Valid request passes all contract rules',
+    request: EXAMPLE_VALID_REQUEST,
+    expectedPass: true,
+  },
+  {
+    name: 'Missing requestId fails',
+    request: { ...EXAMPLE_VALID_REQUEST, requestId: undefined },
+    expectedPass: false,
+  },
+  {
+    name: 'Missing proposalId fails',
+    request: { ...EXAMPLE_VALID_REQUEST, proposalId: undefined },
+    expectedPass: false,
+  },
+  {
+    name: 'Missing bundleHash fails',
+    request: { ...EXAMPLE_VALID_REQUEST, bundleHash: undefined },
+    expectedPass: false,
+  },
+  {
+    name: 'http:// targetUrl fails',
+    request: { ...EXAMPLE_VALID_REQUEST, targetUrl: 'http://tradingview.com/chart' },
+    expectedPass: false,
+  },
+  {
+    name: 'Non-APPROVED approvalStatus fails',
+    request: { ...EXAMPLE_VALID_REQUEST, approvalStatus: 'PENDING_APPROVAL' },
+    expectedPass: false,
+  },
+  {
+    name: 'WARNING validationResult fails',
+    request: { ...EXAMPLE_VALID_REQUEST, validationResult: 'WARNING' },
+    expectedPass: false,
+  },
+  {
+    name: 'REVIEW_REQUIRED executionEligibility fails',
+    request: { ...EXAMPLE_VALID_REQUEST, executionEligibility: 'REVIEW_REQUIRED' },
+    expectedPass: false,
+  },
+  {
+    name: 'Wrong governanceMode fails',
+    request: { ...EXAMPLE_VALID_REQUEST, governanceMode: 'UNSAFE_LIVE' },
+    expectedPass: false,
+  },
+  {
+    name: 'dryRun false fails',
+    request: { ...EXAMPLE_VALID_REQUEST, dryRun: false },
+    expectedPass: false,
+  },
+  {
+    name: 'liveExecution true fails',
+    request: { ...EXAMPLE_VALID_REQUEST, liveExecution: true },
+    expectedPass: false,
+  },
+  {
+    name: 'Expired expirationAt fails',
+    request: { ...EXAMPLE_VALID_REQUEST, expirationAt: '2026-05-12T10:35:00Z' },
+    expectedPass: false,
+  },
+];
+
 function SchemaTable({ schema, title }) {
   return (
     <div className="space-y-2">
@@ -175,6 +294,80 @@ function JSONExample({ title, data, rejected = false }) {
   );
 }
 
+function ComplianceTest({ testCase }) {
+  const validation = validateContractCompliance(testCase.request);
+  const passed = validation.isValid === testCase.expectedPass;
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className={`border rounded overflow-hidden ${passed ? 'bg-primary/5 border-primary/20' : 'bg-destructive/5 border-destructive/20'}`}>
+      <div
+        className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-2 flex-1">
+          {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-semibold text-foreground">{testCase.name}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {passed ? (
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[8px] font-semibold text-primary">PASS</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <XCircle className="w-3.5 h-3.5 text-destructive" />
+              <span className="text-[8px] font-semibold text-destructive">FAIL</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-current/20 px-4 py-3 space-y-2 text-[9px]">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Expected</div>
+              <div className={`font-semibold ${testCase.expectedPass ? 'text-primary' : 'text-destructive'}`}>
+                {testCase.expectedPass ? 'PASS' : 'FAIL'}
+              </div>
+            </div>
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Actual</div>
+              <div className={`font-semibold ${validation.isValid ? 'text-primary' : 'text-destructive'}`}>
+                {validation.isValid ? 'PASS' : 'FAIL'}
+              </div>
+            </div>
+          </div>
+
+          {validation.errors.length > 0 && (
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Violations</div>
+              <div className="space-y-0.5">
+                {validation.errors.map((err, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5 text-[8px] text-slate-400">
+                    <span className="text-destructive mt-0.5">✗</span>
+                    <span>{err}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {validation.isValid && (
+            <div className="bg-primary/10 border border-primary/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">All contract rules satisfied</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SafeBridgeContractPreview() {
   return (
     <div className="space-y-4">
@@ -253,12 +446,62 @@ export default function SafeBridgeContractPreview() {
         </div>
       </div>
 
+      {/* Compliance Tests */}
+      <div className="space-y-2">
+        <div className="text-[10px] font-semibold text-foreground uppercase tracking-widest">Contract Compliance Tests</div>
+        <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
+          <div className="text-[9px] text-primary/80">
+            <div className="font-semibold mb-1">Test Suite</div>
+            <div className="text-[8px] text-primary/70">All tests run against contract validation rules. Tests are deterministic and read-only. No OpenClaw calls are made.</div>
+          </div>
+        </div>
+
+        {/* Overall Compliance Status */}
+        {(() => {
+          const results = TEST_CASES.map(tc => {
+            const validation = validateContractCompliance(tc.request);
+            return validation.isValid === tc.expectedPass;
+          });
+          const allPassed = results.every(r => r);
+          const passCount = results.filter(r => r).length;
+
+          return (
+            <div className={`border rounded-lg px-4 py-3 ${allPassed ? 'bg-primary/5 border-primary/20' : 'bg-destructive/5 border-destructive/20'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  {allPassed ? (
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-destructive" />
+                  )}
+                  <div>
+                    <div className={`text-[11px] font-semibold ${allPassed ? 'text-primary' : 'text-destructive'}`}>
+                      {allPassed ? 'COMPLIANT' : 'NON_COMPLIANT'}
+                    </div>
+                    <div className={`text-[9px] ${allPassed ? 'text-primary/70' : 'text-destructive/70'}`}>
+                      {passCount} / {TEST_CASES.length} tests passed
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Test Results */}
+        <div className="space-y-1">
+          {TEST_CASES.map((testCase, idx) => (
+            <ComplianceTest key={idx} testCase={testCase} />
+          ))}
+        </div>
+      </div>
+
       {/* Footer Notice */}
       <div className="flex items-start gap-2 px-4 py-3 bg-secondary/10 border border-border/50 rounded-lg text-[9px] text-slate-400">
         <Lock className="w-3 h-3 shrink-0 mt-0.5" />
         <div>
           <div className="font-semibold text-foreground mb-0.5">Contract is locked and read-only.</div>
-          <div className="text-[8px] text-slate-400">All fields, validation rules, and examples are hardcoded governance definitions. Future backend bridge will use this exact contract for request validation and response formatting.</div>
+          <div className="text-[8px] text-slate-400">All fields, validation rules, examples, and tests are hardcoded governance definitions. Future backend bridge will use this exact contract for request validation and response formatting. All tests are deterministic—no OpenClaw calls.</div>
         </div>
       </div>
     </div>
