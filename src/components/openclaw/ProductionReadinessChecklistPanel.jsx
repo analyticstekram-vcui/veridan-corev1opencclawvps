@@ -971,44 +971,37 @@ export default function ProductionReadinessChecklistPanel() {
     checkBackendEnforcement();
   }, []);
   
-  // PRODUCTION_READY only if all items COMPLETE AND no BLOCKED AND no unresolved CRITICAL AND backend enforcement PASSES
-  if (
-    summaryStats.complete === summaryStats.total &&
-    summaryStats.blocked === 0 &&
-    summaryStats.unresolvedCritical === 0 &&
-    summaryStats.unresolvedProdRequired === 0 &&
-    backendEnforcementStatus?.passed === true
-  ) {
-    readinessStatus = 'PRODUCTION_READY';
-  }
-  // NOT_PRODUCTION_READY if backend enforcement fails
-  else if (backendEnforcementStatus?.passed === false) {
+  // Two-tier readiness: Non-execution deployment vs live execution
+  // Count only truly unresolved production-required items (exclude verified items)
+  const unresolvedProdReqItems = CHECKLIST_ITEMS.filter(item => {
+    const isProdRequired = item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r));
+    if (!isProdRequired) return false;
+    const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+    return effectiveStatus !== 'COMPLETE'; // Only count incomplete items
+  }).length;
+
+  // Non-execution deployment: READY if verified + backend passes, else NOT READY
+  const nonExecReady = summaryStats.complete === summaryStats.total &&
+                       summaryStats.blocked === 0 &&
+                       summaryStats.unresolvedCritical === 0 &&
+                       unresolvedProdReqItems === 0 &&
+                       backendEnforcementStatus?.passed === true;
+
+  if (nonExecReady) {
+    readinessStatus = 'READY_FOR_NON_EXECUTION_DEPLOYMENT';
+  } else {
     readinessStatus = 'NOT_PRODUCTION_READY';
-    readinessBlockReason = 'Backend enforcement validation failed. See System Verify tab.';
+    if (backendEnforcementStatus?.passed === false) {
+      readinessBlockReason = 'Backend enforcement validation failed. See System Verify tab.';
+    } else if (summaryStats.blocked > 0) {
+      readinessBlockReason = `${summaryStats.blocked} BLOCKED item${summaryStats.blocked !== 1 ? 's' : ''} block non-execution deployment`;
+    } else if (summaryStats.unresolvedCritical > 0) {
+      readinessBlockReason = `${summaryStats.unresolvedCritical} unresolved CRITICAL item${summaryStats.unresolvedCritical !== 1 ? 's' : ''} block non-execution deployment`;
+    } else if (unresolvedProdReqItems > 0) {
+      readinessBlockReason = `${unresolvedProdReqItems} unresolved production-required item${unresolvedProdReqItems !== 1 ? 's' : ''} block non-execution deployment`;
+    }
   }
-  // NOT_PRODUCTION_READY if any BLOCKED
-  else if (summaryStats.blocked > 0) {
-    readinessStatus = 'NOT_PRODUCTION_READY';
-    readinessBlockReason = `${summaryStats.blocked} BLOCKED item${summaryStats.blocked !== 1 ? 's' : ''} prevent production readiness`;
-  }
-  // NOT_PRODUCTION_READY if unresolved CRITICAL
-  else if (summaryStats.unresolvedCritical > 0) {
-    readinessStatus = 'NOT_PRODUCTION_READY';
-    readinessBlockReason = `${summaryStats.unresolvedCritical} unresolved CRITICAL item${summaryStats.unresolvedCritical !== 1 ? 's' : ''} prevent production readiness`;
-  }
-  // NOT_PRODUCTION_READY if unresolved PRODUCTION_REQUIRED
-  else if (summaryStats.unresolvedProdRequired > 0) {
-    readinessStatus = 'NOT_PRODUCTION_READY';
-    readinessBlockReason = `${summaryStats.unresolvedProdRequired} unresolved production-required item${summaryStats.unresolvedProdRequired !== 1 ? 's' : ''} prevent production readiness`;
-  }
-  // READ_ONLY_READY if no blocked, no unresolved critical, good coverage
-  else if (readinessPercentage >= 80) {
-    readinessStatus = 'READ_ONLY_READY';
-  }
-  // BROWSER_ACTIONS_PENDING if reasonable progress
-  else if (readinessPercentage >= 60) {
-    readinessStatus = 'BROWSER_ACTIONS_PENDING';
-  }
+  // Note: Live execution production readiness is NOT READY because OpenClaw is disabled
 
   const [systemReviewRunning, setSystemReviewRunning] = useState(false);
   const [systemReviewResults, setSystemReviewResults] = useState(null);
@@ -1214,31 +1207,32 @@ export default function ProductionReadinessChecklistPanel() {
         </div>
       )}
 
-      {/* Auto-Review Status Panel */}
-      <div className={`rounded-lg p-4 space-y-3 border ${readinessStatus === 'PRODUCTION_READY' ? 'bg-primary/10 border-primary/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+      {/* Readiness Status Panel — Two-Tier Model */}
+      <div className={`rounded-lg p-4 space-y-3 border ${readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? 'bg-primary/10 border-primary/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
         <div className="flex items-start gap-3">
-          {readinessStatus === 'PRODUCTION_READY' ? (
+          {readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? (
             <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           ) : (
             <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           )}
           <div className="flex-1">
-            <div className={`text-[11px] font-semibold mb-2 ${readinessStatus === 'PRODUCTION_READY' ? 'text-primary' : 'text-amber-500'}`}>
-              {readinessStatus === 'PRODUCTION_READY' ? '✓ PRODUCTION_READY' : '⚠️ NOT_PRODUCTION_READY'}
+            <div className={`text-[11px] font-semibold mb-2 ${readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? 'text-primary' : 'text-amber-500'}`}>
+              {readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? '✓ READY_FOR_NON_EXECUTION_DEPLOYMENT' : '⚠️ NOT_PRODUCTION_READY'}
             </div>
-            <div className={`text-[10px] space-y-2 ${readinessStatus === 'PRODUCTION_READY' ? 'text-primary/80' : 'text-amber-500/80'}`}>
-              <div><span className="font-semibold">Auto-review status:</span> Completed on page load. Safe review records saved for {summaryStats.complete} items with clear evidence.</div>
-              <div className={`${readinessStatus === 'PRODUCTION_READY' ? 'text-primary/70' : 'text-amber-500/80 font-semibold'}`}>
-                {readinessStatus === 'PRODUCTION_READY' ? (
-                  'All items complete. System is production-ready.'
-                ) : (
-                  <>
-                    <div>{readinessBlockReason || `${getUnresolvedBySeverity().length} item${getUnresolvedBySeverity().length !== 1 ? 's' : ''} still require external work.`}</div>
-                    <div className="text-[9px] mt-1">See "Items still needing external work" section below.</div>
-                  </>
-                )}
-              </div>
-              <div className="text-[9px] text-muted-foreground/60">No manual action needed for safe review—auto-review already completed.</div>
+            <div className={`text-[10px] space-y-2 ${readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? 'text-primary/80' : 'text-amber-500/80'}`}>
+              <div><span className="font-semibold">Deployment Status:</span></div>
+              {readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? (
+                <>
+                  <div className="text-primary">✓ <span className="font-semibold">Non-execution deployment: READY</span> — Verified checklist + backend enforcement pass. Safe to deploy observation, validation, signing, dry-run, and audit infrastructure.</div>
+                  <div className="text-amber-500/80">✗ <span className="font-semibold">Live execution production: NOT READY / DISABLED</span> — OpenClaw not connected, execution routes disabled, browser/API/trading actions blocked, credential entry disabled, money movement disabled.</div>
+                </>
+              ) : (
+                <>
+                  <div>{readinessBlockReason || `${getUnresolvedBySeverity().length} item${getUnresolvedBySeverity().length !== 1 ? 's' : ''} still require external work.`}</div>
+                  <div className="text-[9px] mt-1">See "Items still needing external work" section below. Fix blockers for non-execution deployment readiness.</div>
+                </>
+              )}
+              <div className="text-[9px] text-muted-foreground/60">Auto-review completed on page load. {summaryStats.complete} items verified.</div>
             </div>
           </div>
         </div>
@@ -1423,11 +1417,11 @@ export default function ProductionReadinessChecklistPanel() {
             <div className="text-[9px] text-muted-foreground/50 mt-0.5">{readinessPercentage}% complete</div>
           </div>
           <div className="text-right">
-            <div className={`text-[13px] font-bold ${readinessStatus === 'PRODUCTION_READY' ? 'text-primary' : readinessStatus === 'READ_ONLY_READY' ? 'text-amber-500' : 'text-destructive'}`}>
+            <div className={`text-[13px] font-bold ${readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? 'text-primary' : 'text-destructive'}`}>
               {readinessPercentage}%
             </div>
-            <div className={`text-[9px] font-semibold uppercase tracking-wider mt-1 ${readinessStatus === 'PRODUCTION_READY' ? 'text-primary' : readinessStatus === 'READ_ONLY_READY' ? 'text-amber-500' : 'text-destructive'}`}>
-              {readinessStatus.replace(/_/g, ' ')}
+            <div className={`text-[9px] font-semibold uppercase tracking-wider mt-1 ${readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? 'text-primary' : 'text-destructive'}`}>
+              {readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? 'READY FOR NON-EXECUTION' : 'NOT READY'}
             </div>
           </div>
         </div>
@@ -1435,21 +1429,19 @@ export default function ProductionReadinessChecklistPanel() {
         {/* Progress bar */}
         <div className="w-full h-2 bg-secondary/50 rounded-full overflow-hidden">
           <div
-            className={`h-full transition-all ${readinessStatus === 'PRODUCTION_READY' ? 'bg-primary' : readinessStatus === 'READ_ONLY_READY' ? 'bg-amber-500' : 'bg-destructive'}`}
+            className={`h-full transition-all ${readinessStatus === 'READY_FOR_NON_EXECUTION_DEPLOYMENT' ? 'bg-primary' : 'bg-destructive'}`}
             style={{ width: `${readinessPercentage}%` }}
           />
         </div>
 
-        {/* Warning if not production ready */}
-        {readinessStatus !== 'PRODUCTION_READY' && (
+        {/* Info if not ready for non-execution deployment */}
+        {readinessStatus !== 'READY_FOR_NON_EXECUTION_DEPLOYMENT' && (
           <div className="flex items-start gap-2 text-[9px] bg-amber-500/10 border border-amber-500/20 px-2 py-1.5 rounded">
             <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-amber-500">Not production ready</div>
+              <div className="font-semibold text-amber-500">Not ready for non-execution deployment</div>
               <div className="text-amber-500/70 text-[8px] mt-0.5">
-                {readinessStatus === 'READ_ONLY_READY' && 'READ_ONLY mode is safe. Trading/banking blocked.'}
-                {readinessStatus === 'BROWSER_ACTIONS_PENDING' && 'Complete critical items before enabling mutations.'}
-                {readinessStatus === 'NOT_PRODUCTION_READY' && 'Complete checklist items to reach production readiness.'}
+                Complete all checklist items and ensure backend enforcement passes to unlock non-execution deployment.
               </div>
             </div>
           </div>
