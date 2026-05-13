@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp, Copy, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp, Copy, AlertTriangle, Clock } from 'lucide-react';
 
 const REQUEST_SCHEMA = {
   requestId: { type: 'string', description: 'Unique bridge request identifier', required: true },
@@ -1030,6 +1030,305 @@ function BridgeRequestBuilder() {
           <div className="text-[9px] text-amber-500">
             <span className="font-semibold">Future Backend Bridge and OpenClaw Execution are disabled.</span>
             <span className="block text-amber-500/70 mt-0.5">No live actions are executed. All current modules are read-only governance, audit, and preview only.</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Backend Bridge Integration Plan */}
+      <div className="border border-border/50 rounded-lg bg-card p-5 space-y-4">
+        <div>
+          <div className="text-[11px] font-semibold text-foreground uppercase tracking-widest mb-2">Backend Bridge Integration Plan</div>
+          <div className="text-[9px] text-slate-400 mb-4">This is a planning view only. It does not create backend routes, call OpenClaw, or enable execution.</div>
+        </div>
+
+        {/* Warning Banner */}
+        <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="text-[9px] text-amber-500">
+            <span className="font-semibold">Future integration phases are disabled.</span>
+            <span className="block text-amber-500/70 mt-0.5">Phase 0 complete. Phase 1 next. Phases 2-7 blocked until Phase 1 approval.</span>
+          </div>
+        </div>
+
+        {/* Phases */}
+        <div className="space-y-3">
+          {/* Phase 0: Governance Shell Complete */}
+          <div className="border border-primary/20 bg-primary/5 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-primary/20">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-[10px] font-semibold text-foreground">Phase 0: Governance Shell Complete</div>
+                  <div className="text-[9px] text-slate-400 mt-1">All governance, validation, audit, and preview modules deployed and operational.</div>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 border border-primary/30 rounded whitespace-nowrap">
+                  <CheckCircle2 className="w-3 h-3 text-primary" />
+                  <span className="text-[8px] font-semibold text-primary">COMPLETE</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[9px]">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">GOAL</div>
+                  <div className="text-foreground">Establish governance framework</div>
+                </div>
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">RISK LEVEL</div>
+                  <div className="text-slate-400">None (read-only)</div>
+                </div>
+                <div className="col-span-2 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">REQUIRED SAFEGUARDS</div>
+                  <div className="text-foreground/70">Contract definitions, validation rules, audit logging framework</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase 1: Backend Route Scaffold */}
+          <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-amber-500/20">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-[10px] font-semibold text-foreground">Phase 1: Backend Route Scaffold</div>
+                  <div className="text-[9px] text-slate-400 mt-1">Create backend route that accepts bridge requests and returns validation result.</div>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded whitespace-nowrap">
+                  <Clock className="w-3 h-3 text-amber-500" />
+                  <span className="text-[8px] font-semibold text-amber-500">NEXT</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[9px]">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">GOAL</div>
+                  <div className="text-foreground">Accept bridge request POST, validate, return result</div>
+                </div>
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">RISK LEVEL</div>
+                  <div className="text-amber-500">Low (validation only)</div>
+                </div>
+                <div className="col-span-2 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">REQUIRED SAFEGUARDS</div>
+                  <div className="text-foreground/70">Cloudflare Access, contract compliance check, audit logging</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase 2: Dry-run Validation Endpoint */}
+          <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden opacity-60">
+            <div className="px-4 py-3 border-b border-slate-500/20">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-[10px] font-semibold text-slate-400">Phase 2: Dry-run Validation Endpoint</div>
+                  <div className="text-[9px] text-slate-500 mt-1">Route to execute read-only dry-run against OpenClaw.</div>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                  <Lock className="w-3 h-3 text-slate-400" />
+                  <span className="text-[8px] font-semibold text-slate-400">FUTURE_DISABLED</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[9px]">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">GOAL</div>
+                  <div className="text-slate-500">Execute read-only dry-run simulation</div>
+                </div>
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">RISK LEVEL</div>
+                  <div className="text-slate-500">Low (simulation only)</div>
+                </div>
+                <div className="col-span-2 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">REQUIRED SAFEGUARDS</div>
+                  <div className="text-slate-500">SAFE_PREVIEW mode, dryRun=true, no mutations allowed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase 3: Signed Request Validation */}
+          <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden opacity-60">
+            <div className="px-4 py-3 border-b border-slate-500/20">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-[10px] font-semibold text-slate-400">Phase 3: Signed Request Validation</div>
+                  <div className="text-[9px] text-slate-500 mt-1">Add HMAC signature verification for request integrity.</div>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                  <Lock className="w-3 h-3 text-slate-400" />
+                  <span className="text-[8px] font-semibold text-slate-400">FUTURE_DISABLED</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[9px]">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">GOAL</div>
+                  <div className="text-slate-500">Verify request authenticity via signature</div>
+                </div>
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">RISK LEVEL</div>
+                  <div className="text-slate-500">Low (detection only)</div>
+                </div>
+                <div className="col-span-2 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">REQUIRED SAFEGUARDS</div>
+                  <div className="text-slate-500">HMAC key rotation, signature verification, audit trail</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase 4: Audit Log Persistence */}
+          <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden opacity-60">
+            <div className="px-4 py-3 border-b border-slate-500/20">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-[10px] font-semibold text-slate-400">Phase 4: Audit Log Persistence</div>
+                  <div className="text-[9px] text-slate-500 mt-1">Store all requests and results in immutable audit log.</div>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                  <Lock className="w-3 h-3 text-slate-400" />
+                  <span className="text-[8px] font-semibold text-slate-400">FUTURE_DISABLED</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[9px]">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">GOAL</div>
+                  <div className="text-slate-500">Create immutable execution record</div>
+                </div>
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">RISK LEVEL</div>
+                  <div className="text-slate-500">None (audit only)</div>
+                </div>
+                <div className="col-span-2 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">REQUIRED SAFEGUARDS</div>
+                  <div className="text-slate-500">Append-only logs, tamper detection, retention policy</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase 5: OpenClaw Dry-run Bridge */}
+          <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden opacity-60">
+            <div className="px-4 py-3 border-b border-slate-500/20">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-[10px] font-semibold text-slate-400">Phase 5: OpenClaw Dry-run Bridge</div>
+                  <div className="text-[9px] text-slate-500 mt-1">Connect to OpenClaw in SIMULATED mode, no mutations.</div>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                  <Lock className="w-3 h-3 text-slate-400" />
+                  <span className="text-[8px] font-semibold text-slate-400">FUTURE_DISABLED</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[9px]">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">GOAL</div>
+                  <div className="text-slate-500">Execute dry-run against OpenClaw gateway</div>
+                </div>
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">RISK LEVEL</div>
+                  <div className="text-slate-500">Medium (external dependency)</div>
+                </div>
+                <div className="col-span-2 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">REQUIRED SAFEGUARDS</div>
+                  <div className="text-slate-500">SIMULATED mode enforced, timeout controls, error handling</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase 6: Limited Allowlisted Execution */}
+          <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden opacity-60">
+            <div className="px-4 py-3 border-b border-slate-500/20">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-[10px] font-semibold text-slate-400">Phase 6: Limited Allowlisted Execution</div>
+                  <div className="text-[9px] text-slate-500 mt-1">Enable read-only browser commands on allowlisted domains.</div>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                  <Lock className="w-3 h-3 text-slate-400" />
+                  <span className="text-[8px] font-semibold text-slate-400">FUTURE_DISABLED</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[9px]">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">GOAL</div>
+                  <div className="text-slate-500">Enable read-only browser automation</div>
+                </div>
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">RISK LEVEL</div>
+                  <div className="text-slate-500">Medium (browser access)</div>
+                </div>
+                <div className="col-span-2 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">REQUIRED SAFEGUARDS</div>
+                  <div className="text-slate-500">Domain allowlist, read-only commands only, screenshot limits</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase 7: Expanded Execution with Governance Controls */}
+          <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden opacity-60">
+            <div className="px-4 py-3 border-b border-slate-500/20">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-[10px] font-semibold text-slate-400">Phase 7: Expanded Execution with Governance Controls</div>
+                  <div className="text-[9px] text-slate-500 mt-1">Full governance with multi-sig, approval gates, and trading/banking scopes.</div>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                  <Lock className="w-3 h-3 text-slate-400" />
+                  <span className="text-[8px] font-semibold text-slate-400">FUTURE_DISABLED</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[9px]">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">GOAL</div>
+                  <div className="text-slate-500">Full production governance and execution</div>
+                </div>
+                <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">RISK LEVEL</div>
+                  <div className="text-slate-500">High (production execution)</div>
+                </div>
+                <div className="col-span-2 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">REQUIRED SAFEGUARDS</div>
+                  <div className="text-slate-500">Multi-sig approval, insurance, daily limits, kill switch, trading policies</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div className="border-t border-border/30 pt-3 space-y-2">
+          <div className="text-[9px] font-semibold text-foreground uppercase tracking-wider">Integration Roadmap</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-[9px]">
+            <div className="bg-primary/5 border border-primary/20 px-2.5 py-1.5 rounded">
+              <div className="text-primary font-semibold mb-0.5">✓ COMPLETE</div>
+              <div className="text-slate-400 text-[8px]">Phase 0</div>
+            </div>
+            <div className="bg-amber-500/5 border border-amber-500/20 px-2.5 py-1.5 rounded">
+              <div className="text-amber-500 font-semibold mb-0.5">⏳ NEXT</div>
+              <div className="text-slate-400 text-[8px]">Phase 1</div>
+            </div>
+            <div className="bg-slate-500/5 border border-slate-500/20 px-2.5 py-1.5 rounded">
+              <div className="text-slate-400 font-semibold mb-0.5">🔒 FUTURE_DISABLED</div>
+              <div className="text-slate-500 text-[8px]">Phases 2-7</div>
+            </div>
+            <div className="bg-card/50 border border-border/30 px-2.5 py-1.5 rounded">
+              <div className="text-slate-400 font-semibold mb-0.5">GATING</div>
+              <div className="text-slate-500 text-[8px]">Phase 1 approval required</div>
+            </div>
           </div>
         </div>
       </div>
