@@ -1362,6 +1362,96 @@ export default function SystemVerificationPanel() {
         </div>
       )}
 
+      {/* Execution Readiness Gate Preview */}
+      {(() => {
+        // Calculate gate state
+        let gateState = 'UNLOCKABLE';
+        const reasons = [];
+
+        if (overallReadiness === 'BLOCKED') {
+          gateState = 'LOCKED';
+          reasons.push('Readiness status is BLOCKED');
+        }
+
+        if (!backendEnforcementPassed) {
+          gateState = 'LOCKED';
+          reasons.push('Backend enforcement tests failed or missing');
+        }
+
+        if (failedTests > 0) {
+          gateState = 'LOCKED';
+          reasons.push(`${failedTests} verification test${failedTests !== 1 ? 's' : ''} failed`);
+        }
+
+        if (overallReadiness === 'REVIEW REQUIRED') {
+          gateState = 'REVIEW LOCKED';
+          reasons.push('Readiness status is REVIEW REQUIRED');
+        }
+
+        if (manualReviewItemCount > 0) {
+          gateState = 'REVIEW LOCKED';
+          reasons.push(`${manualReviewItemCount} manual review item${manualReviewItemCount !== 1 ? 's' : ''} pending`);
+        }
+
+        const gateConfig = {
+          LOCKED: { color: 'text-destructive border-destructive/20 bg-destructive/5', icon: XCircle, label: 'LOCKED' },
+          REVIEW_LOCKED: { color: 'text-amber-500 border-amber-500/20 bg-amber-500/5', icon: AlertTriangle, label: 'REVIEW LOCKED' },
+          UNLOCKABLE: { color: 'text-primary border-primary/20 bg-primary/5', icon: CheckCircle2, label: 'UNLOCKABLE' },
+        };
+
+        const cfg = gateConfig[gateState === 'REVIEW LOCKED' ? 'REVIEW_LOCKED' : gateState];
+        const GateIcon = cfg.icon;
+
+        return (
+          <div className={`border rounded-lg p-4 space-y-3 ${cfg.color}`}>
+            <div className="flex items-start gap-3 mb-3">
+              <GateIcon className={`w-5 h-5 shrink-0 mt-0.5 ${cfg.color.split(' ')[0]}`} />
+              <div>
+                <div className={`text-[11px] font-semibold mb-0.5 ${cfg.color.split(' ')[0]}`}>Execution Readiness Gate Preview</div>
+                <div className={`text-[9px] ${cfg.color.split(' ')[0]}/80`}>Preview only. Does not enable execution. Live mode remains globally disabled.</div>
+              </div>
+            </div>
+
+            <div className={`px-4 py-3 border rounded-lg ${cfg.color}`}>
+              <div className={`text-[12px] font-semibold ${cfg.color.split(' ')[0]} mb-1 uppercase tracking-wider`}>{cfg.label}</div>
+              <div className={`text-[10px] ${cfg.color.split(' ')[0]}/80`}>
+                {gateState === 'LOCKED' && 'Gate is locked. Critical issues must be resolved before unlock is possible.'}
+                {gateState === 'REVIEW LOCKED' && 'Gate is review-locked. All blocking issues resolved but manual review items remain.'}
+                {gateState === 'UNLOCKABLE' && 'Gate is unlockable. All checks passed and all manual reviews complete.'}
+              </div>
+            </div>
+
+            {reasons.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[9px] font-semibold text-foreground uppercase tracking-wider">Reasons</div>
+                <div className="space-y-1.5 ml-2">
+                  {reasons.map((reason, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-[9px] text-foreground/80">
+                      <span className="shrink-0 mt-0.5">•</span>
+                      <span>{reason}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {gateState === 'UNLOCKABLE' && (
+              <div className="flex items-start gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded">
+                <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <div className="text-[9px] text-primary/80">
+                  <div className="font-semibold">✓ All criteria met</div>
+                  <div className="text-[8px] text-primary/70 mt-0.5">Gate is ready for future execution unlock (when enabled). This is a preview — no execution is active.</div>
+                </div>
+              </div>
+            )}
+
+            <div className="text-[8px] text-foreground/60 border-t border-border/30 pt-2 mt-2">
+              This gate preview shows whether execution would be able to proceed if enabled. It is informational only and does not activate any execution. Live mode is globally disabled.
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Release Approval Record */}
       <div className="border border-blue-400/20 bg-blue-400/5 rounded-lg p-4 space-y-3">
         <div className="flex items-center justify-between gap-4 mb-3">
