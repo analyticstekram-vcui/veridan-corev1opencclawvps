@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor } from 'lucide-react';
+import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor, ChevronDown, ChevronRight } from 'lucide-react';
 import SafeCommandBridge from '@/components/openclaw/SafeCommandBridge';
 import CommandQueuePanel from '@/components/openclaw/CommandQueuePanel';
 import ExecutionReadinessPanel from '@/components/openclaw/ExecutionReadinessPanel';
@@ -46,51 +46,83 @@ import FinalDeploymentLock from '@/components/openclaw/FinalDeploymentLock';
 import OpenClawBaselineArchive from '@/components/openclaw/OpenClawBaselineArchive';
 import OpenClawControlTower from '@/components/openclaw/OpenClawControlTower';
 
-const TABS = [
-  { id: 'control_tower', label: '🏛️ Control Tower' },
-  { id: 'gateway_connector', label: '🔌 Gateway Connector' },
-  { id: 'proposal_queue', label: '✉️ Proposal Queue' },
-  { id: 'system_verify', label: '✓ System Verify' },
-  { id: 'audit_trail', label: '🔐 Audit Trail' },
-  { id: 'overview', label: '📊 Overview' },
-  { id: 'bridge_contract', label: '📋 Bridge Contract' },
-  { id: 'bridge_audit', label: '📊 Bridge Audit Log' },
-  { id: 'phase2_tests', label: '🧪 Phase 2 Tests' },
-  { id: 'status', label: 'Status' },
-  { id: 'safe_bridge', label: '⚡ Safe Command Test' },
-  { id: 'safety_tests', label: '🛡️ Safety Tests' },
-  { id: 'readiness_gate', label: '🔐 Readiness Gate' },
-  { id: 'approval_workflow', label: 'Approval Workflow' },
-  { id: 'policy_registry', label: 'Policy Registry' },
-  { id: 'connectors', label: 'Connectors' },
-  { id: 'risk_matrix', label: 'Risk Matrix' },
-  { id: 'runbook', label: 'Runbook' },
-  { id: 'simulations', label: 'Simulations' },
-  { id: 'snapshot', label: 'Snapshot' },
-  { id: 'handoff', label: 'Handoff' },
-  { id: 'production_checklist', label: 'Production Checklist' },
-  { id: 'browser_read', label: 'Browser Read' },
-  { id: 'risk_map', label: 'Risk Map' },
-  { id: 'audit', label: 'Executed Commands' },
-  { id: 'workflows', label: 'Workflows' },
-  { id: 'nodes', label: 'Node Registry' },
-  { id: 'logs', label: 'Live Logs' },
-  { id: 'readiness', label: 'Execution Readiness' },
-  { id: 'telemetry', label: 'Telemetry' },
-  { id: 'legacy_review', label: '⚠️ Legacy Review' },
-  { id: 'rbac_matrix', label: '🔐 RBAC Matrix' },
-  { id: 'access_review', label: 'Access Review' },
-  { id: 'session_timeout', label: '⏱️ Session Timeout' },
-  { id: 'secret_vault', label: '🔐 Secret Vault' },
-  { id: 'broker_vault', label: '💰 Broker Vault' },
-  { id: 'secret_enforcement', label: '🔒 Secret Enforcement' },
-  { id: 'export_packet', label: '📦 Export Packet' },
-  { id: 'verify_packet', label: '🔎 Verify Packet' },
-  { id: 'evidence_vault', label: '🗄️ Evidence Vault' },
-  { id: 'vault_export', label: '🧾 Vault Export' },
-  { id: 'final_lock', label: '🔐 Final Lock' },
-  { id: 'baseline_archive', label: '🧷 Baseline Archive' },
-  ];
+// Tab groups for organized navigation
+const TAB_GROUPS = {
+  daily_ops: {
+    label: 'Daily Ops',
+    tabs: [
+      { id: 'control_tower', label: '🏛️ Control Tower' },
+      { id: 'gateway_connector', label: '🔌 Gateway Connector' },
+      { id: 'proposal_queue', label: '✉️ Proposal Queue' },
+      { id: 'telemetry', label: '📊 Telemetry' },
+      { id: 'status', label: '📡 Status' },
+    ],
+  },
+  governance: {
+    label: 'Governance',
+    tabs: [
+      { id: 'system_verify', label: '✓ System Verify' },
+      { id: 'audit_trail', label: '🔐 Audit Trail' },
+      { id: 'approval_workflow', label: 'Approval Workflow' },
+      { id: 'policy_registry', label: 'Policy Registry' },
+      { id: 'rbac_matrix', label: '🔐 RBAC Matrix' },
+      { id: 'access_review', label: 'Access Review' },
+    ],
+  },
+  security: {
+    label: 'Security',
+    tabs: [
+      { id: 'safety_tests', label: '🛡️ Safety Tests' },
+      { id: 'readiness_gate', label: '🔐 Readiness Gate' },
+      { id: 'secret_vault', label: '🔐 Secret Vault' },
+      { id: 'broker_vault', label: '💰 Broker Vault' },
+      { id: 'secret_enforcement', label: '🔒 Secret Enforcement' },
+      { id: 'session_timeout', label: '⏱️ Session Timeout' },
+    ],
+  },
+  evidence: {
+    label: 'Evidence',
+    tabs: [
+      { id: 'evidence_vault', label: '🗄️ Evidence Vault' },
+      { id: 'vault_export', label: '🧾 Vault Export' },
+      { id: 'final_lock', label: '🔐 Final Lock' },
+      { id: 'baseline_archive', label: '🧷 Baseline Archive' },
+      { id: 'export_packet', label: '📦 Export Packet' },
+      { id: 'verify_packet', label: '🔎 Verify Packet' },
+    ],
+  },
+  diagnostics: {
+    label: 'Diagnostics',
+    tabs: [
+      { id: 'logs', label: 'Live Logs' },
+      { id: 'nodes', label: 'Node Registry' },
+      { id: 'workflows', label: 'Workflows' },
+      { id: 'connectors', label: 'Connectors' },
+    ],
+  },
+  advanced_audit: {
+    label: 'Advanced Audit Tools',
+    isToggleable: true,
+    tabs: [
+      { id: 'overview', label: '📊 Overview' },
+      { id: 'bridge_contract', label: '📋 Bridge Contract' },
+      { id: 'bridge_audit', label: '📊 Bridge Audit Log' },
+      { id: 'phase2_tests', label: '🧪 Phase 2 Tests' },
+      { id: 'safe_bridge', label: '⚡ Safe Command Test' },
+      { id: 'runbook', label: 'Runbook' },
+      { id: 'simulations', label: 'Simulations' },
+      { id: 'snapshot', label: 'Snapshot' },
+      { id: 'handoff', label: 'Handoff' },
+      { id: 'production_checklist', label: 'Production Checklist' },
+      { id: 'browser_read', label: 'Browser Read' },
+      { id: 'risk_matrix', label: 'Risk Matrix' },
+      { id: 'risk_map', label: 'Risk Map' },
+      { id: 'audit', label: 'Executed Commands' },
+      { id: 'readiness', label: 'Execution Readiness' },
+      { id: 'legacy_review', label: '⚠️ Legacy Review' },
+    ],
+  },
+};
 
 export default function OpenClawControl() {
   const [activeView, setActiveView] = useState('control_tower');
@@ -99,6 +131,7 @@ export default function OpenClawControl() {
   const [copied, setCopied] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [bridgeStatus, setBridgeStatus] = useState(null);
+  const [showAdvancedAudit, setShowAdvancedAudit] = useState(false);
   const intervalRef = useRef(null);
 
   // Listen for navigation events dispatched by child panels (e.g. quick links in Overview)
@@ -112,9 +145,7 @@ export default function OpenClawControl() {
   }, []);
 
   const handleTabClick = useCallback((id) => {
-    console.log('TAB CLICKED', id);
     setActiveView(id);
-    console.log('ACTIVE TAB', id);
   }, []);
 
   const fetchStatus = async () => {
@@ -182,13 +213,13 @@ export default function OpenClawControl() {
         </div>
       </div>
 
-      {/* ── Tab strip ── wrapping rows, fully visible, no horizontal scroll */}
+      {/* ── Tab strip ── organized by groups */}
       <div
         style={{ flexShrink: 0, position: 'relative', zIndex: 10 }}
-        className="border-b border-border bg-card px-2 py-2"
+        className="border-b border-border bg-card px-2 py-2 space-y-2"
       >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-          {/* External page links */}
+        {/* External page links */}
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
           <Link
             to="/command-queue"
             className="px-3 py-1.5 text-[11px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap"
@@ -201,24 +232,46 @@ export default function OpenClawControl() {
           >
             <Monitor className="w-3 h-3" /> Browser Session
           </Link>
-
-          {/* Tab buttons */}
-          {TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              style={{ cursor: 'pointer' }}
-              onClick={() => handleTabClick(id)}
-              className={`px-3 py-1.5 text-[11px] border transition-colors whitespace-nowrap font-semibold ${
-                activeView === id
-                  ? 'border-primary text-primary bg-primary/10'
-                  : 'border-border text-slate-400 hover:text-slate-200 hover:bg-secondary/50'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
         </div>
+
+        {/* Tab groups */}
+        {Object.entries(TAB_GROUPS).map(([groupKey, group]) => {
+          const isExpanded = groupKey !== 'advanced_audit' || showAdvancedAudit;
+          return (
+            <div key={groupKey}>
+              {group.isToggleable ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedAudit(!showAdvancedAudit)}
+                  className="text-[10px] uppercase tracking-widest font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 mb-1.5"
+                >
+                  {showAdvancedAudit ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                  {group.label}
+                </button>
+              ) : (
+                <div className="text-[10px] uppercase tracking-widest font-semibold text-slate-400 mb-1.5">{group.label}</div>
+              )}
+              {isExpanded && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                  {group.tabs.map(({ id, label }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => handleTabClick(id)}
+                      className={`px-3 py-1.5 text-[11px] border transition-colors whitespace-nowrap font-semibold ${
+                        activeView === id
+                          ? 'border-primary text-primary bg-primary/10'
+                          : 'border-border text-slate-400 hover:text-slate-200 hover:bg-secondary/50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* ── Panel area ── scrollable, fills remaining height */}
