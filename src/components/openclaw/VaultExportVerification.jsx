@@ -71,6 +71,9 @@ export default function VaultExportVerification() {
     return summary;
   };
 
+  const [lastExportHash, setLastExportHash] = useState(null);
+  const [hashCopied, setHashCopied] = useState(false);
+
   const handleExportVault = async () => {
     const summary = calculateSummary(evidenceRecords);
 
@@ -112,6 +115,8 @@ export default function VaultExportVerification() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
+    setLastExportHash(vaultExportHash);
+
     // Save metadata to export history
     const historyEntry = {
       vaultExportHash,
@@ -125,6 +130,14 @@ export default function VaultExportVerification() {
     const updated = [historyEntry, ...exportHistory].slice(0, 10);
     localStorage.setItem('vaultExportHistory', JSON.stringify(updated));
     setExportHistory(updated);
+  };
+
+  const handleCopyHash = () => {
+    if (lastExportHash) {
+      navigator.clipboard.writeText(lastExportHash);
+      setHashCopied(true);
+      setTimeout(() => setHashCopied(false), 2000);
+    }
   };
 
   const handleClearExportHistory = () => {
@@ -345,6 +358,21 @@ export default function VaultExportVerification() {
           <Download className="w-3.5 h-3.5" />
           Export Vault Metadata
         </button>
+        {lastExportHash && (
+          <div className="space-y-2 border-t border-border/30 pt-3">
+            <div className="text-[9px] font-semibold text-foreground uppercase tracking-wider">Export Hash</div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-[8px] font-mono bg-card/50 border border-border/30 px-2 py-1.5 rounded text-foreground/70 break-all">{lastExportHash}</code>
+              <button
+                type="button"
+                onClick={handleCopyHash}
+                className="px-2.5 py-1.5 text-[8px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded whitespace-nowrap"
+              >
+                {hashCopied ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Export History */}
