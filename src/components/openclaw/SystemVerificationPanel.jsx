@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Shield, CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Shield, CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import OperatorGuidancePanel from './OperatorGuidancePanel';
 
 // Master verification checks organized by category
@@ -330,6 +330,10 @@ export default function SystemVerificationPanel() {
    const [snapshotHistory, setSnapshotHistory] = useState([]);
    const [verifyResult, setVerifyResult] = useState(null);
    const [verifyLoading, setVerifyLoading] = useState(false);
+   const [approvalRecords, setApprovalRecords] = useState([]);
+   const [showApprovalForm, setShowApprovalForm] = useState(false);
+   const [approvalForm, setApprovalForm] = useState({ approverName: '', approvalDecision: 'APPROVED', approvalNote: '' });
+   const [approvingSaving, setApprovingSaving] = useState(false);
 
    const runVerification = async () => {
      setRunning(true);
@@ -761,7 +765,69 @@ export default function SystemVerificationPanel() {
   useEffect(() => {
     runVerification();
     loadSnapshotHistory();
+    loadApprovalRecords();
   }, []);
+
+  const loadApprovalRecords = () => {
+    try {
+      const stored = localStorage.getItem('systemVerifyApprovalRecords');
+      if (stored) {
+        const records = JSON.parse(stored);
+        setApprovalRecords(records);
+      }
+    } catch (err) {
+      console.error('Error loading approval records:', err);
+    }
+  };
+
+  const handleSaveApprovalRecord = async () => {
+    if (!approvalForm.approverName.trim()) {
+      alert('Approver name is required.');
+      return;
+    }
+    if (!approvalForm.approvalNote.trim()) {
+      alert('Approval note is required.');
+      return;
+    }
+
+    setApprovingSaving(true);
+    try {
+      const record = {
+        approverName: approvalForm.approverName,
+        approvalDecision: approvalForm.approvalDecision,
+        approvalNote: approvalForm.approvalNote,
+        readinessStatus: overallReadiness,
+        blockingIssueCount: prodBlockingFailed.length,
+        manualReviewItemCount: manualReviewItemCount,
+        failedTestCount: failedTests,
+        backendEnforcementPassed,
+        snapshotHash: snapshotHash || null,
+        approvalTimestamp: new Date().toISOString(),
+      };
+
+      const stored = localStorage.getItem('systemVerifyApprovalRecords') || '[]';
+      const records = JSON.parse(stored);
+      records.unshift(record); // Add to beginning
+      const trimmed = records.slice(0, 10); // Keep only latest 10
+      localStorage.setItem('systemVerifyApprovalRecords', JSON.stringify(trimmed));
+      setApprovalRecords(trimmed);
+
+      setShowApprovalForm(false);
+      setApprovalForm({ approverName: '', approvalDecision: 'APPROVED', approvalNote: '' });
+    } catch (err) {
+      console.error('Error saving approval record:', err);
+      alert('Failed to save approval record.');
+    } finally {
+      setApprovingSaving(false);
+    }
+  };
+
+  const clearApprovalHistory = () => {
+    if (confirm('Clear all approval records from local storage?')) {
+      localStorage.removeItem('systemVerifyApprovalRecords');
+      setApprovalRecords([]);
+    }
+  };
 
   const loadSnapshotHistory = () => {
     try {
@@ -1296,6 +1362,116 @@ export default function SystemVerificationPanel() {
         </div>
       )}
 
+      {/* Release Approval Record */}
+      <div className="border border-blue-400/20 bg-blue-400/5 rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-blue-400" />
+            <div className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider">Release Approval Record</div>
+          </div>
+          {!showApprovalForm && (
+            <button
+              type="button"
+              onClick={() => setShowApprovalForm(true)}
+              disabled={approvingSaving}
+              className="px-3 py-1.5 text-[9px] border border-blue-400/50 bg-blue-400/10 text-blue-400 hover:bg-blue-400/20 transition-colors disabled:opacity-50 font-semibold rounded"
+            >
+              + Create Approval Record
+            </button>
+          )}
+        </div>
+
+        <div className="text-[9px] text-blue-400/70">Create a local human approval record after System Verify validation. This does not enable production execution—live mode remains globally disabled.</div>
+
+        {showApprovalForm && (
+          <div className="border border-blue-400/30 bg-blue-400/5 p-4 space-y-3">
+            {/* Warning if BLOCKED */}
+            {overallReadiness === 'BLOCKED' && (
+              <div className="flex items-start gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded">
+                <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                <div className="text-[9px] text-destructive/80">
+                  <div className="font-semibold mb-0.5">Cannot Approve While Blocked</div>
+                  <div className="text-[8px] text-destructive/70">System readiness is BLOCKED. Must resolve all blocking issues before approval.</div>
+                </div>
+              </div>
+            )}
+
+            {/* Warning if REVIEW REQUIRED */}
+            {overallReadiness === 'REVIEW REQUIRED' && approvalForm.approvalDecision === 'APPROVED' && (
+              <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="text-[9px] text-amber-500/80">
+                  <div className="font-semibold mb-0.5">Approving with Manual Review Items</div>
+                  <div className="text-[8px] text-amber-500/70">System has manual review items pending. Approval will be recorded but item review remains incomplete.</div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-[9px] font-semibold text-foreground block">Approver Name</label>
+              <input
+                type="text"
+                value={approvalForm.approverName}
+                onChange={(e) => setApprovalForm({ ...approvalForm, approverName: e.target.value })}
+                placeholder="Name or email of approver"
+                className="w-full bg-card border border-border text-[10px] px-2 py-1.5 text-foreground placeholder:text-slate-500 outline-none focus:border-primary/50 rounded"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[9px] font-semibold text-foreground block">Approval Decision</label>
+              <select
+                value={approvalForm.approvalDecision}
+                onChange={(e) => setApprovalForm({ ...approvalForm, approvalDecision: e.target.value })}
+                disabled={overallReadiness === 'BLOCKED'}
+                className="w-full bg-card border border-border text-[10px] px-2 py-1.5 text-foreground outline-none focus:border-primary/50 rounded disabled:opacity-50"
+              >
+                <option value="APPROVED">Approved</option>
+                <option value="NEEDS_REVIEW">Needs Review</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[9px] font-semibold text-foreground block">Approval Note</label>
+              <textarea
+                value={approvalForm.approvalNote}
+                onChange={(e) => setApprovalForm({ ...approvalForm, approvalNote: e.target.value })}
+                placeholder="Explain the approval decision..."
+                rows={3}
+                className="w-full bg-card border border-border text-[10px] px-2 py-1.5 text-foreground placeholder:text-slate-500 outline-none focus:border-primary/50 rounded resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowApprovalForm(false);
+                  setApprovalForm({ approverName: '', approvalDecision: 'APPROVED', approvalNote: '' });
+                }}
+                disabled={approvingSaving}
+                className="px-3 py-1.5 text-[9px] border border-border text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-50 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveApprovalRecord}
+                disabled={approvingSaving || overallReadiness === 'BLOCKED'}
+                className="px-3 py-1.5 text-[9px] border border-blue-400/50 bg-blue-400/10 text-blue-400 hover:bg-blue-400/20 transition-colors disabled:opacity-50 font-semibold rounded"
+              >
+                {approvingSaving ? 'Saving…' : 'Save Approval Record'}
+              </button>
+            </div>
+
+            <div className="text-[8px] text-blue-400/70 border-t border-blue-400/20 pt-2 mt-2">
+              Approval records include current readiness status, issue counts, and timestamp. Live execution is globally disabled—approvals do not enable production actions.
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Verify Snapshot File */}
       <div className="border border-primary/20 bg-primary/5 rounded-lg p-4 space-y-3">
         <div className="flex items-center gap-2 mb-3">
@@ -1425,6 +1601,67 @@ export default function SystemVerificationPanel() {
           </div>
         )}
       </div>
+
+      {/* Approval Records History */}
+      {approvalRecords.length > 0 && (
+        <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-semibold text-foreground">Approval Records History</div>
+            <button
+              type="button"
+              onClick={clearApprovalHistory}
+              className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors font-semibold rounded"
+            >
+              Clear History
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-[9px]">
+              <thead className="border-b border-border/30">
+                <tr className="text-muted-foreground/60 uppercase tracking-widest">
+                  <th className="text-left px-3 py-2 font-semibold">Approved By</th>
+                  <th className="text-left px-3 py-2 font-semibold">Decision</th>
+                  <th className="text-left px-3 py-2 font-semibold">Status at Approval</th>
+                  <th className="text-center px-3 py-2 font-semibold">Blocking</th>
+                  <th className="text-center px-3 py-2 font-semibold">Manual Review</th>
+                  <th className="text-center px-3 py-2 font-semibold">Failed Tests</th>
+                  <th className="text-center px-3 py-2 font-semibold">Backend</th>
+                  <th className="text-left px-3 py-2 font-semibold">Approved At</th>
+                </tr>
+              </thead>
+              <tbody className="space-y-1">
+                {approvalRecords.map((record, idx) => {
+                  const statusColor = record.readinessStatus === 'READY' ? 'text-primary' :
+                                     record.readinessStatus === 'REVIEW REQUIRED' ? 'text-amber-500' :
+                                     'text-destructive';
+                  const decisionColor = record.approvalDecision === 'APPROVED' ? 'text-primary' :
+                                       record.approvalDecision === 'NEEDS_REVIEW' ? 'text-amber-500' :
+                                       'text-destructive';
+                  return (
+                    <tr key={idx} className="border-b border-border/20 hover:bg-secondary/20 transition-colors">
+                      <td className="px-3 py-2 text-foreground/80">{record.approverName}</td>
+                      <td className={`px-3 py-2 font-semibold ${decisionColor}`}>{record.approvalDecision}</td>
+                      <td className={`px-3 py-2 font-semibold ${statusColor}`}>{record.readinessStatus}</td>
+                      <td className="px-3 py-2 text-center">{record.blockingIssueCount}</td>
+                      <td className="px-3 py-2 text-center">{record.manualReviewItemCount}</td>
+                      <td className="px-3 py-2 text-center">{record.failedTestCount}</td>
+                      <td className={`px-3 py-2 text-center font-semibold ${record.backendEnforcementPassed ? 'text-primary' : 'text-destructive'}`}>
+                        {record.backendEnforcementPassed ? '✓' : '✗'}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-foreground/60 text-[8px]">{new Date(record.approvalTimestamp).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="text-[8px] text-muted-foreground/60 border-t border-border/30 pt-2">
+            Latest 10 approval records stored locally. Records capture system state at time of approval. Live execution remains globally disabled.
+          </div>
+        </div>
+      )}
 
       {/* Verification Snapshot History */}
       {snapshotHistory.length > 0 && (
