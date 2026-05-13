@@ -657,6 +657,154 @@ export default function Phase4HmacPlan() {
           </div>
         </div>
 
+        {/* Phase 4E HMAC Stabilization Checklist Spec */}
+        <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden">
+          <div className="px-3 py-2 border-b border-slate-500/20 bg-slate-500/10">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div>
+                <div className="text-[9px] font-semibold text-slate-400">Phase 4E: HMAC Stabilization Checklist Spec</div>
+                <div className="text-[8px] text-slate-500 mt-0.5">Future lock criteria before Phase 4 completion. All items must pass to enable real HMAC validation.</div>
+              </div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                <span className="text-[7px] font-semibold text-slate-400">SPEC_ONLY</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="px-3 py-2 space-y-2">
+            {/* Secret Management */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Secret Management (6 items)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ OPENCLAW_BRIDGE_HMAC_SECRET configured server-side only</div>
+                <div>☐ Secret not exposed to frontend code</div>
+                <div>☐ Secret not stored in localStorage or sessionStorage</div>
+                <div>☐ Secret not included in audit logs or error messages</div>
+                <div>☐ Secret only accessible to authenticated backend processes</div>
+                <div>☐ Secret rotation plan documented</div>
+              </div>
+            </div>
+
+            {/* Verifier Implementation */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Verifier Implementation (10 items)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ Real HMAC-SHA256 verifier active and locked</div>
+                <div>☐ MOCK_SIGNATURE_VALIDATION removed or clearly disabled</div>
+                <div>☐ signatureMode reports REAL_HMAC_VALIDATION in responses</div>
+                <div>☐ Timing-safe comparison implemented (constant-time)</div>
+                <div>☐ Canonical payload order unchanged and immutable</div>
+                <div>☐ signedAt freshness window enforced (5 min old)</div>
+                <div>☐ Future signedAt tolerance enforced (60 sec)</div>
+                <div>☐ signingVersion OPENCLAW_BRIDGE_V1 enforced</div>
+                <div>☐ Missing secret rejects with HMAC_SECRET_NOT_CONFIGURED</div>
+                <div>☐ Invalid signature rejects with HMAC_SIGNATURE_INVALID</div>
+              </div>
+            </div>
+
+            {/* Signer Flow */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Signer Flow (5 items)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ Backend signer flow implemented or explicitly deferred to Phase 5</div>
+                <div>☐ Signer validates all Phase 1 and Phase 2 checks before signing</div>
+                <div>☐ Signer audit records created for all signing attempts</div>
+                <div>☐ Verifier audit records created for all verification attempts</div>
+                <div>☐ No raw inputText stored in audit records</div>
+              </div>
+            </div>
+
+            {/* Earlier Phases */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Earlier Phases Still Active (5 items)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ Phase 1 contract validation still enforced</div>
+                <div>☐ Phase 2 policy gate still enforced</div>
+                <div>☐ Phase 2 replay protection still enforced</div>
+                <div>☐ Phase 3 signedAt timestamp checks still enforced</div>
+                <div>☐ No phase can be bypassed or disabled</div>
+              </div>
+            </div>
+
+            {/* Test Coverage */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Test Coverage (3 items)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ Phase 4D verifier tests (9 tests) all pass</div>
+                <div>☐ Phase 4D signer tests (12 tests) all pass if signer implemented</div>
+                <div>☐ Phase 4D test suite coverage validated at 100%</div>
+              </div>
+            </div>
+
+            {/* Safety & Execution */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Safety & Execution (8 items)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ bridgeMode remains DRY_RUN_ONLY (never LIVE)</div>
+                <div>☐ executionStatus remains NOT_EXECUTED or REJECTED_NOT_EXECUTED</div>
+                <div>☐ dryRun always true, liveExecution always false</div>
+                <div>☐ No OpenClaw calls made during validation or signing</div>
+                <div>☐ No browser automation or execution</div>
+                <div>☐ No API/trading execution triggered</div>
+                <div>☐ No mutations or state changes</div>
+                <div>☐ UI does not claim live execution is enabled</div>
+              </div>
+            </div>
+
+            {/* Completion Rule */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Completion Rule</div>
+              <div className="text-[8px] text-foreground font-semibold bg-secondary/30 px-1.5 py-1 rounded">
+                Phase 4 can be marked LOCKED only if all 37 required checklist items pass.
+              </div>
+              <div className="text-[8px] text-slate-500 mt-1">
+                <div>• Every item must be verified and confirmed</div>
+                <div>• No item can be skipped or deferred</div>
+                <div>• Audit trail must document each verification</div>
+                <div>• Phase 5+ gates will depend on Phase 4 lock status</div>
+              </div>
+            </div>
+
+            {/* Checklist Summary */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Checklist Summary</div>
+              <div className="text-[8px] text-slate-500">
+                <div>Total items: 37</div>
+                <div>Secret management: 6 items</div>
+                <div>Verifier implementation: 10 items</div>
+                <div>Signer flow: 5 items</div>
+                <div>Earlier phases: 5 items</div>
+                <div>Test coverage: 3 items</div>
+                <div>Safety & execution: 8 items</div>
+              </div>
+            </div>
+
+            {/* Status Badges */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Phase 4E Status</div>
+              <div className="flex flex-wrap gap-1">
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SPEC_ONLY
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  STABILIZATION_NOT_STARTED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  HMAC_NOT_IMPLEMENTED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  EXECUTION_DISABLED
+                </div>
+              </div>
+            </div>
+
+            {/* Info Note */}
+            <div className="text-[8px] text-slate-500 border-t border-slate-500/20 pt-1.5 mt-1.5">
+              Phase 4E defines 37-item stabilization checklist. All items must pass before Phase 4 can be locked. Checklist covers secret management, verifier implementation, signer flow, earlier phases, test coverage, and safety constraints. Execution remains disabled.
+            </div>
+          </div>
+        </div>
+
         {/* Warnings */}
         <div className="border border-destructive/20 bg-destructive/5 rounded px-3 py-2 space-y-1">
           <div className="text-[9px] font-semibold text-destructive uppercase tracking-wider">Critical Warnings</div>
