@@ -113,21 +113,22 @@ const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret) => 
     return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
-  // Check signedAt is not too old (older than 5 minutes)
+  // Check signedAt is not too old (older than 5 minutes) - EXPLICIT error
   const now = new Date();
   const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
   if (signedAtDate < fiveMinutesAgo) {
-    errors.push('signedAt is older than 5 minutes (signature expired)');
+    errors.push('SIGNED_AT_EXPIRED');
     return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
-  // Check signedAt is not too far in future (more than 60 seconds)
+  // Check signedAt is not too far in future (more than 60 seconds) - EXPLICIT error
   const sixtySecondsFromNow = new Date(now.getTime() + 60 * 1000);
   if (signedAtDate > sixtySecondsFromNow) {
-    errors.push('signedAt is more than 60 seconds in the future');
+    errors.push('SIGNED_AT_FUTURE');
     return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
   }
 
+  // ALL TIMESTAMP VALIDATION COMPLETE - now proceed to HMAC verification
   // Build canonical payload for signature verification
   const br = body.bridgeRequest;
   const canonical = buildCanonicalPayload(
@@ -148,12 +149,13 @@ const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret) => 
   const mode = hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC';
 
   // Phase 4B: Real HMAC verification (if secret is configured)
+  // Only happens AFTER signedAt freshness validation passes
   if (hmacSecretConfigured && hmacSecret) {
     const expectedSignature = await generateHmacSignature(canonical, hmacSecret);
     
     // Timing-safe comparison to prevent timing attacks
     if (!timingSafeCompare(body.signature, expectedSignature)) {
-      errors.push('signature does not match canonical payload (REAL_HMAC_VALIDATION)');
+      errors.push('HMAC_SIGNATURE_INVALID');
       return { result: 'FAIL', errors, mode };
     }
   }
