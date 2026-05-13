@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Shield, CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import OperatorGuidancePanel from './OperatorGuidancePanel';
+import GateDecisionExporter from './GateDecisionExporter';
 
 // Master verification checks organized by category
 const VERIFICATION_GROUPS = [
@@ -1448,6 +1449,19 @@ export default function SystemVerificationPanel() {
             <div className="text-[8px] text-foreground/60 border-t border-border/30 pt-2 mt-2">
               This gate preview shows whether execution would be able to proceed if enabled. It is informational only and does not activate any execution. Live mode is globally disabled.
             </div>
+
+            {/* Gate Decision Exporter */}
+            <GateDecisionExporter
+              gateState={gateState}
+              gateReasons={reasons}
+              overallReadiness={overallReadiness}
+              prodBlockingFailed={prodBlockingFailed}
+              manualReviewItemCount={manualReviewItemCount}
+              failedTests={failedTests}
+              backendEnforcementPassed={backendEnforcementPassed}
+              snapshotHash={snapshotHash}
+              approvalRecords={approvalRecords}
+            />
           </div>
         );
       })()}
