@@ -194,6 +194,148 @@ export default function Phase5DryRunBridgePlan() {
           </div>
         </div>
 
+        {/* Phase 5A Dry-Run Bridge Route Spec */}
+        <div className="space-y-2">
+          <div className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider">Phase 5A: Dry-Run Bridge Route Spec</div>
+          <div className="bg-card/50 border border-border/30 rounded-lg overflow-hidden">
+            {/* Route Definition */}
+            <div className="px-3 py-2 border-b border-border/20 space-y-2">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider">Route Definition</div>
+              <div className="bg-secondary/30 rounded px-2 py-1.5 font-mono text-[8px] text-slate-400">
+                POST /api/openclaw/bridge/dry-run
+              </div>
+              <div className="text-[8px] text-slate-400">
+                Future route to create dry-run execution preview. Validates all earlier phases. Creates audit record. Does not call OpenClaw.
+              </div>
+            </div>
+
+            {/* Purpose */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Purpose</div>
+              <div className="text-[8px] text-slate-400 space-y-0.5">
+                <div>• Accept a signed bridge request (HMAC verified)</div>
+                <div>• Re-run Phase 1 contract validation</div>
+                <div>• Re-run Phase 2 policy gate & replay protection</div>
+                <div>• Re-run Phase 4 HMAC signature verification</div>
+                <div>• Create dry-run bridge preview record</div>
+                <div>• Return PREVIEW_ONLY status</div>
+                <div>• Do NOT call OpenClaw gateway</div>
+                <div>• Do NOT execute browser or API actions</div>
+              </div>
+            </div>
+
+            {/* Request Body */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Required Request Body Fields</div>
+              <div className="bg-secondary/30 rounded px-2 py-1.5 font-mono text-[8px] text-slate-400">
+                <div>{`{
+  signedRequest: {...},    // Signed bridge request (from Phase 4)
+  operatorId: string,      // Email of operator
+  submittedAt: ISO         // Submission timestamp
+}`}</div>
+              </div>
+            </div>
+
+            {/* Required Validations */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Required Validations (19 items)</div>
+              <div className="text-[8px] text-slate-400 space-y-0.5">
+                <div className="text-amber-600 font-semibold">Body-Level:</div>
+                <div className="ml-2">• Body exists</div>
+                <div className="ml-2">• signedRequest exists</div>
+                <div className="ml-2">• operatorId exists</div>
+                <div className="ml-2">• submittedAt exists</div>
+                <div className="text-amber-600 font-semibold mt-1">Phase 4 Signature:</div>
+                <div className="ml-2">• HMAC signature valid (timing-safe comparison)</div>
+                <div className="ml-2">• signedAt is fresh (≤ 5 min old)</div>
+                <div className="ml-2">• signedAt not in future (&gt; 60 sec)</div>
+                <div className="ml-2">• signingVersion OPENCLAW_BRIDGE_V1</div>
+                <div className="text-amber-600 font-semibold mt-1">Phase 2 Protection:</div>
+                <div className="ml-2">• Request not replayed (no duplicate requestId)</div>
+                <div className="ml-2">• Request not replayed (no duplicate previewHash)</div>
+                <div className="ml-2">• Policy gate passes (no forbidden commands)</div>
+                <div className="text-amber-600 font-semibold mt-1">Phase 1 Contract:</div>
+                <div className="ml-2">• commandType in [READ, NAVIGATE, EXTRACT, VERIFY]</div>
+                <div className="ml-2">• riskTier in [LOW, MEDIUM]</div>
+                <div className="ml-2">• targetUrl HTTPS & allowlisted</div>
+                <div className="ml-2">• targetUrl contains no suspicious keywords</div>
+                <div className="ml-2">• dryRun true, liveExecution false</div>
+                <div className="ml-2">• governanceMode SAFE_REQUIRES_APPROVAL</div>
+                <div className="ml-2">• approvalStatus APPROVED, validationResult PASS</div>
+                <div className="ml-2">• executionEligibility ELIGIBLE_PREVIEW</div>
+              </div>
+            </div>
+
+            {/* Response: Accepted */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Response if Accepted</div>
+              <div className="bg-secondary/30 rounded px-2 py-1.5 font-mono text-[8px] text-slate-400">
+                <div>{`{
+  acceptedForDryRun: true,
+  rejectedReason: null,
+  dryRunId: string,
+  requestId: string,
+  bridgeMode: "OPENCLAW_DRY_RUN_PREVIEW",
+  executionStatus: "PREVIEW_ONLY",
+  note: "Dry-run bridge preview created. No OpenClaw action was executed."
+}`}</div>
+              </div>
+            </div>
+
+            {/* Response: Rejected */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Response if Rejected</div>
+              <div className="bg-secondary/30 rounded px-2 py-1.5 font-mono text-[8px] text-slate-400">
+                <div>{`{
+  acceptedForDryRun: false,
+  rejectedReason: string,     // Reason for rejection
+  dryRunId: string,           // Audit ID
+  requestId: string,          // If available
+  bridgeMode: "OPENCLAW_DRY_RUN_PREVIEW",
+  executionStatus: "REJECTED_NOT_EXECUTED",
+  note: "Dry-run bridge request rejected. No OpenClaw action was executed."
+}`}</div>
+              </div>
+            </div>
+
+            {/* Audit Requirements */}
+            <div className="px-3 py-2 border-b border-border/20">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Audit Record Requirements</div>
+              <div className="text-[8px] text-slate-400 space-y-0.5">
+                <div className="text-amber-600 font-semibold">Must Include:</div>
+                <div className="ml-2">• dryRunAuditId (unique audit event ID)</div>
+                <div className="ml-2">• requestId</div>
+                <div className="ml-2">• proposalId</div>
+                <div className="ml-2">• operatorId</div>
+                <div className="ml-2">• acceptedForDryRun (boolean)</div>
+                <div className="ml-2">• rejectedReason (if rejected)</div>
+                <div className="ml-2">• hmacCheckResult</div>
+                <div className="ml-2">• policyGateResult</div>
+                <div className="ml-2">• replayCheckResult</div>
+                <div className="ml-2">• executionStatus</div>
+                <div className="text-destructive font-semibold mt-1">Must NOT Include:</div>
+                <div className="ml-2">• OPENCLAW_BRIDGE_HMAC_SECRET</div>
+                <div className="ml-2">• raw inputText (sensitive data)</div>
+                <div className="ml-2">• computed HMAC internals</div>
+              </div>
+            </div>
+
+            {/* Safety Constraints */}
+            <div className="px-3 py-2">
+              <div className="text-[8px] font-semibold text-amber-600 uppercase tracking-wider mb-1">Safety Constraints</div>
+              <div className="text-[8px] text-slate-400 space-y-0.5">
+                <div>✓ Do NOT call OpenClaw gateway (dry-run preview only)</div>
+                <div>✓ Do NOT execute browser automation</div>
+                <div>✓ Do NOT trigger API mutations</div>
+                <div>✓ Do NOT place trading orders</div>
+                <div>✓ executionStatus must be PREVIEW_ONLY or REJECTED_NOT_EXECUTED only</div>
+                <div>✓ bridgeMode must be OPENCLAW_DRY_RUN_PREVIEW (never LIVE)</div>
+                <div>✓ All earlier phases must be re-verified before accepting</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Phase 5 Roadmap */}
         <div className="space-y-2">
           <div className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider">Phase 5 Implementation Roadmap (Future)</div>
