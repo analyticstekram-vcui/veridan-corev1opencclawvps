@@ -32,7 +32,7 @@
         "DRY_RUN_ONLY"
       ],
       "default": "DRY_RUN_ONLY",
-      "description": "Always DRY_RUN_ONLY for Phases 1-3"
+      "description": "Always DRY_RUN_ONLY for Phases 1-4A"
     },
     "executionStatus": {
       "type": "string",
@@ -135,7 +135,15 @@
     },
     "signatureMode": {
       "type": "string",
-      "description": "Phase 3: Signature validation mode (e.g., MOCK_SIGNATURE_VALIDATION)"
+      "description": "Phase 3-4A: Signature validation mode (e.g., MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC)"
+    },
+    "hmacSecretConfigured": {
+      "type": "boolean",
+      "description": "Phase 4A: Whether OPENCLAW_BRIDGE_HMAC_SECRET is configured (never stored as secret value)"
+    },
+    "secretExposed": {
+      "type": "boolean",
+      "description": "Phase 4A: Whether any secret-derived value was exposed in logs or response (hardcoded false for safety)"
     },
     "note": {
       "type": "string",
