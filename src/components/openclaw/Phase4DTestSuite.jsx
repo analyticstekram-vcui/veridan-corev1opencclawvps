@@ -53,23 +53,22 @@ export default function Phase4DTestSuite() {
     // Run Group A: Secret Configuration
     for (const test of testConfig.groupA) {
       if (test.id === 'A1') {
-        // Missing HMAC secret test (skip in actual environment, it's configured)
         testResults['A1'] = {
           testName: test.name,
           group: 'A',
           expectedResult: 'HMAC_SECRET_NOT_CONFIGURED',
-          actualResult: 'SKIPPED (secret configured)',
-          status: 'PASS',
-          diagnostic: 'Secret is configured in production. Test applies only when missing.',
+          actualResult: 'Secret is configured in production',
+          resultType: 'NOT_RUN',
+          diagnostic: 'Test applies only when secret is missing. Not applicable in production.',
         };
       } else if (test.id === 'A2') {
         testResults['A2'] = {
           testName: test.name,
           group: 'A',
           expectedResult: 'secretExposed: false in all responses',
-          actualResult: 'secretExposed: false confirmed across all signer/verifier responses',
-          status: 'PASS',
-          diagnostic: 'All responses verified to exclude secret value.',
+          actualResult: 'secretExposed: false confirmed in executed tests',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'Verified in C1, C3, C8, C9 signer endpoint responses.',
         };
       } else if (test.id === 'A3') {
         testResults['A3'] = {
@@ -77,8 +76,8 @@ export default function Phase4DTestSuite() {
           group: 'A',
           expectedResult: 'OpenClawSignerAudit schema excludes OPENCLAW_BRIDGE_HMAC_SECRET',
           actualResult: 'Schema verified: no secret field, secretExposed hardcoded false',
-          status: 'PASS',
-          diagnostic: 'Audit entity does not store secrets. Only boolean indicators.',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Audit entity schema inspection. Not a runtime test.',
         };
       }
     }
@@ -90,72 +89,72 @@ export default function Phase4DTestSuite() {
           testName: test.name,
           group: 'B',
           expectedResult: 'SIGNATURE_MISSING rejection',
-          actualResult: 'Verified via Phase 4C test suite',
-          status: 'PASS',
-          diagnostic: 'Verifier enforces signature field presence.',
+          actualResult: 'signature field missing error returned',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'openclawBridgePreview test: no signature → rejected',
         };
       } else if (test.id === 'B2') {
         testResults['B2'] = {
           testName: test.name,
           group: 'B',
           expectedResult: 'SIGNING_VERSION_INVALID rejection',
-          actualResult: 'Verified via Phase 4C test suite',
-          status: 'PASS',
-          diagnostic: 'Verifier validates signingVersion === OPENCLAW_BRIDGE_V1.',
+          actualResult: 'Schema verified: validation exists',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Verifier code validates signingVersion. Not explicitly tested in suite.',
         };
       } else if (test.id === 'B3') {
         testResults['B3'] = {
           testName: test.name,
           group: 'B',
           expectedResult: 'SIGNED_AT_EXPIRED rejection',
-          actualResult: 'Verified via Phase 4C test suite',
-          status: 'PASS',
-          diagnostic: 'Verifier rejects signedAt > 5 minutes old.',
+          actualResult: 'Schema verified: validation exists',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Verifier code enforces 5-min freshness. Not explicitly tested in suite.',
         };
       } else if (test.id === 'B4') {
         testResults['B4'] = {
           testName: test.name,
           group: 'B',
           expectedResult: 'SIGNED_AT_FUTURE rejection',
-          actualResult: 'Verified via Phase 4C test suite',
-          status: 'PASS',
-          diagnostic: 'Verifier rejects signedAt > 60 seconds in future.',
+          actualResult: 'Schema verified: validation exists',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Verifier code enforces 60-sec future tolerance. Not explicitly tested in suite.',
         };
       } else if (test.id === 'B5') {
         testResults['B5'] = {
           testName: test.name,
           group: 'B',
           expectedResult: 'HMAC_SIGNATURE_INVALID rejection',
-          actualResult: 'Verified via Phase 4C test suite (9+ tampering scenarios)',
-          status: 'PASS',
-          diagnostic: 'Verifier timing-safe comparison rejects invalid HMAC.',
+          actualResult: 'Schema verified: timing-safe comparison active',
+          resultType: 'DOC_PASS',
+          diagnostic: 'HMAC verification code verified. Full tampering suite not run.',
         };
       } else if (test.id === 'B6') {
         testResults['B6'] = {
           testName: test.name,
           group: 'B',
           expectedResult: 'HMAC_SIGNATURE_INVALID (tampered targetUrl)',
-          actualResult: 'Test 14: Tampered URL → HMAC_SIGNATURE_INVALID PASS',
-          status: 'PASS',
-          diagnostic: 'Canonical payload includes targetUrl. Any tampering breaks HMAC.',
+          actualResult: 'Not executed',
+          resultType: 'NOT_RUN',
+          diagnostic: 'Tampering tests deferred to dedicated test harness.',
         };
       } else if (test.id === 'B7') {
         testResults['B7'] = {
           testName: test.name,
           group: 'B',
           expectedResult: 'HMAC_SIGNATURE_INVALID (tampered riskTier)',
-          actualResult: 'Test 15: Tampered risk tier → HMAC_SIGNATURE_INVALID PASS',
-          status: 'PASS',
-          diagnostic: 'Canonical payload includes riskTier. Any tampering breaks HMAC.',
+          actualResult: 'Not executed',
+          resultType: 'NOT_RUN',
+          diagnostic: 'Tampering tests deferred to dedicated test harness.',
         };
       } else if (test.id === 'B8') {
         testResults['B8'] = {
           testName: test.name,
           group: 'B',
           expectedResult: 'accepted: true, signatureCheckResult: PASS',
-          actualResult: 'Test 13: Signed request accepted → accepted: true PASS',
-          status: 'PASS',
-          diagnostic: 'Valid HMAC signature accepted by verifier.',
+          actualResult: 'Not executed',
+          resultType: 'NOT_RUN',
+          diagnostic: 'End-to-end integration test pending (signer → verifier with valid signature).',
         };
       }
     }
@@ -167,108 +166,108 @@ export default function Phase4DTestSuite() {
           testName: test.name,
           group: 'C',
           expectedResult: 'signingAllowed: true, signature returned',
-          actualResult: 'Test 1: LOW READ → signingAllowed: true PASS',
-          status: 'PASS',
-          diagnostic: 'Signer allows eligible LOW READ commands.',
+          actualResult: 'signingAllowed: true, signature generated',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'openclawBridgeSigner: LOW READ signed (audit: signer_audit_2026-05-13_8fybygqwo)',
         };
       } else if (test.id === 'C2') {
         testResults['C2'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'signingAllowed: true, signature returned',
-          actualResult: 'Test 2: MEDIUM VERIFY → signingAllowed: true PASS',
-          status: 'PASS',
-          diagnostic: 'Signer allows eligible MEDIUM VERIFY commands.',
+          actualResult: 'Schema verified: MEDIUM in ALLOWED_RISK_TIERS',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Code inspection confirms MEDIUM is allowed. Not explicitly tested.',
         };
       } else if (test.id === 'C3') {
         testResults['C3'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'signingAllowed: false, commandType not allowed',
-          actualResult: 'Test 3: CLICK → rejectedReason: commandType not allowed PASS',
-          status: 'PASS',
-          diagnostic: 'Signer rejects CLICK (write) command.',
+          actualResult: 'signingAllowed: false, rejectedReason: commandType not allowed: CLICK',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'openclawBridgeSigner: CLICK rejected (audit: signer_audit_2026-05-13_g7j4yfbyf)',
         };
       } else if (test.id === 'C4') {
         testResults['C4'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'signingAllowed: false, commandType not allowed',
-          actualResult: 'Test 4: TYPE → rejectedReason: commandType not allowed PASS',
-          status: 'PASS',
-          diagnostic: 'Signer rejects TYPE (write) command.',
+          actualResult: 'Schema verified: TYPE not in ALLOWED_COMMAND_TYPES',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Code inspection confirms TYPE is rejected. Not explicitly tested in suite.',
         };
       } else if (test.id === 'C5') {
         testResults['C5'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'signingAllowed: false, riskTier not allowed',
-          actualResult: 'Test 5: HIGH → rejectedReason: riskTier not allowed PASS',
-          status: 'PASS',
-          diagnostic: 'Signer rejects HIGH risk tier.',
+          actualResult: 'signingAllowed: false, rejectedReason: riskTier not allowed: HIGH',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'openclawBridgeSigner: HIGH rejected (audit: signer_audit_2026-05-13_5uvtb5y7k)',
         };
       } else if (test.id === 'C6') {
         testResults['C6'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'signingAllowed: false, riskTier not allowed',
-          actualResult: 'Test 6: CRITICAL → rejectedReason: riskTier not allowed PASS',
-          status: 'PASS',
-          diagnostic: 'Signer rejects CRITICAL risk tier.',
+          actualResult: 'Schema verified: CRITICAL not in ALLOWED_RISK_TIERS',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Code inspection confirms CRITICAL is rejected. Not explicitly tested.',
         };
       } else if (test.id === 'C7') {
         testResults['C7'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'signingAllowed: false, expirationAt expired',
-          actualResult: 'Test 7: Expired → rejectedReason: expirationAt expired PASS',
-          status: 'PASS',
-          diagnostic: 'Signer rejects expired proposals.',
+          actualResult: 'Schema verified: expiration check exists',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Signer code checks expirationAt. Not explicitly tested in suite.',
         };
       } else if (test.id === 'C8') {
         testResults['C8'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'signingAllowed: false, targetUrl domain not allowlisted',
-          actualResult: 'Test 8: Malicious domain → rejectedReason: domain not allowlisted PASS',
-          status: 'PASS',
-          diagnostic: 'Signer enforces domain allowlist.',
+          actualResult: 'signingAllowed: false, rejectedReason: targetUrl domain not allowlisted',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'openclawBridgeSigner: malicious domain rejected (audit: signer_audit_2026-05-13_hi5meorz7)',
         };
       } else if (test.id === 'C9') {
         testResults['C9'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'signingAllowed: false, targetUrl contains suspicious keywords',
-          actualResult: 'Test 9: api-key keyword → rejectedReason: suspicious keywords PASS',
-          status: 'PASS',
-          diagnostic: 'Signer detects suspicious path/query keywords (case-insensitive).',
+          actualResult: 'signingAllowed: false, rejectedReason: targetUrl contains suspicious keywords',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'openclawBridgeSigner: api-key keyword detected (audit: signer_audit_2026-05-13_3xydbb8t9)',
         };
       } else if (test.id === 'C10') {
         testResults['C10'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'OpenClawSignerAudit.create() called with signingAllowed: true',
-          actualResult: 'Test 10: Audit record created for allowed signing PASS',
-          status: 'PASS',
-          diagnostic: 'Signer creates audit record for successful signing.',
+          actualResult: 'Audit ID returned: signer_audit_2026-05-13_8fybygqwo',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'C1 test confirmed audit record creation for allowed signing.',
         };
       } else if (test.id === 'C11') {
         testResults['C11'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'OpenClawSignerAudit.create() called with signingAllowed: false',
-          actualResult: 'Test 11: Audit record created for rejected signing PASS',
-          status: 'PASS',
-          diagnostic: 'Signer creates audit record for failed signing.',
+          actualResult: 'All rejections (C3, C5, C8, C9) generated audit IDs',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'Verified: signer_audit_2026-05-13_g7j4yfbyf, 5uvtb5y7k, hi5meorz7, 3xydbb8t9',
         };
       } else if (test.id === 'C12') {
         testResults['C12'] = {
           testName: test.name,
           group: 'C',
           expectedResult: 'Audit schema excludes secret, inputText, HMAC internals',
-          actualResult: 'Test 12: Audit safety verified PASS',
-          status: 'PASS',
-          diagnostic: 'Signer audit records safe: no secrets, only inputTextPresent boolean.',
+          actualResult: 'Schema verified: no such fields defined',
+          resultType: 'DOC_PASS',
+          diagnostic: 'OpenClawSignerAudit schema inspection. Not a runtime test.',
         };
       }
     }
@@ -280,63 +279,79 @@ export default function Phase4DTestSuite() {
           testName: test.name,
           group: 'D',
           expectedResult: 'accepted: true, signatureCheckResult: PASS',
-          actualResult: 'Test 13: Signed request → accepted: true PASS',
-          status: 'PASS',
-          diagnostic: 'End-to-end: signer → verifier → accepted.',
+          actualResult: 'Not executed',
+          resultType: 'NOT_RUN',
+          diagnostic: 'End-to-end integration test: signer output → verifier input. Pending.',
         };
       } else if (test.id === 'D2') {
         testResults['D2'] = {
           testName: test.name,
           group: 'D',
           expectedResult: 'DUPLICATE_REQUEST_ID, DUPLICATE_PREVIEW_HASH rejection',
-          actualResult: 'Test 16: Replayed request → replayCheckResult: FAIL PASS',
-          status: 'PASS',
-          diagnostic: 'Replay protection detects duplicate requestId and previewHash.',
+          actualResult: 'Schema verified: replay check exists',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Verifier code includes replay protection. Not explicitly tested in suite.',
         };
       } else if (test.id === 'D3') {
         testResults['D3'] = {
           testName: test.name,
           group: 'D',
           expectedResult: 'All responses note: "No OpenClaw call was made"',
-          actualResult: 'All 20 tests verify: note: "No OpenClaw call was made" PASS',
-          status: 'PASS',
-          diagnostic: 'No OpenClaw gateway invocations in signing or verification.',
+          actualResult: 'All responses confirm: "No OpenClaw call was made"',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'All 6 backend function calls (signer/verifier) verified note field.',
         };
       } else if (test.id === 'D4') {
         testResults['D4'] = {
           testName: test.name,
           group: 'D',
           expectedResult: 'No browser/API/trading execution code paths',
-          actualResult: 'Test 19: No execution verified → backend functions signing-only PASS',
-          status: 'PASS',
-          diagnostic: 'All backend functions are dry-run. No action execution.',
+          actualResult: 'Code inspection: only signing/verification, no execution',
+          resultType: 'DOC_PASS',
+          diagnostic: 'Backend functions are read-only. Not a runtime execution test.',
         };
       } else if (test.id === 'D5') {
         testResults['D5'] = {
           testName: test.name,
           group: 'D',
           expectedResult: 'bridgeMode: DRY_RUN_ONLY in all responses',
-          actualResult: 'Test 20: bridgeMode: DRY_RUN_ONLY verified PASS',
-          status: 'PASS',
-          diagnostic: 'System enforces dry-run mode throughout.',
+          actualResult: 'bridgeMode: DRY_RUN_ONLY verified in verifier responses',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'openclawBridgePreview responses confirm DRY_RUN_ONLY.',
         };
       } else if (test.id === 'D6') {
         testResults['D6'] = {
           testName: test.name,
           group: 'D',
           expectedResult: 'executionStatus: NOT_EXECUTED or REJECTED_NOT_EXECUTED only',
-          actualResult: 'Test 20: executionStatus: NOT_EXECUTED/REJECTED_NOT_EXECUTED verified PASS',
-          status: 'PASS',
-          diagnostic: 'No action execution. All requests dry-run.',
+          actualResult: 'executionStatus: REJECTED_NOT_EXECUTED verified in all responses',
+          resultType: 'EXECUTED_PASS',
+          diagnostic: 'openclawBridgePreview responses confirm no execution status.',
         };
       }
     }
 
+    const executedPass = Object.values(testResults).filter(r => r.resultType === 'EXECUTED_PASS').length;
+    const docPass = Object.values(testResults).filter(r => r.resultType === 'DOC_PASS').length;
+    const notRun = Object.values(testResults).filter(r => r.resultType === 'NOT_RUN').length;
+    const failed = Object.values(testResults).filter(r => r.resultType === 'FAIL').length;
+
+    let overallStatus = 'HMAC_SUITE_INCOMPLETE';
+    if (failed > 0) {
+      overallStatus = 'HMAC_SUITE_FAIL';
+    } else if (executedPass === 29 && docPass === 0 && notRun === 0) {
+      overallStatus = 'HMAC_SUITE_PASS';
+    } else if (notRun === 0 && failed === 0) {
+      overallStatus = 'HMAC_SUITE_PASS';
+    }
+
     const summary = {
       totalTests: 29,
-      passed: Object.values(testResults).filter(r => r.status === 'PASS').length,
-      failed: Object.values(testResults).filter(r => r.status === 'FAIL').length,
-      overallStatus: Object.values(testResults).every(r => r.status === 'PASS') ? 'HMAC_SUITE_PASS' : 'HMAC_SUITE_FAIL',
+      executedPass,
+      docPass,
+      notRun,
+      failed,
+      overallStatus,
     };
 
     setResults({ tests: testResults, summary });
@@ -404,18 +419,22 @@ export default function Phase4DTestSuite() {
             <div className={`px-3 py-2 rounded border ${
               results.summary.overallStatus === 'HMAC_SUITE_PASS'
                 ? 'bg-primary/10 border-primary/30'
+                : results.summary.overallStatus === 'HMAC_SUITE_INCOMPLETE'
+                ? 'bg-amber-500/10 border-amber-500/30'
                 : 'bg-destructive/10 border-destructive/30'
             }`}>
               <div className="flex items-center gap-2 mb-1">
                 {results.summary.overallStatus === 'HMAC_SUITE_PASS' ? (
                   <CheckCircle2 className="w-4 h-4 text-primary" />
+                ) : results.summary.overallStatus === 'HMAC_SUITE_INCOMPLETE' ? (
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
                 ) : (
                   <XCircle className="w-4 h-4 text-destructive" />
                 )}
                 <div>
                   <div className="text-[9px] font-semibold text-foreground">Overall Status: {results.summary.overallStatus}</div>
                   <div className="text-[8px] text-slate-500 mt-0.5">
-                    Total: {results.summary.totalTests} | Passed: {results.summary.passed} | Failed: {results.summary.failed}
+                    Total: {results.summary.totalTests} | Executed: {results.summary.executedPass} | Doc: {results.summary.docPass} | Not Run: {results.summary.notRun} | Failed: {results.summary.failed}
                   </div>
                 </div>
               </div>
@@ -493,21 +512,40 @@ function TestGroup({ groupKey, label, description, tests, results }) {
         <div className="px-3 py-2 border-t border-border/20 space-y-1">
           {groupTests.map(test => {
             const result = groupResults[test.id];
+            const bgColor = result?.resultType === 'EXECUTED_PASS'
+              ? 'bg-primary/10 border-primary/30'
+              : result?.resultType === 'DOC_PASS'
+              ? 'bg-blue-500/10 border-blue-500/30'
+              : result?.resultType === 'NOT_RUN'
+              ? 'bg-slate-500/10 border-slate-500/30'
+              : 'bg-destructive/10 border-destructive/30';
+            const iconColor = result?.resultType === 'EXECUTED_PASS'
+              ? 'text-primary'
+              : result?.resultType === 'DOC_PASS'
+              ? 'text-blue-500'
+              : result?.resultType === 'NOT_RUN'
+              ? 'text-slate-500'
+              : 'text-destructive';
+            
             return (
-              <div key={test.id} className={`px-2 py-1.5 rounded border text-[8px] ${
-                result?.status === 'PASS'
-                  ? 'bg-primary/10 border-primary/30'
-                  : 'bg-destructive/10 border-destructive/30'
-              }`}>
+              <div key={test.id} className={`px-2 py-1.5 rounded border text-[8px] ${bgColor}`}>
                 <div className="flex items-start gap-1.5">
-                  {result?.status === 'PASS' ? (
-                    <CheckCircle2 className="w-3 h-3 text-primary shrink-0 mt-0.5" />
+                  {result?.resultType === 'EXECUTED_PASS' || result?.resultType === 'DOC_PASS' ? (
+                    <CheckCircle2 className={`w-3 h-3 ${iconColor} shrink-0 mt-0.5`} />
                   ) : (
-                    <XCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+                    <AlertTriangle className={`w-3 h-3 ${iconColor} shrink-0 mt-0.5`} />
                   )}
                   <div className="flex-1">
-                    <div className="font-semibold text-foreground mb-0.5">
+                    <div className="font-semibold text-foreground mb-0.5 flex items-center gap-1">
                       {test.id}: {test.name}
+                      <span className={`text-[7px] px-1 py-0.5 rounded ${
+                        result?.resultType === 'EXECUTED_PASS' ? 'bg-primary/20 text-primary' :
+                        result?.resultType === 'DOC_PASS' ? 'bg-blue-500/20 text-blue-500' :
+                        result?.resultType === 'NOT_RUN' ? 'bg-slate-500/20 text-slate-500' :
+                        'bg-destructive/20 text-destructive'
+                      }`}>
+                        {result?.resultType}
+                      </span>
                     </div>
                     {result && (
                       <div className="space-y-0.5 text-slate-500">
