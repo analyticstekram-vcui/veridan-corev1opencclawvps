@@ -8,6 +8,18 @@ import TelemetryLiveStream from './telemetry/TelemetryLiveStream';
 
 const POLL_MS = 5_000;
 
+// Helper: fetch gateway connector health
+async function fetchGatewayConnectorHealth() {
+  try {
+    const response = await base44.functions.invoke('openclawGatewayReadOnlyConnector', {
+      readType: 'health',
+    });
+    return response.data;
+  } catch (err) {
+    return { gatewayOnline: false, error: err.message };
+  }
+}
+
 // Simulate gateway pings in SIMULATED mode so the panel has live data
 async function simulateGatewayPing(executionMode) {
   const latency = Math.round(80 + Math.random() * 180);
@@ -23,8 +35,10 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
   const [loading, setLoading]       = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [ackLoading, setAckLoading] = useState(false);
+  const [gatewayHealth, setGatewayHealth] = useState(null);
   const pingRef = useRef(null);
   const pollRef = useRef(null);
+  const gwPollRef = useRef(null);
 
   const fetchSnapshot = useCallback(async () => {
     try {
@@ -53,9 +67,16 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
     // Kick off one immediately
     simulateGatewayPing(executionMode);
 
+    // Fetch gateway connector health every 10s
+    fetchGatewayConnectorHealth().then(setGatewayHealth);
+    gwPollRef.current = setInterval(() => {
+      fetchGatewayConnectorHealth().then(setGatewayHealth);
+    }, 10_000);
+
     return () => {
       clearInterval(pollRef.current);
       clearInterval(pingRef.current);
+      if (gwPollRef.current) clearInterval(gwPollRef.current);
     };
   }, [fetchSnapshot, executionMode]);
 
@@ -153,6 +174,37 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
         </div>
       </div>
 
+      {/* Gateway Connector Health */}
+      {gatewayHealth && (
+        <div className={`border rounded-lg p-3 ${
+          gatewayHealth.gatewayOnline 
+            ? 'bg-primary/5 border-primary/20' 
+            : 'bg-slate-500/5 border-slate-500/20'
+        }`}>
+          <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">
+            Gateway Connector Health
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-[9px]">
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Status</div>
+              <div className={`font-semibold ${gatewayHealth.gatewayOnline ? 'text-primary' : 'text-slate-400'}`}>
+                {gatewayHealth.gatewayOnline ? 'ONLINE' : 'OFFLINE'}
+              </div>
+            </div>
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Latency</div>
+              <div className="font-semibold text-foreground">{gatewayHealth.latencyMs}ms</div>
+            </div>
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Mode</div>
+              <div className="font-semibold text-foreground">
+                {gatewayHealth.gatewayOnline ? 'READ_ONLY' : 'SIMULATED'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Live Stream */}
       <div>
         <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Live Event Stream</div>
@@ -160,7 +212,7 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
       </div>
 
       <div className="text-[9px] text-slate-400 text-center uppercase tracking-widest font-semibold">
-        Telemetry is read-only · No control actions · Polling every {POLL_MS / 1000}s
+        Telemetry is read-only · No control actions · Polling every {POLL_MS / 1000}s · Gateway health updates every 10s
       </div>
     </div>
   );

@@ -86,7 +86,7 @@ const VERIFICATION_GROUPS = [
       { id: 'prod_no_api_keys', name: 'No API keys rendered in UI', panel: 'All Panels', prodBlocking: true, why: 'API keys visible in UI pose critical security risk.' },
       { id: 'prod_no_secrets', name: 'No secret values visible in UI', panel: 'All Panels', prodBlocking: true, why: 'Secrets must never be exposed to browser or frontend.' },
       { id: 'prod_no_tokens', name: 'No bearer tokens or access tokens visible', panel: 'All Panels', prodBlocking: true, why: 'Token exposure compromises system security.' },
-      { id: 'prod_gateway_reachable', name: 'OpenClaw Gateway is reachable', panel: 'Status', prodBlocking: false, why: 'Gateway connectivity is essential for operations.' },
+      { id: 'prod_gateway_reachable', name: 'OpenClaw Gateway connector accessible', panel: 'Gateway Connector', prodBlocking: false, why: 'Gateway connectivity is essential for operations.' },
       { id: 'prod_cloudflare_protected', name: 'Gateway protected by Cloudflare Access', panel: 'Status', prodBlocking: true, why: 'Access protection is mandatory for production.' },
     ],
   },
@@ -512,8 +512,9 @@ export default function SystemVerificationPanel() {
     };
 
     newResults.prod_gateway_reachable = {
-      status: pageText.includes('ONLINE') || pageText.includes('Reachable') ? 'pass' : 'warn',
-      explanation: 'Checks whether OpenClaw Gateway is reachable.',
+      status: pageText.includes('Gateway Connector') && (pageText.includes('ONLINE') || pageText.includes('Reachable')) ? 'pass' : 'warn',
+      explanation: 'Checks whether OpenClaw Gateway is reachable via Gateway Connector panel.',
+      details: 'Gateway Connector tab provides read-only health diagnostics.',
     };
 
     newResults.prod_cloudflare_protected = {

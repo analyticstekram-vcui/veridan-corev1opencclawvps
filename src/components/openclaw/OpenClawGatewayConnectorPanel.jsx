@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, Wifi, WifiOff, Server, Clock, Activity, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Wifi, WifiOff, Server, Clock, Activity, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
 
 export default function OpenClawGatewayConnectorPanel() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [lastSuccessAt, setLastSuccessAt] = useState(null);
+  const [lastFailureAt, setLastFailureAt] = useState(null);
   const [readLogs, setReadLogs] = useState([]);
+  const [autoPolling, setAutoPolling] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState(30); // seconds
+  const pollingRef = useRef(null);
 
   const fetchGatewayStatus = async (readType = 'health') => {
     setLoading(true);
@@ -19,21 +24,49 @@ export default function OpenClawGatewayConnectorPanel() {
       setStatus(response.data);
       setLastRefresh(new Date().toLocaleTimeString());
       
+      if (response.data?.success && response.data?.gatewayOnline) {
+        setLastSuccessAt(new Date().toISOString());
+      } else if (!response.data?.success) {
+        setLastFailureAt(new Date().toISOString());
+      }
+      
       // Load recent logs
       const logs = await base44.entities.OpenClawGatewayConnectorLog.list('-readAt', 10);
       setReadLogs(logs || []);
     } catch (err) {
       setError(err.message || 'Failed to fetch gateway status');
       setStatus(null);
+      setLastFailureAt(new Date().toISOString());
     } finally {
       setLoading(false);
     }
   };
 
+  // Handle auto-polling
+  useEffect(() => {
+    if (autoPolling) {
+      // Initial fetch
+      fetchGatewayStatus('health');
+      // Set up polling interval
+      pollingRef.current = setInterval(() => {
+        fetchGatewayStatus('health');
+      }, pollingInterval * 1000);
+    } else {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    }
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, [autoPolling, pollingInterval]);
+
+  // Initial load
   useEffect(() => {
     fetchGatewayStatus('health');
-    const interval = setInterval(() => fetchGatewayStatus('health'), 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -67,7 +100,7 @@ export default function OpenClawGatewayConnectorPanel() {
               <Wifi className="w-5 h-5 text-primary" />
               <div className="flex-1">
                 <div className="text-[11px] font-semibold text-primary uppercase tracking-wider">GATEWAY ONLINE</div>
-                <div className="text-[9px] text-primary/70 mt-0.5">Connected to {status?.data?.gateway_url || 'OpenClaw gateway'}</div>
+                <div className="text-[9px] text-primary/70 mt-0.5">Connected to OpenClaw gateway (READ_ONLY mode)</div>
               </div>
             </>
           ) : (
@@ -75,16 +108,16 @@ export default function OpenClawGatewayConnectorPanel() {
               <WifiOff className="w-5 h-5 text-slate-500" />
               <div className="flex-1">
                 <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">GATEWAY OFFLINE</div>
-                <div className="text-[9px] text-slate-400/70 mt-0.5">Gateway is unreachable — running in local preview mode</div>
+                <div className="text-[9px] text-slate-400/70 mt-0.5">Gateway is unreachable — running in local preview mode (SIMULATED)</div>
               </div>
             </>
           )}
         </div>
         {status && (
-          <div className="grid grid-cols-3 gap-2 text-[9px] mt-3">
+          <div className="grid grid-cols-4 gap-2 text-[9px] mt-3">
             <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Status</div>
-              <div className="font-semibold text-foreground">{status.success ? 'Connected' : 'Error'}</div>
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Mode</div>
+              <div className="font-semibold text-foreground">{status.gatewayOnline ? 'READ_ONLY' : 'SIMULATED'}</div>
             </div>
             <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
               <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Latency</div>
@@ -94,8 +127,65 @@ export default function OpenClawGatewayConnectorPanel() {
               <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">HTTP</div>
               <div className="font-semibold text-foreground">{status.httpStatus || 'N/A'}</div>
             </div>
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Version</div>
+              <div className="font-semibold text-foreground">{status.data?.version || 'N/A'}</div>
+            </div>
           </div>
         )}
+      </div>
+
+      {/* Health Timestamps */}
+      <div className="grid grid-cols-2 gap-3">
+        {lastSuccessAt && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+              <div className="text-[9px] font-semibold text-primary uppercase tracking-wider">Last Success</div>
+            </div>
+            <div className="text-[8px] text-foreground/70 font-mono">{new Date(lastSuccessAt).toLocaleString()}</div>
+          </div>
+        )}
+        {lastFailureAt && (
+          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className="w-3.5 h-3.5 text-destructive" />
+              <div className="text-[9px] font-semibold text-destructive uppercase tracking-wider">Last Failure</div>
+            </div>
+            <div className="text-[8px] text-foreground/70 font-mono">{new Date(lastFailureAt).toLocaleString()}</div>
+          </div>
+        )}
+      </div>
+
+      {/* Auto-Polling Controls */}
+      <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+        <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Auto-Polling</div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setAutoPolling(!autoPolling)}
+            className={`px-3 py-1.5 text-[10px] border font-semibold rounded transition-colors ${
+              autoPolling
+                ? 'bg-primary/10 border-primary/30 text-primary'
+                : 'border-border text-foreground hover:bg-secondary/50'
+            }`}
+          >
+            {autoPolling ? '⏸ Stop Polling' : '▶ Start Polling'}
+          </button>
+          {autoPolling && (
+            <>
+              <input
+                type="number"
+                min="5"
+                max="300"
+                value={pollingInterval}
+                onChange={(e) => setPollingInterval(Math.max(5, parseInt(e.target.value)))}
+                className="w-16 px-2 py-1.5 text-[10px] border border-border bg-card rounded text-foreground"
+              />
+              <span className="text-[9px] text-muted-foreground">seconds</span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Diagnostic Buttons */}
