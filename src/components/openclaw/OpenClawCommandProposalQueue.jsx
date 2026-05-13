@@ -2,6 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, RefreshCw, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 
+// Safe date formatting that returns "Unknown" instead of Invalid Date
+const formatDateSafe = (value) => {
+  if (!value) return 'Unknown';
+  try {
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return 'Unknown';
+    return date.toLocaleString();
+  } catch {
+    return 'Unknown';
+  }
+};
+
+// Normalize proposal records from mixed shapes into UI-safe object
+const normalizeProposal = (record) => {
+  if (!record) return null;
+  return {
+    id: record.id || record.requestId || record.proposalId || record._id || 'unknown',
+    requestId: record.requestId || record.id || record.proposalId || 'unknown-request',
+    title: record.title || record.requestId || 'Untitled Proposal',
+    status: record.status || record.reviewStatus || 'DRAFT',
+    commandType: record.commandType || record.type || record.command?.type || record.payload?.commandType || 'READ',
+    target: record.target || record.selector || record.payload?.target || 'No target provided',
+    url: record.url || record.href || record.payload?.url || '',
+    riskTier: record.riskTier || record.risk || 'LOW',
+    policyGate: record.policyGate || record.governance || 'SAFE_REQUIRES_APPROVAL',
+    createdAt: record.createdAt || record.created_date || record.created_at || record.timestamp || null,
+    reviewedAt: record.reviewedAt || record.reviewed_at || null,
+    proposedBy: record.proposedBy || record.createdBy || record.operatorEmail || 'system',
+    reviewNote: record.reviewNote || record.note || '',
+  };
+};
+
 export default function OpenClawCommandProposalQueue() {
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -215,11 +247,13 @@ export default function OpenClawCommandProposalQueue() {
       {/* Proposals List */}
       <div className="space-y-2">
         {proposals.length === 0 ? (
-          <div className="text-center py-8 text-[10px] text-muted-foreground">
+          <div className="text-center py-8 text-[10px] text-muted-foreground bg-secondary/5 border border-border/30 rounded-lg">
             No proposals found
           </div>
         ) : (
-          proposals.map(proposal => {
+          proposals.map(rawProposal => {
+            const proposal = normalizeProposal(rawProposal);
+            if (!proposal) return null;
             const cfg = statusConfig[proposal.status] || statusConfig.DRAFT;
             const StatusIcon = cfg.icon;
             return (
@@ -231,10 +265,14 @@ export default function OpenClawCommandProposalQueue() {
                       <div className={`text-[10px] font-semibold ${cfg.color} uppercase tracking-wider`}>
                         {proposal.commandType}
                       </div>
-                      <div className="text-[9px] text-foreground mt-0.5">{proposal.target}</div>
+                      <div className="text-[9px] text-foreground/80 mt-0.5">{proposal.target}</div>
                       {proposal.url && (
                         <div className="text-[8px] text-blue-400 font-mono mt-0.5 truncate">{proposal.url}</div>
                       )}
+                      <div className="text-[8px] text-muted-foreground mt-0.5">
+                        <span className="inline-block mr-2">Risk: {proposal.riskTier}</span>
+                        <span>Gate: {proposal.policyGate}</span>
+                      </div>
                     </div>
                   </div>
                   <span className={`text-[8px] px-2 py-0.5 border rounded font-semibold whitespace-nowrap ${cfg.bg} ${cfg.color}`}>
@@ -242,9 +280,11 @@ export default function OpenClawCommandProposalQueue() {
                   </span>
                 </div>
 
-                <div className="text-[8px] text-muted-foreground mb-2">
-                  <div>Created: {new Date(proposal.createdAt).toLocaleString()}</div>
-                  {proposal.proposedBy && <div>By: {proposal.proposedBy}</div>}
+                <div className="text-[8px] text-muted-foreground mb-2 space-y-0.5">
+                  <div>Request ID: {proposal.requestId}</div>
+                  <div>Created: {formatDateSafe(proposal.createdAt)}</div>
+                  {proposal.reviewedAt && <div>Reviewed: {formatDateSafe(proposal.reviewedAt)}</div>}
+                  <div>By: {proposal.proposedBy}</div>
                 </div>
 
                 {/* Action Buttons */}
@@ -291,7 +331,7 @@ export default function OpenClawCommandProposalQueue() {
 
                 {proposal.reviewNote && (
                   <div className="text-[8px] text-slate-400 border-t border-border/30 mt-2 pt-2">
-                    Review: {proposal.reviewNote}
+                    Note: {proposal.reviewNote}
                   </div>
                 )}
               </div>
