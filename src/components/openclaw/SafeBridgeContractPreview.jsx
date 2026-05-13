@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Phase1BridgePreviewTester from './Phase1BridgePreviewTester';
 import Phase3SignatureGenerator from './Phase3SignatureGenerator';
+import Phase4HmacPlan from './Phase4HmacPlan';
 import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp, Copy, AlertTriangle, Clock } from 'lucide-react';
 
 const REQUEST_SCHEMA = {
@@ -1898,12 +1899,15 @@ export default function SafeBridgeContractPreview() {
         </div>
       </div>
 
-      {/* Footer Notice */}
+      {/* Phase 4 Real HMAC Plan */}
+      <Phase4HmacPlan />
+
+       {/* Footer Notice */}
       <div className="flex items-start gap-2 px-4 py-3 bg-secondary/10 border border-border/50 rounded-lg text-[9px] text-slate-400">
         <Lock className="w-3 h-3 shrink-0 mt-0.5" />
         <div>
-          <div className="font-semibold text-foreground mb-0.5">Contract is locked and read-only.</div>
-          <div className="text-[8px] text-slate-400">All fields, validation rules, examples, and tests are hardcoded governance definitions. Future backend bridge will use this exact contract for request validation and response formatting. All tests are deterministic—no OpenClaw calls.</div>
+          <div className="font-semibold text-foreground mb-0.5">Phases 1-3 locked. Phase 4 is planning only.</div>
+          <div className="text-[8px] text-slate-400">All validation rules, signing model, and safeguards are documented. Mock HMAC is active. Real HMAC secret is not configured. No OpenClaw calls in any phase. Execution remains disabled.</div>
         </div>
       </div>
     </div>
