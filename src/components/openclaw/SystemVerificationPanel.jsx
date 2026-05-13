@@ -4,6 +4,7 @@ import { Shield, CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronRight, 
 import OperatorGuidancePanel from './OperatorGuidancePanel';
 import GateDecisionExporter from './GateDecisionExporter';
 import LocalGovernanceConsistencyAudit from './LocalGovernanceConsistencyAudit';
+import SystemVerifyOperatorChecklist from './SystemVerifyOperatorChecklist';
 
 // Master verification checks organized by category
 const VERIFICATION_GROUPS = [
@@ -1176,6 +1177,30 @@ export default function SystemVerificationPanel() {
           BLOCKED if blocking issues exist, tests fail, or backend enforcement fails. REVIEW REQUIRED if manual items exist but no blockers. READY only if all clear. Read-only diagnostic—no live actions executed.
         </div>
       </div>
+
+      {/* Load gate decision history for checklist */}
+      {(() => {
+        const gateDecisionHistory = (() => {
+          try {
+            const stored = localStorage.getItem('systemVerifyGateDecisionHistory');
+            return stored ? JSON.parse(stored) : [];
+          } catch {
+            return [];
+          }
+        })();
+
+        return (
+          <SystemVerifyOperatorChecklist
+            prodBlockingFailed={prodBlockingFailed}
+            manualReviewItemCount={manualReviewItemCount}
+            failedTests={failedTests}
+            snapshotHash={snapshotHash}
+            snapshotHistory={snapshotHistory}
+            approvalRecords={approvalRecords}
+            gateDecisionHistory={gateDecisionHistory}
+          />
+        );
+      })()}
 
       {/* Operator Guidance */}
       <OperatorGuidancePanel
