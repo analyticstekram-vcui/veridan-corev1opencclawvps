@@ -918,13 +918,13 @@ export default function ProductionReadinessChecklistPanel() {
   const filtered = CHECKLIST_ITEMS.filter(item => {
     const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
     
-    // If showing only unresolved, filter to incomplete items
-    if (showOnlyUnresolved && effectiveStatus === 'COMPLETE') {
+    // If showing only unresolved, filter to unresolved items using isItemResolved helper
+    if (showOnlyUnresolved && isItemResolved(item)) {
       return false;
     }
 
     if (filter === 'ALL') return true;
-    if (filter === 'UNRESOLVED') return effectiveStatus !== 'COMPLETE';
+    if (filter === 'UNRESOLVED') return !isItemResolved(item);
     if (filter === 'COMPLETE') return effectiveStatus === 'COMPLETE';
     if (filter === 'PARTIAL') return effectiveStatus === 'PARTIAL';
     if (filter === 'NOT_STARTED') return effectiveStatus === 'NOT_STARTED';
@@ -974,9 +974,6 @@ export default function ProductionReadinessChecklistPanel() {
     setBackendEnforcementStatus({ passed: null, source: 'no_snapshot' });
   }, []);
 
-  let readinessStatus = 'NOT_PRODUCTION_READY';
-  let readinessBlockReason = null;
-  
   // Helper: an item is considered RESOLVED if its effective status is COMPLETE
   // OR if its nextAction says "Verified. No action needed." (case-insensitive).
   const isItemResolved = (item) => {
@@ -986,6 +983,9 @@ export default function ProductionReadinessChecklistPanel() {
     return false;
   };
 
+  let readinessStatus = 'NOT_PRODUCTION_READY';
+  let readinessBlockReason = null;
+  
   // Two-tier readiness: Non-execution deployment vs live execution.
   // Count only truly unresolved production-required items.
   const unresolvedProdReqItems = CHECKLIST_ITEMS.filter(item => {
@@ -993,25 +993,35 @@ export default function ProductionReadinessChecklistPanel() {
     return isProdRequired && !isItemResolved(item);
   }).length;
 
-  // Backend enforcement: PASS if System Verify snapshot says so, or unknown (null = skip gate).
-  const backendGatePassed = backendEnforcementStatus?.passed === true || backendEnforcementStatus?.passed === null;
+  // Count unresolved blocking items (must be resolved items that have BLOCKED status)
+  const unresolvedBlockingItems = CHECKLIST_ITEMS.filter(item => !isItemResolved(item) && (reviews[item.name]?.reviewStatus || item.status) === 'BLOCKED').length;
 
-  // Non-execution deployment: READY if all items resolved + backend enforcement passes per System Verify
+  // Backend enforcement gate: PASS if System Verify snapshot says so
+  // If snapshot exists but is false: FAIL (block)
+  // If snapshot is null (missing): MISSING (don't block, just note it)
+  const backendEnforcementPassed = backendEnforcementStatus?.passed === true;
+  const backendEnforcementMissing = backendEnforcementStatus?.passed === null;
+  const backendEnforcementFailed = backendEnforcementStatus?.passed === false;
+
+  // Non-execution deployment: READY if all items resolved + backend enforcement passed
+  // Don't block on missing snapshot (backendEnforcementMissing) — just a verification state
   const nonExecReady = summaryStats.complete === summaryStats.total &&
-                       summaryStats.blocked === 0 &&
+                       unresolvedBlockingItems === 0 &&
                        unresolvedProdReqItems === 0 &&
-                       backendGatePassed;
+                       backendEnforcementPassed;
 
   if (nonExecReady) {
     readinessStatus = 'READY_FOR_NON_EXECUTION_DEPLOYMENT';
   } else {
     readinessStatus = 'NOT_PRODUCTION_READY';
-    if (backendEnforcementStatus?.passed === false) {
-      readinessBlockReason = 'Backend enforcement not yet confirmed by System Verify. Run System Verify and export a snapshot.';
-    } else if (summaryStats.blocked > 0) {
-      readinessBlockReason = `${summaryStats.blocked} BLOCKED item${summaryStats.blocked !== 1 ? 's' : ''} block non-execution deployment`;
+    if (backendEnforcementFailed) {
+      readinessBlockReason = 'Backend enforcement failed. Review System Verify and fix validation issues.';
+    } else if (unresolvedBlockingItems > 0) {
+      readinessBlockReason = `${unresolvedBlockingItems} BLOCKED item${unresolvedBlockingItems !== 1 ? 's' : ''} block non-execution deployment`;
     } else if (unresolvedProdReqItems > 0) {
       readinessBlockReason = `${unresolvedProdReqItems} unresolved production-required item${unresolvedProdReqItems !== 1 ? 's' : ''} remain`;
+    } else if (backendEnforcementMissing) {
+      readinessBlockReason = 'Run System Verify and export a snapshot to confirm backend enforcement status.';
     } else {
       readinessBlockReason = 'Some checklist items are not yet complete';
     }
