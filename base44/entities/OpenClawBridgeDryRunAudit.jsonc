@@ -2,13 +2,21 @@
   "name": "OpenClawBridgeDryRunAudit",
   "type": "object",
   "properties": {
-    "auditId": {
+    "dryRunAuditId": {
       "type": "string",
-      "description": "Unique audit trail identifier"
+      "description": "Unique dry-run audit trail identifier"
+    },
+    "dryRunId": {
+      "type": "string",
+      "description": "Dry-run execution ID"
     },
     "requestId": {
       "type": "string",
       "description": "Bridge request ID if provided"
+    },
+    "proposalId": {
+      "type": "string",
+      "description": "Proposal ID if provided"
     },
     "previewHash": {
       "type": "string",
@@ -18,33 +26,13 @@
       "type": "string",
       "description": "Email of operator who submitted the request"
     },
-    "accepted": {
+    "acceptedForDryRun": {
       "type": "boolean",
-      "description": "Whether the request passed validation"
+      "description": "Whether the request was accepted for dry-run preview"
     },
     "rejectedReason": {
       "type": "string",
       "description": "Reason if rejected, null if accepted"
-    },
-    "bridgeMode": {
-      "type": "string",
-      "enum": [
-        "DRY_RUN_ONLY"
-      ],
-      "default": "DRY_RUN_ONLY",
-      "description": "Always DRY_RUN_ONLY for Phases 1-4A"
-    },
-    "executionStatus": {
-      "type": "string",
-      "enum": [
-        "NOT_EXECUTED",
-        "REJECTED_NOT_EXECUTED"
-      ],
-      "description": "Execution status of the request"
-    },
-    "targetUrl": {
-      "type": "string",
-      "description": "Target URL from the bridge request if provided"
     },
     "commandType": {
       "type": "string",
@@ -54,26 +42,9 @@
       "type": "string",
       "description": "Risk tier (LOW, MEDIUM) if provided"
     },
-    "receivedAt": {
+    "targetUrl": {
       "type": "string",
-      "format": "date-time",
-      "description": "ISO timestamp when request was received"
-    },
-    "validatedAt": {
-      "type": "string",
-      "format": "date-time",
-      "description": "ISO timestamp when validation completed"
-    },
-    "validationMessages": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Array of validation error messages if any"
-    },
-    "inputTextPresent": {
-      "type": "boolean",
-      "description": "True if inputText was provided for TYPE command (not stored)"
+      "description": "Target URL from the bridge request if provided"
     },
     "policyGateResult": {
       "type": "string",
@@ -81,14 +52,14 @@
         "PASS",
         "FAIL"
       ],
-      "description": "Phase 2: Policy gate check result"
+      "description": "Policy gate check result"
     },
     "policyGateMessages": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Phase 2: Policy gate failure reasons"
+      "description": "Policy gate failure reasons"
     },
     "replayCheckResult": {
       "type": "string",
@@ -96,14 +67,14 @@
         "PASS",
         "FAIL"
       ],
-      "description": "Phase 2: Replay protection check result"
+      "description": "Replay protection check result"
     },
     "replayCheckMessages": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Phase 2: Replay check failure reasons (DUPLICATE_REQUEST_ID, DUPLICATE_PREVIEW_HASH)"
+      "description": "Replay check failure reasons"
     },
     "signatureCheckResult": {
       "type": "string",
@@ -111,52 +82,56 @@
         "PASS",
         "FAIL"
       ],
-      "description": "Phase 3: Signature validation check result"
+      "description": "Signature validation check result"
     },
     "signatureCheckMessages": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Phase 3: Signature validation failure reasons"
+      "description": "Signature validation failure reasons"
     },
-    "signingVersion": {
+    "bridgeMode": {
       "type": "string",
-      "description": "Phase 3: Signing version used (e.g., OPENCLAW_BRIDGE_V1)"
+      "enum": [
+        "OPENCLAW_DRY_RUN_PREVIEW"
+      ],
+      "default": "OPENCLAW_DRY_RUN_PREVIEW",
+      "description": "Always OPENCLAW_DRY_RUN_PREVIEW"
     },
-    "signedAt": {
+    "executionStatus": {
       "type": "string",
-      "format": "date-time",
-      "description": "Phase 3: ISO timestamp when the request was signed"
-    },
-    "signaturePresent": {
-      "type": "boolean",
-      "description": "Phase 3: Whether signature field was present in request"
-    },
-    "signatureMode": {
-      "type": "string",
-      "description": "Phase 3-4A: Signature validation mode (e.g., MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC)"
-    },
-    "hmacSecretConfigured": {
-      "type": "boolean",
-      "description": "Phase 4A: Whether OPENCLAW_BRIDGE_HMAC_SECRET is configured (never stored as secret value)"
+      "enum": [
+        "PREVIEW_ONLY",
+        "REJECTED_NOT_EXECUTED"
+      ],
+      "description": "Execution status of the request"
     },
     "secretExposed": {
       "type": "boolean",
-      "description": "Phase 4A: Whether any secret-derived value was exposed in logs or response (hardcoded false for safety)"
+      "default": false,
+      "description": "Whether any secret was exposed (hardcoded false)"
+    },
+    "inputTextPresent": {
+      "type": "boolean",
+      "description": "True if inputText was provided (not stored)"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when record was created"
     },
     "note": {
       "type": "string",
-      "description": "Standard note indicating dry-run only and phases passed"
+      "description": "Standard note indicating dry-run only"
     }
   },
   "required": [
-    "auditId",
-    "accepted",
+    "dryRunAuditId",
+    "acceptedForDryRun",
     "bridgeMode",
     "executionStatus",
-    "receivedAt",
-    "validatedAt",
+    "createdAt",
     "note"
   ]
 }
