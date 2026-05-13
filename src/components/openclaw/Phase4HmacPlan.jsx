@@ -364,6 +364,162 @@ export default function Phase4HmacPlan() {
           </div>
         </div>
 
+        {/* Phase 4C Backend Signer Flow Spec */}
+        <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden">
+          <div className="px-3 py-2 border-b border-slate-500/20 bg-slate-500/10">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div>
+                <div className="text-[9px] font-semibold text-slate-400">Phase 4C: Backend Signer Flow Spec</div>
+                <div className="text-[8px] text-slate-500 mt-0.5">Future server-side signing. Frontend never receives secret. Signatures generated only on backend.</div>
+              </div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                <span className="text-[7px] font-semibold text-slate-400">SPEC_ONLY</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="px-3 py-2 space-y-2">
+            {/* Frontend Constraints */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Frontend Constraints</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div className="text-destructive font-semibold">✗ Frontend Must NOT:</div>
+                <div className="ml-2">
+                  <div>• Generate real HMAC signatures in browser code</div>
+                  <div>• Receive OPENCLAW_BRIDGE_HMAC_SECRET</div>
+                  <div>• Compute HMAC-SHA256 with secret</div>
+                  <div>• Store secret in localStorage or session storage</div>
+                  <div>• Attempt to derive or reverse-engineer secret</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Signing Options */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Future Signing Options</div>
+              <div className="space-y-1">
+                <div>
+                  <div className="text-[8px] font-semibold text-foreground mb-0.5">Option A: Server-Side Signer Endpoint</div>
+                  <div className="text-[8px] text-slate-500 space-y-0.5 ml-2">
+                    <div>Route: POST /api/openclaw/bridge/sign-preview</div>
+                    <div>Input: unsigned bridge request preview (no signature)</div>
+                    <div>Server validates proposal/request eligibility</div>
+                    <div>Server adds signedAt, signingVersion, signature</div>
+                    <div>Server returns signed request (without exposing secret)</div>
+                    <div>Frontend includes signature in validation request</div>
+                  </div>
+                </div>
+                <div className="border-t border-border/20 pt-1">
+                  <div className="text-[8px] font-semibold text-foreground mb-0.5">Option B: Server-Side Session Signer</div>
+                  <div className="text-[8px] text-slate-500 space-y-0.5 ml-2">
+                    <div>Authenticated operator session triggers signing</div>
+                    <div>Server derives operator identity from session token</div>
+                    <div>Server only signs eligible requests</div>
+                    <div>No standalone secret leaves server boundary</div>
+                    <div>Signing tied to operator authentication lifecycle</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Signer Safeguards */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Signer Safeguards</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div className="font-semibold text-foreground mb-0.5">✓ Only sign if:</div>
+                <div className="ml-2">
+                  <div>• Request passes Phase 1 contract validation</div>
+                  <div>• Request passes Phase 2 policy gating</div>
+                  <div>• dryRun === true (always)</div>
+                  <div>• liveExecution === false (always)</div>
+                  <div>• riskTier is LOW or MEDIUM only</div>
+                  <div>• commandType is READ, NAVIGATE, EXTRACT, VERIFY only</div>
+                  <div>• Proposal is not expired</div>
+                  <div>• Domain is allowlisted</div>
+                  <div>• URL path contains no suspicious keywords</div>
+                </div>
+                <div className="font-semibold text-destructive mt-1 mb-0.5">✗ Never sign:</div>
+                <div className="ml-2">
+                  <div>• CLICK or TYPE commands (write operations)</div>
+                  <div>• HIGH or CRITICAL risk requests</div>
+                  <div>• Expired proposals</div>
+                  <div>• Non-allowlisted domains</div>
+                  <div>• Paths with suspicious keywords</div>
+                  <div>• Requests that fail any earlier validation phase</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Signing Audit Trail */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Signing Audit Trail Requirements</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div className="font-semibold text-foreground mb-0.5">✓ Must Include:</div>
+                <div className="ml-2">
+                  <div>• signerAuditId (unique signing event ID)</div>
+                  <div>• requestId (request being signed)</div>
+                  <div>• proposalId (proposal being signed)</div>
+                  <div>• operatorId (who requested signing)</div>
+                  <div>• signingAllowed (true or false)</div>
+                  <div>• rejectedReason (if not signed)</div>
+                  <div>• signingVersion (OPENCLAW_BRIDGE_V1)</div>
+                  <div>• signatureMode (REAL_HMAC_VALIDATION)</div>
+                  <div>• signedAt (ISO timestamp of signing)</div>
+                  <div>• createdAt (audit record timestamp)</div>
+                  <div>• note: "Signing only. No OpenClaw call was made."</div>
+                </div>
+                <div className="font-semibold text-destructive mt-1 mb-0.5">✗ Must NOT Include:</div>
+                <div className="ml-2">
+                  <div>• OPENCLAW_BRIDGE_HMAC_SECRET (ever)</div>
+                  <div>• raw inputText (sensitive data)</div>
+                  <div>• computed HMAC signature (not useful for audit)</div>
+                  <div>• any secret-derived material</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Signer Constraints */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Signer Operational Constraints</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>• Server validates request eligibility before signing</div>
+                <div>• Server rejects ineligible requests without creating signature</div>
+                <div>• Server logs every signing attempt (approved or rejected)</div>
+                <div>• Server does NOT call OpenClaw during signing</div>
+                <div>• Server does NOT execute any actions during signing</div>
+                <div>• Signing is read-only operation only</div>
+                <div>• Signature generation uses HMAC-SHA256</div>
+                <div>• Canonical payload order is immutable</div>
+                <div>• signedAt is current server time (not client time)</div>
+              </div>
+            </div>
+
+            {/* Status Badges */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Phase 4C Status</div>
+              <div className="flex flex-wrap gap-1">
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SPEC_ONLY
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SIGNER_NOT_IMPLEMENTED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SECRET_NOT_CREATED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  EXECUTION_DISABLED
+                </div>
+              </div>
+            </div>
+
+            {/* Info Note */}
+            <div className="text-[8px] text-slate-500 border-t border-slate-500/20 pt-1.5 mt-1.5">
+              Phase 4C defines server-side signing only. Frontend never receives or computes real signatures. All signing happens on backend with full access to secret. Signing validates request eligibility but does not call OpenClaw.
+            </div>
+          </div>
+        </div>
+
         {/* Warnings */}
         <div className="border border-destructive/20 bg-destructive/5 rounded px-3 py-2 space-y-1">
           <div className="text-[9px] font-semibold text-destructive uppercase tracking-wider">Critical Warnings</div>
