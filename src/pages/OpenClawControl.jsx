@@ -38,6 +38,7 @@ import BrokerCredentialVaultPanel from '@/components/openclaw/BrokerCredentialVa
 import BackendSecretEnforcementPanel from '@/components/openclaw/BackendSecretEnforcementPanel';
 import OpenClawCommandProposalQueue from '@/components/openclaw/OpenClawCommandProposalQueue';
 import OpenClawGatewayConnectorPanel from '@/components/openclaw/OpenClawGatewayConnectorPanel';
+import ProposalReviewPacketExporter from '@/components/openclaw/ProposalReviewPacketExporter';
 
 const TABS = [
   { id: 'gateway_connector', label: '🔌 Gateway Connector' },
@@ -76,7 +77,7 @@ const TABS = [
   { id: 'secret_vault', label: '🔐 Secret Vault' },
   { id: 'broker_vault', label: '💰 Broker Vault' },
   { id: 'secret_enforcement', label: '🔒 Secret Enforcement' },
-  { id: 'proposal_queue', label: '✉️ Proposal Queue' },
+  { id: 'export_packet', label: '📦 Export Packet' },
 ];
 
 export default function OpenClawControl() {
@@ -355,8 +356,8 @@ export default function OpenClawControl() {
           <div className="p-6"><BackendSecretEnforcementPanel /></div>
         )}
 
-        {activeView === 'proposal_queue' && (
-          <div className="p-6"><OpenClawCommandProposalQueue /></div>
+        {activeView === 'export_packet' && (
+          <div className="p-6"><ProposalReviewPacketExporter /></div>
         )}
 
         {activeView === 'status' && (
