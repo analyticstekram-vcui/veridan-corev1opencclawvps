@@ -29,14 +29,15 @@ const REQUEST_SCHEMA = {
 const RESPONSE_SCHEMA = {
   requestId: { type: 'string', description: 'Echo of request ID' },
   accepted: { type: 'boolean', description: 'Request accepted by bridge' },
-  rejectedReason: { type: 'string', description: 'Reason if rejected' },
-  bridgeMode: { type: 'string', description: 'SAFE_PREVIEW or SAFE_READ_ONLY' },
-  executionStatus: { type: 'string', description: 'PENDING, RUNNING, COMPLETED, FAILED' },
-  dryRun: { type: 'boolean', description: 'Echoes request dryRun value' },
+  rejectedReason: { type: 'string', description: 'Reason if rejected, null if accepted' },
+  bridgeMode: { type: 'string', description: 'Always DRY_RUN_ONLY (Phases 1-3)' },
+  executionStatus: { type: 'string', description: 'NOT_EXECUTED or REJECTED_NOT_EXECUTED only' },
   auditId: { type: 'string', description: 'Audit trail identifier' },
   receivedAt: { type: 'ISO-8601', description: 'Bridge receipt timestamp' },
-  processedAt: { type: 'ISO-8601', description: 'Processing completion timestamp' },
-  resultSummary: { type: 'string', description: 'Safe summary of execution result' },
+  validatedAt: { type: 'ISO-8601', description: 'Validation completion timestamp' },
+  signatureCheckResult: { type: 'string', description: 'PASS or FAIL (Phase 3)' },
+  signatureMode: { type: 'string', description: 'MOCK_SIGNATURE_VALIDATION (Phase 3)' },
+  note: { type: 'string', description: 'Human-readable confirmation no OpenClaw call was made' },
 };
 
 const VALIDATION_RULES = [
@@ -1170,16 +1171,16 @@ function BridgeRequestBuilder() {
           </div>
 
           {/* Phase 3: Signed Request Validation */}
-          <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden opacity-60">
-            <div className="px-4 py-3 border-b border-slate-500/20">
+          <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-amber-500/20">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div>
-                  <div className="text-[10px] font-semibold text-slate-400">Phase 3: Signed Request Validation</div>
-                  <div className="text-[9px] text-slate-500 mt-1">Add HMAC signature verification for request integrity.</div>
+                  <div className="text-[10px] font-semibold text-foreground">Phase 3: Signed Request Validation</div>
+                  <div className="text-[9px] text-slate-400 mt-1">Mock deterministic SHA-256 signature validation active. signatureMode: MOCK_SIGNATURE_VALIDATION. Real HMAC disabled.</div>
                 </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
-                  <Lock className="w-3 h-3 text-slate-400" />
-                  <span className="text-[8px] font-semibold text-slate-400">FUTURE_DISABLED</span>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 border border-primary/30 rounded whitespace-nowrap">
+                  <CheckCircle2 className="w-3 h-3 text-primary" />
+                  <span className="text-[8px] font-semibold text-primary">IMPLEMENTED</span>
                 </div>
               </div>
             </div>
@@ -1187,15 +1188,15 @@ function BridgeRequestBuilder() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
                   <div className="text-[8px] text-slate-400 font-semibold mb-0.5">GOAL</div>
-                  <div className="text-slate-500">Verify request authenticity via signature</div>
+                  <div className="text-foreground">Verify request authenticity via mock signature</div>
                 </div>
                 <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
                   <div className="text-[8px] text-slate-400 font-semibold mb-0.5">RISK LEVEL</div>
-                  <div className="text-slate-500">Low (detection only)</div>
+                  <div className="text-amber-500">Low (mock validation only)</div>
                 </div>
                 <div className="col-span-2 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
-                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">REQUIRED SAFEGUARDS</div>
-                  <div className="text-slate-500">HMAC key rotation, signature verification, audit trail</div>
+                  <div className="text-[8px] text-slate-400 font-semibold mb-0.5">ACTIVE SAFEGUARDS</div>
+                  <div className="text-foreground/70">SHA-256 canonical hash, signedAt freshness (5 min), future window (60 sec), signingVersion enforcement, audit trail</div>
                 </div>
               </div>
             </div>
@@ -1344,11 +1345,11 @@ function BridgeRequestBuilder() {
             </div>
             <div className="bg-slate-500/5 border border-slate-500/20 px-2.5 py-1.5 rounded">
               <div className="text-slate-400 font-semibold mb-0.5">🔒 FUTURE_DISABLED</div>
-              <div className="text-slate-500 text-[8px]">Phases 2-7</div>
+              <div className="text-slate-500 text-[8px]">Phases 4-7</div>
             </div>
             <div className="bg-card/50 border border-border/30 px-2.5 py-1.5 rounded">
               <div className="text-slate-400 font-semibold mb-0.5">GATING</div>
-              <div className="text-slate-500 text-[8px]">Phase 1 approval required</div>
+              <div className="text-slate-500 text-[8px]">Phase 3 locked. Real HMAC next.</div>
             </div>
           </div>
         </div>
