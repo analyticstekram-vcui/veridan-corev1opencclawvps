@@ -328,6 +328,8 @@ export default function SystemVerificationPanel() {
    const [snapshotHash, setSnapshotHash] = useState(null);
    const [hashCopied, setHashCopied] = useState(false);
    const [snapshotHistory, setSnapshotHistory] = useState([]);
+   const [verifyResult, setVerifyResult] = useState(null);
+   const [verifyLoading, setVerifyLoading] = useState(false);
 
    const runVerification = async () => {
      setRunning(true);
@@ -803,6 +805,60 @@ export default function SystemVerificationPanel() {
     }
   };
 
+  const handleVerifySnapshot = async (file) => {
+    setVerifyLoading(true);
+    try {
+      const fileContent = await file.text();
+      const snapshot = JSON.parse(fileContent);
+
+      // Validate required fields
+      if (!snapshot.overallReadiness || !snapshot.summary || snapshot.snapshotHash === undefined) {
+        setVerifyResult({
+          status: 'INVALID_FORMAT',
+          message: 'Snapshot is missing required fields (overallReadiness, summary, snapshotHash)',
+        });
+        setVerifyLoading(false);
+        return;
+      }
+
+      // Extract stored hash
+      const storedHash = snapshot.snapshotHash;
+
+      // Remove hash from copy before recalculating
+      const snapshotForHash = { ...snapshot };
+      delete snapshotForHash.snapshotHash;
+
+      // Recalculate hash
+      const jsonStr = JSON.stringify(snapshotForHash, null, 2);
+      const recalculatedHash = await generateSHA256Hash(jsonStr);
+
+      // Compare
+      const isValid = storedHash === recalculatedHash;
+
+      setVerifyResult({
+        status: isValid ? 'VALID' : 'TAMPERED',
+        isValid,
+        storedHash,
+        recalculatedHash,
+        snapshot: {
+          readinessStatus: snapshot.overallReadiness,
+          blockingIssueCount: snapshot.summary?.blockingIssueCount || 0,
+          manualReviewItemCount: snapshot.summary?.manualReviewItemCount || 0,
+          failedTestCount: snapshot.summary?.failedTestCount || 0,
+          backendEnforcementPassed: snapshot.summary?.backendEnforcementPassed,
+          exportedAt: snapshot.exportedAt,
+        },
+      });
+    } catch (err) {
+      setVerifyResult({
+        status: 'ERROR',
+        message: `Failed to read file: ${err.message}`,
+      });
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
   const toggleExpanded = (checkId) => {
     setExpandedChecks(prev => ({
       ...prev,
@@ -1239,6 +1295,136 @@ export default function SystemVerificationPanel() {
           <div className="text-[8px] text-primary/70">Hash proves snapshot integrity. If hash changes after export, the file was modified.</div>
         </div>
       )}
+
+      {/* Verify Snapshot File */}
+      <div className="border border-primary/20 bg-primary/5 rounded-lg p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="w-4 h-4 text-primary" />
+          <div className="text-[11px] font-semibold text-primary uppercase tracking-wider">Verify Snapshot File Integrity</div>
+        </div>
+        <div className="text-[9px] text-primary/70 mb-3">Upload a previously exported verification snapshot JSON file to verify its integrity. Recalculates the SHA-256 hash and compares against the stored hash to detect tampering.</div>
+        
+        <div className="flex items-center gap-3">
+          <input
+            type="file"
+            accept=".json"
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                handleVerifySnapshot(e.target.files[0]);
+              }
+              e.target.value = '';
+            }}
+            disabled={verifyLoading}
+            className="flex-1 text-[10px] file:px-3 file:py-1.5 file:border file:border-primary/50 file:bg-primary/10 file:text-primary file:hover:bg-primary/20 file:transition-colors file:rounded file:font-semibold file:text-[9px] file:cursor-pointer disabled:opacity-50"
+          />
+          {verifyLoading && <span className="text-[9px] text-primary/70 whitespace-nowrap">Verifying…</span>}
+        </div>
+
+        {/* Verification Result */}
+        {verifyResult && (
+          <div className="space-y-3 border-t border-primary/20 pt-3 mt-3">
+            {verifyResult.status === 'VALID' && (
+              <div className="flex items-start gap-3 px-4 py-3 bg-primary/10 border border-primary/30 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="text-[10px] text-primary/90">
+                  <div className="font-semibold mb-1">✓ Snapshot is VALID</div>
+                  <div className="text-[9px] text-primary/70">SHA-256 hash matches. File has not been modified since export.</div>
+                </div>
+              </div>
+            )}
+
+            {verifyResult.status === 'TAMPERED' && (
+              <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div className="text-[10px] text-destructive/90">
+                  <div className="font-semibold mb-1">✗ Snapshot is TAMPERED / INVALID</div>
+                  <div className="text-[9px] text-destructive/70">SHA-256 hash does not match. File may have been modified after export.</div>
+                </div>
+              </div>
+            )}
+
+            {verifyResult.status === 'INVALID_FORMAT' && (
+              <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="text-[10px] text-amber-500/90">
+                  <div className="font-semibold mb-1">⚠ Invalid Format</div>
+                  <div className="text-[9px] text-amber-500/70">{verifyResult.message}</div>
+                </div>
+              </div>
+            )}
+
+            {verifyResult.status === 'ERROR' && (
+              <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div className="text-[10px] text-destructive/90">
+                  <div className="font-semibold mb-1">Error Reading File</div>
+                  <div className="text-[9px] text-destructive/70">{verifyResult.message}</div>
+                </div>
+              </div>
+            )}
+
+            {verifyResult.snapshot && (
+              <div className="space-y-3">
+                <div className="text-[9px] font-semibold text-foreground uppercase tracking-wider mb-2">Snapshot Summary</div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-[9px]">
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Readiness</div>
+                    <div className={`font-semibold ${verifyResult.snapshot.readinessStatus === 'READY' ? 'text-primary' : verifyResult.snapshot.readinessStatus === 'REVIEW REQUIRED' ? 'text-amber-500' : 'text-destructive'}`}>
+                      {verifyResult.snapshot.readinessStatus}
+                    </div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Blocking Issues</div>
+                    <div className="text-[14px] font-semibold text-foreground">{verifyResult.snapshot.blockingIssueCount}</div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Manual Review</div>
+                    <div className="text-[14px] font-semibold text-foreground">{verifyResult.snapshot.manualReviewItemCount}</div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Failed Tests</div>
+                    <div className="text-[14px] font-semibold text-foreground">{verifyResult.snapshot.failedTestCount}</div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Backend Enforcement</div>
+                    <div className={`font-semibold ${verifyResult.snapshot.backendEnforcementPassed ? 'text-primary' : 'text-destructive'}`}>
+                      {verifyResult.snapshot.backendEnforcementPassed ? '✓ Pass' : '✗ Fail'}
+                    </div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Exported</div>
+                    <div className="text-foreground font-mono text-[8px]">{new Date(verifyResult.snapshot.exportedAt).toLocaleString()}</div>
+                  </div>
+                </div>
+
+                {/* Hash Comparison */}
+                <div className="space-y-2">
+                  <div className="text-[9px] font-semibold text-foreground uppercase tracking-wider">Hash Verification</div>
+                  <div className="bg-card border border-border/30 px-3 py-2 rounded space-y-2">
+                    <div>
+                      <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Stored Hash (in file)</div>
+                      <code className="text-[8px] font-mono text-foreground/70 break-all">{verifyResult.storedHash}</code>
+                    </div>
+                    <div className="border-t border-border/30 pt-2">
+                      <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Recalculated Hash</div>
+                      <code className="text-[8px] font-mono text-foreground/70 break-all">{verifyResult.recalculatedHash}</code>
+                    </div>
+                    <div className="border-t border-border/30 pt-2">
+                      <div className={`text-[8px] uppercase tracking-widest font-semibold mb-0.5 ${verifyResult.isValid ? 'text-primary' : 'text-destructive'}`}>
+                        {verifyResult.isValid ? '✓ Hashes Match' : '✗ Hashes Do Not Match'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="text-[8px] text-primary/70 border-t border-primary/20 pt-2 mt-2">
+              Snapshot verification checks file integrity only. It does not prove current system readiness. This verification only confirms the snapshot file has not been modified since export.
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Verification Snapshot History */}
       {snapshotHistory.length > 0 && (
