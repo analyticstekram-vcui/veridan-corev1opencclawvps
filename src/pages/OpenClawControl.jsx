@@ -43,6 +43,7 @@ import ProposalReviewPacketVerifier from '@/components/openclaw/ProposalReviewPa
 import AuditEvidenceVault from '@/components/openclaw/AuditEvidenceVault';
 import VaultExportVerification from '@/components/openclaw/VaultExportVerification';
 import FinalDeploymentLock from '@/components/openclaw/FinalDeploymentLock';
+import OpenClawBaselineArchive from '@/components/openclaw/OpenClawBaselineArchive';
 
 const TABS = [
   { id: 'gateway_connector', label: '🔌 Gateway Connector' },
@@ -86,7 +87,8 @@ const TABS = [
   { id: 'evidence_vault', label: '🗄️ Evidence Vault' },
   { id: 'vault_export', label: '🧾 Vault Export' },
   { id: 'final_lock', label: '🔐 Final Lock' },
-];
+  { id: 'baseline_archive', label: '🧷 Baseline Archive' },
+  ];
 
 export default function OpenClawControl() {
   const [activeView, setActiveView] = useState('overview');
@@ -382,6 +384,10 @@ export default function OpenClawControl() {
 
         {activeView === 'final_lock' && (
           <div className="p-6"><FinalDeploymentLock /></div>
+        )}
+
+        {activeView === 'baseline_archive' && (
+          <div className="p-6"><OpenClawBaselineArchive /></div>
         )}
 
         {activeView === 'status' && (
