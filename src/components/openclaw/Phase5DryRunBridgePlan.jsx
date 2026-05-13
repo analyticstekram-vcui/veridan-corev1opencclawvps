@@ -445,7 +445,7 @@ export default function Phase5DryRunBridgePlan() {
 
             {/* Phase 1 Contract Validation Tests */}
             <div className="px-3 py-2 border-b border-border/20">
-              <div className="text-[8px] font-semibold text-destructive uppercase tracking-wider mb-1">Phase 1 Contract Validation Rejection Tests (9)</div>
+              <div className="text-[8px] font-semibold text-destructive uppercase tracking-wider mb-1">Phase 1 Contract Validation Rejection Tests (8)</div>
               <div className="text-[8px] text-slate-400 space-y-1">
                 <div>
                   <span className="text-destructive font-semibold">T16:</span>
@@ -564,7 +564,7 @@ export default function Phase5DryRunBridgePlan() {
             <div>Phase 4 signature rejection: 4 tests</div>
             <div>Phase 2 protection rejection: 2 tests</div>
             <div>Phase 2 policy gate rejection: 4 tests</div>
-            <div>Phase 1 contract rejection: 9 tests</div>
+            <div>Phase 1 contract rejection: 8 tests</div>
             <div>Audit trail tests: 3 tests</div>
             <div>Safety constraint tests: 3 tests</div>
           </div>
