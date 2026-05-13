@@ -227,6 +227,143 @@ export default function Phase4HmacPlan() {
           </div>
         </div>
 
+        {/* Phase 4B HMAC Verifier Spec */}
+        <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden">
+          <div className="px-3 py-2 border-b border-slate-500/20 bg-slate-500/10">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div>
+                <div className="text-[9px] font-semibold text-slate-400">Phase 4B: HMAC Verifier Spec</div>
+                <div className="text-[8px] text-slate-500 mt-0.5">Future backend HMAC-SHA256 signature verification logic. Compares submitted signature against computed canonical payload.</div>
+              </div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                <span className="text-[7px] font-semibold text-slate-400">SPEC_ONLY</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="px-3 py-2 space-y-2">
+            {/* Canonical Payload Reconstruction */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Canonical Payload Reconstruction</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div className="font-mono text-slate-400 text-[7px] space-y-0.5">
+                  <div>requestId | proposalId | previewHash | operatorId | submittedAt | signedAt | commandType | targetUrl | riskTier | governanceMode | dryRun | liveExecution</div>
+                </div>
+                <div className="text-[8px] text-slate-500 mt-1">
+                  Backend must rebuild exact canonical payload in this field order. Any reordering will break signature verification. Phase 3 order is now immutable.
+                </div>
+              </div>
+            </div>
+
+            {/* HMAC Computation */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">HMAC Computation</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>Algorithm: HMAC-SHA256</div>
+                <div>Key source: OPENCLAW_BRIDGE_HMAC_SECRET (environment variable)</div>
+                <div>Message: canonical payload string (pipe-delimited)</div>
+                <div>Output format: hexadecimal (lowercase)</div>
+                <div className="text-[7px] text-slate-500 mt-1">Pseudocode: signature = hex(HMAC-SHA256(canonical, secret))</div>
+              </div>
+            </div>
+
+            {/* Signature Comparison */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Signature Comparison</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>1. Extract submitted signature from request body</div>
+                <div>2. Compute expected signature using canonical payload + secret</div>
+                <div>3. Use timing-safe comparison (e.g., crypto.timingSafeEqual or equivalent)</div>
+                <div>4. Do NOT use === or simple string equality</div>
+                <div>5. Reject if mismatch detected</div>
+                <div className="text-[7px] text-slate-500 mt-1">Timing-safe comparison prevents timing attacks that could leak signature bytes.</div>
+              </div>
+            </div>
+
+            {/* Validation Sequence */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Validation Sequence</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>1. Check HMAC secret is configured (Phase 4A)</div>
+                <div>2. Check signature field exists</div>
+                <div>3. Check signingVersion == OPENCLAW_BRIDGE_V1</div>
+                <div>4. Check signedAt is valid ISO timestamp</div>
+                <div>5. Check signedAt ≤ now (not in future, &gt;60 sec)</div>
+                <div>6. Check signedAt ≥ now - 5 minutes (not expired)</div>
+                <div>7. Rebuild canonical payload</div>
+                <div>8. Compute HMAC-SHA256</div>
+                <div>9. Timing-safe comparison of signatures</div>
+                <div>10. If all pass → proceed to Phase 1 validation</div>
+              </div>
+            </div>
+
+            {/* Rejection Reasons */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Rejection Reasons</div>
+              <div className="text-[8px] text-slate-500 font-mono space-y-0.5">
+                <div className="text-slate-400">HMAC_SECRET_NOT_CONFIGURED</div>
+                <div className="text-slate-400">SIGNATURE_MISSING</div>
+                <div className="text-slate-400">SIGNING_VERSION_INVALID</div>
+                <div className="text-slate-400">SIGNED_AT_INVALID</div>
+                <div className="text-slate-400">SIGNED_AT_EXPIRED</div>
+                <div className="text-slate-400">SIGNED_AT_FUTURE</div>
+                <div className="text-slate-400">HMAC_SIGNATURE_INVALID</div>
+              </div>
+            </div>
+
+            {/* Audit Record Requirements */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Audit Record Requirements</div>
+              <div className="space-y-1">
+                <div>
+                  <div className="text-[8px] font-semibold text-slate-400 mb-0.5">✓ Must Include:</div>
+                  <div className="text-[8px] text-slate-500 space-y-0.5">
+                    <div>• signatureCheckResult (PASS or FAIL)</div>
+                    <div>• signatureCheckMessages (array of reasons)</div>
+                    <div>• signingVersion (e.g., OPENCLAW_BRIDGE_V1)</div>
+                    <div>• signedAt (ISO timestamp)</div>
+                    <div>• signaturePresent (boolean)</div>
+                    <div>• signatureMode (REAL_HMAC_VALIDATION)</div>
+                  </div>
+                </div>
+                <div className="border-t border-border/20 pt-1">
+                  <div className="text-[8px] font-semibold text-destructive mb-0.5">✗ Must NOT Include:</div>
+                  <div className="text-[8px] text-slate-500 space-y-0.5">
+                    <div>• OPENCLAW_BRIDGE_HMAC_SECRET (ever)</div>
+                    <div>• raw inputText (sensitive data)</div>
+                    <div>• computed HMAC signature (not useful for audit)</div>
+                    <div>• any secret-derived material</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Badges */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Phase 4B Status</div>
+              <div className="flex flex-wrap gap-1">
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SPEC_ONLY
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  HMAC_NOT_IMPLEMENTED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SECRET_NOT_CREATED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  EXECUTION_DISABLED
+                </div>
+              </div>
+            </div>
+
+            {/* Info Note */}
+            <div className="text-[8px] text-slate-500 border-t border-slate-500/20 pt-1.5 mt-1.5">
+              Phase 4B defines real HMAC verification logic. Canonical payload order is locked and immutable. Timing-safe comparison required. If verification fails, request is rejected without calling OpenClaw. No execution, no mutation, no action.
+            </div>
+          </div>
+        </div>
+
         {/* Warnings */}
         <div className="border border-destructive/20 bg-destructive/5 rounded px-3 py-2 space-y-1">
           <div className="text-[9px] font-semibold text-destructive uppercase tracking-wider">Critical Warnings</div>
