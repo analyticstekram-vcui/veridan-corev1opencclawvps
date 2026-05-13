@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Plus, CheckCircle2, XCircle, Clock, Trash2, Send } from 'lucide-react';
+import { AlertTriangle, Plus, CheckCircle2, XCircle, Clock, Trash2, Send, Shield } from 'lucide-react';
 
 const COMMAND_TYPES = ['READ', 'CLICK', 'TYPE', 'NAVIGATE', 'EXTRACT', 'VERIFY'];
 const RISK_TIERS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -33,6 +33,113 @@ const getTimeRemaining = (expirationAt) => {
   
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
+};
+
+const DOMAIN_ALLOWLIST = [
+  'veridancore.com',
+  'openclaw.veridancore.com',
+  'base44.com',
+  'tradingview.com',
+  'tradovate.com',
+];
+
+const isDomainAllowlisted = (url) => {
+  if (!url) return false;
+  try {
+    const domain = new URL(url).hostname;
+    return DOMAIN_ALLOWLIST.some(allowed => domain === allowed || domain.endsWith('.' + allowed));
+  } catch {
+    return false;
+  }
+};
+
+const calculateExecutionEligibility = (proposal, validation) => {
+  const reasons = [];
+
+  // NOT_ELIGIBLE checks
+  if (validation.status === 'FAIL') {
+    reasons.push('Validation failed');
+    return { eligibility: 'NOT_ELIGIBLE', reasons };
+  }
+
+  if (proposal.status === 'DRAFT') {
+    reasons.push('Proposal is still in draft');
+    return { eligibility: 'NOT_ELIGIBLE', reasons };
+  }
+
+  if (proposal.status === 'DENIED') {
+    reasons.push('Proposal was denied');
+    return { eligibility: 'NOT_ELIGIBLE', reasons };
+  }
+
+  if (proposal.status === 'EXPIRED') {
+    reasons.push('Proposal expired');
+    return { eligibility: 'NOT_ELIGIBLE', reasons };
+  }
+
+  if (proposal.status === 'EXPIRED_APPROVAL') {
+    reasons.push('Approval expired');
+    return { eligibility: 'NOT_ELIGIBLE', reasons };
+  }
+
+  if (proposal.riskTier === 'CRITICAL') {
+    reasons.push('CRITICAL risk proposals require manual review');
+    return { eligibility: 'NOT_ELIGIBLE', reasons };
+  }
+
+  if (proposal.requiresApproval && proposal.status !== 'APPROVED') {
+    reasons.push('Approval required but not approved');
+    return { eligibility: 'NOT_ELIGIBLE', reasons };
+  }
+
+  // REVIEW_REQUIRED checks
+  const reviewReasons = [];
+  let needsReview = false;
+
+  if (validation.status === 'WARNING') {
+    reviewReasons.push('Validation has warnings');
+    needsReview = true;
+  }
+
+  if (proposal.riskTier === 'HIGH') {
+    reviewReasons.push('HIGH risk requires review');
+    needsReview = true;
+  }
+
+  if (['CLICK', 'TYPE'].includes(proposal.commandType)) {
+    reviewReasons.push(`${proposal.commandType} commands require review`);
+    needsReview = true;
+  }
+
+  if (proposal.targetUrl && !isDomainAllowlisted(proposal.targetUrl)) {
+    reviewReasons.push('Domain not allowlisted');
+    needsReview = true;
+  }
+
+  if (proposal.status === 'PENDING_APPROVAL') {
+    reviewReasons.push('Still pending approval');
+    needsReview = true;
+  }
+
+  if (needsReview) {
+    return { eligibility: 'REVIEW_REQUIRED', reasons: reviewReasons };
+  }
+
+  // ELIGIBLE_PREVIEW checks
+  if (
+    validation.status === 'PASS' &&
+    proposal.status === 'APPROVED' &&
+    ['LOW', 'MEDIUM'].includes(proposal.riskTier) &&
+    !isProposalExpired(proposal) &&
+    proposal.targetUrl?.toLowerCase().startsWith('https://') &&
+    isDomainAllowlisted(proposal.targetUrl) &&
+    ['READ', 'NAVIGATE', 'EXTRACT', 'VERIFY'].includes(proposal.commandType)
+  ) {
+    return { eligibility: 'ELIGIBLE_PREVIEW', reasons: ['Ready for execution'] };
+  }
+
+  // Default to review required
+  return { eligibility: 'REVIEW_REQUIRED', reasons: ['Does not meet eligibility criteria'] };
 };
 
 const STATUS_CONFIG = {
@@ -367,6 +474,7 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
   const statusCfg = STATUS_CONFIG[proposal.status];
   const StatusIcon = statusCfg.icon;
   const validation = validateProposal(proposal);
+  const { eligibility, reasons: eligibilityReasons } = calculateExecutionEligibility(proposal, validation);
   const canSubmit = validation.status !== 'FAIL';
   const canApprove = validation.status !== 'FAIL' && proposal.riskTier !== 'CRITICAL';
 
@@ -392,6 +500,15 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
         </td>
         <td className="px-3 py-2">
           <ValidationBadge validation={validation} />
+        </td>
+        <td className="px-3 py-2">
+          <div className={`text-[8px] px-2 py-0.5 border rounded font-semibold ${
+            eligibility === 'ELIGIBLE_PREVIEW' ? 'bg-primary/5 border-primary/20 text-primary' :
+            eligibility === 'REVIEW_REQUIRED' ? 'bg-amber-500/5 border-amber-500/20 text-amber-500' :
+            'bg-destructive/5 border-destructive/20 text-destructive'
+          }`}>
+            {eligibility.replace(/_/g, ' ')}
+          </div>
         </td>
         <td className="px-3 py-2 text-[9px] font-mono">
           {(proposal.status === 'PENDING_APPROVAL' || proposal.status === 'APPROVED') && proposal.expirationAt ? (
@@ -509,23 +626,54 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
         </td>
       </tr>
 
-      {/* Validation messages row */}
-      {(validation.errors.length > 0 || validation.warnings.length > 0) && (
+      {/* Validation & Eligibility messages row */}
+      {(validation.errors.length > 0 || validation.warnings.length > 0 || eligibilityReasons.length > 0) && (
         <tr className="border-b border-border/20 bg-secondary/10">
-          <td colSpan="9" className="px-3 py-2">
-            <div className="space-y-1 text-[8px]">
-              {validation.errors.map((err, i) => (
-                <div key={i} className="text-destructive flex items-start gap-2">
-                  <span className="shrink-0 mt-0.5">✗</span>
-                  <span>{err}</span>
+          <td colSpan="10" className="px-3 py-2">
+            <div className="space-y-2 text-[8px]">
+              {validation.errors.length > 0 && (
+                <div>
+                  <div className="font-semibold text-destructive mb-1">Validation Errors:</div>
+                  {validation.errors.map((err, i) => (
+                    <div key={i} className="text-destructive flex items-start gap-2 ml-2">
+                      <span className="shrink-0 mt-0.5">✗</span>
+                      <span>{err}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {validation.warnings.map((warn, i) => (
-                <div key={i} className="text-amber-500 flex items-start gap-2">
-                  <span className="shrink-0 mt-0.5">⚠</span>
-                  <span>{warn}</span>
+              )}
+              {validation.warnings.length > 0 && (
+                <div>
+                  <div className="font-semibold text-amber-500 mb-1">Validation Warnings:</div>
+                  {validation.warnings.map((warn, i) => (
+                    <div key={i} className="text-amber-500 flex items-start gap-2 ml-2">
+                      <span className="shrink-0 mt-0.5">⚠</span>
+                      <span>{warn}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+              {eligibilityReasons.length > 0 && (
+                <div>
+                  <div className={`font-semibold mb-1 ${
+                    eligibility === 'ELIGIBLE_PREVIEW' ? 'text-primary' :
+                    eligibility === 'REVIEW_REQUIRED' ? 'text-amber-500' :
+                    'text-destructive'
+                  }`}>
+                    Execution Eligibility:
+                  </div>
+                  {eligibilityReasons.map((reason, i) => (
+                    <div key={i} className={`flex items-start gap-2 ml-2 ${
+                      eligibility === 'ELIGIBLE_PREVIEW' ? 'text-primary' :
+                      eligibility === 'REVIEW_REQUIRED' ? 'text-amber-500' :
+                      'text-destructive'
+                    }`}>
+                      <span className="shrink-0 mt-0.5">•</span>
+                      <span>{reason}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </td>
         </tr>
@@ -777,12 +925,20 @@ export default function OpenClawCommandProposalQueue() {
         )}
       </div>
 
-      {/* Warning Banner */}
+      {/* Warning Banners */}
       <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
         <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
         <div className="text-[10px] text-amber-500/80">
           <div className="font-semibold mb-0.5">This queue stores proposed commands only.</div>
           <div className="text-[9px] text-amber-500/70">It does not call OpenClaw and does not execute browser actions. All data is stored locally.</div>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <Shield className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-[10px] text-primary/80">
+          <div className="font-semibold mb-0.5">Execution Eligibility is preview-only.</div>
+          <div className="text-[9px] text-primary/70">It does not execute commands or call OpenClaw. Use it to understand which proposals could be executed in the future when the execution bridge is enabled.</div>
         </div>
       </div>
 
@@ -876,6 +1032,7 @@ export default function OpenClawCommandProposalQueue() {
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Risk</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Approval</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Validation</th>
+                <th className="text-left px-3 py-2 font-semibold text-foreground">Eligibility</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Expires In</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Status</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Proposed</th>
