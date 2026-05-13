@@ -760,8 +760,6 @@ export default function OpenClawCommandProposalQueue() {
             previousValidationResult: oldValidation.status,
             nextValidationResult: newValidation.status,
             validationMessages: newValidation.errors.length > 0 ? newValidation.errors : newValidation.warnings,
-            previousValidationResult: oldValidation.status,
-            nextValidationResult: newValidation.status,
           })
         );
       }
