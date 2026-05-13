@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Phase1BridgePreviewTester from './Phase1BridgePreviewTester';
 import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp, Copy, AlertTriangle, Clock } from 'lucide-react';
 
 const REQUEST_SCHEMA = {
@@ -576,6 +577,13 @@ function BridgeRequestBuilder() {
         </div>
       )}
 
+      {/* Phase 1 Backend Route Tester */}
+      {bridgeRequest && (
+        <div className="border border-amber-500/20 rounded-lg bg-amber-500/5 p-4">
+          <Phase1BridgePreviewTester proposal={bridgeRequest} />
+        </div>
+      )}
+
       {/* Generated Bridge Request Preview */}
       {bridgeRequest && (
         <div className="border border-primary/20 rounded-lg bg-primary/5 overflow-hidden">
@@ -988,11 +996,11 @@ function BridgeRequestBuilder() {
 
           {/* Row 6: Future - Disabled */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center gap-2 px-3 py-2 bg-slate-500/10 border border-slate-500/20 rounded opacity-60">
-              <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
               <div className="text-[10px]">
-                <div className="font-semibold text-slate-400">Backend Bridge</div>
-                <div className="text-[8px] text-slate-500">FUTURE · DISABLED</div>
+                <div className="font-semibold text-foreground">Backend Bridge</div>
+                <div className="text-[8px] text-primary">PHASE 1 · VALIDATION ONLY</div>
               </div>
             </div>
             <div className="flex items-center gap-2 px-3 py-2 bg-slate-500/10 border border-slate-500/20 rounded opacity-60">
@@ -1090,11 +1098,11 @@ function BridgeRequestBuilder() {
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div>
                   <div className="text-[10px] font-semibold text-foreground">Phase 1: Backend Route Scaffold</div>
-                  <div className="text-[9px] text-slate-400 mt-1">Create backend route that accepts bridge requests and returns validation result.</div>
+                  <div className="text-[9px] text-slate-400 mt-1">Backend function <code className="text-primary text-[8px]">openclawBridgePreview</code> deployed. POST /api/openclaw/bridge/preview — DRY_RUN_ONLY, validation only.</div>
                 </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded whitespace-nowrap">
-                  <Clock className="w-3 h-3 text-amber-500" />
-                  <span className="text-[8px] font-semibold text-amber-500">NEXT</span>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 border border-primary/30 rounded whitespace-nowrap">
+                  <CheckCircle2 className="w-3 h-3 text-primary" />
+                  <span className="text-[8px] font-semibold text-primary">IMPLEMENTED</span>
                 </div>
               </div>
             </div>
@@ -1317,8 +1325,8 @@ function BridgeRequestBuilder() {
               <div className="text-primary font-semibold mb-0.5">✓ COMPLETE</div>
               <div className="text-slate-400 text-[8px]">Phase 0</div>
             </div>
-            <div className="bg-amber-500/5 border border-amber-500/20 px-2.5 py-1.5 rounded">
-              <div className="text-amber-500 font-semibold mb-0.5">⏳ NEXT</div>
+            <div className="bg-primary/5 border border-primary/20 px-2.5 py-1.5 rounded">
+              <div className="text-primary font-semibold mb-0.5">✓ IMPLEMENTED</div>
               <div className="text-slate-400 text-[8px]">Phase 1</div>
             </div>
             <div className="bg-slate-500/5 border border-slate-500/20 px-2.5 py-1.5 rounded">
@@ -1337,7 +1345,7 @@ function BridgeRequestBuilder() {
       <div className="border border-border/50 rounded-lg bg-card p-5 space-y-4">
         <div>
           <div className="text-[11px] font-semibold text-foreground uppercase tracking-widest mb-2">Phase 1 Backend Route Scaffold Spec</div>
-          <div className="text-[9px] text-slate-400 mb-4">This is a route scaffold specification only. No backend route is created here.</div>
+          <div className="text-[9px] text-slate-400 mb-4">Backend function <code className="text-primary">openclawBridgePreview</code> is deployed. Route is active at POST /api/openclaw/bridge/preview. DRY_RUN_ONLY — no OpenClaw calls, no execution.</div>
         </div>
 
         {/* Warning Banner */}
@@ -1345,7 +1353,7 @@ function BridgeRequestBuilder() {
           <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-[9px] text-amber-500">
             <span className="font-semibold">This specification is for Phase 1 implementation only.</span>
-            <span className="block text-amber-500/70 mt-0.5">No route exists yet. This defines the contract to build from.</span>
+            <span className="block text-amber-500/70 mt-0.5">Route is now live as openclawBridgePreview. It validates only — no OpenClaw calls, no execution.</span>
           </div>
         </div>
 
@@ -1654,8 +1662,8 @@ function BridgeRequestBuilder() {
         {/* Status */}
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-amber-500" />
-          <span className="text-[9px] text-amber-500 font-semibold">PHASE 1 NEXT</span>
-          <span className="text-[9px] text-slate-400">· Spec complete, ready for backend implementation</span>
+          <span className="text-[9px] text-primary font-semibold">PHASE 1 IMPLEMENTED</span>
+          <span className="text-[9px] text-slate-400">· Route deployed as openclawBridgePreview · DRY_RUN_ONLY</span>
         </div>
       </div>
 
