@@ -543,6 +543,182 @@ export default function Phase4HmacPlan() {
           </div>
         </div>
 
+        {/* Phase 4C Signer Endpoint Implementation Checklist */}
+        <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg overflow-hidden">
+          <div className="px-3 py-2 border-b border-amber-500/20 bg-amber-500/10">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div>
+                <div className="text-[9px] font-semibold text-foreground">Phase 4C: Signer Endpoint Implementation Checklist</div>
+                <div className="text-[8px] text-amber-500/80 mt-0.5">Read-only checklist. Defines exact Phase 4C route spec before implementation. POST /api/openclaw/bridge/signer — signing only, no execution.</div>
+              </div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded whitespace-nowrap">
+                <span className="text-[7px] font-semibold text-amber-500">CHECKLIST_ONLY</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="px-3 py-2 space-y-2">
+            {/* Route Definition */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-amber-500 uppercase tracking-wider">Route Definition</div>
+              <div className="text-[8px] text-foreground font-mono space-y-0.5">
+                <div className="bg-secondary/30 px-1.5 py-1 rounded">POST /api/openclaw/bridge/signer</div>
+              </div>
+              <div className="text-[8px] text-slate-500 mt-1">
+                Server-side signing endpoint. No OpenClaw calls. No execution. Dry-run only.
+              </div>
+            </div>
+
+            {/* Request Body */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-amber-500 uppercase tracking-wider">Required Request Body Fields</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ bridgeRequest (object)</div>
+                <div>☐ previewHash (string)</div>
+                <div>☐ operatorId (string)</div>
+                <div>☐ submittedAt (ISO timestamp)</div>
+              </div>
+            </div>
+
+            {/* Pre-Sign Validations */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-amber-500 uppercase tracking-wider">Pre-Sign Validations (19 checks)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ Body exists</div>
+                <div>☐ bridgeRequest exists</div>
+                <div>☐ previewHash exists</div>
+                <div>☐ operatorId exists</div>
+                <div>☐ submittedAt exists</div>
+                <div>☐ Phase 1 validation rules pass</div>
+                <div>☐ Phase 2 policy gate passes</div>
+                <div>☐ Replay protection passes (or signer-specific replay defined)</div>
+                <div>☐ HMAC secret is configured</div>
+                <div>☐ Proposal/request not expired</div>
+                <div>☐ dryRun === true</div>
+                <div>☐ liveExecution === false</div>
+                <div>☐ governanceMode === SAFE_REQUIRES_APPROVAL</div>
+                <div>☐ approvalStatus === APPROVED</div>
+                <div>☐ validationResult === PASS</div>
+                <div>☐ executionEligibility === ELIGIBLE_PREVIEW</div>
+                <div>☐ commandType in [READ, NAVIGATE, EXTRACT, VERIFY]</div>
+                <div>☐ riskTier in [LOW, MEDIUM]</div>
+                <div>☐ targetUrl allowlisted & no suspicious path keywords</div>
+              </div>
+            </div>
+
+            {/* Signing Logic */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-amber-500 uppercase tracking-wider">Signing Logic (6 steps)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>1. ☐ Generate signedAt server-side (current UTC time)</div>
+                <div>2. ☐ Set signingVersion to OPENCLAW_BRIDGE_V1</div>
+                <div>3. ☐ Rebuild canonical payload (Phase 4B field order immutable)</div>
+                <div>4. ☐ Compute HMAC-SHA256 with OPENCLAW_BRIDGE_HMAC_SECRET</div>
+                <div>5. ☐ Return signature + signed request payload</div>
+                <div>6. ☐ Never expose secret, never expose internals</div>
+              </div>
+            </div>
+
+            {/* Response Body */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-amber-500 uppercase tracking-wider">Response Body Fields</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ signingAllowed (boolean)</div>
+                <div>☐ rejectedReason (string or null)</div>
+                <div>☐ signerAuditId (string)</div>
+                <div>☐ signedRequest (if allowed, includes signature + signedAt + signingVersion)</div>
+                <div>☐ signingVersion (OPENCLAW_BRIDGE_V1)</div>
+                <div>☐ signatureMode (REAL_HMAC_VALIDATION)</div>
+                <div>☐ signedAt (ISO timestamp)</div>
+                <div>☐ note: "Signing only. No OpenClaw call was made."</div>
+              </div>
+            </div>
+
+            {/* Audit Record Fields */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-amber-500 uppercase tracking-wider">Audit Record - Must Include (15 fields)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ signerAuditId</div>
+                <div>☐ requestId</div>
+                <div>☐ proposalId</div>
+                <div>☐ operatorId</div>
+                <div>☐ signingAllowed (boolean)</div>
+                <div>☐ rejectedReason (null if allowed)</div>
+                <div>☐ commandType</div>
+                <div>☐ riskTier</div>
+                <div>☐ targetUrl</div>
+                <div>☐ previewHash</div>
+                <div>☐ signingVersion</div>
+                <div>☐ signatureMode</div>
+                <div>☐ signedAt (if signed)</div>
+                <div>☐ secretExposed: false (hardcoded)</div>
+                <div>☐ createdAt</div>
+              </div>
+            </div>
+
+            {/* Audit Record - Must NOT Include */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-destructive uppercase tracking-wider">Audit Record - Must NOT Include</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>✗ OPENCLAW_BRIDGE_HMAC_SECRET (ever)</div>
+                <div>✗ raw inputText (sensitive data)</div>
+                <div>✗ computed HMAC signature internals</div>
+                <div>✗ secret-derived debugging material</div>
+              </div>
+            </div>
+
+            {/* UI Requirements */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-amber-500 uppercase tracking-wider">UI Components Required</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ Signer endpoint tester panel</div>
+                <div>☐ Signed request preview (JSON display)</div>
+                <div>☐ Signer audit log (show latest 25 records)</div>
+                <div>☐ Warning banner: "Signing only. No OpenClaw execution."</div>
+              </div>
+            </div>
+
+            {/* Safety & Execution Constraints */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-destructive uppercase tracking-wider">Safety & Execution Constraints (8 items)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>☐ Do NOT call OpenClaw during signing</div>
+                <div>☐ Do NOT execute any actions</div>
+                <div>☐ Do NOT mutate database state beyond audit records</div>
+                <div>☐ Signing is read-only operation only</div>
+                <div>☐ Never expose secret in response</div>
+                <div>☐ Never expose HMAC computation internals</div>
+                <div>☐ signedAt must be server-side generated (not client time)</div>
+                <div>☐ Canonical payload field order must match Phase 4B immutable order</div>
+              </div>
+            </div>
+
+            {/* Status Badges */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-amber-500 uppercase tracking-wider">Implementation Status</div>
+              <div className="flex flex-wrap gap-1">
+                <div className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-[7px] font-semibold text-amber-500">
+                  CHECKLIST_ONLY
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SIGNER_NOT_IMPLEMENTED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SPEC_LOCKED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  EXECUTION_DISABLED
+                </div>
+              </div>
+            </div>
+
+            {/* Info Note */}
+            <div className="text-[8px] text-amber-500/80 border-t border-amber-500/20 pt-1.5 mt-1.5">
+              This checklist locks Phase 4C implementation requirements. All 40+ items must be verified before signer endpoint goes live. No signer endpoint created yet. Signing will be server-only, no OpenClaw calls, no execution.
+            </div>
+          </div>
+        </div>
+
         {/* Phase 4D HMAC Test Cases Spec */}
         <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden">
           <div className="px-3 py-2 border-b border-slate-500/20 bg-slate-500/10">
