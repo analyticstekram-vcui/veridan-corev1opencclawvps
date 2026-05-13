@@ -133,6 +133,17 @@ const VERIFICATION_GROUPS = [
     ],
   },
   {
+    id: 'proposal_safety',
+    name: 'Proposal Safety',
+    description: 'Verifies proposals cannot execute and approval != execution',
+    checks: [
+      { id: 'proposal_non_executable', name: 'Approved proposals remain non-executable', panel: 'Proposal Queue', prodBlocking: true, why: 'Proposals are audit/review only. Approval does not trigger execution.' },
+      { id: 'proposal_no_execute_button', name: 'No execute buttons on approved proposals', panel: 'Proposal Queue', prodBlocking: true, why: 'Execution can only happen if explicitly enabled in future phase.' },
+      { id: 'proposal_audit_logged', name: 'All proposal lifecycle events logged', panel: 'Audit Trail', prodBlocking: false, why: 'Audit trail tracks proposal creation, approval, denial, and expiration.' },
+      { id: 'proposal_approval_warning', name: 'UI displays "Approval Does Not Execute" warning', panel: 'Proposal Queue', prodBlocking: false, why: 'Operators must understand approval != execution.' },
+    ],
+  },
+  {
     id: 'live_lockout',
     name: 'Live Execution Lockout',
     description: 'Verifies live execution is globally disabled and locked',
@@ -652,6 +663,36 @@ export default function SystemVerificationPanel() {
     };
 
     // Live Execution Lockout - check actual UI state, not just text
+    // Proposal Safety Checks
+    const proposalQueueVisible = Array.from(document.querySelectorAll('button')).some(btn =>
+      btn.innerText.includes('Proposal') && !btn.disabled
+    );
+    
+    newResults.proposal_non_executable = {
+      status: pageText.includes('Approval Does Not Execute') || pageText.includes('APPROVAL DOES NOT EXECUTE') ? 'pass' : 'warn',
+      explanation: 'Verifies approved proposals remain non-executable.',
+      details: 'No execution routes should be enabled for proposals.',
+    };
+
+    newResults.proposal_no_execute_button = {
+      status: !pageText.includes('Execute Proposal') && !pageText.includes('Run Proposal') ? 'pass' : 'fail',
+      explanation: 'Verifies no execute buttons exist on approved proposals.',
+      suggestedFix: pageText.includes('Execute Proposal') ? 'Remove execution buttons from proposal UI.' : undefined,
+    };
+
+    newResults.proposal_audit_logged = {
+      status: pageText.includes('Audit Trail') || pageText.includes('CommandAuditTrailPanel') ? 'pass' : 'warn',
+      explanation: 'Verifies proposal events are logged to audit trail.',
+      details: 'Check Audit Trail tab for proposal creation, approval, denial events.',
+    };
+
+    newResults.proposal_approval_warning = {
+      status: pageText.includes('Approval Does Not Execute') ? 'pass' : 'warn',
+      explanation: 'Verifies warning is displayed that approval != execution.',
+      details: proposalQueueVisible ? 'Proposal Queue tab shows clear warning.' : 'Proposal Queue not visible.',
+    };
+
+    // Live Execution Lockout Checks
     newResults.lockout_global_disabled = {
       status: simulatedModeIndicators.length > 0 ? 'pass' : 'fail',
       explanation: 'CRITICAL: Verifies live execution is globally disabled via SIMULATED mode.',

@@ -2,83 +2,105 @@
   "name": "OpenClawProposal",
   "type": "object",
   "properties": {
-    "prompt": {
+    "requestId": {
       "type": "string",
-      "description": "Natural language input from user"
+      "description": "Unique request identifier for the proposal"
     },
-    "context": {
+    "proposedBy": {
+      "type": "string",
+      "description": "Email of the operator who created this proposal"
+    },
+    "commandType": {
+      "type": "string",
+      "enum": [
+        "READ",
+        "VERIFY",
+        "NAVIGATE_READ_ONLY",
+        "SNAPSHOT",
+        "EXPORT_LOG",
+        "PROPOSE_WORKFLOW"
+      ],
+      "description": "Type of command being proposed"
+    },
+    "target": {
+      "type": "string",
+      "description": "Target system or resource (e.g., gateway, browser, audit log)"
+    },
+    "selector": {
+      "type": "string",
+      "description": "CSS selector or element identifier if applicable"
+    },
+    "url": {
+      "type": "string",
+      "description": "URL target if applicable"
+    },
+    "payloadPreview": {
       "type": "object",
-      "description": "Optional context: entityScope, timeframe, etc."
+      "description": "Safe preview of the proposed command payload (no credentials, tokens, or sensitive data)"
     },
-    "proposalId": {
-      "type": "string"
-    },
-    "steps": {
-      "type": "array",
-      "items": {
-        "type": "object"
-      }
-    },
-    "rationale": {
-      "type": "string"
-    },
-    "estimatedRisk": {
+    "riskTier": {
       "type": "string",
       "enum": [
         "LOW",
         "MEDIUM"
-      ]
+      ],
+      "default": "LOW",
+      "description": "Risk classification for this proposal"
     },
-    "estimatedLatency": {
-      "type": "number",
-      "description": "Estimated ms for full workflow"
-    },
-    "requiredApprovals": {
-      "type": "number",
-      "default": 1
-    },
-    "approvalCount": {
-      "type": "number",
-      "default": 0,
-      "description": "Number of distinct approvals received"
-    },
-    "approvers": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "List of distinct approver emails"
+    "policyGate": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL"
+      ],
+      "description": "Policy validation result"
     },
     "status": {
       "type": "string",
       "enum": [
         "DRAFT",
-        "REVIEW",
-        "MULTISIG_PENDING",
+        "PENDING_APPROVAL",
         "APPROVED",
-        "REJECTED",
-        "CONVERTED"
+        "DENIED",
+        "EXPIRED"
       ],
-      "default": "DRAFT"
+      "default": "DRAFT",
+      "description": "Current lifecycle status of the proposal"
     },
-    "createdBy": {
-      "type": "string"
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when proposal was created"
+    },
+    "reviewedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when proposal was reviewed"
     },
     "reviewedBy": {
-      "type": "string"
+      "type": "string",
+      "description": "Email of the reviewer/approver"
     },
-    "convertedWorkflowId": {
-      "type": "string"
+    "reviewNote": {
+      "type": "string",
+      "description": "Reviewer's notes on approval or denial"
     },
-    "auditLog": {
-      "type": "array",
-      "items": {
-        "type": "object"
-      }
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional expiration timestamp for the proposal"
+    },
+    "auditTraceId": {
+      "type": "string",
+      "description": "Reference to audit trail entries for this proposal"
     }
   },
   "required": [
-    "prompt",
-    "createdBy"
+    "requestId",
+    "proposedBy",
+    "commandType",
+    "target",
+    "status",
+    "createdAt"
   ]
 }

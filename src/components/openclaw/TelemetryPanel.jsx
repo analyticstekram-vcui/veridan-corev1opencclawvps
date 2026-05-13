@@ -36,9 +36,11 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
   const [lastRefresh, setLastRefresh] = useState(null);
   const [ackLoading, setAckLoading] = useState(false);
   const [gatewayHealth, setGatewayHealth] = useState(null);
+  const [proposalStats, setProposalStats] = useState(null);
   const pingRef = useRef(null);
   const pollRef = useRef(null);
   const gwPollRef = useRef(null);
+  const propPollRef = useRef(null);
 
   const fetchSnapshot = useCallback(async () => {
     try {
@@ -73,10 +75,30 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
       fetchGatewayConnectorHealth().then(setGatewayHealth);
     }, 10_000);
 
+    // Fetch proposal statistics every 15s
+    const fetchProposalStats = async () => {
+      try {
+        const res = await base44.functions.invoke('openclawProposalManagement', { action: 'list' });
+        const proposals = res.data?.proposals || [];
+        setProposalStats({
+          total: proposals.length,
+          draft: proposals.filter(p => p.status === 'DRAFT').length,
+          pending: proposals.filter(p => p.status === 'PENDING_APPROVAL').length,
+          approved: proposals.filter(p => p.status === 'APPROVED').length,
+          denied: proposals.filter(p => p.status === 'DENIED').length,
+        });
+      } catch (err) {
+        console.error('Failed to fetch proposal stats:', err);
+      }
+    };
+    fetchProposalStats();
+    propPollRef.current = setInterval(fetchProposalStats, 15_000);
+
     return () => {
       clearInterval(pollRef.current);
       clearInterval(pingRef.current);
       if (gwPollRef.current) clearInterval(gwPollRef.current);
+      if (propPollRef.current) clearInterval(propPollRef.current);
     };
   }, [fetchSnapshot, executionMode]);
 
@@ -205,6 +227,40 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
         </div>
       )}
 
+      {/* Proposal Statistics */}
+      {proposalStats && (
+        <div className="border border-border/50 rounded-lg p-3 bg-secondary/10">
+          <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">
+            Command Proposals (Non-Executable)
+          </div>
+          <div className="grid grid-cols-5 gap-2 text-[9px]">
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded text-center">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Total</div>
+              <div className="font-semibold text-foreground text-[12px]">{proposalStats.total}</div>
+            </div>
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded text-center">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Draft</div>
+              <div className="font-semibold text-slate-400 text-[12px]">{proposalStats.draft}</div>
+            </div>
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded text-center">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Pending</div>
+              <div className="font-semibold text-amber-500 text-[12px]">{proposalStats.pending}</div>
+            </div>
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded text-center">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Approved</div>
+              <div className="font-semibold text-primary text-[12px]">{proposalStats.approved}</div>
+            </div>
+            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded text-center">
+              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Denied</div>
+              <div className="font-semibold text-destructive text-[12px]">{proposalStats.denied}</div>
+            </div>
+          </div>
+          <div className="text-[8px] text-muted-foreground/60 border-t border-border/30 mt-2 pt-2">
+            All proposals remain non-executable. Approval does not execute. Execution requires explicit future authorization.
+          </div>
+        </div>
+      )}
+
       {/* Live Stream */}
       <div>
         <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Live Event Stream</div>
@@ -212,7 +268,7 @@ export default function TelemetryPanel({ executionMode = 'SIMULATED', gatewayOnl
       </div>
 
       <div className="text-[9px] text-slate-400 text-center uppercase tracking-widest font-semibold">
-        Telemetry is read-only · No control actions · Polling every {POLL_MS / 1000}s · Gateway health updates every 10s
+        Telemetry is read-only · No control actions · Polling every {POLL_MS / 1000}s · Gateway health every 10s · Proposals every 15s
       </div>
     </div>
   );

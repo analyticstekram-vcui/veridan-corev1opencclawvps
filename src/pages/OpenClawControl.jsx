@@ -41,6 +41,7 @@ import OpenClawGatewayConnectorPanel from '@/components/openclaw/OpenClawGateway
 
 const TABS = [
   { id: 'gateway_connector', label: '🔌 Gateway Connector' },
+  { id: 'proposal_queue', label: '✉️ Proposal Queue' },
   { id: 'system_verify', label: '✓ System Verify' },
   { id: 'audit_trail', label: '🔐 Audit Trail' },
   { id: 'overview', label: '📊 Overview' },
@@ -212,6 +213,10 @@ export default function OpenClawControl() {
 
         {activeView === 'gateway_connector' && (
           <div className="p-6"><OpenClawGatewayConnectorPanel /></div>
+        )}
+
+        {activeView === 'proposal_queue' && (
+          <div className="p-6"><OpenClawCommandProposalQueue /></div>
         )}
 
         {activeView === 'system_verify' && (
