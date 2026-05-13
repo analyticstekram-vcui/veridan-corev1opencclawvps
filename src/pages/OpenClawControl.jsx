@@ -45,6 +45,7 @@ import VaultExportVerification from '@/components/openclaw/VaultExportVerificati
 import FinalDeploymentLock from '@/components/openclaw/FinalDeploymentLock';
 import OpenClawBaselineArchive from '@/components/openclaw/OpenClawBaselineArchive';
 import OpenClawControlTower from '@/components/openclaw/OpenClawControlTower';
+import OperatorDashboard from '@/components/openclaw/OperatorDashboard';
 
 // Tab groups for organized navigation
 const TAB_GROUPS = {
@@ -138,7 +139,6 @@ export default function OpenClawControl() {
   // Listen for navigation events dispatched by child panels (e.g. quick links in Overview)
   useEffect(() => {
     const handler = (e) => {
-      console.log('TAB NAVIGATE EVENT', e.detail);
       setActiveView(e.detail);
     };
     window.addEventListener('openclaw:navigate', handler);
@@ -308,7 +308,7 @@ export default function OpenClawControl() {
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}>
 
         {activeView === 'control_tower' && (
-          <div className="p-6"><OpenClawControlTower /></div>
+          <div className="p-6"><OperatorDashboard /></div>
         )}
 
         {activeView === 'gateway_connector' && (
