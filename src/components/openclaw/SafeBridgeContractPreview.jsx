@@ -1333,6 +1333,209 @@ function BridgeRequestBuilder() {
         </div>
       </div>
 
+      {/* Phase 1 Backend Route Scaffold Spec */}
+      <div className="border border-border/50 rounded-lg bg-card p-5 space-y-4">
+        <div>
+          <div className="text-[11px] font-semibold text-foreground uppercase tracking-widest mb-2">Phase 1 Backend Route Scaffold Spec</div>
+          <div className="text-[9px] text-slate-400 mb-4">This is a route scaffold specification only. No backend route is created here.</div>
+        </div>
+
+        {/* Warning Banner */}
+        <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="text-[9px] text-amber-500">
+            <span className="font-semibold">This specification is for Phase 1 implementation only.</span>
+            <span className="block text-amber-500/70 mt-0.5">No route exists yet. This defines the contract to build from.</span>
+          </div>
+        </div>
+
+        {/* Route Definition */}
+        <div className="space-y-2">
+          <div className="text-[10px] font-semibold text-foreground uppercase tracking-widest">Route Definition</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[9px]">
+            <div className="bg-secondary/30 border border-border/30 px-3 py-2 rounded">
+              <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">METHOD</div>
+              <div className="text-foreground font-mono font-semibold">POST</div>
+            </div>
+            <div className="bg-secondary/30 border border-border/30 px-3 py-2 rounded">
+              <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">ROUTE</div>
+              <div className="text-foreground font-mono text-[8px]">/api/openclaw/bridge/preview</div>
+            </div>
+            <div className="bg-secondary/30 border border-border/30 px-3 py-2 rounded">
+              <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">MODE</div>
+              <div className="text-foreground font-semibold">DRY_RUN_ONLY</div>
+            </div>
+            <div className="bg-secondary/30 border border-border/30 px-3 py-2 rounded">
+              <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">EXECUTION</div>
+              <div className="text-destructive font-semibold">DISABLED</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Request Body */}
+        <div className="space-y-2">
+          <div className="text-[10px] font-semibold text-foreground uppercase tracking-widest">Expected Request Body</div>
+          <div className="border border-border/50 rounded bg-card/30 overflow-x-auto">
+            <pre className="text-[8px] font-mono text-foreground/70 p-3 whitespace-pre-wrap break-words">
+{`{
+  "bridgeRequest": {
+    "requestId": "uuid",
+    "proposalId": "string",
+    "bundleHash": "sha256-hex",
+    "commandType": "READ|NAVIGATE|EXTRACT|VERIFY",
+    "targetUrl": "https://...",
+    "selector": "string (optional)",
+    "reason": "string",
+    "riskTier": "LOW|MEDIUM|HIGH|CRITICAL",
+    "approvalStatus": "APPROVED",
+    "validationResult": "PASS",
+    "executionEligibility": "ELIGIBLE_PREVIEW",
+    "proposedBy": "email",
+    "approvedBy": "email",
+    "proposedAt": "ISO-8601",
+    "approvedAt": "ISO-8601",
+    "expirationAt": "ISO-8601",
+    "governanceMode": "SAFE_REQUIRES_APPROVAL",
+    "dryRun": true,
+    "liveExecution": false
+  },
+  "previewHash": "sha256-hex",
+  "operatorId": "email",
+  "submittedAt": "ISO-8601"
+}`}
+            </pre>
+          </div>
+        </div>
+
+        {/* Server-side Validations */}
+        <div className="space-y-2">
+          <div className="text-[10px] font-semibold text-foreground uppercase tracking-widest">Server-side Validations</div>
+          <div className="space-y-1">
+            {[
+              { check: 'request body exists', critical: true },
+              { check: 'bridgeRequest exists', critical: true },
+              { check: 'previewHash exists', critical: true },
+              { check: 'operatorId exists', critical: true },
+              { check: 'submittedAt exists', critical: true },
+              { check: 'bridgeRequest.dryRun === true', critical: true },
+              { check: 'bridgeRequest.liveExecution === false', critical: true },
+              { check: 'bridgeRequest.governanceMode === SAFE_REQUIRES_APPROVAL', critical: true },
+              { check: 'bridgeRequest.approvalStatus === APPROVED', critical: true },
+              { check: 'bridgeRequest.validationResult === PASS', critical: true },
+              { check: 'bridgeRequest.executionEligibility === ELIGIBLE_PREVIEW', critical: true },
+              { check: 'bridgeRequest.expirationAt is in the future', critical: true },
+              { check: 'targetUrl starts with https://', critical: true },
+              { check: 'targetUrl domain is allowlisted', critical: true },
+            ].map((v, i) => (
+              <div key={i} className={`flex items-start gap-2 px-3 py-2 border rounded text-[9px] ${
+                v.critical ? 'bg-destructive/5 border-destructive/20' : 'bg-card/50 border-border/30'
+              }`}>
+                <div className={`shrink-0 mt-0.5 ${v.critical ? 'text-destructive' : 'text-primary'}`}>
+                  {v.critical ? <AlertCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                </div>
+                <div className={`${v.critical ? 'text-destructive' : 'text-primary'}`}>
+                  {v.check}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Response Body */}
+        <div className="space-y-2">
+          <div className="text-[10px] font-semibold text-foreground uppercase tracking-widest">Expected Response Body</div>
+          <div className="border border-border/50 rounded bg-card/30 overflow-x-auto">
+            <pre className="text-[8px] font-mono text-foreground/70 p-3 whitespace-pre-wrap break-words">
+{`{
+  "accepted": boolean,
+  "rejectedReason": "string or null",
+  "requestId": "echo of request ID",
+  "bridgeMode": "DRY_RUN_ONLY",
+  "executionStatus": "NOT_EXECUTED",
+  "auditId": "unique audit trail identifier",
+  "receivedAt": "ISO-8601 (server time)",
+  "validatedAt": "ISO-8601 (validation completion)"
+}`}
+            </pre>
+          </div>
+        </div>
+
+        {/* Example Responses */}
+        <div className="space-y-2">
+          <div className="text-[10px] font-semibold text-foreground uppercase tracking-widest">Example Responses</div>
+          
+          {/* Accepted Response */}
+          <div className="border border-primary/20 bg-primary/5 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-primary/20">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                <span className="text-[10px] font-semibold text-foreground">✓ Accepted Response</span>
+              </div>
+            </div>
+            <div className="px-4 py-3">
+              <pre className="text-[8px] font-mono text-foreground/70 overflow-x-auto whitespace-pre-wrap break-words">
+{`{
+  "accepted": true,
+  "rejectedReason": null,
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "bridgeMode": "DRY_RUN_ONLY",
+  "executionStatus": "NOT_EXECUTED",
+  "auditId": "audit_20260513_12345",
+  "receivedAt": "2026-05-13T14:30:00Z",
+  "validatedAt": "2026-05-13T14:30:01Z"
+}`}
+              </pre>
+            </div>
+          </div>
+
+          {/* Rejected Response */}
+          <div className="border border-destructive/20 bg-destructive/5 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-destructive/20">
+              <div className="flex items-center gap-2">
+                <XCircle className="w-3.5 h-3.5 text-destructive" />
+                <span className="text-[10px] font-semibold text-foreground">✗ Rejected Response</span>
+              </div>
+            </div>
+            <div className="px-4 py-3">
+              <pre className="text-[8px] font-mono text-foreground/70 overflow-x-auto whitespace-pre-wrap break-words">
+{`{
+  "accepted": false,
+  "rejectedReason": "Validation failed: bridgeRequest.expirationAt must be in the future (currently expired)",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "bridgeMode": null,
+  "executionStatus": null,
+  "auditId": "audit_20260513_12346",
+  "receivedAt": "2026-05-13T14:31:00Z",
+  "validatedAt": "2026-05-13T14:31:01Z"
+}`}
+              </pre>
+            </div>
+          </div>
+        </div>
+
+        {/* Implementation Notes */}
+        <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 space-y-2">
+          <div className="text-[10px] font-semibold text-foreground uppercase tracking-widest">Implementation Notes</div>
+          <div className="text-[9px] text-primary/80 space-y-1">
+            <div>• Route must be protected by Cloudflare Access authentication</div>
+            <div>• All validations must pass before returning accepted=true</div>
+            <div>• No OpenClaw integration in Phase 1—validation and logging only</div>
+            <div>• Response must be logged to audit trail with full request/response bodies</div>
+            <div>• All error responses must be logged with rejectedReason for audit trail</div>
+            <div>• Future phases will extend this route with dry-run execution and live execution gates</div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="border-t border-border/30 pt-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-500" />
+            <span className="text-[9px] text-amber-500 font-semibold">PHASE 1 NEXT</span>
+            <span className="text-[9px] text-slate-400">· Ready for implementation</span>
+          </div>
+        </div>
+      </div>
+
       {/* Info Banner */}
       <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg text-[9px] text-primary/80">
         <Shield className="w-3 h-3 shrink-0 mt-0.5" />
