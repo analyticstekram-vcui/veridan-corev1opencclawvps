@@ -100,7 +100,7 @@ export default function Phase4HmacPlan() {
           <div className="text-[9px] text-slate-400 space-y-1">
             <div className="text-[8px] text-slate-500">
               <div className="font-semibold text-foreground mb-1">Phase 4A: Secret Configuration Check</div>
-              Add environment variable configuration validation. Verify OPENCLAW_BRIDGE_HMAC_SECRET is loaded and non-empty.<br/><br/>
+              Backend verifies OPENCLAW_BRIDGE_HMAC_SECRET is configured and non-empty. Returns standardized failure response if missing.<br/><br/>
               <div className="font-semibold text-foreground mb-1">Phase 4B: Add HMAC Verifier</div>
               Add real HMAC-SHA256 verifier to openclawBridgePreview dry-run route. Keep signatureMode as REAL_HMAC_VALIDATION flag. Still rejects gracefully without execution.<br/><br/>
               <div className="font-semibold text-foreground mb-1">Phase 4C: Backend Signer Endpoint</div>
@@ -109,6 +109,120 @@ export default function Phase4HmacPlan() {
               Add Phase 4 test suite: valid HMAC, invalid HMAC, stale signedAt with HMAC, future signedAt with HMAC, etc.<br/><br/>
               <div className="font-semibold text-foreground mb-1">Phase 4E: Stabilize and Lock</div>
               Comprehensive audit. Update Phase 3 SignatureGenerator component to use signer endpoint. Lock Phase 4 before Phase 5.
+            </div>
+          </div>
+        </div>
+
+        {/* Phase 4A Secret Configuration Check Spec */}
+        <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden">
+          <div className="px-3 py-2 border-b border-slate-500/20 bg-slate-500/10">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div>
+                <div className="text-[9px] font-semibold text-slate-400">Phase 4A: Secret Configuration Check Spec</div>
+                <div className="text-[8px] text-slate-500 mt-0.5">Future backend check: verify OPENCLAW_BRIDGE_HMAC_SECRET is configured before HMAC verification.</div>
+              </div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                <span className="text-[7px] font-semibold text-slate-400">SPEC_ONLY</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="px-3 py-2 space-y-2">
+            {/* Server-Side Configuration Check */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Server-Side Configuration Check</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>1. Backend loads OPENCLAW_BRIDGE_HMAC_SECRET from environment (startup or request time)</div>
+                <div>2. If env var exists and non-empty → proceed to HMAC verification logic</div>
+                <div>3. If env var missing or empty → return standardized failure response (see below)</div>
+                <div>4. Never expose or return secret value to client in any response</div>
+                <div>5. Never log or include secret in audit records</div>
+              </div>
+            </div>
+
+            {/* Missing Secret Failure Response */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Missing Secret Failure Response</div>
+              <div className="text-[8px] text-slate-500 font-mono space-y-0.5">
+                <div className="bg-secondary/30 px-1.5 py-1 rounded mt-1">
+                  {`{
+  "accepted": false,
+  "rejectedReason": "HMAC_SECRET_NOT_CONFIGURED",
+  "bridgeMode": "DRY_RUN_ONLY",
+  "executionStatus": "REJECTED_NOT_EXECUTED",
+  "signatureMode": "REAL_HMAC_VALIDATION",
+  "note": "HMAC secret missing. No OpenClaw call was made."
+}`}
+                </div>
+              </div>
+            </div>
+
+            {/* Secret Safeguards */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Secret Safeguards</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>✓ Secret never returned in HTTP response</div>
+                <div>✓ Secret never included in audit trail records</div>
+                <div>✓ Secret never logged to console or error messages</div>
+                <div>✓ Secret stored only in environment variables (not hardcoded)</div>
+                <div>✓ Secret never stored in frontend localStorage</div>
+                <div>✓ Secret access is read-only (no modification endpoints)</div>
+              </div>
+            </div>
+
+            {/* Configuration Checklist */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Configuration Checklist</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">☐</span>
+                  <span>Environment variable name defined: OPENCLAW_BRIDGE_HMAC_SECRET</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">☐</span>
+                  <span>Backend checks env var on startup or per-request</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">☐</span>
+                  <span>Missing secret returns standardized rejection response</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">☐</span>
+                  <span>Audit logs redact/exclude secret value entirely</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">☐</span>
+                  <span>No execution enabled if secret check fails</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">☐</span>
+                  <span>Phase 4B (HMAC verifier) blocks until secret is present</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Badges */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Phase 4A Status</div>
+              <div className="flex flex-wrap gap-1">
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SPEC_ONLY
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SECRET_NOT_CREATED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  HMAC_NOT_IMPLEMENTED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  EXECUTION_DISABLED
+                </div>
+              </div>
+            </div>
+
+            {/* Info Note */}
+            <div className="text-[8px] text-slate-500 border-t border-slate-500/20 pt-1.5 mt-1.5">
+              Phase 4A defines the safety mechanism for detecting missing secrets. If OPENCLAW_BRIDGE_HMAC_SECRET is not configured, all HMAC-signed requests are rejected without calling OpenClaw. No execution, no mutation, no action. Fails safely and logs audit trail.
             </div>
           </div>
         </div>
