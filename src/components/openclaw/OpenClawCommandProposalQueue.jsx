@@ -20,6 +20,17 @@ const RISK_COLORS = {
   CRITICAL: 'text-destructive',
 };
 
+// Audit event logging
+const createAuditEvent = (eventType, actor, opts = {}) => ({
+  eventType,
+  timestamp: new Date().toISOString(),
+  actor,
+  previousStatus: opts.previousStatus || null,
+  nextStatus: opts.nextStatus || null,
+  validationResult: opts.validationResult || null,
+  note: opts.note || null,
+});
+
 // Validation logic
 const validateProposal = (proposal) => {
   const errors = [];
@@ -263,7 +274,39 @@ function ValidationBadge({ validation }) {
   return <div className={`text-[8px] px-2 py-0.5 border rounded font-semibold ${cfg.bg} ${cfg.color}`}>{cfg.label}</div>;
 }
 
+function AuditTrailExpanded({ events }) {
+  return (
+    <div className="space-y-1 text-[8px]">
+      {events.map((event, i) => (
+        <div key={i} className="flex items-start gap-2 px-2 py-1 bg-card/50 border border-border/20 rounded">
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-foreground">{event.eventType}</div>
+            <div className="text-foreground/60 mt-0.5">
+              {event.actor && <span>{event.actor} · </span>}
+              <span className="font-mono">{new Date(event.timestamp).toLocaleString()}</span>
+            </div>
+            {event.previousStatus && event.nextStatus && (
+              <div className="text-foreground/60 mt-0.5">
+                {event.previousStatus} → {event.nextStatus}
+              </div>
+            )}
+            {event.validationResult && (
+              <div className="text-foreground/60 mt-0.5">
+                Validation: <span className="font-semibold">{event.validationResult}</span>
+              </div>
+            )}
+            {event.note && (
+              <div className="text-foreground/60 mt-0.5 italic">{event.note}</div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, onSubmitForApproval }) {
+  const [showAudit, setShowAudit] = useState(false);
   const statusCfg = STATUS_CONFIG[proposal.status];
   const StatusIcon = statusCfg.icon;
   const validation = validateProposal(proposal);
@@ -272,7 +315,10 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
 
   return (
     <>
-      <tr className="border-b border-border/20 hover:bg-secondary/20 transition-colors">
+      <tr 
+        className="border-b border-border/20 hover:bg-secondary/20 transition-colors cursor-pointer"
+        onClick={() => setShowAudit(!showAudit)}
+      >
         <td className="px-3 py-2 text-[10px] font-semibold text-foreground">{proposal.commandTitle}</td>
         <td className="px-3 py-2 text-[9px]">
           <span className="text-slate-400">{proposal.commandType}</span>
@@ -371,7 +417,7 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
       {/* Validation messages row */}
       {(validation.errors.length > 0 || validation.warnings.length > 0) && (
         <tr className="border-b border-border/20 bg-secondary/10">
-          <td colSpan="8" className="px-3 py-2">
+          <td colSpan="9" className="px-3 py-2">
             <div className="space-y-1 text-[8px]">
               {validation.errors.map((err, i) => (
                 <div key={i} className="text-destructive flex items-start gap-2">
@@ -389,6 +435,16 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
           </td>
         </tr>
       )}
+
+      {/* Audit trail row */}
+      {showAudit && proposal.auditEvents && proposal.auditEvents.length > 0 && (
+        <tr className="border-b border-border/20 bg-secondary/5">
+          <td colSpan="9" className="px-3 py-2">
+            <div className="text-[9px] font-semibold text-foreground mb-2">Audit Trail</div>
+            <AuditTrailExpanded events={proposal.auditEvents} />
+          </td>
+        </tr>
+      )}
     </>
   );
 }
@@ -397,6 +453,7 @@ export default function OpenClawCommandProposalQueue() {
   const [proposals, setProposals] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [showAuditLog, setShowAuditLog] = useState(false);
 
   // Load proposals from localStorage on mount
   useEffect(() => {
@@ -420,12 +477,21 @@ export default function OpenClawCommandProposalQueue() {
     }
   };
 
+  // Get all audit events across all proposals (latest 25)
+  const getAllAuditEvents = () => {
+    const allEvents = proposals.flatMap(p =>
+      (p.auditEvents || []).map(e => ({ ...e, proposalId: p.id, proposalTitle: p.commandTitle }))
+    );
+    return allEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 25);
+  };
+
   const handleCreateProposal = (formData) => {
     const proposal = {
       ...formData,
       id: Date.now().toString(),
       status: formData.requiresApproval ? 'PENDING_APPROVAL' : 'DRAFT',
       proposedAt: new Date().toISOString(),
+      auditEvents: [createAuditEvent('CREATED', 'User', { nextStatus: formData.requiresApproval ? 'PENDING_APPROVAL' : 'DRAFT' })],
     };
     saveProposals([proposal, ...proposals]);
     setShowForm(false);
@@ -433,29 +499,77 @@ export default function OpenClawCommandProposalQueue() {
 
   const handleSubmitForApproval = (index) => {
     const updated = [...proposals];
-    updated[index] = { ...updated[index], status: 'PENDING_APPROVAL' };
+    const oldStatus = updated[index].status;
+    updated[index] = {
+      ...updated[index],
+      status: 'PENDING_APPROVAL',
+      auditEvents: [
+        ...(updated[index].auditEvents || []),
+        createAuditEvent('SUBMITTED_FOR_APPROVAL', 'User', { previousStatus: oldStatus, nextStatus: 'PENDING_APPROVAL' }),
+      ],
+    };
     saveProposals(updated);
   };
 
   const handleApprove = (index) => {
     const updated = [...proposals];
-    updated[index] = { ...updated[index], status: 'APPROVED' };
+    const oldStatus = updated[index].status;
+    updated[index] = {
+      ...updated[index],
+      status: 'APPROVED',
+      auditEvents: [
+        ...(updated[index].auditEvents || []),
+        createAuditEvent('APPROVED', 'User', { previousStatus: oldStatus, nextStatus: 'APPROVED' }),
+      ],
+    };
     saveProposals(updated);
   };
 
   const handleDeny = (index) => {
     const updated = [...proposals];
-    updated[index] = { ...updated[index], status: 'DENIED' };
+    const oldStatus = updated[index].status;
+    updated[index] = {
+      ...updated[index],
+      status: 'DENIED',
+      auditEvents: [
+        ...(updated[index].auditEvents || []),
+        createAuditEvent('DENIED', 'User', { previousStatus: oldStatus, nextStatus: 'DENIED' }),
+      ],
+    };
     saveProposals(updated);
   };
 
   const handleExpire = (index) => {
     const updated = [...proposals];
-    updated[index] = { ...updated[index], status: 'EXPIRED' };
+    const oldStatus = updated[index].status;
+    updated[index] = {
+      ...updated[index],
+      status: 'EXPIRED',
+      auditEvents: [
+        ...(updated[index].auditEvents || []),
+        createAuditEvent('EXPIRED', 'User', { previousStatus: oldStatus, nextStatus: 'EXPIRED' }),
+      ],
+    };
     saveProposals(updated);
   };
 
   const handleDelete = (index) => {
+    const proposal = proposals[index];
+    // Save deleted draft to separate audit log
+    if (proposal.status === 'DRAFT') {
+      try {
+        const deletedLog = JSON.parse(localStorage.getItem('openclawDeletedProposalAuditLog') || '[]');
+        deletedLog.push({
+          proposalId: proposal.id,
+          proposalTitle: proposal.commandTitle,
+          deletedAt: new Date().toISOString(),
+          event: createAuditEvent('DELETED_DRAFT', 'User', { previousStatus: 'DRAFT' }),
+        });
+        localStorage.setItem('openclawDeletedProposalAuditLog', JSON.stringify(deletedLog));
+      } catch (err) {
+        console.error('Error saving deleted proposal audit:', err);
+      }
+    }
     const updated = proposals.filter((_, i) => i !== index);
     saveProposals(updated);
   };
@@ -518,10 +632,50 @@ export default function OpenClawCommandProposalQueue() {
             </button>
           ))}
         </div>
-        <div className="ml-auto text-[9px] text-slate-400">
+        <button
+          onClick={() => setShowAuditLog(!showAuditLog)}
+          className="ml-auto px-2.5 py-1 text-[9px] border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors rounded font-semibold"
+        >
+          {showAuditLog ? 'Hide' : 'Show'} Global Audit Log
+        </button>
+        <div className="text-[9px] text-slate-400">
           {filteredProposals.length} proposal{filteredProposals.length !== 1 ? 's' : ''} · {proposals.length} total
         </div>
       </div>
+
+      {/* Global Audit Log */}
+      {showAuditLog && (
+        <div className="border border-primary/20 bg-primary/5 rounded-lg p-4 space-y-3">
+          <div className="text-[11px] font-semibold text-foreground uppercase tracking-wider">Global Audit Log — Latest 25 Events</div>
+          <div className="border border-border/50 rounded overflow-x-auto">
+            <table className="w-full text-[8px]">
+              <thead className="border-b border-border/30 bg-secondary/10">
+                <tr>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground">Event Type</th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground">Proposal</th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground">Actor</th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground">Status Transition</th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getAllAuditEvents().map((event, i) => (
+                  <tr key={i} className="border-b border-border/20 hover:bg-secondary/20 transition-colors">
+                    <td className="px-3 py-2 font-semibold text-foreground">{event.eventType}</td>
+                    <td className="px-3 py-2 text-foreground/80 truncate max-w-xs">{event.proposalTitle}</td>
+                    <td className="px-3 py-2 text-foreground/60">{event.actor || '—'}</td>
+                    <td className="px-3 py-2 text-foreground/60">
+                      {event.previousStatus && event.nextStatus ? `${event.previousStatus} → ${event.nextStatus}` : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-foreground/60 font-mono whitespace-nowrap">{new Date(event.timestamp).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="text-[8px] text-primary/70">Global audit events from all proposals. Click on a proposal row to view its full audit trail.</div>
+        </div>
+      )}
 
       {/* Proposals Table */}
       {filteredProposals.length > 0 ? (
