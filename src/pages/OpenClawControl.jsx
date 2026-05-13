@@ -46,6 +46,7 @@ import FinalDeploymentLock from '@/components/openclaw/FinalDeploymentLock';
 import OpenClawBaselineArchive from '@/components/openclaw/OpenClawBaselineArchive';
 import OpenClawControlTower from '@/components/openclaw/OpenClawControlTower';
 import OperatorDashboard from '@/components/openclaw/OperatorDashboard';
+import PersistentHeader from '@/components/navigation/PersistentHeader';
 
 // Tab groups for organized navigation
 const TAB_GROUPS = {
@@ -202,6 +203,9 @@ export default function OpenClawControl() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }} className="bg-background font-mono">
+
+      {/* ── Persistent Header ── */}
+      <PersistentHeader currentPage="Control Tower" />
 
       {/* ── Title bar ── */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 20 }} className="border-b border-border bg-card px-6 py-3 flex items-center gap-3">
