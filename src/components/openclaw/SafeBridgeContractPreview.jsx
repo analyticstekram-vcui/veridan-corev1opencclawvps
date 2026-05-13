@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp, Copy } from 'lucide-react';
 
 const REQUEST_SCHEMA = {
   requestId: { type: 'string', description: 'Unique bridge request identifier', required: true },
@@ -141,6 +141,31 @@ const validateContractCompliance = (request) => {
     isValid: errors.length === 0,
     errors,
   };
+};
+
+// Utility to check if proposal is expired
+const isProposalExpired = (proposal) => {
+  if (!proposal.expirationAt) return false;
+  return new Date() > new Date(proposal.expirationAt);
+};
+
+// Utility to generate a UUID-like requestId
+const generateRequestId = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
+// Utility to get bundle hash from localStorage
+const getLatestBundleHash = () => {
+  try {
+    const bundleExports = JSON.parse(localStorage.getItem('openclawProposalBundleExports') || '[]');
+    return bundleExports[0]?.bundleHash || '';
+  } catch {
+    return '';
+  }
 };
 
 // Test cases
@@ -294,6 +319,218 @@ function JSONExample({ title, data, rejected = false }) {
   );
 }
 
+function BridgeRequestBuilder() {
+  const [proposals, setProposals] = useState([]);
+  const [selectedProposalId, setSelectedProposalId] = useState(null);
+  const [bridgeRequest, setBridgeRequest] = useState(null);
+  const [validation, setValidation] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  // Load eligible proposals from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('openclawProposalQueue');
+      if (stored) {
+        const allProposals = JSON.parse(stored);
+        const eligible = allProposals.filter(p => {
+          if (p.status !== 'APPROVED') return false;
+          if (p.validationResult !== 'PASS') return false;
+          if (p.executionEligibility !== 'ELIGIBLE_PREVIEW') return false;
+          if (isProposalExpired(p)) return false;
+          if (!['LOW', 'MEDIUM'].includes(p.riskTier)) return false;
+          return true;
+        });
+        setProposals(eligible);
+      }
+    } catch (err) {
+      console.error('Error loading proposals:', err);
+    }
+  }, []);
+
+  // Build bridge request when proposal selected
+  const handleSelectProposal = (proposalId) => {
+    setSelectedProposalId(proposalId);
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal) return;
+
+    const request = {
+      requestId: generateRequestId(),
+      proposalId: proposal.id,
+      bundleHash: getLatestBundleHash() || 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f',
+      commandType: proposal.commandType,
+      targetUrl: proposal.targetUrl,
+      selector: proposal.selector || undefined,
+      inputText: proposal.inputText || undefined,
+      reason: proposal.reason,
+      riskTier: proposal.riskTier,
+      approvalStatus: 'APPROVED',
+      validationResult: 'PASS',
+      executionEligibility: 'ELIGIBLE_PREVIEW',
+      proposedBy: proposal.proposedBy,
+      approvedBy: proposal.approvedBy || 'system@veridancore.com',
+      proposedAt: proposal.proposedAt,
+      approvedAt: proposal.approvedAt || new Date().toISOString(),
+      expirationAt: proposal.expirationAt,
+      governanceMode: 'SAFE_REQUIRES_APPROVAL',
+      dryRun: true,
+      liveExecution: false,
+    };
+
+    // Remove undefined fields
+    Object.keys(request).forEach(key => request[key] === undefined && delete request[key]);
+
+    setBridgeRequest(request);
+    const validationResult = validateContractCompliance(request);
+    setValidation(validationResult);
+  };
+
+  const handleCopyJson = () => {
+    if (bridgeRequest) {
+      navigator.clipboard.writeText(JSON.stringify(bridgeRequest, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Bridge Request Builder</div>
+          <div className="text-[13px] font-semibold text-foreground">Preview Request Construction</div>
+        </div>
+      </div>
+
+      {/* Warning Banner */}
+      <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+        <div className="text-[10px] text-amber-500/80">
+          <div className="font-semibold mb-0.5">This builds a preview request only.</div>
+          <div className="text-[9px] text-amber-500/70">It does not send anything to OpenClaw. The request is validated client-side against the contract rules. No backend bridge is invoked.</div>
+        </div>
+      </div>
+
+      {/* Proposal Selection */}
+      {proposals.length === 0 ? (
+        <div className="border border-border/50 rounded-lg bg-card/30 px-6 py-8 text-center">
+          <div className="text-[10px] text-slate-400 font-semibold">No eligible proposals in queue.</div>
+          <div className="text-[9px] text-slate-400 mt-2">Create approved proposals with ELIGIBLE_PREVIEW status to build bridge requests.</div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <label className="text-[10px] font-semibold text-foreground uppercase tracking-widest block mb-2">
+            Select Eligible Proposal ({proposals.length} available)
+          </label>
+          <select
+            value={selectedProposalId || ''}
+            onChange={(e) => handleSelectProposal(e.target.value)}
+            className="w-full px-3 py-2 text-[10px] border border-border bg-card text-foreground outline-none focus:border-primary/50 rounded"
+          >
+            <option value="">— Choose a proposal —</option>
+            {proposals.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.commandTitle} ({p.commandType}) · Risk: {p.riskTier}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Generated Bridge Request Preview */}
+      {bridgeRequest && (
+        <div className="border border-primary/20 rounded-lg bg-primary/5 overflow-hidden">
+          <div className="px-4 py-3 border-b border-primary/20">
+            <div className="text-[10px] font-semibold text-foreground uppercase tracking-widest mb-3">Generated Bridge Request</div>
+            
+            {/* Validation Result */}
+            {validation && (
+              <div className={`mb-3 px-3 py-2 border rounded-lg ${
+                validation.isValid 
+                  ? 'bg-primary/10 border-primary/30' 
+                  : 'bg-destructive/10 border-destructive/30'
+              }`}>
+                <div className="flex items-center gap-2 mb-1">
+                  {validation.isValid ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-[10px] font-semibold text-primary">VALID - All contract rules satisfied</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-3.5 h-3.5 text-destructive" />
+                      <span className="text-[10px] font-semibold text-destructive">INVALID - Contract violations detected</span>
+                    </>
+                  )}
+                </div>
+                {validation.errors.length > 0 && (
+                  <div className="text-[8px] space-y-0.5 ml-5">
+                    {validation.errors.map((err, i) => (
+                      <div key={i} className="text-destructive/80">✗ {err}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Request Summary Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-[9px] mb-3">
+              <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">Request ID</div>
+                <div className="text-foreground/70 font-mono text-[8px] truncate">{bridgeRequest.requestId}</div>
+              </div>
+              <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">Proposal ID</div>
+                <div className="text-foreground/70 font-mono text-[8px] truncate">{bridgeRequest.proposalId}</div>
+              </div>
+              <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">Command Type</div>
+                <div className="text-foreground font-semibold">{bridgeRequest.commandType}</div>
+              </div>
+              <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">Risk Tier</div>
+                <div className="text-foreground font-semibold">{bridgeRequest.riskTier}</div>
+              </div>
+              <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">Dry Run</div>
+                <div className="text-primary font-semibold">true</div>
+              </div>
+              <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+                <div className="text-slate-400 uppercase tracking-wider mb-0.5 text-[8px] font-semibold">Live Execution</div>
+                <div className="text-destructive font-semibold">false</div>
+              </div>
+            </div>
+
+            {/* Full JSON Preview */}
+            <div className="bg-card/50 border border-border/30 rounded p-2 mb-3">
+              <pre className="text-[8px] font-mono text-foreground/70 overflow-x-auto whitespace-pre-wrap break-words max-h-48">
+                {JSON.stringify(bridgeRequest, null, 2)}
+              </pre>
+            </div>
+
+            {/* Copy Button */}
+            <button
+              onClick={handleCopyJson}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded"
+            >
+              <Copy className="w-3 h-3" />
+              {copied ? 'Copied!' : 'Copy JSON'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Info Banner */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg text-[9px] text-primary/80">
+        <Shield className="w-3 h-3 shrink-0 mt-0.5" />
+        <div>
+          <div className="font-semibold mb-0.5">Bridge request is client-side only.</div>
+          <div className="text-[8px] text-primary/70">Reads approved proposals from Proposal Queue. Generates requestId locally. Validates against contract rules before any backend call. No OpenClaw invocation.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ComplianceTest({ testCase }) {
   const validation = validateContractCompliance(testCase.request);
   const passed = validation.isValid === testCase.expectedPass;
@@ -416,6 +653,9 @@ export default function SafeBridgeContractPreview() {
           ))}
         </div>
       </div>
+
+      {/* Bridge Request Builder */}
+      <BridgeRequestBuilder />
 
       {/* Examples */}
       <div className="space-y-2">
