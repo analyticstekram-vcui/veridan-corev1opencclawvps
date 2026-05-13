@@ -40,6 +40,7 @@ import OpenClawCommandProposalQueue from '@/components/openclaw/OpenClawCommandP
 import OpenClawGatewayConnectorPanel from '@/components/openclaw/OpenClawGatewayConnectorPanel';
 import ProposalReviewPacketExporter from '@/components/openclaw/ProposalReviewPacketExporter';
 import ProposalReviewPacketVerifier from '@/components/openclaw/ProposalReviewPacketVerifier';
+import AuditEvidenceVault from '@/components/openclaw/AuditEvidenceVault';
 
 const TABS = [
   { id: 'gateway_connector', label: '🔌 Gateway Connector' },
@@ -80,6 +81,7 @@ const TABS = [
   { id: 'secret_enforcement', label: '🔒 Secret Enforcement' },
   { id: 'export_packet', label: '📦 Export Packet' },
   { id: 'verify_packet', label: '🔎 Verify Packet' },
+  { id: 'evidence_vault', label: '🗄️ Evidence Vault' },
 ];
 
 export default function OpenClawControl() {
@@ -364,6 +366,10 @@ export default function OpenClawControl() {
 
         {activeView === 'verify_packet' && (
           <div className="p-6"><ProposalReviewPacketVerifier /></div>
+        )}
+
+        {activeView === 'evidence_vault' && (
+          <div className="p-6"><AuditEvidenceVault /></div>
         )}
 
         {activeView === 'status' && (
