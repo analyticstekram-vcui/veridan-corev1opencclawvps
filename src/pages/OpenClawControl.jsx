@@ -167,11 +167,6 @@ export default function OpenClawControl() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }} className="bg-background font-mono">
 
-      {/* ── DEBUG LINE ── */}
-      <div className="text-[10px] bg-amber-900/20 border-b border-amber-500/30 px-3 py-1 text-amber-500 font-mono">
-        DEBUG: Active View: {activeView}
-      </div>
-
       {/* ── Title bar ── */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 20 }} className="border-b border-border bg-card px-6 py-3 flex items-center gap-3">
         <div className="w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center">

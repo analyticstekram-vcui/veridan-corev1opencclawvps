@@ -293,11 +293,6 @@ export default function OpenClawCommandProposalQueue() {
                   <div>By: {proposal.proposedBy}</div>
                 </div>
 
-                {/* Debug: show normalized proposal object */}
-                <pre className="text-xs text-slate-500 whitespace-pre-wrap bg-secondary/30 border border-border/20 p-2 rounded mt-2">
-                  {JSON.stringify(proposal, null, 2)}
-                </pre>
-
                 {/* Action Buttons */}
                 {proposal.status === 'DRAFT' && (
                   <div className="flex gap-2">
