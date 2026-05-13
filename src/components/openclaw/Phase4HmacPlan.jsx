@@ -520,6 +520,143 @@ export default function Phase4HmacPlan() {
           </div>
         </div>
 
+        {/* Phase 4D HMAC Test Cases Spec */}
+        <div className="border border-slate-500/20 bg-slate-500/5 rounded-lg overflow-hidden">
+          <div className="px-3 py-2 border-b border-slate-500/20 bg-slate-500/10">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div>
+                <div className="text-[9px] font-semibold text-slate-400">Phase 4D: HMAC Test Cases Spec</div>
+                <div className="text-[8px] text-slate-500 mt-0.5">Future deterministic test coverage for verifier and signer. All tests are read-only, no execution.</div>
+              </div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded whitespace-nowrap">
+                <span className="text-[7px] font-semibold text-slate-400">SPEC_ONLY</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="px-3 py-2 space-y-2">
+            {/* Verifier Test Cases */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Verifier Test Cases (9 tests)</div>
+              <div className="text-[8px] text-slate-500 font-mono space-y-0.5">
+                <div className="text-slate-400">1. Missing HMAC_SECRET_NOT_CONFIGURED</div>
+                <div className="text-slate-400">2. Missing signature → SIGNATURE_MISSING</div>
+                <div className="text-slate-400">3. Wrong signingVersion → SIGNING_VERSION_INVALID</div>
+                <div className="text-slate-400">4. signedAt &gt; 5 minutes old → SIGNED_AT_EXPIRED</div>
+                <div className="text-slate-400">5. signedAt &gt; 60 sec future → SIGNED_AT_FUTURE</div>
+                <div className="text-slate-400">6. Invalid HMAC signature → HMAC_SIGNATURE_INVALID</div>
+                <div className="text-slate-400">7. Tampered targetUrl → HMAC_SIGNATURE_INVALID</div>
+                <div className="text-slate-400">8. Tampered riskTier → HMAC_SIGNATURE_INVALID</div>
+                <div className="text-slate-400">9. Valid signature + canonical payload → PASS</div>
+              </div>
+            </div>
+
+            {/* Signer Test Cases */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Signer Test Cases (12 tests)</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div className="text-foreground font-semibold mb-0.5">✓ Can Sign:</div>
+                <div className="ml-2">
+                  <div>1. LOW READ request → SIGNED</div>
+                  <div>2. MEDIUM VERIFY request → SIGNED</div>
+                </div>
+                <div className="text-destructive font-semibold mt-1 mb-0.5">✗ Cannot Sign:</div>
+                <div className="ml-2">
+                  <div>3. CLICK command → REJECTED_WRITE_OPERATION</div>
+                  <div>4. TYPE command → REJECTED_WRITE_OPERATION</div>
+                  <div>5. HIGH risk → REJECTED_RISK_TIER</div>
+                  <div>6. CRITICAL risk → REJECTED_RISK_TIER</div>
+                  <div>7. Expired proposal → REJECTED_EXPIRED</div>
+                  <div>8. Non-allowlisted domain → REJECTED_DOMAIN_NOT_ALLOWLISTED</div>
+                  <div>9. Suspicious path keyword → REJECTED_SUSPICIOUS_PATH</div>
+                </div>
+                <div className="text-slate-400 font-semibold mt-1 mb-0.5">Audit & Safety:</div>
+                <div className="ml-2">
+                  <div>10. Signing attempt creates signer audit record</div>
+                  <div>11. Signing does NOT call OpenClaw</div>
+                  <div>12. Signing does NOT store raw inputText</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Test Case Template */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Test Case Template</div>
+              <div className="text-[8px] text-slate-500 font-mono space-y-0.5">
+                <div className="bg-secondary/30 px-1.5 py-1 rounded">
+                  {`{
+  testName: "string",
+  category: "VERIFIER|SIGNER",
+  inputCondition: "string",
+  expectedOutcome: "PASS|REJECTED",
+  expectedRejectionReason: "string or null",
+  executionExpected: false
+}`}
+                </div>
+              </div>
+            </div>
+
+            {/* Test Execution Rules */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Test Execution Rules</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>• All tests are deterministic (no randomness)</div>
+                <div>• All tests are read-only (no state mutation)</div>
+                <div>• All tests have executionExpected: false</div>
+                <div>• Tests should run against mock/test HMAC secret only</div>
+                <div>• Tests must not call real OpenClaw gateway</div>
+                <div>• Tests must not create real proposals or requests</div>
+                <div>• Tests must clean up audit records after execution</div>
+                <div>• Tests should validate all rejection reasons exactly</div>
+              </div>
+            </div>
+
+            {/* Test Coverage Summary */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Test Coverage Summary</div>
+              <div className="text-[8px] text-slate-500 space-y-0.5">
+                <div>Verifier tests: 9 (all rejection paths + happy path)</div>
+                <div>Signer tests: 12 (safeguards + eligibility checks)</div>
+                <div>Total coverage: 21 deterministic test cases</div>
+                <div className="mt-1">Coverage areas:</div>
+                <div className="ml-2">
+                  <div>• Secret configuration (1 test)</div>
+                  <div>• Signature validation (5 tests)</div>
+                  <div>• Payload tampering detection (2 tests)</div>
+                  <div>• Timestamp validation (2 tests)</div>
+                  <div>• Request eligibility (7 tests)</div>
+                  <div>• Audit trail (2 tests)</div>
+                  <div>• Safety constraints (1 test)</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Badges */}
+            <div className="space-y-1.5 bg-card/50 border border-border/30 px-2 py-1.5 rounded">
+              <div className="text-[8px] font-semibold text-slate-400 uppercase tracking-wider">Phase 4D Status</div>
+              <div className="flex flex-wrap gap-1">
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  SPEC_ONLY
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  TESTS_NOT_IMPLEMENTED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  HMAC_NOT_IMPLEMENTED
+                </div>
+                <div className="px-1.5 py-0.5 bg-slate-500/20 border border-slate-500/30 rounded text-[7px] font-semibold text-slate-400">
+                  EXECUTION_DISABLED
+                </div>
+              </div>
+            </div>
+
+            {/* Info Note */}
+            <div className="text-[8px] text-slate-500 border-t border-slate-500/20 pt-1.5 mt-1.5">
+              Phase 4D defines 21 deterministic test cases covering verifier and signer. All tests are read-only. No execution, no OpenClaw calls, no secret exposure. Test suite validates all rejection paths and happy path scenarios.
+            </div>
+          </div>
+        </div>
+
         {/* Warnings */}
         <div className="border border-destructive/20 bg-destructive/5 rounded px-3 py-2 space-y-1">
           <div className="text-[9px] font-semibold text-destructive uppercase tracking-wider">Critical Warnings</div>
