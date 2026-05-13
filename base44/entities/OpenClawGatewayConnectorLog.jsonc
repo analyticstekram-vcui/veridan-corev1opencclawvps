@@ -1,0 +1,75 @@
+{
+  "name": "OpenClawGatewayConnectorLog",
+  "type": "object",
+  "properties": {
+    "connectorReadId": {
+      "type": "string",
+      "description": "Unique identifier for this gateway read attempt"
+    },
+    "operatorId": {
+      "type": "string",
+      "description": "Email of the operator who triggered the read"
+    },
+    "readType": {
+      "type": "string",
+      "enum": [
+        "health",
+        "version",
+        "status",
+        "capabilities",
+        "session_status",
+        "audit_summary"
+      ],
+      "description": "Type of read operation performed"
+    },
+    "gatewayUrl": {
+      "type": "string",
+      "description": "Gateway URL that was queried"
+    },
+    "success": {
+      "type": "boolean",
+      "description": "Whether the read succeeded"
+    },
+    "httpStatus": {
+      "type": "number",
+      "description": "HTTP status code returned by gateway"
+    },
+    "responseDataSize": {
+      "type": "number",
+      "description": "Size of response data in bytes (not stored, metrics only)"
+    },
+    "errorMessage": {
+      "type": "string",
+      "description": "Error message if read failed"
+    },
+    "gatewayOnline": {
+      "type": "boolean",
+      "description": "Whether gateway was reachable"
+    },
+    "latencyMs": {
+      "type": "number",
+      "description": "Round-trip latency in milliseconds"
+    },
+    "summarySnapshot": {
+      "type": "object",
+      "description": "Safe metadata snapshot of response (no sensitive data, no tokens, no credentials)"
+    },
+    "readAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when read was performed"
+    },
+    "note": {
+      "type": "string",
+      "description": "Standard note indicating read-only gateway diagnostics"
+    }
+  },
+  "required": [
+    "connectorReadId",
+    "readType",
+    "success",
+    "gatewayOnline",
+    "readAt",
+    "note"
+  ]
+}

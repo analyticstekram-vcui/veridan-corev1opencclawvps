@@ -37,8 +37,10 @@ import SecretVaultRegistryPanel from '@/components/openclaw/SecretVaultRegistryP
 import BrokerCredentialVaultPanel from '@/components/openclaw/BrokerCredentialVaultPanel';
 import BackendSecretEnforcementPanel from '@/components/openclaw/BackendSecretEnforcementPanel';
 import OpenClawCommandProposalQueue from '@/components/openclaw/OpenClawCommandProposalQueue';
+import OpenClawGatewayConnectorPanel from '@/components/openclaw/OpenClawGatewayConnectorPanel';
 
 const TABS = [
+  { id: 'gateway_connector', label: '🔌 Gateway Connector' },
   { id: 'system_verify', label: '✓ System Verify' },
   { id: 'audit_trail', label: '🔐 Audit Trail' },
   { id: 'overview', label: '📊 Overview' },
@@ -207,6 +209,10 @@ export default function OpenClawControl() {
 
       {/* ── Panel area ── scrollable, fills remaining height */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}>
+
+        {activeView === 'gateway_connector' && (
+          <div className="p-6"><OpenClawGatewayConnectorPanel /></div>
+        )}
 
         {activeView === 'system_verify' && (
           <div className="p-6"><SystemVerificationPanel /></div>
