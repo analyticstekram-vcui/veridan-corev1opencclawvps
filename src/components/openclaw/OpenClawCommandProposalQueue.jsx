@@ -20,6 +20,81 @@ const RISK_COLORS = {
   CRITICAL: 'text-destructive',
 };
 
+// Validation logic
+const validateProposal = (proposal) => {
+  const errors = [];
+  const warnings = [];
+
+  // Required fields
+  if (!proposal.commandTitle?.trim()) errors.push('Command title is required');
+  if (!proposal.commandType) errors.push('Command type is required');
+  if (!proposal.reason?.trim()) errors.push('Reason is required');
+  if (!proposal.proposedBy?.trim()) errors.push('Proposed by is required');
+  if (!proposal.riskTier) errors.push('Risk tier is required');
+
+  // URL validation
+  const needsUrl = ['NAVIGATE', 'READ', 'EXTRACT', 'CLICK', 'TYPE', 'VERIFY'].includes(proposal.commandType);
+  if (needsUrl && !proposal.targetUrl?.trim()) {
+    errors.push(`${proposal.commandType} requires a target URL`);
+  }
+
+  if (proposal.targetUrl) {
+    const url = proposal.targetUrl.toLowerCase();
+    if (!url.startsWith('https://')) {
+      errors.push('URL must use HTTPS (https://)');
+    }
+    if (url.startsWith('http://')) errors.push('HTTP is not allowed; use HTTPS only');
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      errors.push('Localhost is not allowed');
+    }
+    if (/^https:\/\/(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/.test(url)) {
+      errors.push('Private IP ranges (10.x, 172.16-31.x, 192.168.x) are not allowed');
+    }
+    if (url.startsWith('file://') || url.startsWith('javascript:') || url.startsWith('data:')) {
+      errors.push('URLs must be https:// only; no file://, javascript:, or data: URIs');
+    }
+  }
+
+  // Selector validation
+  const needsSelector = ['CLICK', 'TYPE', 'EXTRACT', 'VERIFY'].includes(proposal.commandType);
+  if (needsSelector && !proposal.selector?.trim()) {
+    errors.push(`${proposal.commandType} requires a CSS selector`);
+  }
+
+  // Input text validation
+  if (proposal.commandType === 'TYPE' && !proposal.inputText?.trim()) {
+    errors.push('TYPE requires input text');
+  }
+  if (proposal.commandType !== 'TYPE' && proposal.inputText?.trim() && !proposal.reason.includes('input text')) {
+    warnings.push('Input text provided for non-TYPE command; consider justifying in reason');
+  }
+
+  // Risk tier validation
+  if (['CLICK', 'TYPE'].includes(proposal.commandType) && proposal.riskTier === 'LOW') {
+    warnings.push(`${proposal.commandType} commands should be MEDIUM risk or higher`);
+  }
+
+  // Check if navigating to unknown domain with LOW risk
+  if (proposal.commandType === 'NAVIGATE' && proposal.riskTier === 'LOW' && proposal.targetUrl) {
+    const domain = new URL(proposal.targetUrl).hostname;
+    const commonDomains = ['google.com', 'github.com', 'stackoverflow.com', 'example.com'];
+    if (!commonDomains.some(d => domain.includes(d))) {
+      warnings.push('Navigating to an unfamiliar domain should be MEDIUM risk or higher');
+    }
+  }
+
+  // CRITICAL risk warning
+  if (proposal.riskTier === 'CRITICAL') {
+    warnings.push('CRITICAL risk proposals require manual review and cannot be auto-approved');
+  }
+
+  return {
+    status: errors.length > 0 ? 'FAIL' : warnings.length > 0 ? 'WARNING' : 'PASS',
+    errors,
+    warnings,
+  };
+};
+
 function ProposalForm({ onSubmit, onCancel, currentUser }) {
   const [formData, setFormData] = useState({
     commandTitle: '',
@@ -178,91 +253,143 @@ function ProposalForm({ onSubmit, onCancel, currentUser }) {
   );
 }
 
+function ValidationBadge({ validation }) {
+  const config = {
+    PASS: { bg: 'bg-primary/5 border-primary/20', color: 'text-primary', label: '✓ PASS' },
+    WARNING: { bg: 'bg-amber-500/5 border-amber-500/20', color: 'text-amber-500', label: '⚠ WARNING' },
+    FAIL: { bg: 'bg-destructive/5 border-destructive/20', color: 'text-destructive', label: '✗ FAIL' },
+  };
+  const cfg = config[validation.status];
+  return <div className={`text-[8px] px-2 py-0.5 border rounded font-semibold ${cfg.bg} ${cfg.color}`}>{cfg.label}</div>;
+}
+
 function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, onSubmitForApproval }) {
   const statusCfg = STATUS_CONFIG[proposal.status];
   const StatusIcon = statusCfg.icon;
+  const validation = validateProposal(proposal);
+  const canSubmit = validation.status !== 'FAIL';
+  const canApprove = validation.status !== 'FAIL' && proposal.riskTier !== 'CRITICAL';
 
   return (
-    <tr className="border-b border-border/20 hover:bg-secondary/20 transition-colors">
-      <td className="px-3 py-2 text-[10px] font-semibold text-foreground">{proposal.commandTitle}</td>
-      <td className="px-3 py-2 text-[9px]">
-        <span className="text-slate-400">{proposal.commandType}</span>
-      </td>
-      <td className="px-3 py-2 text-[9px]">
-        <span className={`font-semibold ${RISK_COLORS[proposal.riskTier]}`}>{proposal.riskTier}</span>
-      </td>
-      <td className="px-3 py-2 text-[9px]">
-        {proposal.requiresApproval ? (
-          <span className="text-amber-500 font-semibold">Yes</span>
-        ) : (
-          <span className="text-slate-400">No</span>
-        )}
-      </td>
-      <td className="px-3 py-2">
-        <div className={`inline-flex items-center gap-1 text-[8px] px-2 py-0.5 border rounded font-semibold ${statusCfg.bg} ${statusCfg.color}`}>
-          <StatusIcon className="w-2.5 h-2.5" />
-          {proposal.status}
-        </div>
-      </td>
-      <td className="px-3 py-2 text-[8px] text-foreground/60 font-mono">
-        {new Date(proposal.proposedAt).toLocaleString()}
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex gap-1">
-          {proposal.status === 'DRAFT' && (
-            <>
+    <>
+      <tr className="border-b border-border/20 hover:bg-secondary/20 transition-colors">
+        <td className="px-3 py-2 text-[10px] font-semibold text-foreground">{proposal.commandTitle}</td>
+        <td className="px-3 py-2 text-[9px]">
+          <span className="text-slate-400">{proposal.commandType}</span>
+        </td>
+        <td className="px-3 py-2 text-[9px]">
+          <span className={`font-semibold ${RISK_COLORS[proposal.riskTier]}`}>{proposal.riskTier}</span>
+        </td>
+        <td className="px-3 py-2 text-[9px]">
+          {proposal.requiresApproval ? (
+            <span className="text-amber-500 font-semibold">Yes</span>
+          ) : (
+            <span className="text-slate-400">No</span>
+          )}
+        </td>
+        <td className="px-3 py-2">
+          <ValidationBadge validation={validation} />
+        </td>
+        <td className="px-3 py-2">
+          <div className={`inline-flex items-center gap-1 text-[8px] px-2 py-0.5 border rounded font-semibold ${statusCfg.bg} ${statusCfg.color}`}>
+            <StatusIcon className="w-2.5 h-2.5" />
+            {proposal.status}
+          </div>
+        </td>
+        <td className="px-3 py-2 text-[8px] text-foreground/60 font-mono">
+          {new Date(proposal.proposedAt).toLocaleString()}
+        </td>
+        <td className="px-3 py-2">
+          <div className="flex gap-1">
+            {proposal.status === 'DRAFT' && (
+              <>
+                <button
+                  onClick={() => onSubmitForApproval(index)}
+                  disabled={!canSubmit}
+                  title={!canSubmit ? 'Fix validation errors before submitting' : ''}
+                  className={`px-2 py-1 text-[8px] border rounded transition-colors ${
+                    canSubmit
+                      ? 'border-amber-500/30 bg-amber-500/5 text-amber-500 hover:bg-amber-500/10'
+                      : 'border-destructive/30 bg-destructive/5 text-destructive/50 cursor-not-allowed'
+                  }`}
+                >
+                  <Send className="w-2.5 h-2.5" />
+                </button>
+                <button
+                  onClick={() => onDelete(index)}
+                  className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors rounded"
+                >
+                  <Trash2 className="w-2.5 h-2.5" />
+                </button>
+              </>
+            )}
+
+            {proposal.status === 'PENDING_APPROVAL' && (
+              <>
+                <button
+                  onClick={() => onApprove(index)}
+                  disabled={!canApprove}
+                  title={!canApprove ? canApprove === false ? 'Fix validation errors first' : 'CRITICAL risk requires manual review' : ''}
+                  className={`px-2 py-1 text-[8px] border rounded transition-colors ${
+                    canApprove
+                      ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'
+                      : 'border-primary/30 bg-primary/5 text-primary/50 cursor-not-allowed'
+                  }`}
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => onDeny(index)}
+                  className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors rounded"
+                >
+                  Deny
+                </button>
+              </>
+            )}
+
+            {proposal.status === 'APPROVED' && (
               <button
-                onClick={() => onSubmitForApproval(index)}
-                className="px-2 py-1 text-[8px] border border-amber-500/30 bg-amber-500/5 text-amber-500 hover:bg-amber-500/10 transition-colors rounded"
+                onClick={() => onExpire(index)}
+                className="px-2 py-1 text-[8px] border border-slate-500/30 bg-slate-500/5 text-slate-400 hover:bg-slate-500/10 transition-colors rounded"
               >
-                <Send className="w-2.5 h-2.5" />
+                Expire
               </button>
+            )}
+
+            {(proposal.status === 'DENIED' || proposal.status === 'EXPIRED') && (
               <button
                 onClick={() => onDelete(index)}
-                className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors rounded"
+                className="px-2 py-1 text-[8px] border border-slate-500/30 bg-slate-500/5 text-slate-400 hover:bg-slate-500/10 transition-colors rounded"
               >
                 <Trash2 className="w-2.5 h-2.5" />
               </button>
-            </>
-          )}
+            )}
+          </div>
+        </td>
+      </tr>
 
-          {proposal.status === 'PENDING_APPROVAL' && (
-            <>
-              <button
-                onClick={() => onApprove(index)}
-                className="px-2 py-1 text-[8px] border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors rounded"
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => onDeny(index)}
-                className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors rounded"
-              >
-                Deny
-              </button>
-            </>
-          )}
-
-          {proposal.status === 'APPROVED' && (
-            <button
-              onClick={() => onExpire(index)}
-              className="px-2 py-1 text-[8px] border border-slate-500/30 bg-slate-500/5 text-slate-400 hover:bg-slate-500/10 transition-colors rounded"
-            >
-              Expire
-            </button>
-          )}
-
-          {(proposal.status === 'DENIED' || proposal.status === 'EXPIRED') && (
-            <button
-              onClick={() => onDelete(index)}
-              className="px-2 py-1 text-[8px] border border-slate-500/30 bg-slate-500/5 text-slate-400 hover:bg-slate-500/10 transition-colors rounded"
-            >
-              <Trash2 className="w-2.5 h-2.5" />
-            </button>
-          )}
-        </div>
-      </td>
-    </tr>
+      {/* Validation messages row */}
+      {(validation.errors.length > 0 || validation.warnings.length > 0) && (
+        <tr className="border-b border-border/20 bg-secondary/10">
+          <td colSpan="8" className="px-3 py-2">
+            <div className="space-y-1 text-[8px]">
+              {validation.errors.map((err, i) => (
+                <div key={i} className="text-destructive flex items-start gap-2">
+                  <span className="shrink-0 mt-0.5">✗</span>
+                  <span>{err}</span>
+                </div>
+              ))}
+              {validation.warnings.map((warn, i) => (
+                <div key={i} className="text-amber-500 flex items-start gap-2">
+                  <span className="shrink-0 mt-0.5">⚠</span>
+                  <span>{warn}</span>
+                </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -406,6 +533,7 @@ export default function OpenClawCommandProposalQueue() {
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Type</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Risk</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Approval</th>
+                <th className="text-left px-3 py-2 font-semibold text-foreground">Validation</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Status</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Proposed</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Actions</th>
@@ -441,9 +569,43 @@ export default function OpenClawCommandProposalQueue() {
         </div>
       )}
 
+      {/* Validation Legend */}
+      <div className="border border-border/50 rounded-lg bg-secondary/10 p-3 space-y-2 text-[9px]">
+        <div className="font-semibold text-foreground mb-2">Validation Rules</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[8px] text-foreground/80">
+          <div>
+            <div className="font-semibold text-primary mb-1">Required Fields:</div>
+            <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
+              <li>Title, Type, Reason, Proposed By, Risk Tier</li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-primary mb-1">URL Rules:</div>
+            <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
+              <li>HTTPS only, no localhost/127.0.0.1/private IPs</li>
+              <li>No file://, javascript:, or data: URIs</li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-primary mb-1">Selector Rules:</div>
+            <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
+              <li>Required for CLICK, TYPE, EXTRACT, VERIFY</li>
+              <li>Optional for READ, NAVIGATE</li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-primary mb-1">Input Text & Risk:</div>
+            <ul className="list-disc ml-4 space-y-0.5 text-foreground/70">
+              <li>Required for TYPE only</li>
+              <li>CLICK/TYPE min MEDIUM; CRITICAL stays PENDING</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Footer Notice */}
       <div className="text-[8px] text-foreground/60 px-4 py-3 bg-secondary/10 border border-border/30 rounded-lg">
-        Proposal queue is local-only. All data stored in browser localStorage. No backend integration or OpenClaw execution wiring yet.
+        Validation is client-side only. Prevents FAIL proposals from submission/approval. CRITICAL risk requires manual review and cannot be auto-approved.
       </div>
     </div>
   );
