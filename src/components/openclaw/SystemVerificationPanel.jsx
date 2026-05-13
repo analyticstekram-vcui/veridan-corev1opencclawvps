@@ -342,18 +342,6 @@ export default function SystemVerificationPanel() {
      setRunning(true);
      const newResults = {};
 
-     try {
-       // Query backend enforcement for validation test results
-       const enforcementRes = await base44.functions.invoke('openclawEnforcement', { action: 'run_all_tests' });
-       const enforcementTests = enforcementRes.data?.results || [];
-
-       // Query backend policy
-       const policyRes = await base44.functions.invoke('openclawEnforcement', { action: 'get_policy' });
-       const policy = policyRes.data?.policy;
-     } catch (err) {
-       console.error('Failed to query backend enforcement:', err);
-     }
-
      // Run all verification checks
      const pageText = document.body.innerText;
 
@@ -697,28 +685,25 @@ export default function SystemVerificationPanel() {
     // Backend enforcement checks (from openclawEnforcement)
     try {
       const enforcementRes = await base44.functions.invoke('openclawEnforcement', { action: 'run_all_tests' });
-      const enforcementTests = enforcementRes.data?.results || [];
-      const allTestsPassed = enforcementTests.every(t => t.passed);
+      const enforcementTests = enforcementRes?.data?.results || [];
+      const allTestsPassed = enforcementTests.length > 0 && enforcementTests.every(t => t.passed);
 
-      // Update System Verify logic test for backend enforcement gate
-      const hasBackendTests = enforcementTests && enforcementTests.length > 0;
-      const backendPassed = hasBackendTests && allTestsPassed;
       newResults.logic_backend_enforcement_gate = {
-        status: backendPassed ? 'pass' : 'warn',
+        status: allTestsPassed ? 'pass' : 'warn',
         explanation: 'Backend enforcement must pass for production readiness.',
-        details: hasBackendTests ? `Backend tests: ${enforcementTests.filter(t => t.passed).length}/${enforcementTests.length} passed` : 'No backend enforcement results available (expected in some environments)',
+        details: enforcementTests.length > 0 ? `Backend tests: ${enforcementTests.filter(t => t.passed).length}/${enforcementTests.length} passed` : 'No backend enforcement results available',
       };
-      
+
       newResults.backend_enforcement_tests = {
         status: allTestsPassed ? 'pass' : 'fail',
         explanation: 'Backend validation test suite must pass: live blocking, domain allowlist, secret detection, RBAC, audit logging, HMAC signatures.',
-        details: `${enforcementTests.filter(t => t.passed).length}/${enforcementTests.length} tests passed`,
-        suggestedFix: !allTestsPassed ? 'Review failed validation tests in backend enforcement logs.' : undefined,
+        details: enforcementTests.length > 0 ? `${enforcementTests.filter(t => t.passed).length}/${enforcementTests.length} tests passed` : 'Unable to retrieve backend test results',
+        suggestedFix: !allTestsPassed && enforcementTests.length > 0 ? 'Review failed validation tests in backend enforcement logs.' : undefined,
       };
 
       const policyRes = await base44.functions.invoke('openclawEnforcement', { action: 'get_policy' });
-      const policy = policyRes.data?.policy;
-      
+      const policy = policyRes?.data?.policy;
+
       if (policy) {
         newResults.backend_policy_live_disabled = {
           status: policy.LIVE_EXECUTION_ENABLED === false ? 'pass' : 'fail',
