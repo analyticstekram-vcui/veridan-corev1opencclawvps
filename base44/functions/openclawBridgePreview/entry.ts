@@ -16,6 +16,10 @@ const ALLOWED_DOMAINS = [
   'tradovate.com',
 ];
 
+const ALLOWED_COMMAND_TYPES = ['READ', 'NAVIGATE', 'EXTRACT', 'VERIFY'];
+const ALLOWED_RISK_TIERS = ['LOW', 'MEDIUM'];
+const SUSPICIOUS_PATH_KEYWORDS = ['delete', 'transfer', 'withdraw', 'password', 'settings/security', 'api-key', 'billing', 'checkout', 'trade', 'order', 'execute'];
+
 const generateAuditId = () => `audit_${new Date().toISOString().split('T')[0]}_${Math.random().toString(36).substr(2, 9)}`;
 
 const isUrlAllowlisted = (urlString) => {
@@ -121,6 +125,71 @@ const validateBridgeRequest = (body) => {
   return { isValid: errors.length === 0, errors };
 };
 
+const checkPolicy = (bridgeRequest) => {
+  const messages = [];
+
+  // Command type policy
+  if (!ALLOWED_COMMAND_TYPES.includes(bridgeRequest.commandType)) {
+    messages.push(`commandType ${bridgeRequest.commandType} not allowed (must be one of: ${ALLOWED_COMMAND_TYPES.join(', ')})`);
+  }
+
+  // Risk tier policy
+  if (!ALLOWED_RISK_TIERS.includes(bridgeRequest.riskTier)) {
+    messages.push(`riskTier ${bridgeRequest.riskTier} not allowed (must be LOW or MEDIUM)`);
+  }
+
+  // Suspicious path keywords
+  const urlPath = new URL(bridgeRequest.targetUrl).pathname.toLowerCase();
+  for (const keyword of SUSPICIOUS_PATH_KEYWORDS) {
+    if (urlPath.includes(keyword)) {
+      messages.push(`targetUrl path contains suspicious keyword: ${keyword}`);
+    }
+  }
+
+  return {
+    result: messages.length === 0 ? 'PASS' : 'FAIL',
+    messages,
+  };
+};
+
+const checkReplay = async (base44, requestId, previewHash) => {
+  const messages = [];
+
+  try {
+    // Check for duplicate requestId
+    if (requestId) {
+      const duplicateById = await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.filter(
+        { requestId },
+        '-created_date',
+        1
+      );
+      if (duplicateById && duplicateById.length > 0) {
+        messages.push('DUPLICATE_REQUEST_ID');
+      }
+    }
+
+    // Check for duplicate previewHash
+    if (previewHash) {
+      const duplicateByHash = await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.filter(
+        { previewHash },
+        '-created_date',
+        1
+      );
+      if (duplicateByHash && duplicateByHash.length > 0) {
+        messages.push('DUPLICATE_PREVIEW_HASH');
+      }
+    }
+  } catch (err) {
+    console.error('Replay check error:', err.message);
+    messages.push('replay_check_error');
+  }
+
+  return {
+    result: messages.length === 0 ? 'PASS' : 'FAIL',
+    messages,
+  };
+};
+
 Deno.serve(async (req) => {
   const receivedAt = new Date().toISOString();
   const auditId = generateAuditId();
@@ -200,6 +269,10 @@ Deno.serve(async (req) => {
           validatedAt,
           validationMessages: validation.errors,
           inputTextPresent: !!body.bridgeRequest?.inputText,
+          policyGateResult: null,
+          policyGateMessages: [],
+          replayCheckResult: null,
+          replayCheckMessages: [],
           note: 'Request rejected. No OpenClaw call was made.',
         });
       } catch (auditErr) {
@@ -216,13 +289,123 @@ Deno.serve(async (req) => {
           auditId,
           receivedAt,
           validatedAt,
+          policyGateResult: null,
+          policyGateMessages: [],
+          replayCheckResult: null,
+          replayCheckMessages: [],
           note: 'Request rejected. No OpenClaw call was made.',
         },
         { status: 400 }
       );
     }
 
-    // All validations passed - log to audit
+    // Phase 2: Policy gating
+    const policyCheck = checkPolicy(body.bridgeRequest);
+
+    if (policyCheck.result === 'FAIL') {
+      const validatedAt = new Date().toISOString();
+      const rejectionReason = `Policy gate failed: ${policyCheck.messages.join('; ')}`;
+      try {
+        await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
+          auditId,
+          requestId,
+          previewHash: body.previewHash || null,
+          operatorId: body.operatorId || null,
+          accepted: false,
+          rejectedReason: rejectionReason,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          targetUrl: body.bridgeRequest?.targetUrl || null,
+          commandType: body.bridgeRequest?.commandType || null,
+          riskTier: body.bridgeRequest?.riskTier || null,
+          receivedAt,
+          validatedAt,
+          validationMessages: [],
+          inputTextPresent: !!body.bridgeRequest?.inputText,
+          policyGateResult: 'FAIL',
+          policyGateMessages: policyCheck.messages,
+          replayCheckResult: null,
+          replayCheckMessages: [],
+          note: 'Request rejected by policy gate. No OpenClaw call was made.',
+        });
+      } catch (auditErr) {
+        console.error('Failed to create policy rejection audit record:', auditErr.message);
+      }
+
+      return Response.json(
+        {
+          accepted: false,
+          rejectedReason: rejectionReason,
+          requestId,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          auditId,
+          receivedAt,
+          validatedAt,
+          policyGateResult: 'FAIL',
+          policyGateMessages: policyCheck.messages,
+          replayCheckResult: null,
+          replayCheckMessages: [],
+          note: 'Request rejected by policy gate. No OpenClaw call was made.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Phase 2: Replay protection
+    const replayCheck = await checkReplay(base44, requestId, body.previewHash);
+
+    if (replayCheck.result === 'FAIL') {
+      const validatedAt = new Date().toISOString();
+      const rejectionReason = `Replay check failed: ${replayCheck.messages.join(', ')}`;
+      try {
+        await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
+          auditId,
+          requestId,
+          previewHash: body.previewHash || null,
+          operatorId: body.operatorId || null,
+          accepted: false,
+          rejectedReason: rejectionReason,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          targetUrl: body.bridgeRequest?.targetUrl || null,
+          commandType: body.bridgeRequest?.commandType || null,
+          riskTier: body.bridgeRequest?.riskTier || null,
+          receivedAt,
+          validatedAt,
+          validationMessages: [],
+          inputTextPresent: !!body.bridgeRequest?.inputText,
+          policyGateResult: 'PASS',
+          policyGateMessages: [],
+          replayCheckResult: 'FAIL',
+          replayCheckMessages: replayCheck.messages,
+          note: 'Request rejected by replay check. No OpenClaw call was made.',
+        });
+      } catch (auditErr) {
+        console.error('Failed to create replay rejection audit record:', auditErr.message);
+      }
+
+      return Response.json(
+        {
+          accepted: false,
+          rejectedReason: rejectionReason,
+          requestId,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          auditId,
+          receivedAt,
+          validatedAt,
+          policyGateResult: 'PASS',
+          policyGateMessages: [],
+          replayCheckResult: 'FAIL',
+          replayCheckMessages: replayCheck.messages,
+          note: 'Request rejected by replay check. No OpenClaw call was made.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // All checks passed - log to audit
     const validatedAt = new Date().toISOString();
     try {
       await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
@@ -241,7 +424,11 @@ Deno.serve(async (req) => {
         validatedAt,
         validationMessages: [],
         inputTextPresent: !!body.bridgeRequest?.inputText,
-        note: 'Dry-run validation only. No OpenClaw call was made.',
+        policyGateResult: 'PASS',
+        policyGateMessages: [],
+        replayCheckResult: 'PASS',
+        replayCheckMessages: [],
+        note: 'Dry-run validation and policy check passed. No OpenClaw call was made.',
       });
     } catch (auditErr) {
       console.error('Failed to create audit record:', auditErr.message);
@@ -257,7 +444,11 @@ Deno.serve(async (req) => {
         auditId,
         receivedAt,
         validatedAt,
-        note: 'Dry-run validation only. No OpenClaw call was made.',
+        policyGateResult: 'PASS',
+        policyGateMessages: [],
+        replayCheckResult: 'PASS',
+        replayCheckMessages: [],
+        note: 'Dry-run validation and policy check passed. No OpenClaw call was made.',
       },
       { status: 200 }
     );

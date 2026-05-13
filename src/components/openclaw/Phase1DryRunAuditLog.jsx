@@ -86,7 +86,8 @@ export default function Phase1DryRunAuditLog() {
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Operator</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Command Type</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Risk Tier</th>
-                  <th className="text-left px-3 py-2 font-semibold text-foreground">Execution Status</th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground">Policy Gate</th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground">Replay Check</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Received At</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Reason / Note</th>
                 </tr>
@@ -145,13 +146,38 @@ export default function Phase1DryRunAuditLog() {
                       )}
                     </td>
 
-                    {/* Execution Status */}
-                    <td className="px-3 py-2 text-foreground/70">
-                      {record.executionStatus || '—'}
+                    {/* Policy Gate */}
+                    <td className="px-3 py-2">
+                      {record.policyGateResult ? (
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-semibold ${
+                          record.policyGateResult === 'PASS'
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-destructive/10 text-destructive'
+                        }`}>
+                          {record.policyGateResult}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[8px]">—</span>
+                      )}
+                    </td>
+
+                    {/* Replay Check */}
+                    <td className="px-3 py-2">
+                      {record.replayCheckResult ? (
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-semibold ${
+                          record.replayCheckResult === 'PASS'
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-destructive/10 text-destructive'
+                        }`}>
+                          {record.replayCheckResult}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[8px]">—</span>
+                      )}
                     </td>
 
                     {/* Received At */}
-                    <td className="px-3 py-2 font-mono text-foreground/70">
+                    <td className="px-3 py-2 font-mono text-foreground/70 text-[8px]">
                       {record.receivedAt ? new Date(record.receivedAt).toLocaleString('en-US', {
                         month: '2-digit',
                         day: '2-digit',

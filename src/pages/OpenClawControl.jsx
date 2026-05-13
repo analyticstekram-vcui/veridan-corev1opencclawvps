@@ -22,6 +22,7 @@ import SystemSnapshotExportPanel from '@/components/openclaw/SystemSnapshotExpor
 import ModuleHandoffPanel from '@/components/openclaw/ModuleHandoffPanel';
 import SafeBridgeContractPreview from '@/components/openclaw/SafeBridgeContractPreview';
 import Phase1DryRunAuditLog from '@/components/openclaw/Phase1DryRunAuditLog';
+import Phase2PolicyTestCases from '@/components/openclaw/Phase2PolicyTestCases';
 import ProductionReadinessChecklistPanel from '@/components/openclaw/ProductionReadinessChecklistPanel';
 import BrowserReadActionsPanel from '@/components/openclaw/BrowserReadActionsPanel';
 import InteractiveRiskMapPanel from '@/components/openclaw/InteractiveRiskMapPanel';
@@ -43,6 +44,7 @@ const TABS = [
   { id: 'overview', label: '📊 Overview' },
   { id: 'bridge_contract', label: '📋 Bridge Contract' },
   { id: 'bridge_audit', label: '📊 Bridge Audit Log' },
+  { id: 'phase2_tests', label: '🧪 Phase 2 Tests' },
   { id: 'status', label: 'Status' },
   { id: 'safe_bridge', label: '⚡ Safe Command Test' },
   { id: 'safety_tests', label: '🛡️ Safety Tests' },
@@ -224,6 +226,10 @@ export default function OpenClawControl() {
 
         {activeView === 'bridge_audit' && (
           <div className="p-6"><Phase1DryRunAuditLog /></div>
+        )}
+
+        {activeView === 'phase2_tests' && (
+          <div className="p-6"><Phase2PolicyTestCases /></div>
         )}
 
         {activeView === 'safe_bridge' && (

@@ -91,8 +91,8 @@ export default function Phase1BridgePreviewTester({ proposal }) {
       <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded text-[9px] text-amber-500">
         <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
         <div>
-          <div className="font-semibold mb-0.5">DRY-RUN ONLY</div>
-          <div className="text-[8px] text-amber-500/70">This sends a request to /api/openclaw/bridge/preview for validation testing. No OpenClaw call. No actions executed.</div>
+          <div className="font-semibold mb-0.5">PHASE 2: DRY-RUN ONLY</div>
+          <div className="text-[8px] text-amber-500/70">Route adds backend policy gating and replay protection. Still does not call OpenClaw or execute actions.</div>
         </div>
       </div>
 
@@ -171,7 +171,7 @@ export default function Phase1BridgePreviewTester({ proposal }) {
           </div>
 
           {/* Response Summary */}
-          <div className="bg-card/50 border border-border/30 rounded-lg px-3 py-2 space-y-1">
+          <div className="bg-card/50 border border-border/30 rounded-lg px-3 py-2 space-y-2">
             <div className="grid grid-cols-2 gap-2 text-[9px]">
               <div>
                 <div className="text-slate-400 text-[8px] font-semibold mb-0.5">BRIDGE MODE</div>
@@ -186,6 +186,64 @@ export default function Phase1BridgePreviewTester({ proposal }) {
                 <div className="text-foreground font-mono text-[8px]">{result.data.auditId}</div>
               </div>
             </div>
+
+            {/* Phase 2: Policy Gate */}
+            {result.data.policyGateResult !== undefined && (
+              <div className={`px-2 py-1.5 rounded border ${
+                result.data.policyGateResult === 'PASS'
+                  ? 'bg-primary/10 border-primary/30'
+                  : 'bg-destructive/10 border-destructive/30'
+              }`}>
+                <div className="text-[8px] font-semibold mb-0.5 flex items-center gap-1">
+                  <span className={result.data.policyGateResult === 'PASS' ? 'text-primary' : 'text-destructive'}>
+                    POLICY GATE
+                  </span>
+                  <span className={`px-1 py-0.5 rounded text-[7px] font-semibold ${
+                    result.data.policyGateResult === 'PASS'
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-destructive/20 text-destructive'
+                  }`}>
+                    {result.data.policyGateResult}
+                  </span>
+                </div>
+                {result.data.policyGateMessages?.length > 0 && (
+                  <div className="text-[7px] space-y-0.5 ml-2">
+                    {result.data.policyGateMessages.map((msg, i) => (
+                      <div key={i} className="text-destructive/80">✗ {msg}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Phase 2: Replay Check */}
+            {result.data.replayCheckResult !== undefined && (
+              <div className={`px-2 py-1.5 rounded border ${
+                result.data.replayCheckResult === 'PASS'
+                  ? 'bg-primary/10 border-primary/30'
+                  : 'bg-destructive/10 border-destructive/30'
+              }`}>
+                <div className="text-[8px] font-semibold mb-0.5 flex items-center gap-1">
+                  <span className={result.data.replayCheckResult === 'PASS' ? 'text-primary' : 'text-destructive'}>
+                    REPLAY CHECK
+                  </span>
+                  <span className={`px-1 py-0.5 rounded text-[7px] font-semibold ${
+                    result.data.replayCheckResult === 'PASS'
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-destructive/20 text-destructive'
+                  }`}>
+                    {result.data.replayCheckResult}
+                  </span>
+                </div>
+                {result.data.replayCheckMessages?.length > 0 && (
+                  <div className="text-[7px] space-y-0.5 ml-2">
+                    {result.data.replayCheckMessages.map((msg, i) => (
+                      <div key={i} className="text-destructive/80">✗ {msg}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Note */}

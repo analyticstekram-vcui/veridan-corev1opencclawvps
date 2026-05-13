@@ -32,7 +32,7 @@
         "DRY_RUN_ONLY"
       ],
       "default": "DRY_RUN_ONLY",
-      "description": "Always DRY_RUN_ONLY for Phase 1"
+      "description": "Always DRY_RUN_ONLY for Phase 1-2"
     },
     "executionStatus": {
       "type": "string",
@@ -48,11 +48,11 @@
     },
     "commandType": {
       "type": "string",
-      "description": "Command type (READ, NAVIGATE, EXTRACT, VERIFY, etc.) if provided"
+      "description": "Command type (READ, NAVIGATE, EXTRACT, VERIFY) if provided"
     },
     "riskTier": {
       "type": "string",
-      "description": "Risk tier (LOW, MEDIUM, HIGH, CRITICAL) if provided"
+      "description": "Risk tier (LOW, MEDIUM) if provided"
     },
     "receivedAt": {
       "type": "string",
@@ -74,6 +74,36 @@
     "inputTextPresent": {
       "type": "boolean",
       "description": "True if inputText was provided for TYPE command (not stored)"
+    },
+    "policyGateResult": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL"
+      ],
+      "description": "Phase 2: Policy gate check result"
+    },
+    "policyGateMessages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Phase 2: Policy gate failure reasons"
+    },
+    "replayCheckResult": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL"
+      ],
+      "description": "Phase 2: Replay protection check result"
+    },
+    "replayCheckMessages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Phase 2: Replay check failure reasons (DUPLICATE_REQUEST_ID, DUPLICATE_PREVIEW_HASH)"
     },
     "note": {
       "type": "string",
