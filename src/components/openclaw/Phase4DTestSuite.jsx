@@ -279,9 +279,9 @@ export default function Phase4DTestSuite() {
           testName: test.name,
           group: 'D',
           expectedResult: 'accepted: true, signatureCheckResult: PASS',
-          actualResult: 'accepted: true, signatureCheckResult: PASS, bridgeMode: DRY_RUN_ONLY, executionStatus: NOT_EXECUTED, secretExposed: false',
-          resultType: 'EXECUTED_PASS',
-          diagnostic: 'E2E verified: signer generates signature → verifier accepts with PASS (same as B8, proving end-to-end flow)',
+          actualResult: 'Covered by B8 (identical E2E flow: signer → verifier)',
+          resultType: 'COVERED_BY_B8',
+          diagnostic: 'Duplicate coverage of B8 signer→verifier E2E validation. Not counted separately.',
         };
       } else if (test.id === 'D2') {
         testResults['D2'] = {
@@ -333,15 +333,14 @@ export default function Phase4DTestSuite() {
 
     const executedPass = Object.values(testResults).filter(r => r.resultType === 'EXECUTED_PASS').length;
     const docPass = Object.values(testResults).filter(r => r.resultType === 'DOC_PASS').length;
-    const notRun = Object.values(testResults).filter(r => r.resultType === 'NOT_RUN').length;
+    const optionalNotRun = Object.values(testResults).filter(r => r.resultType === 'NOT_RUN').length;
+    const coveredByOther = Object.values(testResults).filter(r => r.resultType === 'COVERED_BY_B8').length;
     const failed = Object.values(testResults).filter(r => r.resultType === 'FAIL').length;
 
     let overallStatus = 'HMAC_SUITE_INCOMPLETE';
     if (failed > 0) {
       overallStatus = 'HMAC_SUITE_FAIL';
-    } else if (executedPass === 29 && docPass === 0 && notRun === 0) {
-      overallStatus = 'HMAC_SUITE_PASS';
-    } else if (notRun === 0 && failed === 0) {
+    } else if (optionalNotRun === 0 && failed === 0) {
       overallStatus = 'HMAC_SUITE_PASS';
     }
 
@@ -349,7 +348,8 @@ export default function Phase4DTestSuite() {
       totalTests: 29,
       executedPass,
       docPass,
-      notRun,
+      optionalNotRun,
+      coveredByOther,
       failed,
       overallStatus,
     };
@@ -434,7 +434,7 @@ export default function Phase4DTestSuite() {
                 <div>
                   <div className="text-[9px] font-semibold text-foreground">Overall Status: {results.summary.overallStatus}</div>
                   <div className="text-[8px] text-slate-500 mt-0.5">
-                    Total: {results.summary.totalTests} | Executed: {results.summary.executedPass} | Doc: {results.summary.docPass} | Not Run: {results.summary.notRun} | Failed: {results.summary.failed}
+                    Total: {results.summary.totalTests} | Executed: {results.summary.executedPass} | Doc: {results.summary.docPass} | Optional: {results.summary.optionalNotRun} | Covered: {results.summary.coveredByOther} | Failed: {results.summary.failed}
                   </div>
                 </div>
               </div>
@@ -516,6 +516,8 @@ function TestGroup({ groupKey, label, description, tests, results }) {
               ? 'bg-primary/10 border-primary/30'
               : result?.resultType === 'DOC_PASS'
               ? 'bg-blue-500/10 border-blue-500/30'
+              : result?.resultType === 'COVERED_BY_B8'
+              ? 'bg-indigo-500/10 border-indigo-500/30'
               : result?.resultType === 'NOT_RUN'
               ? 'bg-slate-500/10 border-slate-500/30'
               : 'bg-destructive/10 border-destructive/30';
@@ -523,6 +525,8 @@ function TestGroup({ groupKey, label, description, tests, results }) {
               ? 'text-primary'
               : result?.resultType === 'DOC_PASS'
               ? 'text-blue-500'
+              : result?.resultType === 'COVERED_BY_B8'
+              ? 'text-indigo-500'
               : result?.resultType === 'NOT_RUN'
               ? 'text-slate-500'
               : 'text-destructive';
@@ -530,7 +534,7 @@ function TestGroup({ groupKey, label, description, tests, results }) {
             return (
               <div key={test.id} className={`px-2 py-1.5 rounded border text-[8px] ${bgColor}`}>
                 <div className="flex items-start gap-1.5">
-                  {result?.resultType === 'EXECUTED_PASS' || result?.resultType === 'DOC_PASS' ? (
+                  {result?.resultType === 'EXECUTED_PASS' || result?.resultType === 'DOC_PASS' || result?.resultType === 'COVERED_BY_B8' ? (
                     <CheckCircle2 className={`w-3 h-3 ${iconColor} shrink-0 mt-0.5`} />
                   ) : (
                     <AlertTriangle className={`w-3 h-3 ${iconColor} shrink-0 mt-0.5`} />
@@ -541,6 +545,7 @@ function TestGroup({ groupKey, label, description, tests, results }) {
                       <span className={`text-[7px] px-1 py-0.5 rounded ${
                         result?.resultType === 'EXECUTED_PASS' ? 'bg-primary/20 text-primary' :
                         result?.resultType === 'DOC_PASS' ? 'bg-blue-500/20 text-blue-500' :
+                        result?.resultType === 'COVERED_BY_B8' ? 'bg-indigo-500/20 text-indigo-500' :
                         result?.resultType === 'NOT_RUN' ? 'bg-slate-500/20 text-slate-500' :
                         'bg-destructive/20 text-destructive'
                       }`}>
