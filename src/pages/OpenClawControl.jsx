@@ -207,14 +207,16 @@ export default function OpenClawControl() {
       {/* ── Persistent Header ── */}
       <PersistentHeader currentPage="Control Tower" />
 
-      {/* ── Title bar ── */}
-      <div style={{ flexShrink: 0, position: 'relative', zIndex: 20 }} className="border-b border-border bg-card px-6 py-3 flex items-center gap-3">
-        <div className="w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center">
-          <Terminal className="w-4 h-4 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-sm font-semibold tracking-wider text-foreground">OPENCLAW CONTROL</h1>
-          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Gateway monitor · Governance queue · Veridan Core</p>
+      {/* ── Title bar with description ── */}
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 20 }} className="border-b border-border bg-card px-6 py-4">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
+            <Terminal className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-lg font-semibold tracking-wide text-foreground">OpenClaw Control</h1>
+            <p className="text-[10px] text-slate-400 mt-1">Governed browser and task control for Veridan Core. Execution remains disabled unless explicitly approved by policy.</p>
+          </div>
         </div>
       </div>
 
@@ -309,7 +311,7 @@ export default function OpenClawControl() {
       </div>
 
       {/* ── Panel area ── scrollable, fills remaining height */}
-      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', position: 'relative' }} className="bg-background">
 
         {activeView === 'control_tower' && (
           <div className="p-6"><OperatorDashboard /></div>
@@ -484,10 +486,17 @@ export default function OpenClawControl() {
         )}
 
         {activeView === 'status' && (
-          <div className="p-6 max-w-2xl space-y-4">
-            <div className="bg-card border border-border p-5">
+          <div className="p-6 max-w-4xl space-y-6">
+            {/* System Status Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-px flex-1 bg-border"></div>
+                <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3">System Status</h2>
+                <div className="h-px flex-1 bg-border"></div>
+              </div>
+            <div className="bg-card border border-border rounded-lg p-5">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Gateway Status</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">System Status</span>
                 <button
                   type="button"
                   onClick={fetchStatus}
@@ -625,20 +634,31 @@ export default function OpenClawControl() {
               </button>
             </div>
 
-            <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/20 px-4 py-3">
-              <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-              <div>
-                <div className="text-[11px] font-semibold text-amber-500 mb-0.5">Protected by Cloudflare Access</div>
-                <div className="text-[10px] text-slate-300">
-                  Authentication is enforced at the gateway layer. This panel does not bypass or store Cloudflare credentials. X-Frame-Options: DENY is set at the gateway.
-                </div>
-              </div>
             </div>
 
-            <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 px-4 py-3">
-              <Terminal className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-              <div className="text-[10px] text-slate-300 font-mono">
-                Stable backend baseline saved at <span className="text-primary font-semibold">/root/VERIDAN_OPENCLAW_STABLE_BASELINE.md</span>
+            {/* Safety & Security Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-px flex-1 bg-border"></div>
+                <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3">Safety & Security</h2>
+                <div className="h-px flex-1 bg-border"></div>
+              </div>
+              
+              <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/20 px-4 py-3 rounded-lg">
+                <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-[11px] font-semibold text-amber-500 mb-0.5">Protected by Cloudflare Access</div>
+                  <div className="text-[10px] text-slate-300">
+                    Authentication is enforced at the gateway layer. This panel does not bypass or store Cloudflare credentials. X-Frame-Options: DENY is set at the gateway.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 px-4 py-3 rounded-lg">
+                <Terminal className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <div className="text-[10px] text-slate-300 font-mono">
+                  Stable backend baseline saved at <span className="text-primary font-semibold">/root/VERIDAN_OPENCLAW_STABLE_BASELINE.md</span>
+                </div>
               </div>
             </div>
 
