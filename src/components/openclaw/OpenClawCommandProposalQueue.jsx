@@ -698,16 +698,23 @@ export default function OpenClawCommandProposalQueue() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [editingProposalIndex, setEditingProposalIndex] = useState(null);
+  const [bundleExports, setBundleExports] = useState([]);
+  const [bundleHash, setBundleHash] = useState(null);
+  const [bundleHashCopied, setBundleHashCopied] = useState(false);
 
-  // Load proposals from localStorage on mount
+  // Load proposals and bundle exports from localStorage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem('openclawProposalQueue');
       if (stored) {
         setProposals(JSON.parse(stored));
       }
+      const bundleStored = localStorage.getItem('openclawProposalBundleExports');
+      if (bundleStored) {
+        setBundleExports(JSON.parse(bundleStored));
+      }
     } catch (err) {
-      console.error('Error loading proposals:', err);
+      console.error('Error loading data:', err);
     }
   }, []);
 
@@ -867,6 +874,108 @@ export default function OpenClawCommandProposalQueue() {
     saveProposals(updated);
   };
 
+  const generateSHA256Hash = async (str) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  };
+
+  const handleExportProposalBundle = async () => {
+    // Filter eligible proposals
+    const eligibleProposals = proposalsWithExpiration
+      .filter(p => {
+        if (p.status !== 'APPROVED') return false;
+        if (isProposalExpired(p)) return false;
+        const validation = validateProposal(p);
+        const { eligibility } = calculateExecutionEligibility(p, validation);
+        return eligibility === 'ELIGIBLE_PREVIEW' || eligibility === 'REVIEW_REQUIRED';
+      })
+      .map(p => {
+        const validation = validateProposal(p);
+        const { eligibility, reasons } = calculateExecutionEligibility(p, validation);
+        return {
+          proposalId: p.id,
+          commandTitle: p.commandTitle,
+          commandType: p.commandType,
+          targetUrl: p.targetUrl,
+          selector: p.selector,
+          inputText: p.inputText,
+          reason: p.reason,
+          riskTier: p.riskTier,
+          status: p.status,
+          validationResult: validation.status,
+          validationMessages: validation.errors.length > 0 ? validation.errors : validation.warnings,
+          executionEligibility: eligibility,
+          executionEligibilityReasons: reasons,
+          proposedBy: p.proposedBy,
+          proposedAt: p.proposedAt,
+          approvedAt: p.approvedAt || null,
+          expirationAt: p.expirationAt,
+          auditEvents: p.auditEvents || [],
+        };
+      });
+
+    const bundle = {
+      exportedAt: new Date().toISOString(),
+      note: 'Proposal bundle is audit-only and does not execute commands.',
+      allowlistDomains: DOMAIN_ALLOWLIST,
+      proposals: eligibleProposals,
+    };
+
+    const jsonStr = JSON.stringify(bundle, null, 2);
+    const hash = await generateSHA256Hash(jsonStr);
+
+    const bundleWithHash = {
+      ...bundle,
+      bundleHash: hash,
+    };
+
+    const finalJsonStr = JSON.stringify(bundleWithHash, null, 2);
+    const blob = new Blob([finalJsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `proposal-bundle-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setBundleHash(hash);
+
+    // Save metadata to localStorage
+    const metadata = {
+      bundleHash: hash,
+      proposalCount: eligibleProposals.length,
+      exportedAt: new Date().toISOString(),
+    };
+    const updated = [metadata, ...bundleExports].slice(0, 10);
+    setBundleExports(updated);
+    try {
+      localStorage.setItem('openclawProposalBundleExports', JSON.stringify(updated));
+    } catch (err) {
+      console.error('Error saving bundle export metadata:', err);
+    }
+  };
+
+  const copyBundleHashToClipboard = () => {
+    if (bundleHash) {
+      navigator.clipboard.writeText(bundleHash);
+      setBundleHashCopied(true);
+      setTimeout(() => setBundleHashCopied(false), 2000);
+    }
+  };
+
+  const clearBundleExportHistory = () => {
+    if (confirm('Clear all bundle export history from local storage?')) {
+      localStorage.removeItem('openclawProposalBundleExports');
+      setBundleExports([]);
+    }
+  };
+
   // Apply expiration status updates
   const proposalsWithExpiration = proposals.map(p => {
     if (isProposalExpired(p) && p.status === 'PENDING_APPROVAL') {
@@ -973,8 +1082,14 @@ export default function OpenClawCommandProposalQueue() {
           ))}
         </div>
         <button
+          onClick={handleExportProposalBundle}
+          className="px-2.5 py-1 text-[9px] border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors rounded font-semibold"
+        >
+          ⬇ Export Proposal Bundle
+        </button>
+        <button
           onClick={() => setShowAuditLog(!showAuditLog)}
-          className="ml-auto px-2.5 py-1 text-[9px] border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors rounded font-semibold"
+          className="px-2.5 py-1 text-[9px] border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors rounded font-semibold"
         >
           {showAuditLog ? 'Hide' : 'Show'} Global Audit Log
         </button>
@@ -1105,9 +1220,70 @@ export default function OpenClawCommandProposalQueue() {
         </div>
       </div>
 
+      {/* Bundle Hash Display */}
+      {bundleHash && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+          <div className="text-[9px] uppercase tracking-widest text-primary/60 font-semibold">Latest Bundle Hash (SHA-256)</div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-[8px] font-mono bg-secondary/50 border border-border/30 px-2 py-1.5 rounded break-all text-foreground/80">
+              {bundleHash}
+            </code>
+            <button
+              type="button"
+              onClick={copyBundleHashToClipboard}
+              className="px-2 py-1.5 text-[8px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded whitespace-nowrap"
+            >
+              {bundleHashCopied ? '✓ Copied' : 'Copy'}
+            </button>
+          </div>
+          <div className="text-[8px] text-primary/70">Hash proves bundle integrity. If hash changes after export, the file was modified.</div>
+        </div>
+      )}
+
+      {/* Bundle Export History */}
+      {bundleExports.length > 0 && (
+        <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-semibold text-foreground">Proposal Bundle Export History</div>
+            <button
+              type="button"
+              onClick={clearBundleExportHistory}
+              className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors font-semibold rounded"
+            >
+              Clear History
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-[9px]">
+              <thead className="border-b border-border/30">
+                <tr className="text-muted-foreground/60 uppercase tracking-widest">
+                  <th className="text-left px-3 py-2 font-semibold">Exported At</th>
+                  <th className="text-center px-3 py-2 font-semibold">Proposal Count</th>
+                  <th className="text-left px-3 py-2 font-semibold">Bundle Hash (first 16 chars)</th>
+                </tr>
+              </thead>
+              <tbody className="space-y-1">
+                {bundleExports.map((export_, idx) => (
+                  <tr key={idx} className="border-b border-border/20 hover:bg-secondary/20 transition-colors">
+                    <td className="px-3 py-2 text-foreground/80 font-mono">{new Date(export_.exportedAt).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-center font-semibold text-foreground">{export_.proposalCount}</td>
+                    <td className="px-3 py-2 font-mono text-foreground/60">{export_.bundleHash.substring(0, 16)}...</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="text-[8px] text-muted-foreground/60 border-t border-border/30 pt-2">
+            Latest 10 bundle exports stored locally. Metadata only—no sensitive proposal data. Clear history anytime to reset.
+          </div>
+        </div>
+      )}
+
       {/* Footer Notice */}
       <div className="text-[8px] text-foreground/60 px-4 py-3 bg-secondary/10 border border-border/30 rounded-lg">
-        Validation is client-side only. Prevents FAIL proposals from submission/approval. CRITICAL risk requires manual review and cannot be auto-approved.
+        Validation is client-side only. Prevents FAIL proposals from submission/approval. CRITICAL risk requires manual review and cannot be auto-approved. Bundle export is audit-only and does not execute commands.
       </div>
     </div>
   );
