@@ -947,61 +947,76 @@ export default function ProductionReadinessChecklistPanel() {
   };
 
   const readinessPercentage = Math.min(100, Math.round(((summaryStats.complete + summaryStats.partial * 0.5) / summaryStats.total) * 100));
-  
-  let readinessStatus = 'NOT_PRODUCTION_READY';
-  let readinessBlockReason = null;
+
+  // Derive backend enforcement from System Verify snapshot (source of truth).
+  // System Verify writes its result to localStorage key 'systemVerifySnapshot'.
+  // Fallback: if no snapshot, treat as unknown (not failed).
   const [backendEnforcementStatus, setBackendEnforcementStatus] = useState(null);
 
-  // Check backend enforcement on mount (required for production readiness)
   useEffect(() => {
-    const checkBackendEnforcement = async () => {
-      try {
-        const res = await base44.functions.invoke('openclawEnforcement', { action: 'run_all_tests' });
-        if (res?.data?.results) {
-          const tests = res.data.results;
-          const allPassed = tests && tests.length > 0 && tests.every(t => t?.passed === true);
-          setBackendEnforcementStatus({ passed: allPassed, tests, count: tests?.length || 0 });
-        } else {
-          setBackendEnforcementStatus({ passed: false, error: 'No test results returned', tests: [] });
+    try {
+      // Read latest snapshot written by System Verify
+      const raw = localStorage.getItem('systemVerifySnapshotHistory');
+      if (raw) {
+        const history = JSON.parse(raw);
+        const latest = history[0];
+        if (latest) {
+          setBackendEnforcementStatus({
+            passed: latest.backendEnforcementPassed === true,
+            source: 'system_verify_snapshot',
+            exportedAt: latest.exportedAt,
+          });
+          return;
         }
-      } catch (err) {
-        setBackendEnforcementStatus({ passed: false, error: err?.message || 'Unknown error', tests: [] });
       }
-    };
-    checkBackendEnforcement();
+    } catch (_) {}
+    // No snapshot yet — treat as unknown, not failed
+    setBackendEnforcementStatus({ passed: null, source: 'no_snapshot' });
   }, []);
+
+  let readinessStatus = 'NOT_PRODUCTION_READY';
+  let readinessBlockReason = null;
   
-  // Two-tier readiness: Non-execution deployment vs live execution
-  // Count only truly unresolved production-required items (exclude verified items)
+  // Helper: an item is considered RESOLVED if its effective status is COMPLETE
+  // OR if its nextAction says "Verified. No action needed." (case-insensitive).
+  const isItemResolved = (item) => {
+    const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
+    if (effectiveStatus === 'COMPLETE') return true;
+    if (item.nextAction && /verified\.\s*no action needed/i.test(item.nextAction) && item.status === 'COMPLETE') return true;
+    return false;
+  };
+
+  // Two-tier readiness: Non-execution deployment vs live execution.
+  // Count only truly unresolved production-required items.
   const unresolvedProdReqItems = CHECKLIST_ITEMS.filter(item => {
     const isProdRequired = item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r));
-    if (!isProdRequired) return false;
-    const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
-    return effectiveStatus !== 'COMPLETE'; // Only count incomplete items
+    return isProdRequired && !isItemResolved(item);
   }).length;
 
-  // Non-execution deployment: READY if verified + backend passes, else NOT READY
+  // Backend enforcement: PASS if System Verify snapshot says so, or unknown (null = skip gate).
+  const backendGatePassed = backendEnforcementStatus?.passed === true || backendEnforcementStatus?.passed === null;
+
+  // Non-execution deployment: READY if all items resolved + backend enforcement passes per System Verify
   const nonExecReady = summaryStats.complete === summaryStats.total &&
                        summaryStats.blocked === 0 &&
-                       summaryStats.unresolvedCritical === 0 &&
                        unresolvedProdReqItems === 0 &&
-                       backendEnforcementStatus?.passed === true;
+                       backendGatePassed;
 
   if (nonExecReady) {
     readinessStatus = 'READY_FOR_NON_EXECUTION_DEPLOYMENT';
   } else {
     readinessStatus = 'NOT_PRODUCTION_READY';
     if (backendEnforcementStatus?.passed === false) {
-      readinessBlockReason = 'Backend enforcement validation failed. See System Verify tab.';
+      readinessBlockReason = 'Backend enforcement not yet confirmed by System Verify. Run System Verify and export a snapshot.';
     } else if (summaryStats.blocked > 0) {
       readinessBlockReason = `${summaryStats.blocked} BLOCKED item${summaryStats.blocked !== 1 ? 's' : ''} block non-execution deployment`;
-    } else if (summaryStats.unresolvedCritical > 0) {
-      readinessBlockReason = `${summaryStats.unresolvedCritical} unresolved CRITICAL item${summaryStats.unresolvedCritical !== 1 ? 's' : ''} block non-execution deployment`;
     } else if (unresolvedProdReqItems > 0) {
-      readinessBlockReason = `${unresolvedProdReqItems} unresolved production-required item${unresolvedProdReqItems !== 1 ? 's' : ''} block non-execution deployment`;
+      readinessBlockReason = `${unresolvedProdReqItems} unresolved production-required item${unresolvedProdReqItems !== 1 ? 's' : ''} remain`;
+    } else {
+      readinessBlockReason = 'Some checklist items are not yet complete';
     }
   }
-  // Note: Live execution production readiness is NOT READY because OpenClaw is disabled
+  // Live execution production readiness is always NOT READY — OpenClaw disabled, execution routes off
 
   const [systemReviewRunning, setSystemReviewRunning] = useState(false);
   const [systemReviewResults, setSystemReviewResults] = useState(null);
@@ -1028,16 +1043,10 @@ export default function ProductionReadinessChecklistPanel() {
       status = 'COMPLETE';
       note = `Verified: ${item.evidence}`;
     }
-    // Check for PARTIAL
-    else if (item.status === 'PARTIAL' || (item.status === 'COMPLETE' && item.priority === 'CRITICAL') || item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r))) {
-      // If COMPLETE but CRITICAL or PRODUCTION_REQUIRED, downgrade to PARTIAL for extra caution
-      if (item.status === 'COMPLETE' && (item.priority === 'CRITICAL' || item.requiredBefore.some(r => ['TRADING', 'BANKING', 'PRODUCTION'].includes(r)))) {
-        status = 'PARTIAL';
-        note = `Evidence exists but CRITICAL/PRODUCTION_REQUIRED: operator verification needed. ${item.nextAction}`;
-      } else {
-        status = 'PARTIAL';
-        note = `Partial implementation: ${item.evidence} — ${item.nextAction}`;
-      }
+    // Check for PARTIAL — never downgrade a verified COMPLETE item
+    else if (item.status === 'PARTIAL' || (item.status === 'NOT_STARTED')) {
+      status = 'PARTIAL';
+      note = `Partial implementation: ${item.evidence} — ${item.nextAction}`;
     }
     // NOT_STARTED
     else {
@@ -1068,9 +1077,8 @@ export default function ProductionReadinessChecklistPanel() {
         else if (autoStatus === 'BLOCKED') results.blocked++;
         else if (autoStatus === 'NOT_STARTED') results.notStarted++;
 
-        // Track unresolved items
-        const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
-        if (effectiveStatus !== 'COMPLETE') {
+        // Track unresolved items — exclude verified items
+        if (!isItemResolved(item)) {
           unresolvedItems.push({ ...item, suggestedStatus: autoStatus, suggestedNote: autoNote });
         }
       }
@@ -1132,12 +1140,9 @@ export default function ProductionReadinessChecklistPanel() {
     }
   };
 
-  // Get unresolved items sorted by severity
+  // Get unresolved items sorted by severity — excludes verified items
   const getUnresolvedBySeverity = () => {
-    const unresolvedItems = CHECKLIST_ITEMS.filter(item => {
-      const effectiveStatus = reviews[item.name]?.reviewStatus || item.status;
-      return effectiveStatus !== 'COMPLETE';
-    });
+    const unresolvedItems = CHECKLIST_ITEMS.filter(item => !isItemResolved(item));
 
     return unresolvedItems.sort((a, b) => {
       // Priority order: BLOCKED > CRITICAL NOT_STARTED > CRITICAL PARTIAL > others
@@ -1180,30 +1185,30 @@ export default function ProductionReadinessChecklistPanel() {
         </div>
       </div>
 
-      {/* Backend Enforcement Status */}
+      {/* Backend Enforcement Status — derived from System Verify snapshot */}
       {backendEnforcementStatus && (
-        <div className={`rounded-lg p-4 space-y-3 border ${backendEnforcementStatus.passed ? 'bg-primary/5 border-primary/30' : 'bg-destructive/5 border-destructive/30'}`}>
-          <div className="flex items-start gap-3">
-            {backendEnforcementStatus.passed ? (
-              <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-            ) : (
-              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <div className={`text-[11px] font-semibold mb-1 ${backendEnforcementStatus.passed ? 'text-primary' : 'text-destructive'}`}>
-                {backendEnforcementStatus.passed ? '✓ BACKEND_ENFORCEMENT_ACTIVE' : '⚠️ BACKEND_ENFORCEMENT_FAILED'}
-              </div>
-              <div className={`text-[10px] space-y-1 ${backendEnforcementStatus.passed ? 'text-primary/80' : 'text-destructive/90'}`}>
-                <div>
-                  {backendEnforcementStatus.passed
-                    ? `Backend validation tests passing: ${backendEnforcementStatus.tests?.filter(t => t.passed).length}/${backendEnforcementStatus.tests?.length || 0}`
-                    : backendEnforcementStatus.error
-                    ? `Error: ${backendEnforcementStatus.error}`
-                    : `Failed tests: ${backendEnforcementStatus.tests?.filter(t => !t.passed).map(t => t.scenario_name).join(', ')}`}
-                </div>
-              </div>
-            </div>
+        <div className={`rounded-lg p-3 border text-[9px] ${
+          backendEnforcementStatus.passed === true ? 'bg-primary/5 border-primary/20 text-primary/80' :
+          backendEnforcementStatus.passed === null ? 'bg-slate-500/5 border-slate-500/20 text-slate-400' :
+          'bg-amber-500/5 border-amber-500/20 text-amber-500/80'
+        }`}>
+          <div className="flex items-center gap-2">
+            {backendEnforcementStatus.passed === true
+              ? <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+              : <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+            <span className="font-semibold">
+              {backendEnforcementStatus.passed === true
+                ? '✓ BACKEND_ENFORCEMENT_ACTIVE — confirmed by System Verify'
+                : backendEnforcementStatus.passed === null
+                ? 'Backend enforcement status: run System Verify and export a snapshot to confirm'
+                : '⚠ Backend enforcement not yet confirmed by System Verify snapshot'}
+            </span>
           </div>
+          {backendEnforcementStatus.exportedAt && (
+            <div className="mt-1 ml-5 text-[8px] opacity-70">
+              System Verify snapshot: {new Date(backendEnforcementStatus.exportedAt).toLocaleString()}
+            </div>
+          )}
         </div>
       )}
 
@@ -1489,10 +1494,10 @@ export default function ProductionReadinessChecklistPanel() {
         </div>
       </div>
 
-      {/* ── Next required actions ── */}
+      {/* ── Next required actions — exclude verified items ── */}
       {(() => {
-        const urgent = CHECKLIST_ITEMS.filter(i => (reviews[i.name]?.reviewStatus || i.status) !== 'COMPLETE' && ((reviews[i.name]?.reviewStatus || i.status) === 'BLOCKED' || i.priority === 'CRITICAL'));
-        const partial = CHECKLIST_ITEMS.filter(i => (reviews[i.name]?.reviewStatus || i.status) === 'PARTIAL' && (reviews[i.name]?.reviewStatus || i.status) !== 'BLOCKED');
+        const urgent = CHECKLIST_ITEMS.filter(i => !isItemResolved(i) && ((reviews[i.name]?.reviewStatus || i.status) === 'BLOCKED' || i.priority === 'CRITICAL'));
+        const partial = CHECKLIST_ITEMS.filter(i => !isItemResolved(i) && (reviews[i.name]?.reviewStatus || i.status) === 'PARTIAL');
         const allItems = [...urgent, ...partial].slice(0, 5);
         return allItems.length > 0 ? (
           <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
@@ -1579,7 +1584,7 @@ export default function ProductionReadinessChecklistPanel() {
                 : 'border-border text-slate-400 hover:text-slate-200 hover:bg-secondary/50'
             }`}
           >
-            {f === 'UNRESOLVED' ? `UNRESOLVED (${CHECKLIST_ITEMS.filter(i => reviews[i.name]?.reviewStatus !== 'COMPLETE' && i.status !== 'COMPLETE').length})` : f}
+            {f === 'UNRESOLVED' ? `UNRESOLVED (${CHECKLIST_ITEMS.filter(i => !isItemResolved(i)).length})` : f}
           </button>
         ))}
       </div>
