@@ -328,6 +328,8 @@ function BridgeRequestBuilder() {
   const [previewHash, setPreviewHash] = useState(null);
   const [previewHashCopied, setPreviewHashCopied] = useState(false);
   const [exportHistory, setExportHistory] = useState([]);
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
 
   // Load eligible proposals and export history from localStorage
   useEffect(() => {
@@ -472,6 +474,61 @@ function BridgeRequestBuilder() {
     if (confirm('Clear all bridge request preview exports from local storage?')) {
       localStorage.removeItem('openclawBridgeRequestPreviews');
       setExportHistory([]);
+    }
+  };
+
+  const handleVerifyBundleFile = async (file) => {
+    setVerifyLoading(true);
+    try {
+      const fileContent = await file.text();
+      const bundle = JSON.parse(fileContent);
+
+      // Validate required structure
+      if (!bundle.exportedAt || !bundle.bridgeRequest || bundle.previewHash === undefined) {
+        setVerifyResult({
+          status: 'INVALID_FORMAT',
+          message: 'Preview is missing required fields (exportedAt, bridgeRequest, previewHash)',
+        });
+        setVerifyLoading(false);
+        return;
+      }
+
+      // Extract stored hash
+      const storedHash = bundle.previewHash;
+
+      // Remove hash from copy before recalculating
+      const bundleForHash = { ...bundle };
+      delete bundleForHash.previewHash;
+
+      // Recalculate hash
+      const jsonStr = JSON.stringify(bundleForHash, null, 2);
+      const recalculatedHash = await generateSHA256Hash(jsonStr);
+
+      // Compare
+      const isValid = storedHash === recalculatedHash;
+
+      setVerifyResult({
+        status: isValid ? 'VALID' : 'TAMPERED',
+        isValid,
+        storedHash,
+        recalculatedHash,
+        preview: {
+          exportedAt: bundle.exportedAt,
+          requestId: bundle.bridgeRequest.requestId,
+          proposalId: bundle.bridgeRequest.proposalId,
+          commandType: bundle.bridgeRequest.commandType,
+          targetUrl: bundle.bridgeRequest.targetUrl,
+          riskTier: bundle.bridgeRequest.riskTier,
+          contractValidationResult: bundle.contractValidationResult,
+        },
+      });
+    } catch (err) {
+      setVerifyResult({
+        status: 'ERROR',
+        message: `Failed to read file: ${err.message}`,
+      });
+    } finally {
+      setVerifyLoading(false);
     }
   };
 
@@ -676,6 +733,134 @@ function BridgeRequestBuilder() {
           </div>
         </div>
       )}
+
+      {/* Verify Bridge Request Preview File */}
+      <div className="border border-primary/20 bg-primary/5 rounded-lg p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="w-4 h-4 text-primary" />
+          <div className="text-[11px] font-semibold text-primary uppercase tracking-wider">Verify Bridge Request Preview File Integrity</div>
+        </div>
+        <div className="text-[9px] text-primary/70 mb-3">Upload a previously exported bridge request preview JSON file to verify its integrity. Recalculates the SHA-256 hash and compares against the stored hash to detect tampering.</div>
+        
+        <div className="flex items-center gap-3">
+          <input
+            type="file"
+            accept=".json"
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                handleVerifyBundleFile(e.target.files[0]);
+              }
+              e.target.value = '';
+            }}
+            disabled={verifyLoading}
+            className="flex-1 text-[10px] file:px-3 file:py-1.5 file:border file:border-primary/50 file:bg-primary/10 file:text-primary file:hover:bg-primary/20 file:transition-colors file:rounded file:font-semibold file:text-[9px] file:cursor-pointer disabled:opacity-50"
+          />
+          {verifyLoading && <span className="text-[9px] text-primary/70 whitespace-nowrap">Verifying…</span>}
+        </div>
+
+        {/* Verification Result */}
+        {verifyResult && (
+          <div className="space-y-3 border-t border-primary/20 pt-3 mt-3">
+            {verifyResult.status === 'VALID' && (
+              <div className="flex items-start gap-3 px-4 py-3 bg-primary/10 border border-primary/30 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="text-[10px] text-primary/90">
+                  <div className="font-semibold mb-1">✓ Preview is VALID</div>
+                  <div className="text-[9px] text-primary/70">SHA-256 hash matches. File has not been modified since export.</div>
+                </div>
+              </div>
+            )}
+
+            {verifyResult.status === 'TAMPERED' && (
+              <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div className="text-[10px] text-destructive/90">
+                  <div className="font-semibold mb-1">✗ Preview is TAMPERED / INVALID</div>
+                  <div className="text-[9px] text-destructive/70">SHA-256 hash does not match. File may have been modified after export.</div>
+                </div>
+              </div>
+            )}
+
+            {verifyResult.status === 'INVALID_FORMAT' && (
+              <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="text-[10px] text-amber-500/90">
+                  <div className="font-semibold mb-1">⚠ Invalid Format</div>
+                  <div className="text-[9px] text-amber-500/70">{verifyResult.message}</div>
+                </div>
+              </div>
+            )}
+
+            {verifyResult.status === 'ERROR' && (
+              <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div className="text-[10px] text-destructive/90">
+                  <div className="font-semibold mb-1">Error Reading File</div>
+                  <div className="text-[9px] text-destructive/70">{verifyResult.message}</div>
+                </div>
+              </div>
+            )}
+
+            {verifyResult.preview && (
+              <div className="space-y-3">
+                <div className="text-[9px] font-semibold text-foreground uppercase tracking-wider mb-2">Preview Summary</div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-[9px]">
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Exported</div>
+                    <div className="text-foreground font-mono text-[8px]">{new Date(verifyResult.preview.exportedAt).toLocaleString()}</div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Request ID</div>
+                    <div className="text-foreground/70 font-mono text-[8px] truncate">{verifyResult.preview.requestId}</div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Proposal ID</div>
+                    <div className="text-foreground/70 font-mono text-[8px] truncate">{verifyResult.preview.proposalId}</div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Command Type</div>
+                    <div className="text-foreground font-semibold">{verifyResult.preview.commandType}</div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Risk Tier</div>
+                    <div className="text-foreground font-semibold">{verifyResult.preview.riskTier}</div>
+                  </div>
+                  <div className="bg-card border border-border/30 px-2 py-1.5 rounded">
+                    <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Validation</div>
+                    <div className={`font-semibold ${verifyResult.preview.contractValidationResult === 'VALID' ? 'text-primary' : 'text-destructive'}`}>
+                      {verifyResult.preview.contractValidationResult}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hash Comparison */}
+                <div className="space-y-2">
+                  <div className="text-[9px] font-semibold text-foreground uppercase tracking-wider">Hash Verification</div>
+                  <div className="bg-card border border-border/30 px-3 py-2 rounded space-y-2">
+                    <div>
+                      <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Stored Hash (in file)</div>
+                      <code className="text-[8px] font-mono text-foreground/70 break-all">{verifyResult.storedHash}</code>
+                    </div>
+                    <div className="border-t border-border/30 pt-2">
+                      <div className="text-[8px] uppercase tracking-widest text-slate-400 mb-0.5 font-semibold">Recalculated Hash</div>
+                      <code className="text-[8px] font-mono text-foreground/70 break-all">{verifyResult.recalculatedHash}</code>
+                    </div>
+                    <div className="border-t border-border/30 pt-2">
+                      <div className={`text-[8px] uppercase tracking-widest font-semibold mb-0.5 ${verifyResult.isValid ? 'text-primary' : 'text-destructive'}`}>
+                        {verifyResult.isValid ? '✓ Hashes Match' : '✗ Hashes Do Not Match'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="text-[8px] text-primary/70 border-t border-primary/20 pt-2 mt-2">
+              Preview verification checks file integrity only. It does not call OpenClaw or execute any action. This verification only confirms the preview file has not been modified since export.
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Info Banner */}
       <div className="flex items-start gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg text-[9px] text-primary/80">
