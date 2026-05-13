@@ -44,8 +44,10 @@ import AuditEvidenceVault from '@/components/openclaw/AuditEvidenceVault';
 import VaultExportVerification from '@/components/openclaw/VaultExportVerification';
 import FinalDeploymentLock from '@/components/openclaw/FinalDeploymentLock';
 import OpenClawBaselineArchive from '@/components/openclaw/OpenClawBaselineArchive';
+import OpenClawControlTower from '@/components/openclaw/OpenClawControlTower';
 
 const TABS = [
+  { id: 'control_tower', label: '🏛️ Control Tower' },
   { id: 'gateway_connector', label: '🔌 Gateway Connector' },
   { id: 'proposal_queue', label: '✉️ Proposal Queue' },
   { id: 'system_verify', label: '✓ System Verify' },
@@ -91,7 +93,7 @@ const TABS = [
   ];
 
 export default function OpenClawControl() {
-  const [activeView, setActiveView] = useState('overview');
+  const [activeView, setActiveView] = useState('control_tower');
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -221,6 +223,10 @@ export default function OpenClawControl() {
 
       {/* ── Panel area ── scrollable, fills remaining height */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}>
+
+        {activeView === 'control_tower' && (
+          <div className="p-6"><OpenClawControlTower /></div>
+        )}
 
         {activeView === 'gateway_connector' && (
           <div className="p-6"><OpenClawGatewayConnectorPanel /></div>
