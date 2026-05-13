@@ -3,36 +3,34 @@ import { base44 } from '@/api/base44Client';
 import { Plus, RefreshCw, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 
 // Safe date formatting that returns "Unknown" instead of Invalid Date
-const formatDateSafe = (value) => {
+function formatDateSafe(value) {
   if (!value) return 'Unknown';
-  try {
-    const date = new Date(value);
-    if (isNaN(date.getTime())) return 'Unknown';
-    return date.toLocaleString();
-  } catch {
-    return 'Unknown';
-  }
-};
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Unknown';
+  return date.toLocaleString();
+}
 
 // Normalize proposal records from mixed shapes into UI-safe object
-const normalizeProposal = (record) => {
-  if (!record) return null;
+function normalizeProposal(record = {}) {
+  const payload = record.payload || record.data || record.proposal || record.command || {};
+
   return {
-    id: record.id || record.requestId || record.proposalId || record._id || 'unknown',
-    requestId: record.requestId || record.id || record.proposalId || 'unknown-request',
-    title: record.title || record.requestId || 'Untitled Proposal',
-    status: record.status || record.reviewStatus || 'DRAFT',
-    commandType: record.commandType || record.type || record.command?.type || record.payload?.commandType || 'READ',
-    target: record.target || record.selector || record.payload?.target || 'No target provided',
-    url: record.url || record.href || record.payload?.url || '',
-    riskTier: record.riskTier || record.risk || 'LOW',
-    policyGate: record.policyGate || record.governance || 'SAFE_REQUIRES_APPROVAL',
-    createdAt: record.createdAt || record.created_date || record.created_at || record.timestamp || null,
-    reviewedAt: record.reviewedAt || record.reviewed_at || null,
-    proposedBy: record.proposedBy || record.createdBy || record.operatorEmail || 'system',
-    reviewNote: record.reviewNote || record.note || '',
+    id: record.id || record._id || record.requestId || record.proposalId || `proposal-${Math.random().toString(36).slice(2)}`,
+    requestId: record.requestId || record.id || record._id || record.proposalId || payload.requestId || 'unknown-request',
+    title: record.title || payload.title || record.name || 'Command Proposal',
+    status: record.status || record.reviewStatus || payload.status || 'DRAFT',
+    commandType: record.commandType || record.type || payload.commandType || payload.type || record.command?.type || 'READ',
+    target: record.target || record.selector || payload.target || payload.selector || 'No target provided',
+    url: record.url || record.href || payload.url || payload.href || '',
+    riskTier: record.riskTier || record.risk || payload.riskTier || payload.risk || 'LOW',
+    policyGate: record.policyGate || record.governance || payload.policyGate || payload.governance || 'SAFE_REQUIRES_APPROVAL',
+    proposedBy: record.proposedBy || record.createdBy || record.operatorEmail || payload.proposedBy || 'system',
+    createdAt: record.createdAt || record.created_date || record.created_at || record.timestamp || record.createdDate || payload.createdAt || payload.timestamp || null,
+    reviewedAt: record.reviewedAt || record.reviewed_at || payload.reviewedAt || null,
+    reviewedBy: record.reviewedBy || payload.reviewedBy || '',
+    reviewNote: record.reviewNote || record.note || payload.reviewNote || payload.note || ''
   };
-};
+}
 
 export default function OpenClawCommandProposalQueue() {
   const [proposals, setProposals] = useState([]);
@@ -119,6 +117,15 @@ export default function OpenClawCommandProposalQueue() {
     DENIED: { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20' },
     EXPIRED: { icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-500/5 border-slate-500/20' },
   };
+
+  // Normalize all proposals once
+  const normalizedProposals = proposals.map(normalizeProposal);
+
+  // Filter normalized proposals
+  const filteredProposals = normalizedProposals.filter(proposal => {
+    if (!proposal) return false;
+    return filter === 'all' || proposal.status === filter;
+  });
 
   return (
     <div className="space-y-4">
@@ -246,13 +253,12 @@ export default function OpenClawCommandProposalQueue() {
 
       {/* Proposals List */}
       <div className="space-y-2">
-        {proposals.length === 0 ? (
+        {filteredProposals.length === 0 ? (
           <div className="text-center py-8 text-[10px] text-muted-foreground bg-secondary/5 border border-border/30 rounded-lg">
             No proposals found
           </div>
         ) : (
-          proposals.map(rawProposal => {
-            const proposal = normalizeProposal(rawProposal);
+          filteredProposals.map(proposal => {
             if (!proposal) return null;
             const cfg = statusConfig[proposal.status] || statusConfig.DRAFT;
             const StatusIcon = cfg.icon;
@@ -286,6 +292,11 @@ export default function OpenClawCommandProposalQueue() {
                   {proposal.reviewedAt && <div>Reviewed: {formatDateSafe(proposal.reviewedAt)}</div>}
                   <div>By: {proposal.proposedBy}</div>
                 </div>
+
+                {/* Debug: show normalized proposal object */}
+                <pre className="text-xs text-slate-500 whitespace-pre-wrap bg-secondary/30 border border-border/20 p-2 rounded mt-2">
+                  {JSON.stringify(proposal, null, 2)}
+                </pre>
 
                 {/* Action Buttons */}
                 {proposal.status === 'DRAFT' && (
