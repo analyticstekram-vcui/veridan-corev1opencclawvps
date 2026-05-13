@@ -88,6 +88,7 @@ export default function Phase1DryRunAuditLog() {
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Risk Tier</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Policy Gate</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Replay Check</th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground">Signature</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Received At</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Reason / Note</th>
                 </tr>
@@ -171,6 +172,24 @@ export default function Phase1DryRunAuditLog() {
                         }`}>
                           {record.replayCheckResult}
                         </span>
+                      ) : (
+                        <span className="text-slate-400 text-[8px]">—</span>
+                      )}
+                    </td>
+
+                    {/* Signature Check */}
+                    <td className="px-3 py-2">
+                      {record.signatureCheckResult ? (
+                        <div className="flex items-center gap-1">
+                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-semibold ${
+                            record.signatureCheckResult === 'PASS'
+                              ? 'bg-primary/10 text-primary'
+                              : 'bg-destructive/10 text-destructive'
+                          }`}>
+                            {record.signatureCheckResult}
+                          </span>
+                          <span className="text-[7px] text-slate-400">{record.signatureMode || ''}</span>
+                        </div>
                       ) : (
                         <span className="text-slate-400 text-[8px]">—</span>
                       )}

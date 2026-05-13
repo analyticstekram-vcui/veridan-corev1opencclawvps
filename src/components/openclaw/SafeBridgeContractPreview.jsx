@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Phase1BridgePreviewTester from './Phase1BridgePreviewTester';
+import Phase3SignatureGenerator from './Phase3SignatureGenerator';
 import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp, Copy, AlertTriangle, Clock } from 'lucide-react';
 
 const REQUEST_SCHEMA = {
@@ -574,6 +575,18 @@ function BridgeRequestBuilder() {
               </option>
             ))}
           </select>
+        </div>
+      )}
+
+      {/* Phase 3 Signature Generator */}
+      {bridgeRequest && selectedProposalId && (
+        <div className="border border-primary/20 rounded-lg bg-primary/5 p-4">
+          <Phase3SignatureGenerator
+            bridgeRequest={bridgeRequest}
+            previewHash={previewHash}
+            operatorId="test@veridancore.com"
+            submittedAt={new Date().toISOString()}
+          />
         </div>
       )}
 

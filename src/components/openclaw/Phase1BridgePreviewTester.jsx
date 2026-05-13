@@ -244,6 +244,35 @@ export default function Phase1BridgePreviewTester({ proposal }) {
                 )}
               </div>
             )}
+
+            {/* Phase 3: Signature Check */}
+            {result.data.signatureCheckResult !== undefined && (
+              <div className={`px-2 py-1.5 rounded border ${
+                result.data.signatureCheckResult === 'PASS'
+                  ? 'bg-primary/10 border-primary/30'
+                  : 'bg-destructive/10 border-destructive/30'
+              }`}>
+                <div className="text-[8px] font-semibold mb-0.5 flex items-center gap-1">
+                  <span className={result.data.signatureCheckResult === 'PASS' ? 'text-primary' : 'text-destructive'}>
+                    SIGNATURE CHECK ({result.data.signatureMode || 'N/A'})
+                  </span>
+                  <span className={`px-1 py-0.5 rounded text-[7px] font-semibold ${
+                    result.data.signatureCheckResult === 'PASS'
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-destructive/20 text-destructive'
+                  }`}>
+                    {result.data.signatureCheckResult}
+                  </span>
+                </div>
+                {result.data.signatureCheckMessages?.length > 0 && (
+                  <div className="text-[7px] space-y-0.5 ml-2">
+                    {result.data.signatureCheckMessages.map((msg, i) => (
+                      <div key={i} className="text-destructive/80">✗ {msg}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Note */}

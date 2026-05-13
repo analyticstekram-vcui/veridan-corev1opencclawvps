@@ -32,7 +32,7 @@
         "DRY_RUN_ONLY"
       ],
       "default": "DRY_RUN_ONLY",
-      "description": "Always DRY_RUN_ONLY for Phase 1-2"
+      "description": "Always DRY_RUN_ONLY for Phases 1-3"
     },
     "executionStatus": {
       "type": "string",
@@ -105,9 +105,41 @@
       },
       "description": "Phase 2: Replay check failure reasons (DUPLICATE_REQUEST_ID, DUPLICATE_PREVIEW_HASH)"
     },
+    "signatureCheckResult": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL"
+      ],
+      "description": "Phase 3: Signature validation check result"
+    },
+    "signatureCheckMessages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Phase 3: Signature validation failure reasons"
+    },
+    "signingVersion": {
+      "type": "string",
+      "description": "Phase 3: Signing version used (e.g., OPENCLAW_BRIDGE_V1)"
+    },
+    "signedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Phase 3: ISO timestamp when the request was signed"
+    },
+    "signaturePresent": {
+      "type": "boolean",
+      "description": "Phase 3: Whether signature field was present in request"
+    },
+    "signatureMode": {
+      "type": "string",
+      "description": "Phase 3: Signature validation mode (e.g., MOCK_SIGNATURE_VALIDATION)"
+    },
     "note": {
       "type": "string",
-      "description": "Standard note indicating dry-run only"
+      "description": "Standard note indicating dry-run only and phases passed"
     }
   },
   "required": [

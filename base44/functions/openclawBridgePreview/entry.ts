@@ -1,11 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // ============================================================================
-// PHASE 1: BACKEND ROUTE SCAFFOLD - DRY-RUN VALIDATION ONLY + AUDIT LOGGING
+// PHASES 1-3: BACKEND ROUTE SCAFFOLD - DRY-RUN VALIDATION ONLY + AUDIT LOGGING
+// ============================================================================
+// PHASE 1: Request structure & contract validation
+// PHASE 2: Policy gating + replay protection
+// PHASE 3: Signed request validation (MOCK signature, no HMAC yet)
 // ============================================================================
 // WARNING: DO NOT CALL OPENCLAW HERE
 // WARNING: DO NOT EXECUTE ACTIONS HERE
-// WARNING: PHASE 1 IS VALIDATION ONLY
+// WARNING: ALL PHASES ARE VALIDATION ONLY
 // ============================================================================
 
 const ALLOWED_DOMAINS = [
@@ -21,6 +25,115 @@ const ALLOWED_RISK_TIERS = ['LOW', 'MEDIUM'];
 const SUSPICIOUS_PATH_KEYWORDS = ['delete', 'transfer', 'withdraw', 'password', 'settings/security', 'api-key', 'billing', 'checkout', 'trade', 'order', 'execute'];
 
 const generateAuditId = () => `audit_${new Date().toISOString().split('T')[0]}_${Math.random().toString(36).substr(2, 9)}`;
+
+// Phase 3: Mock deterministic signature validation
+const buildCanonicalPayload = (requestId, proposalId, previewHash, operatorId, submittedAt, signedAt, commandType, targetUrl, riskTier, governanceMode, dryRun, liveExecution) => {
+  return [
+    requestId,
+    proposalId,
+    previewHash,
+    operatorId,
+    submittedAt,
+    signedAt,
+    commandType,
+    targetUrl,
+    riskTier,
+    governanceMode,
+    String(dryRun),
+    String(liveExecution),
+  ].join('|');
+};
+
+const generateMockSignature = async (canonical) => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(canonical);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+const validateSignedRequest = async (body) => {
+  const errors = [];
+
+  // Check signature field existence
+  if (!body.signature) {
+    errors.push('signature field missing');
+    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+  }
+
+  // Check signingVersion
+  if (!body.signingVersion) {
+    errors.push('signingVersion field missing');
+    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+  }
+
+  if (body.signingVersion !== 'OPENCLAW_BRIDGE_V1') {
+    errors.push(`signingVersion must be OPENCLAW_BRIDGE_V1, got ${body.signingVersion}`);
+    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+  }
+
+  // Check signedAt field existence
+  if (!body.signedAt) {
+    errors.push('signedAt field missing');
+    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+  }
+
+  // Validate signedAt is a valid ISO timestamp
+  let signedAtDate;
+  try {
+    signedAtDate = new Date(body.signedAt);
+    if (isNaN(signedAtDate.getTime())) {
+      errors.push('signedAt is not a valid ISO timestamp');
+      return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+    }
+  } catch {
+    errors.push('signedAt is not a valid ISO timestamp');
+    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+  }
+
+  // Check signedAt is not too old (older than 5 minutes)
+  const now = new Date();
+  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+  if (signedAtDate < fiveMinutesAgo) {
+    errors.push('signedAt is older than 5 minutes (signature expired)');
+    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+  }
+
+  // Check signedAt is not too far in future (more than 60 seconds)
+  const sixtySecondsFromNow = new Date(now.getTime() + 60 * 1000);
+  if (signedAtDate > sixtySecondsFromNow) {
+    errors.push('signedAt is more than 60 seconds in the future');
+    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+  }
+
+  // Build canonical payload for signature verification
+  const br = body.bridgeRequest;
+  const canonical = buildCanonicalPayload(
+    body.bridgeRequest.requestId,
+    body.bridgeRequest.proposalId,
+    body.previewHash,
+    body.operatorId,
+    body.submittedAt,
+    body.signedAt,
+    br.commandType,
+    br.targetUrl,
+    br.riskTier,
+    br.governanceMode,
+    br.dryRun,
+    br.liveExecution
+  );
+
+  // Generate expected mock signature
+  const expectedSignature = await generateMockSignature(canonical);
+
+  // Compare signatures
+  if (body.signature !== expectedSignature) {
+    errors.push('signature does not match canonical payload hash (MOCK_SIGNATURE_VALIDATION)');
+    return { result: 'FAIL', errors, mode: 'MOCK_SIGNATURE_VALIDATION' };
+  }
+
+  return { result: 'PASS', errors: [], mode: 'MOCK_SIGNATURE_VALIDATION' };
+};
 
 const isUrlAllowlisted = (urlString) => {
   if (!urlString) return false;
@@ -388,6 +501,12 @@ Deno.serve(async (req) => {
           policyGateMessages: [],
           replayCheckResult: 'FAIL',
           replayCheckMessages: replayCheck.messages,
+          signatureCheckResult: null,
+          signatureCheckMessages: [],
+          signingVersion: null,
+          signedAt: null,
+          signaturePresent: false,
+          signatureMode: null,
           note: 'Request rejected by replay check. No OpenClaw call was made.',
         });
       } catch (auditErr) {
@@ -408,7 +527,71 @@ Deno.serve(async (req) => {
           policyGateMessages: [],
           replayCheckResult: 'FAIL',
           replayCheckMessages: replayCheck.messages,
+          signatureCheckResult: null,
+          signatureCheckMessages: [],
           note: 'Request rejected by replay check. No OpenClaw call was made.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Phase 3: Signed request validation
+    const signatureCheck = await validateSignedRequest(body);
+
+    if (signatureCheck.result === 'FAIL') {
+      const validatedAt = new Date().toISOString();
+      const rejectionReason = `Signature validation failed: ${signatureCheck.errors.join('; ')}`;
+      try {
+        await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
+          auditId,
+          requestId,
+          previewHash: body.previewHash || null,
+          operatorId: body.operatorId || null,
+          accepted: false,
+          rejectedReason: rejectionReason,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          targetUrl: body.bridgeRequest?.targetUrl || null,
+          commandType: body.bridgeRequest?.commandType || null,
+          riskTier: body.bridgeRequest?.riskTier || null,
+          receivedAt,
+          validatedAt,
+          validationMessages: [],
+          inputTextPresent: !!body.bridgeRequest?.inputText,
+          policyGateResult: 'PASS',
+          policyGateMessages: [],
+          replayCheckResult: 'PASS',
+          replayCheckMessages: [],
+          signatureCheckResult: 'FAIL',
+          signatureCheckMessages: signatureCheck.errors,
+          signingVersion: body.signingVersion || null,
+          signedAt: body.signedAt || null,
+          signaturePresent: !!body.signature,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION',
+          note: 'Request rejected by signature validation. No OpenClaw call was made.',
+        });
+      } catch (auditErr) {
+        console.error('Failed to create signature rejection audit record:', auditErr.message);
+      }
+
+      return Response.json(
+        {
+          accepted: false,
+          rejectedReason: rejectionReason,
+          requestId,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          auditId,
+          receivedAt,
+          validatedAt,
+          policyGateResult: 'PASS',
+          policyGateMessages: [],
+          replayCheckResult: 'PASS',
+          replayCheckMessages: [],
+          signatureCheckResult: 'FAIL',
+          signatureCheckMessages: signatureCheck.errors,
+          signatureMode: 'MOCK_SIGNATURE_VALIDATION',
+          note: 'Request rejected by signature validation. No OpenClaw call was made.',
         },
         { status: 400 }
       );
@@ -437,7 +620,13 @@ Deno.serve(async (req) => {
         policyGateMessages: [],
         replayCheckResult: 'PASS',
         replayCheckMessages: [],
-        note: 'Dry-run validation and policy check passed. No OpenClaw call was made.',
+        signatureCheckResult: 'PASS',
+        signatureCheckMessages: [],
+        signingVersion: body.signingVersion || null,
+        signedAt: body.signedAt || null,
+        signaturePresent: !!body.signature,
+        signatureMode: 'MOCK_SIGNATURE_VALIDATION',
+        note: 'Phases 1-3 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
       });
     } catch (auditErr) {
       console.error('Failed to create audit record:', auditErr.message);
@@ -457,7 +646,10 @@ Deno.serve(async (req) => {
         policyGateMessages: [],
         replayCheckResult: 'PASS',
         replayCheckMessages: [],
-        note: 'Dry-run validation and policy check passed. No OpenClaw call was made.',
+        signatureCheckResult: 'PASS',
+        signatureCheckMessages: [],
+        signatureMode: 'MOCK_SIGNATURE_VALIDATION',
+        note: 'Phases 1-3 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
       },
       { status: 200 }
     );
@@ -477,6 +669,9 @@ Deno.serve(async (req) => {
         policyGateMessages: [],
         replayCheckResult: null,
         replayCheckMessages: [],
+        signatureCheckResult: null,
+        signatureCheckMessages: [],
+        signatureMode: null,
         note: 'Request rejected. No OpenClaw call was made.',
       },
       { status: 500 }
