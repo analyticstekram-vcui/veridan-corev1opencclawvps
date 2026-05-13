@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor, ChevronDown, ChevronRight, Settings } from 'lucide-react';
+import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor, ChevronDown, ChevronRight, Settings, AlertTriangle } from 'lucide-react';
 import SafeCommandBridge from '@/components/openclaw/SafeCommandBridge';
 import CommandQueuePanel from '@/components/openclaw/CommandQueuePanel';
 import ExecutionReadinessPanel from '@/components/openclaw/ExecutionReadinessPanel';
@@ -216,6 +216,36 @@ export default function OpenClawControl() {
           <div className="flex-1">
             <h1 className="text-lg font-semibold tracking-wide text-foreground">OpenClaw Control</h1>
             <p className="text-[10px] text-slate-400 mt-1">Governed browser and task control for Veridan Core. Execution remains disabled unless explicitly approved by policy.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Safety Boundary Banner ── */}
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 15 }} className="bg-amber-500/5 border-b-2 border-amber-500/30 px-6 py-4">
+        <div className="flex items-start gap-4 mb-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="text-[12px] font-bold text-amber-600 mb-1 uppercase tracking-wide">PREVIEW / GOVERNED MODE</div>
+            <p className="text-[10px] text-amber-600/90">OpenClaw cannot execute live actions from this screen. All actions require explicit approval, audit logging, and backend policy authorization.</p>
+          </div>
+        </div>
+        
+        {/* Status Chips */}
+        <div className="flex flex-wrap gap-2">
+          <div className="px-2.5 py-1 bg-destructive/10 border border-destructive/30 rounded text-[9px] font-semibold text-destructive uppercase tracking-wider">
+            ✗ Live Execution: Disabled
+          </div>
+          <div className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-[9px] font-semibold text-amber-600 uppercase tracking-wider">
+            ⚙ Browser Automation: Governed
+          </div>
+          <div className="px-2.5 py-1 bg-destructive/10 border border-destructive/30 rounded text-[9px] font-semibold text-destructive uppercase tracking-wider">
+            ✗ API Trading: Disabled
+          </div>
+          <div className="px-2.5 py-1 bg-destructive/10 border border-destructive/30 rounded text-[9px] font-semibold text-destructive uppercase tracking-wider">
+            ✗ Credential Entry: Disabled
+          </div>
+          <div className="px-2.5 py-1 bg-destructive/10 border border-destructive/30 rounded text-[9px] font-semibold text-destructive uppercase tracking-wider">
+            ✗ Money Movement: Disabled
           </div>
         </div>
       </div>
