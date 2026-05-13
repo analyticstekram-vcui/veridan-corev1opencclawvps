@@ -106,18 +106,32 @@ const validateProposal = (proposal) => {
   };
 };
 
-function ProposalForm({ onSubmit, onCancel, currentUser }) {
-  const [formData, setFormData] = useState({
-    commandTitle: '',
-    commandType: 'READ',
-    targetUrl: '',
-    selector: '',
-    inputText: '',
-    reason: '',
-    riskTier: 'LOW',
-    requiresApproval: true,
-    proposedBy: currentUser || 'Anonymous',
-  });
+function ProposalForm({ onSubmit, onCancel, currentUser, existingProposal }) {
+  const [formData, setFormData] = useState(
+    existingProposal || {
+      commandTitle: '',
+      commandType: 'READ',
+      targetUrl: '',
+      selector: '',
+      inputText: '',
+      reason: '',
+      riskTier: 'LOW',
+      requiresApproval: true,
+      proposedBy: currentUser || 'Anonymous',
+    }
+  );
+
+  const detectChanges = () => {
+    if (!existingProposal) return null;
+    const changed = [];
+    const fields = ['commandTitle', 'commandType', 'targetUrl', 'selector', 'inputText', 'reason', 'riskTier', 'requiresApproval', 'proposedBy'];
+    fields.forEach(field => {
+      if (formData[field] !== existingProposal[field]) {
+        changed.push(field);
+      }
+    });
+    return changed.length > 0 ? changed : null;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -125,7 +139,8 @@ function ProposalForm({ onSubmit, onCancel, currentUser }) {
       alert('Title and URL are required.');
       return;
     }
-    onSubmit(formData);
+    const changedFields = detectChanges();
+    onSubmit(formData, changedFields);
     setFormData({
       commandTitle: '',
       commandType: 'READ',
@@ -141,6 +156,11 @@ function ProposalForm({ onSubmit, onCancel, currentUser }) {
 
   return (
     <form onSubmit={handleSubmit} className="border border-border/50 rounded-lg bg-secondary/10 p-4 space-y-3">
+      {existingProposal && (
+        <div className="text-[9px] text-amber-500 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded">
+          ✏️ Editing proposal — changes will be tracked in audit trail
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label className="text-[9px] font-semibold text-foreground block mb-1">Command Title</label>
@@ -256,8 +276,14 @@ function ProposalForm({ onSubmit, onCancel, currentUser }) {
           type="submit"
           className="px-3 py-1.5 text-[9px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded flex items-center gap-1"
         >
-          <Plus className="w-3 h-3" />
-          Create Proposal
+          {existingProposal ? (
+            <>✏️ Save Changes</>
+          ) : (
+            <>
+              <Plus className="w-3 h-3" />
+              Create Proposal
+            </>
+          )}
         </button>
       </div>
     </form>
@@ -305,7 +331,7 @@ function AuditTrailExpanded({ events }) {
   );
 }
 
-function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, onSubmitForApproval }) {
+function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, onSubmitForApproval, setEditingProposalIndex, setShowForm }) {
   const [showAudit, setShowAudit] = useState(false);
   const statusCfg = STATUS_CONFIG[proposal.status];
   const StatusIcon = statusCfg.icon;
@@ -350,7 +376,21 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
             {proposal.status === 'DRAFT' && (
               <>
                 <button
-                  onClick={() => onSubmitForApproval(index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingProposalIndex(index);
+                    setShowForm(true);
+                  }}
+                  className="px-2 py-1 text-[8px] border border-slate-500/30 bg-slate-500/5 text-slate-400 hover:bg-slate-500/10 transition-colors rounded"
+                  title="Edit proposal"
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSubmitForApproval(index);
+                  }}
                   disabled={!canSubmit}
                   title={!canSubmit ? 'Fix validation errors before submitting' : ''}
                   className={`px-2 py-1 text-[8px] border rounded transition-colors ${
@@ -362,7 +402,10 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
                   <Send className="w-2.5 h-2.5" />
                 </button>
                 <button
-                  onClick={() => onDelete(index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(index);
+                  }}
                   className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors rounded"
                 >
                   <Trash2 className="w-2.5 h-2.5" />
@@ -373,7 +416,10 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
             {proposal.status === 'PENDING_APPROVAL' && (
               <>
                 <button
-                  onClick={() => onApprove(index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onApprove(index);
+                  }}
                   disabled={!canApprove}
                   title={!canApprove ? canApprove === false ? 'Fix validation errors first' : 'CRITICAL risk requires manual review' : ''}
                   className={`px-2 py-1 text-[8px] border rounded transition-colors ${
@@ -385,7 +431,10 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
                   Approve
                 </button>
                 <button
-                  onClick={() => onDeny(index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeny(index);
+                  }}
                   className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors rounded"
                 >
                   Deny
@@ -395,7 +444,10 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
 
             {proposal.status === 'APPROVED' && (
               <button
-                onClick={() => onExpire(index)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExpire(index);
+                }}
                 className="px-2 py-1 text-[8px] border border-slate-500/30 bg-slate-500/5 text-slate-400 hover:bg-slate-500/10 transition-colors rounded"
               >
                 Expire
@@ -404,7 +456,10 @@ function ProposalRow({ proposal, index, onApprove, onDeny, onExpire, onDelete, o
 
             {(proposal.status === 'DENIED' || proposal.status === 'EXPIRED') && (
               <button
-                onClick={() => onDelete(index)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(index);
+                }}
                 className="px-2 py-1 text-[8px] border border-slate-500/30 bg-slate-500/5 text-slate-400 hover:bg-slate-500/10 transition-colors rounded"
               >
                 <Trash2 className="w-2.5 h-2.5" />
@@ -454,6 +509,7 @@ export default function OpenClawCommandProposalQueue() {
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [editingProposalIndex, setEditingProposalIndex] = useState(null);
 
   // Load proposals from localStorage on mount
   useEffect(() => {
@@ -485,16 +541,56 @@ export default function OpenClawCommandProposalQueue() {
     return allEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 25);
   };
 
-  const handleCreateProposal = (formData) => {
-    const proposal = {
-      ...formData,
-      id: Date.now().toString(),
-      status: formData.requiresApproval ? 'PENDING_APPROVAL' : 'DRAFT',
-      proposedAt: new Date().toISOString(),
-      auditEvents: [createAuditEvent('CREATED', 'User', { nextStatus: formData.requiresApproval ? 'PENDING_APPROVAL' : 'DRAFT' })],
-    };
-    saveProposals([proposal, ...proposals]);
-    setShowForm(false);
+  const handleCreateProposal = (formData, changedFields) => {
+    if (editingProposalIndex !== null) {
+      // Update existing proposal
+      const updated = [...proposals];
+      const oldProposal = updated[editingProposalIndex];
+      const oldValidation = validateProposal(oldProposal);
+      const newValidation = validateProposal(formData);
+
+      const events = [...(oldProposal.auditEvents || [])];
+
+      // Add UPDATED event
+      if (changedFields && changedFields.length > 0) {
+        events.push(createAuditEvent('UPDATED', 'User', { note: `Changed fields: ${changedFields.join(', ')}`, changedFields }));
+      }
+
+      // Add VALIDATION_CHANGED if validation result changed
+      if (oldValidation.status !== newValidation.status) {
+        events.push(
+          createAuditEvent('VALIDATION_CHANGED', 'User', {
+            previousValidationResult: oldValidation.status,
+            nextValidationResult: newValidation.status,
+            validationMessages: newValidation.errors.length > 0 ? newValidation.errors : newValidation.warnings,
+            previousValidationResult: oldValidation.status,
+            nextValidationResult: newValidation.status,
+          })
+        );
+      }
+
+      updated[editingProposalIndex] = {
+        ...formData,
+        id: oldProposal.id,
+        status: oldProposal.status,
+        proposedAt: oldProposal.proposedAt,
+        auditEvents: events,
+      };
+      saveProposals(updated);
+      setEditingProposalIndex(null);
+      setShowForm(false);
+    } else {
+      // Create new proposal
+      const proposal = {
+        ...formData,
+        id: Date.now().toString(),
+        status: formData.requiresApproval ? 'PENDING_APPROVAL' : 'DRAFT',
+        proposedAt: new Date().toISOString(),
+        auditEvents: [createAuditEvent('CREATED', 'User', { nextStatus: formData.requiresApproval ? 'PENDING_APPROVAL' : 'DRAFT' })],
+      };
+      saveProposals([proposal, ...proposals]);
+      setShowForm(false);
+    }
   };
 
   const handleSubmitForApproval = (index) => {
@@ -588,7 +684,10 @@ export default function OpenClawCommandProposalQueue() {
         </div>
         {!showForm && (
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setEditingProposalIndex(null);
+              setShowForm(true);
+            }}
             className="px-4 py-2 text-[10px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -610,8 +709,12 @@ export default function OpenClawCommandProposalQueue() {
       {showForm && (
         <ProposalForm
           onSubmit={handleCreateProposal}
-          onCancel={() => setShowForm(false)}
+          onCancel={() => {
+            setShowForm(false);
+            setEditingProposalIndex(null);
+          }}
           currentUser="Operator"
+          existingProposal={editingProposalIndex !== null ? proposals[editingProposalIndex] : null}
         />
       )}
 
@@ -654,7 +757,7 @@ export default function OpenClawCommandProposalQueue() {
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Event Type</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Proposal</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Actor</th>
-                  <th className="text-left px-3 py-2 font-semibold text-foreground">Status Transition</th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground">Details</th>
                   <th className="text-left px-3 py-2 font-semibold text-foreground">Timestamp</th>
                 </tr>
               </thead>
@@ -664,8 +767,12 @@ export default function OpenClawCommandProposalQueue() {
                     <td className="px-3 py-2 font-semibold text-foreground">{event.eventType}</td>
                     <td className="px-3 py-2 text-foreground/80 truncate max-w-xs">{event.proposalTitle}</td>
                     <td className="px-3 py-2 text-foreground/60">{event.actor || '—'}</td>
-                    <td className="px-3 py-2 text-foreground/60">
-                      {event.previousStatus && event.nextStatus ? `${event.previousStatus} → ${event.nextStatus}` : '—'}
+                    <td className="px-3 py-2 text-foreground/60 text-[7px] max-w-xs truncate">
+                      {event.previousStatus && event.nextStatus && `${event.previousStatus} → ${event.nextStatus}`}
+                      {event.changedFields && `Changed: ${event.changedFields.join(', ')}`}
+                      {event.previousValidationResult && event.nextValidationResult && `${event.previousValidationResult} → ${event.nextValidationResult}`}
+                      {event.note && event.note}
+                      {!event.previousStatus && !event.changedFields && !event.previousValidationResult && '—'}
                     </td>
                     <td className="px-3 py-2 text-foreground/60 font-mono whitespace-nowrap">{new Date(event.timestamp).toLocaleString()}</td>
                   </tr>
@@ -704,6 +811,8 @@ export default function OpenClawCommandProposalQueue() {
                   onExpire={handleExpire}
                   onDelete={handleDelete}
                   onSubmitForApproval={handleSubmitForApproval}
+                  setEditingProposalIndex={setEditingProposalIndex}
+                  setShowForm={setShowForm}
                 />
               ))}
             </tbody>
