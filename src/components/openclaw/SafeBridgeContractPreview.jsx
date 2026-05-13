@@ -325,8 +325,11 @@ function BridgeRequestBuilder() {
   const [bridgeRequest, setBridgeRequest] = useState(null);
   const [validation, setValidation] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [previewHash, setPreviewHash] = useState(null);
+  const [previewHashCopied, setPreviewHashCopied] = useState(false);
+  const [exportHistory, setExportHistory] = useState([]);
 
-  // Load eligible proposals from localStorage
+  // Load eligible proposals and export history from localStorage
   useEffect(() => {
     try {
       const stored = localStorage.getItem('openclawProposalQueue');
@@ -342,8 +345,13 @@ function BridgeRequestBuilder() {
         });
         setProposals(eligible);
       }
+      
+      const historyStored = localStorage.getItem('openclawBridgeRequestPreviews');
+      if (historyStored) {
+        setExportHistory(JSON.parse(historyStored));
+      }
     } catch (err) {
-      console.error('Error loading proposals:', err);
+      console.error('Error loading data:', err);
     }
   }, []);
 
@@ -389,6 +397,81 @@ function BridgeRequestBuilder() {
       navigator.clipboard.writeText(JSON.stringify(bridgeRequest, null, 2));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const generateSHA256Hash = async (str) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  };
+
+  const handleExportPreview = async () => {
+    if (!bridgeRequest || !validation) return;
+
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      note: 'Bridge request preview is audit-only and does not call OpenClaw.',
+      bridgeRequest,
+      contractValidationResult: validation.isValid ? 'VALID' : 'INVALID',
+      contractValidationMessages: validation.errors,
+    };
+
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const hash = await generateSHA256Hash(jsonStr);
+
+    const exportDataWithHash = {
+      ...exportData,
+      previewHash: hash,
+    };
+
+    const finalJsonStr = JSON.stringify(exportDataWithHash, null, 2);
+    const blob = new Blob([finalJsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `bridge-request-preview-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setPreviewHash(hash);
+
+    // Save metadata to localStorage
+    const metadata = {
+      previewHash: hash,
+      requestId: bridgeRequest.requestId,
+      proposalId: bridgeRequest.proposalId,
+      commandType: bridgeRequest.commandType,
+      targetUrl: bridgeRequest.targetUrl,
+      riskTier: bridgeRequest.riskTier,
+      exportedAt: new Date().toISOString(),
+    };
+    const updated = [metadata, ...exportHistory].slice(0, 10);
+    setExportHistory(updated);
+    try {
+      localStorage.setItem('openclawBridgeRequestPreviews', JSON.stringify(updated));
+    } catch (err) {
+      console.error('Error saving export metadata:', err);
+    }
+  };
+
+  const handleCopyPreviewHash = () => {
+    if (previewHash) {
+      navigator.clipboard.writeText(previewHash);
+      setPreviewHashCopied(true);
+      setTimeout(() => setPreviewHashCopied(false), 2000);
+    }
+  };
+
+  const clearExportHistory = () => {
+    if (confirm('Clear all bridge request preview exports from local storage?')) {
+      localStorage.removeItem('openclawBridgeRequestPreviews');
+      setExportHistory([]);
     }
   };
 
@@ -507,14 +590,89 @@ function BridgeRequestBuilder() {
               </pre>
             </div>
 
-            {/* Copy Button */}
+            {/* Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleCopyJson}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded"
+              >
+                <Copy className="w-3 h-3" />
+                {copied ? 'Copied!' : 'Copy JSON'}
+              </button>
+              <button
+                onClick={handleExportPreview}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded"
+              >
+                ⬇ Export Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Hash Display */}
+      {previewHash && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+          <div className="text-[9px] uppercase tracking-widest text-primary/60 font-semibold">Latest Preview Hash (SHA-256)</div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-[8px] font-mono bg-secondary/50 border border-border/30 px-2 py-1.5 rounded break-all text-foreground/80">
+              {previewHash}
+            </code>
             <button
-              onClick={handleCopyJson}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded"
+              type="button"
+              onClick={handleCopyPreviewHash}
+              className="px-2 py-1.5 text-[8px] border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-semibold rounded whitespace-nowrap"
             >
-              <Copy className="w-3 h-3" />
-              {copied ? 'Copied!' : 'Copy JSON'}
+              {previewHashCopied ? '✓ Copied' : 'Copy'}
             </button>
+          </div>
+          <div className="text-[8px] text-primary/70">Hash proves preview integrity. If hash changes after export, the file was modified.</div>
+        </div>
+      )}
+
+      {/* Export History */}
+      {exportHistory.length > 0 && (
+        <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-semibold text-foreground">Bridge Request Preview Export History</div>
+            <button
+              type="button"
+              onClick={clearExportHistory}
+              className="px-2 py-1 text-[8px] border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors font-semibold rounded"
+            >
+              Clear History
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-[9px]">
+              <thead className="border-b border-border/30">
+                <tr className="text-muted-foreground/60 uppercase tracking-widest">
+                  <th className="text-left px-3 py-2 font-semibold">Exported At</th>
+                  <th className="text-left px-3 py-2 font-semibold">Request ID</th>
+                  <th className="text-left px-3 py-2 font-semibold">Proposal ID</th>
+                  <th className="text-left px-3 py-2 font-semibold">Command Type</th>
+                  <th className="text-left px-3 py-2 font-semibold">Risk Tier</th>
+                  <th className="text-left px-3 py-2 font-semibold">Preview Hash (first 16 chars)</th>
+                </tr>
+              </thead>
+              <tbody className="space-y-1">
+                {exportHistory.map((exp, idx) => (
+                  <tr key={idx} className="border-b border-border/20 hover:bg-secondary/20 transition-colors">
+                    <td className="px-3 py-2 text-foreground/80 font-mono">{new Date(exp.exportedAt).toLocaleString()}</td>
+                    <td className="px-3 py-2 font-mono text-foreground/60 text-[8px] truncate">{exp.requestId}</td>
+                    <td className="px-3 py-2 font-mono text-foreground/60 text-[8px] truncate">{exp.proposalId}</td>
+                    <td className="px-3 py-2 text-foreground/70">{exp.commandType}</td>
+                    <td className="px-3 py-2 text-foreground/70 font-semibold">{exp.riskTier}</td>
+                    <td className="px-3 py-2 font-mono text-foreground/60">{exp.previewHash.substring(0, 16)}...</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="text-[8px] text-muted-foreground/60 border-t border-border/30 pt-2">
+            Latest 10 bridge request preview exports stored locally. Metadata only—no sensitive request data. Clear history anytime to reset.
           </div>
         </div>
       )}
