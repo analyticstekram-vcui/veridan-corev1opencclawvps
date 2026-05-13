@@ -128,22 +128,31 @@ const validateBridgeRequest = (body) => {
 const checkPolicy = (bridgeRequest) => {
   const messages = [];
 
-  // Command type policy
+  // Command type policy (case-sensitive, must match exactly)
   if (!ALLOWED_COMMAND_TYPES.includes(bridgeRequest.commandType)) {
     messages.push(`commandType ${bridgeRequest.commandType} not allowed (must be one of: ${ALLOWED_COMMAND_TYPES.join(', ')})`);
   }
 
-  // Risk tier policy
+  // Risk tier policy (case-sensitive, must match exactly)
   if (!ALLOWED_RISK_TIERS.includes(bridgeRequest.riskTier)) {
     messages.push(`riskTier ${bridgeRequest.riskTier} not allowed (must be LOW or MEDIUM)`);
   }
 
-  // Suspicious path keywords
-  const urlPath = new URL(bridgeRequest.targetUrl).pathname.toLowerCase();
-  for (const keyword of SUSPICIOUS_PATH_KEYWORDS) {
-    if (urlPath.includes(keyword)) {
-      messages.push(`targetUrl path contains suspicious keyword: ${keyword}`);
+  // Suspicious path keywords (check both pathname and search query)
+  try {
+    const url = new URL(bridgeRequest.targetUrl);
+    const urlPathLower = url.pathname.toLowerCase();
+    const urlSearchLower = url.search.toLowerCase();
+    const fullUrlLower = (urlPathLower + urlSearchLower).toLowerCase();
+    
+    for (const keyword of SUSPICIOUS_PATH_KEYWORDS) {
+      if (fullUrlLower.includes(keyword)) {
+        messages.push(`targetUrl contains suspicious keyword: ${keyword}`);
+        break; // Report only first match to avoid duplicate messages
+      }
     }
+  } catch (err) {
+    messages.push('failed to parse targetUrl for keyword check');
   }
 
   return {
@@ -464,6 +473,10 @@ Deno.serve(async (req) => {
         auditId,
         receivedAt,
         validatedAt: new Date().toISOString(),
+        policyGateResult: null,
+        policyGateMessages: [],
+        replayCheckResult: null,
+        replayCheckMessages: [],
         note: 'Request rejected. No OpenClaw call was made.',
       },
       { status: 500 }

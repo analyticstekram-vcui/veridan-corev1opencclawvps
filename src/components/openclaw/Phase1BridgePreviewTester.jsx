@@ -91,8 +91,8 @@ export default function Phase1BridgePreviewTester({ proposal }) {
       <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded text-[9px] text-amber-500">
         <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
         <div>
-          <div className="font-semibold mb-0.5">PHASE 2: DRY-RUN ONLY</div>
-          <div className="text-[8px] text-amber-500/70">Route adds backend policy gating and replay protection. Still does not call OpenClaw or execute actions.</div>
+          <div className="font-semibold mb-0.5">PHASE 2: VALIDATION ONLY · NO EXECUTION</div>
+          <div className="text-[8px] text-amber-500/70">Backend policy gating + replay protection enabled. DRY_RUN_ONLY mode. No OpenClaw calls. No browser actions. No trading. No mutations.</div>
         </div>
       </div>
 
@@ -156,7 +156,7 @@ export default function Phase1BridgePreviewTester({ proposal }) {
                 <CheckCircle2 className="w-4 h-4 text-primary" />
                 <div>
                   <div className="text-[10px] font-semibold text-primary">ACCEPTED</div>
-                  <div className="text-[8px] text-primary/70">Dry-run validation passed.</div>
+                  <div className="text-[8px] text-primary/70">Request passed validation & policy gate. DRY_RUN_ONLY—no action executed.</div>
                 </div>
               </>
             ) : (
