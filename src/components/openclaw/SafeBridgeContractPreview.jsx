@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp, Copy } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Shield, Lock, TrendingDown, TrendingUp, Copy, AlertTriangle } from 'lucide-react';
 
 const REQUEST_SCHEMA = {
   requestId: { type: 'string', description: 'Unique bridge request identifier', required: true },
@@ -860,6 +860,178 @@ function BridgeRequestBuilder() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* OpenClaw Control Module Map */}
+      <div className="border border-border/50 rounded-lg bg-card p-5 space-y-4">
+        <div>
+          <div className="text-[11px] font-semibold text-foreground uppercase tracking-widest mb-2">OpenClaw Control Module Map</div>
+          <div className="text-[9px] text-slate-400 mb-4">This map shows the OpenClaw governance path. Current modules verify, approve, audit, and preview requests only. Execution is not connected.</div>
+        </div>
+
+        {/* Flow Diagram */}
+        <div className="space-y-2">
+          {/* Row 1: System Verify & Proposal Queue */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">System Verify</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">Proposal Queue</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Arrow Down */}
+          <div className="flex justify-center">
+            <div className="text-slate-400 text-[10px]">↓</div>
+          </div>
+
+          {/* Row 2: Validation & Approval */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">Validation</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">Approval</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Arrow Down */}
+          <div className="flex justify-center">
+            <div className="text-slate-400 text-[10px]">↓</div>
+          </div>
+
+          {/* Row 3: Audit & Export */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">Audit Trail</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">Bundle Export</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Arrow Down */}
+          <div className="flex justify-center">
+            <div className="text-slate-400 text-[10px]">↓</div>
+          </div>
+
+          {/* Row 4: Contract & Builder */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">Contract Preview</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">Request Builder</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Arrow Down */}
+          <div className="flex justify-center">
+            <div className="text-slate-400 text-[10px]">↓</div>
+          </div>
+
+          {/* Row 5: Export & Verify */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">Request Export</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-foreground">Verification</div>
+                <div className="text-[8px] text-slate-400">BUILT</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Arrow Down */}
+          <div className="flex justify-center">
+            <div className="text-slate-400 text-[10px]">↓</div>
+          </div>
+
+          {/* Row 6: Future - Disabled */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-500/10 border border-slate-500/20 rounded opacity-60">
+              <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-slate-400">Backend Bridge</div>
+                <div className="text-[8px] text-slate-500">FUTURE · DISABLED</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-500/10 border border-slate-500/20 rounded opacity-60">
+              <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+              <div className="text-[10px]">
+                <div className="font-semibold text-slate-400">OpenClaw Execute</div>
+                <div className="text-[8px] text-slate-500">FUTURE · DISABLED</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Status Legend */}
+        <div className="border-t border-border/30 pt-3 space-y-2">
+          <div className="text-[9px] font-semibold text-foreground uppercase tracking-wider">Status Legend</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[9px]">
+            <div className="flex items-start gap-2 px-2.5 py-1.5 bg-primary/5 border border-primary/20 rounded">
+              <CheckCircle2 className="w-3 h-3 text-primary shrink-0 mt-0.5" />
+              <span className="text-slate-400"><span className="font-semibold text-foreground">BUILT</span> · Currently operational</span>
+            </div>
+            <div className="flex items-start gap-2 px-2.5 py-1.5 bg-amber-500/5 border border-amber-500/20 rounded">
+              <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+              <span className="text-slate-400"><span className="font-semibold text-amber-500">PREVIEW</span> · Read-only only</span>
+            </div>
+            <div className="flex items-start gap-2 px-2.5 py-1.5 bg-slate-500/10 border border-slate-500/20 rounded">
+              <Lock className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+              <span className="text-slate-400"><span className="font-semibold text-slate-400">FUTURE</span> · Not connected</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Warning Banner */}
+        <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="text-[9px] text-amber-500">
+            <span className="font-semibold">Future Backend Bridge and OpenClaw Execution are disabled.</span>
+            <span className="block text-amber-500/70 mt-0.5">No live actions are executed. All current modules are read-only governance, audit, and preview only.</span>
+          </div>
+        </div>
       </div>
 
       {/* Info Banner */}
