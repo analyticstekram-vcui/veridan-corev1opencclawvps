@@ -1,0 +1,77 @@
+{
+  "name": "OpenClawSignerAudit",
+  "type": "object",
+  "properties": {
+    "signerAuditId": {
+      "type": "string",
+      "description": "Unique signer audit trail identifier"
+    },
+    "requestId": {
+      "type": "string",
+      "description": "Bridge request ID being signed"
+    },
+    "proposalId": {
+      "type": "string",
+      "description": "Proposal ID being signed"
+    },
+    "operatorId": {
+      "type": "string",
+      "description": "Email of operator requesting signing"
+    },
+    "signingAllowed": {
+      "type": "boolean",
+      "description": "Whether signing was allowed"
+    },
+    "rejectedReason": {
+      "type": "string",
+      "description": "Reason if rejected, null if allowed"
+    },
+    "commandType": {
+      "type": "string",
+      "description": "Command type from request"
+    },
+    "riskTier": {
+      "type": "string",
+      "description": "Risk tier from request"
+    },
+    "targetUrl": {
+      "type": "string",
+      "description": "Target URL from request"
+    },
+    "previewHash": {
+      "type": "string",
+      "description": "Preview hash from request"
+    },
+    "signingVersion": {
+      "type": "string",
+      "description": "Signing version used (OPENCLAW_BRIDGE_V1)"
+    },
+    "signatureMode": {
+      "type": "string",
+      "description": "REAL_HMAC_VALIDATION"
+    },
+    "signedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when request was signed (if allowed)"
+    },
+    "secretExposed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether any secret was exposed (hardcoded false for safety)"
+    },
+    "inputTextPresent": {
+      "type": "boolean",
+      "description": "True if inputText was provided (not stored)"
+    },
+    "note": {
+      "type": "string",
+      "description": "Standard note indicating signing only, no OpenClaw call"
+    }
+  },
+  "required": [
+    "signerAuditId",
+    "signingAllowed",
+    "signatureMode"
+  ]
+}
