@@ -47,6 +47,7 @@ import OpenClawBaselineArchive from '@/components/openclaw/OpenClawBaselineArchi
 import OpenClawControlTower from '@/components/openclaw/OpenClawControlTower';
 import OperatorDashboard from '@/components/openclaw/OperatorDashboard';
 import PersistentHeader from '@/components/navigation/PersistentHeader';
+import BackToDashboard from '@/components/navigation/BackToDashboard';
 
 // Tab groups for organized navigation
 const TAB_GROUPS = {
@@ -352,7 +353,10 @@ export default function OpenClawControl() {
         )}
 
         {activeView === 'proposal_queue' && (
-          <div className="p-6"><OpenClawCommandProposalQueue /></div>
+          <div className="flex flex-col h-full">
+            <div className="shrink-0"><BackToDashboard /></div>
+            <div style={{ flex: 1, overflowY: 'auto' }} className="p-6"><OpenClawCommandProposalQueue /></div>
+          </div>
         )}
 
         {activeView === 'system_verify' && (
@@ -360,7 +364,10 @@ export default function OpenClawControl() {
         )}
 
         {activeView === 'audit_trail' && (
-          <div className="p-6"><CommandAuditTrailPanel /></div>
+          <div className="flex flex-col h-full">
+            <div className="shrink-0"><BackToDashboard /></div>
+            <div style={{ flex: 1, overflowY: 'auto' }} className="p-6"><CommandAuditTrailPanel /></div>
+          </div>
         )}
 
         {activeView === 'overview' && (
@@ -380,7 +387,10 @@ export default function OpenClawControl() {
         )}
 
         {activeView === 'safe_bridge' && (
-          <div style={{ height: '100%' }}><SafeCommandBridge /></div>
+          <div style={{ height: '100%' }} className="flex flex-col">
+            <div className="shrink-0"><BackToDashboard /></div>
+            <div style={{ flex: 1, overflowY: 'auto' }}><SafeCommandBridge /></div>
+          </div>
         )}
 
         {activeView === 'safety_tests' && (
@@ -392,7 +402,10 @@ export default function OpenClawControl() {
         )}
 
         {activeView === 'approval_workflow' && (
-          <div className="p-6"><CommandApprovalWorkflowPanel /></div>
+          <div className="flex flex-col h-full">
+            <div className="shrink-0"><BackToDashboard /></div>
+            <div style={{ flex: 1, overflowY: 'auto' }} className="p-6"><CommandApprovalWorkflowPanel /></div>
+          </div>
         )}
 
         {activeView === 'policy_registry' && (
