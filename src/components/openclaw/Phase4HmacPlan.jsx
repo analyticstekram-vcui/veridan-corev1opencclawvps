@@ -401,7 +401,7 @@ export default function Phase4HmacPlan() {
                 <div>
                   <div className="text-[8px] font-semibold text-foreground mb-0.5">Option A: Server-Side Signer Endpoint</div>
                   <div className="text-[8px] text-slate-500 space-y-0.5 ml-2">
-                    <div>Route: POST /api/openclaw/bridge/sign-preview</div>
+                    <div>Route: POST /api/openclaw/bridge/signer</div>
                     <div>Input: unsigned bridge request preview (no signature)</div>
                     <div>Server validates proposal/request eligibility</div>
                     <div>Server adds signedAt, signingVersion, signature</div>
