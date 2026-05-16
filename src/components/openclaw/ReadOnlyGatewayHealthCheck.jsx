@@ -19,6 +19,7 @@ import { base44 } from '@/api/base44Client';
 import { appendAudit } from '@/lib/proposalStore';
 import GatewayResponseInspector from './GatewayResponseInspector.jsx';
 import GatewayAlertingSystem from './GatewayAlertingSystem.jsx';
+import ProposalLifecycleTimeline from './ProposalLifecycleTimeline.jsx';
 
 const ENDPOINT        = 'https://openclaw.veridancore.com';
 const HEALTH_KEY      = 'openclawReadOnlyGatewayHealthChecks';
@@ -284,6 +285,11 @@ export default function ReadOnlyGatewayHealthCheck() {
       {/* ── Gateway Alerting System ── */}
       <div className="border-t border-border/40 pt-4">
         <GatewayAlertingSystem refreshTrigger={inspectTrigger} />
+      </div>
+
+      {/* ── Proposal Lifecycle Timeline ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ProposalLifecycleTimeline refreshTrigger={inspectTrigger} />
       </div>
     </div>
   );
