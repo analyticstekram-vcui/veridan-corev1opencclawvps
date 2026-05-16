@@ -17,6 +17,7 @@ import React, { useState, useEffect } from 'react';
 import { Activity, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, Copy, Clock, XCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { appendAudit } from '@/lib/proposalStore';
+import GatewayResponseInspector from './GatewayResponseInspector.jsx';
 
 const ENDPOINT        = 'https://openclaw.veridancore.com';
 const HEALTH_KEY      = 'openclawReadOnlyGatewayHealthChecks';
@@ -59,10 +60,11 @@ function CopyButton({ text }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function ReadOnlyGatewayHealthCheck() {
-  const [loading,     setLoading]     = useState(false);
-  const [result,      setResult]      = useState(null);
-  const [error,       setError]       = useState(null);
-  const [history,     setHistory]     = useState([]);
+  const [loading,        setLoading]        = useState(false);
+  const [result,         setResult]         = useState(null);
+  const [error,          setError]          = useState(null);
+  const [history,        setHistory]        = useState([]);
+  const [inspectTrigger, setInspectTrigger] = useState(0);
 
   useEffect(() => {
     const checks = loadHealthChecks();
@@ -123,6 +125,7 @@ export default function ReadOnlyGatewayHealthCheck() {
     const updated = loadHealthChecks();
     setHistory(updated);
     setResult(record);
+    setInspectTrigger(t => t + 1);
     setLoading(false);
   };
 
@@ -271,6 +274,11 @@ export default function ReadOnlyGatewayHealthCheck() {
           </div>
         </details>
       )}
+
+      {/* ── Gateway Response Inspector ── */}
+      <div className="border-t border-border/40 pt-4">
+        <GatewayResponseInspector refreshTrigger={inspectTrigger} />
+      </div>
     </div>
   );
 }
