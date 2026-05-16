@@ -4,6 +4,7 @@ import { RefreshCw, ShieldCheck, AlertCircle, CheckCircle2, Clock, Activity, XCi
 import ManualMonitoringControlRoomSummary from './ManualMonitoringControlRoomSummary.jsx';
 import GatewayConnectorSectionNav from './GatewayConnectorSectionNav.jsx';
 import OperatorDailyUsePanel from './OperatorDailyUsePanel.jsx';
+import OperatorSessionLog from './OperatorSessionLog.jsx';
 import ReadOnlyGatewayHealthCheck from './ReadOnlyGatewayHealthCheck.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
@@ -188,6 +189,11 @@ export default function OpenClawGatewayConnectorPanel() {
       {/* ── Operator Daily Use Panel ── */}
       <div className="border-b border-border/40 pb-5">
         <OperatorDailyUsePanel />
+      </div>
+
+      {/* ── Operator Session Log ── */}
+      <div className="border-b border-border/40 pb-5">
+        <OperatorSessionLog />
       </div>
 
       {/* Safety Banner */}
