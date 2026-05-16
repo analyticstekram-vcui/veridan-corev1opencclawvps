@@ -19,7 +19,12 @@ import { CheckCircle2, AlertTriangle, XCircle, Copy, Shield, RefreshCw, Trash2, 
 const CHECKS_KEY = 'openclawManualReadOnlyMonitoringChecks';
 const AUDIT_KEY = 'openclawManualReadOnlyMonitoringAuditLog';
 
-const ALLOWED_ENDPOINTS = ['/health', '/status', '/version', '/capabilities'];
+const ALLOWED_ENDPOINTS = [
+  '/health',
+  '/status',
+  '/version',
+  '/capabilities',
+];
 
 function loadJSON(key, fallback = []) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
@@ -109,7 +114,7 @@ function saveCheck(record) {
 }
 
 export default function ManualReadOnlyMonitoringConsole() {
-  const [selectedEndpoint, setSelectedEndpoint] = useState('/health');
+  const [selectedEndpoint, setSelectedEndpoint] = useState('');
   const [latestCheck, setLatestCheck] = useState(null);
   const [loading, setLoading] = useState(false);
   const [checkCount, setCheckCount] = useState(0);
@@ -255,7 +260,7 @@ export default function ManualReadOnlyMonitoringConsole() {
             disabled={loading}
             className="flex-1 min-w-[140px] px-3 py-2 bg-secondary/20 border border-border rounded text-[9px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
           >
-            <option disabled value="">Select endpoint</option>
+            <option value="">Select endpoint…</option>
             {ALLOWED_ENDPOINTS.map(ep => (
               <option key={ep} value={ep}>{ep}</option>
             ))}
@@ -304,6 +309,16 @@ export default function ManualReadOnlyMonitoringConsole() {
                 }`}>
                   {latestCheck.responseSummary}
                 </div>
+                {latestCheck.status === 'HOLD_FOR_BACKEND_ENV' && (
+                  <div className="text-[8px] text-amber-500/90 font-semibold mt-2">
+                    ℹ️ Required backend secrets are missing. Check: OPENCLAW_GATEWAY_URL, OPENCLAW_SERVICE_TOKEN, CF_ACCESS_CLIENT_ID, CF_ACCESS_CLIENT_SECRET
+                  </div>
+                )}
+                {latestCheck.status === 'HOLD_FOR_AUTH_BOUNDARY' && latestCheck.cfAccessDetected && (
+                  <div className="text-[8px] text-amber-500/90 font-semibold mt-2">
+                    ℹ️ Cloudflare Access redirect detected. Verify CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET are valid service token values and the Access policy allows service-token authentication.
+                  </div>
+                )}
               </div>
             </div>
           </div>

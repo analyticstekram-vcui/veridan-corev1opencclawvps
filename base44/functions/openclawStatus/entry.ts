@@ -56,8 +56,14 @@ Deno.serve(async (req) => {
   const cfClientId = Deno.env.get('CF_ACCESS_CLIENT_ID') || '';
   const cfClientSecret = Deno.env.get('CF_ACCESS_CLIENT_SECRET') || '';
 
+  // Diagnostic booleans (no secret values exposed)
+  const hasGatewayUrl = !!baseUrl;
+  const hasOpenClawToken = !!openclawToken;
+  const hasCfClientId = !!cfClientId;
+  const hasCfClientSecret = !!cfClientSecret;
+
   // Check if required env vars are present
-  if (!baseUrl) {
+  if (!baseUrl || !hasGatewayUrl) {
     return Response.json({
       ok: false,
       status: 'HOLD_FOR_BACKEND_ENV',
@@ -66,7 +72,7 @@ Deno.serve(async (req) => {
       cfAccessDetected: false,
       endpoint,
       method: 'GET',
-      responseSummary: 'Backend configuration missing (OPENCLAW_GATEWAY_URL)',
+      responseSummary: 'Backend configuration missing',
       durationMs: 0,
       requestId,
       mode: 'READ_ONLY',
@@ -83,6 +89,11 @@ Deno.serve(async (req) => {
       walletActionsAttempted: false,
       moneyMovementAttempted: false,
       mutationMethodUsed: false,
+      hasGatewayUrl,
+      hasOpenClawToken,
+      hasCfClientId,
+      hasCfClientSecret,
+      redirectDetected: false,
     });
   }
 
@@ -125,6 +136,7 @@ Deno.serve(async (req) => {
 
     httpStatus = res.status;
     const durationMs = Date.now() - startTime;
+    let redirectDetected = false;
 
     if (res.status === 200) {
       gatewayReachable = true;
@@ -132,6 +144,7 @@ Deno.serve(async (req) => {
     } else if ([301, 302, 307, 308].includes(res.status)) {
       gatewayReachable = true;
       cfAccessDetected = true;
+      redirectDetected = true;
       responseSummary = `Cloudflare Access redirect (HTTP ${res.status}) — authentication required.`;
     } else if ([401, 403].includes(res.status)) {
       gatewayReachable = true;
@@ -174,6 +187,11 @@ Deno.serve(async (req) => {
       walletActionsAttempted: false,
       moneyMovementAttempted: false,
       mutationMethodUsed: false,
+      hasGatewayUrl,
+      hasOpenClawToken,
+      hasCfClientId,
+      hasCfClientSecret,
+      redirectDetected,
     });
   } catch (err) {
     clearTimeout(timeout);
@@ -213,6 +231,11 @@ Deno.serve(async (req) => {
       walletActionsAttempted: false,
       moneyMovementAttempted: false,
       mutationMethodUsed: false,
+      hasGatewayUrl,
+      hasOpenClawToken,
+      hasCfClientId,
+      hasCfClientSecret,
+      redirectDetected: false,
     });
   }
 });
