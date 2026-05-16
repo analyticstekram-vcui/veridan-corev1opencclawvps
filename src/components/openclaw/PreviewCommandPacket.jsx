@@ -49,7 +49,9 @@ function validatePacketForDryRun(packet, sync) {
 
   if (!packet.packetId)                                           failures.push('packetId is missing');
   if (!packet.proposalId)                                         failures.push('proposalId is missing');
-  if (!sync?.persistedProposalId)                                 failures.push('persistedProposalId is missing — persist proposal first');
+  // Accept persistedProposalId from packet itself OR from sync map
+  const resolvedPersistedId = packet.persistedProposalId || sync?.persistedProposalId;
+  if (!resolvedPersistedId)                                       failures.push('persistedProposalId is missing — proposal must be persisted to Base44 first');
   if (!ALLOWED_COMMAND_TYPES.includes(packet.commandType))        failures.push(`commandType "${packet.commandType}" is not in allowed list`);
   if (!packet.target && !packet.url)                              failures.push('target/url is missing');
   if (!ALLOWED_RISK_TIERS.includes(packet.riskTier))              failures.push(`riskTier "${packet.riskTier}" must be LOW or MEDIUM`);
@@ -175,6 +177,7 @@ function PacketCard({ packet, onRefresh }) {
 
     const syncMap  = loadSyncMap();
     const sync     = syncMap[packet.proposalId] || {};
+    const resolvedPersistedId = packet.persistedProposalId || sync.persistedProposalId || null;
     const failures = validatePacketForDryRun(packet, sync);
     const passed   = failures.length === 0;
 
@@ -187,7 +190,7 @@ function PacketCard({ packet, onRefresh }) {
       dryRunId,
       packetId:          packet.packetId,
       proposalId:        packet.proposalId,
-      persistedProposalId: sync.persistedProposalId || null,
+      persistedProposalId: resolvedPersistedId,
       dryRunStatus:      passed ? 'PASSED' : 'FAILED',
       validationFailures: failures,
       policyGateResult:  passed ? 'PASS' : 'FAIL',
