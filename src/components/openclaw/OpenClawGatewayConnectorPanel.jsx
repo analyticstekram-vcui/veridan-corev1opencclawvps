@@ -17,6 +17,7 @@ import BrowserObservationPolicyMatrixPanel from './BrowserObservationPolicyMatri
 import BrowserObservationApprovalRulesPanel from './BrowserObservationApprovalRulesPanel.jsx';
 import BrowserObservationRoutePlannerPanel from './BrowserObservationRoutePlannerPanel.jsx';
 import BrowserObservationSimulationPanel from './BrowserObservationSimulationPanel.jsx';
+import BrowserObservationEvidenceExportPanel from './BrowserObservationEvidenceExportPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -398,6 +399,9 @@ export default function OpenClawGatewayConnectorPanel() {
             </div>
             <div className="border-t border-border/40 pt-5">
               <BrowserObservationSimulationPanel />
+            </div>
+            <div className="border-t border-border/40 pt-5">
+              <BrowserObservationEvidenceExportPanel />
             </div>
           </div>
         )}
