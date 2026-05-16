@@ -13,69 +13,98 @@ function loadJSON(key, fallback = []) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
 }
 
+// Extract best available timestamp from a check record, in priority order
+function getCheckTimestamp(c) {
+  const raw = c.createdAt || c.timestamp || c.recordedAt || c.checkedAt || c.completedAt;
+  if (raw) {
+    const t = new Date(raw).getTime();
+    if (!isNaN(t)) return { t, source: Object.keys(c).find(k => c[k] === raw) || 'createdAt' };
+  }
+  return { t: 0, source: 'array-order' };
+}
+
 function getLatestCheck(checks) {
   if (!checks || checks.length === 0) return null;
-  // Sort by createdAt/recordedAt descending to get the newest
-  return [...checks].sort((a, b) => {
-    const ta = new Date(a.createdAt || a.recordedAt || a.timestamp || 0).getTime();
-    const tb = new Date(b.createdAt || b.recordedAt || b.timestamp || 0).getTime();
-    return tb - ta;
-  })[0];
+  // Sort descending by best available timestamp; ties fall back to array order (first = newest)
+  let best = null;
+  let bestT = -1;
+  let bestSource = 'array-order';
+  checks.forEach((c, i) => {
+    const { t, source } = getCheckTimestamp(c);
+    // Use array index as tiebreaker: earlier index = more recent (array is prepended)
+    if (best === null || t > bestT || (t === bestT && i < checks.indexOf(best))) {
+      best = c;
+      bestT = t;
+      bestSource = t === 0 ? 'array-order' : source;
+    }
+  });
+  return { check: best, timestampSource: bestSource };
 }
+
+// Normalize field values for robust comparison
+function norm(val) { return String(val ?? '').trim().toUpperCase(); }
+function isTrue(val) { return val === true || String(val).toLowerCase() === 'true'; }
+function isFalse(val) { return val === false || String(val).toLowerCase() === 'false'; }
 
 function computeVpsStatus() {
   const checks = loadJSON(CHECKS_KEY, []);
-  if (!checks || checks.length === 0) {
-    return {
-      status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400',
-      bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED',
-      debug: { status: '—', httpStatus: '—', gatewayReachable: '—', checkedAt: '—' },
-    };
-  }
-
-  const latest = getLatestCheck(checks);
-  if (!latest) {
-    return {
-      status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400',
-      bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED',
-      debug: { status: '—', httpStatus: '—', gatewayReachable: '—', checkedAt: '—' },
-    };
-  }
-
-  const debug = {
-    status: latest.status ?? '—',
-    httpStatus: latest.httpStatus != null ? String(latest.httpStatus) : 'N/A',
-    gatewayReachable: latest.gatewayReachable != null ? String(latest.gatewayReachable) : '—',
-    checkedAt: latest.createdAt || latest.recordedAt || latest.timestamp || '—',
+  const empty = {
+    status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400',
+    bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED',
+    debug: { endpoint: '—', status: '—', httpStatus: '—', gatewayReachable: '—', executionLock: '—', dispatchAllowed: '—', checkedAt: '—', timestampSource: '—', resolvedStatus: 'NOT_CHECKED' },
   };
 
-  // CONNECTED only if latest record passes all criteria
+  if (!checks || checks.length === 0) return empty;
+
+  const result = getLatestCheck(checks);
+  if (!result || !result.check) return empty;
+  const { check: c, timestampSource } = result;
+
+  const rawTs = c.createdAt || c.timestamp || c.recordedAt || c.checkedAt || c.completedAt || '—';
+  const debug = {
+    endpoint:        c.endpoint ?? '—',
+    status:          c.status ?? '—',
+    httpStatus:      c.httpStatus != null ? String(c.httpStatus) : 'N/A',
+    gatewayReachable: c.gatewayReachable != null ? String(c.gatewayReachable) : '—',
+    executionLock:   c.executionLock ?? '—',
+    dispatchAllowed: c.dispatchAllowed != null ? String(c.dispatchAllowed) : '—',
+    checkedAt:       rawTs,
+    timestampSource,
+    resolvedStatus:  '(computing...)',
+  };
+
+  // CONNECTED: normalized comparison on all criteria
   if (
-    latest.status === 'SUCCESS' &&
-    (latest.httpStatus === 200 || latest.httpStatus === '200') &&
-    latest.gatewayReachable === true &&
-    latest.executionLock === 'LOCKED' &&
-    latest.dispatchAllowed === false
+    norm(c.status) === 'SUCCESS' &&
+    norm(c.httpStatus) === '200' &&
+    isTrue(c.gatewayReachable) &&
+    norm(c.executionLock) === 'LOCKED' &&
+    isFalse(c.dispatchAllowed)
   ) {
+    debug.resolvedStatus = 'CONNECTED';
     return { status: 'CONNECTED', icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/5 border-primary/30', label: 'OpenClaw VPS: CONNECTED', debug };
   }
 
-  if (latest.status === 'HOLD_FOR_AUTH_BOUNDARY') {
+  const s = norm(c.status);
+
+  if (s === 'HOLD_FOR_AUTH_BOUNDARY') {
+    debug.resolvedStatus = 'AUTH_REQUIRED';
     return { status: 'AUTH_REQUIRED', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'OpenClaw VPS: AUTH REQUIRED', debug };
   }
-
-  if (latest.status === 'HOLD_FOR_BACKEND_ENV') {
+  if (s === 'HOLD_FOR_BACKEND_ENV') {
+    debug.resolvedStatus = 'ENV_MISSING';
     return { status: 'ENV_MISSING', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'OpenClaw VPS: ENV MISSING', debug };
   }
-
-  if (latest.status === 'HOLD_FOR_GATEWAY_CONNECTIVITY' || latest.status === 'HOLD') {
+  if (s === 'HOLD_FOR_GATEWAY_CONNECTIVITY' || s === 'HOLD') {
+    debug.resolvedStatus = 'NOT_CONNECTED';
     return { status: 'NOT_CONNECTED', icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20', label: 'OpenClaw VPS: NOT CONNECTED', debug };
   }
-
-  if (latest.status === 'BLOCKED_BY_SAFETY_FAILURE') {
+  if (s === 'BLOCKED_BY_SAFETY_FAILURE') {
+    debug.resolvedStatus = 'BLOCKED';
     return { status: 'BLOCKED', icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20', label: 'OpenClaw VPS: BLOCKED', debug };
   }
 
+  debug.resolvedStatus = 'HOLD';
   return { status: 'HOLD', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'OpenClaw VPS: HOLD', debug };
 }
 
@@ -134,10 +163,14 @@ export default function OpenClawSystemStatusCard() {
         <Lock className="w-2.5 h-2.5" /> Read-only monitoring • Manual checks only
       </div>
       <div className="text-[7px] text-slate-600 font-mono space-y-0.5 pt-1 border-t border-border/20">
-        <div>Latest Check Status: <span className="text-slate-400">{vpsStatus.debug.status}</span></div>
-        <div>Latest HTTP: <span className="text-slate-400">{vpsStatus.debug.httpStatus}</span></div>
-        <div>Latest Gateway Reachable: <span className="text-slate-400">{vpsStatus.debug.gatewayReachable}</span></div>
-        <div>Latest Check Time: <span className="text-slate-400">{vpsStatus.debug.checkedAt !== '—' ? new Date(vpsStatus.debug.checkedAt).toLocaleTimeString() : '—'}</span></div>
+        <div>Latest endpoint: <span className="text-slate-400">{vpsStatus.debug.endpoint}</span></div>
+        <div>Latest status: <span className="text-slate-400">{vpsStatus.debug.status}</span></div>
+        <div>Latest httpStatus: <span className="text-slate-400">{vpsStatus.debug.httpStatus}</span></div>
+        <div>Latest gatewayReachable: <span className="text-slate-400">{vpsStatus.debug.gatewayReachable}</span></div>
+        <div>Latest executionLock: <span className="text-slate-400">{vpsStatus.debug.executionLock}</span></div>
+        <div>Latest dispatchAllowed: <span className="text-slate-400">{vpsStatus.debug.dispatchAllowed}</span></div>
+        <div>Timestamp source: <span className="text-slate-400">{vpsStatus.debug.timestampSource}</span></div>
+        <div>Resolved top status: <span className="text-slate-300 font-bold">{vpsStatus.debug.resolvedStatus}</span></div>
       </div>
     </div>
   );
