@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   Shield, FileText, AlertTriangle, Ban, CheckCircle2,
-  ScrollText, Clock, PlusCircle, XCircle
+  ScrollText, Clock, PlusCircle, XCircle, CloudUpload, RefreshCw
 } from 'lucide-react';
-import { createProposal, loadProposals, loadAudit, submitForApproval } from '@/lib/proposalStore';
+import { base44 } from '@/api/base44Client';
+import {
+  createProposal, loadProposals, loadAudit, submitForApproval,
+  loadSyncMap, saveSyncEntry, mapCommandType, appendAudit,
+} from '@/lib/proposalStore';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const COMMAND_TYPES = ['STATUS_CHECK', 'READ_PAGE', 'INSPECT_PAGE', 'SUMMARIZE_PAGE', 'CHECK_WEBHOOK'];
@@ -74,10 +78,75 @@ const STATUS_BADGE = {
   BLOCKED_PREVIEW:  'text-destructive border-destructive/30 bg-destructive/5',
 };
 
-function ProposalCard({ proposal, onSubmit }) {
+const SYNC_BADGE = {
+  LOCAL_ONLY:  'border-slate-500/30 bg-slate-500/5 text-slate-400',
+  PERSISTED:   'border-primary/30 bg-primary/5 text-primary',
+  SYNC_ERROR:  'border-destructive/30 bg-destructive/5 text-destructive',
+};
+
+function ProposalCard({ proposal, syncMap, onSubmit, onRefreshSync }) {
   const [expanded, setExpanded] = useState(false);
+  const [persisting, setPersisting] = useState(false);
   const badgeCls = STATUS_BADGE[proposal.status] || STATUS_BADGE.DRAFT;
   const riskColor = proposal.riskTier === 'HIGH' ? 'text-destructive' : proposal.riskTier === 'MEDIUM' ? 'text-amber-500' : 'text-primary';
+
+  const sync = syncMap[proposal.id] || { syncStatus: 'LOCAL_ONLY' };
+  const canPersist = !['HIGH'].includes(proposal.riskTier)
+    && !proposal.blockedReasons?.length
+    && sync.syncStatus !== 'PERSISTED';
+
+  const handlePersist = async (e) => {
+    e.stopPropagation();
+    setPersisting(true);
+    try {
+      const user = await base44.auth.me().catch(() => null);
+      const record = {
+        requestId:      proposal.id,
+        proposedBy:     user?.email || 'operator',
+        commandType:    mapCommandType(proposal.commandType),
+        target:         proposal.target,
+        url:            proposal.target,
+        payloadPreview: {
+          localCommandType: proposal.commandType,
+          purpose:          proposal.purpose || '',
+          expectedResult:   proposal.expectedResult || '',
+          safetyMode:       'PREVIEW_ONLY',
+          executionAttempted: false,
+          openclawCallAttempted: false,
+        },
+        riskTier:       proposal.riskTier === 'MEDIUM' ? 'MEDIUM' : 'LOW',
+        policyGate:     'PASS',
+        status:         proposal.status === 'PENDING_APPROVAL' ? 'PENDING_APPROVAL' : 'DRAFT',
+        createdAt:      proposal.createdAt,
+        auditTraceId:   proposal.id,
+      };
+
+      const created = await base44.entities.OpenClawProposal.create(record);
+      saveSyncEntry(proposal.id, {
+        syncStatus:          'PERSISTED',
+        persistedProposalId: created.id,
+        persistedStatus:     created.status,
+        persistedAt:         new Date().toISOString(),
+      });
+      appendAudit({
+        event:               'preview_proposal_persisted',
+        proposalId:          proposal.id,
+        persistedProposalId: created.id,
+        note:                `Persisted to Base44 OpenClawProposal — id: ${created.id}. No execution.`,
+      });
+      onRefreshSync();
+    } catch (err) {
+      saveSyncEntry(proposal.id, { syncStatus: 'SYNC_ERROR', syncError: err.message });
+      appendAudit({
+        event:      'preview_proposal_sync_failed',
+        proposalId: proposal.id,
+        note:       `Sync failed: ${err.message}`,
+      });
+      onRefreshSync();
+    } finally {
+      setPersisting(false);
+    }
+  };
 
   return (
     <div className="bg-card border border-border/50 rounded-lg overflow-hidden">
@@ -91,6 +160,9 @@ function ProposalCard({ proposal, onSubmit }) {
             <span className="text-[10px] font-bold text-foreground font-mono">{proposal.commandType}</span>
             <span className={`text-[7px] px-1.5 py-0.5 border rounded font-bold uppercase ${badgeCls}`}>{proposal.status}</span>
             <span className={`text-[7px] font-bold uppercase ${riskColor}`}>{proposal.riskTier}</span>
+            <span className={`text-[7px] px-1.5 py-0.5 border rounded font-bold uppercase ${SYNC_BADGE[sync.syncStatus] || SYNC_BADGE.LOCAL_ONLY}`}>
+              {sync.syncStatus}
+            </span>
           </div>
           <div className="text-[9px] text-blue-400 font-mono truncate mt-0.5">{proposal.target}</div>
         </div>
@@ -108,8 +180,20 @@ function ProposalCard({ proposal, onSubmit }) {
               ))}
             </div>
           )}
+
+          {/* ID / sync fields */}
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[8px] text-slate-500">
-            <span>ID: <span className="text-slate-300 font-mono">{proposal.id}</span></span>
+            <span>Local ID: <span className="text-slate-300 font-mono">{proposal.id}</span></span>
+            <span>Sync: <span className={`font-semibold ${SYNC_BADGE[sync.syncStatus]?.split(' ').find(c => c.startsWith('text-')) || 'text-slate-400'}`}>{sync.syncStatus}</span></span>
+            {sync.persistedProposalId && (
+              <span className="col-span-2">Persisted ID: <span className="text-primary font-mono">{sync.persistedProposalId}</span></span>
+            )}
+            {sync.persistedStatus && (
+              <span>Persisted Status: <span className="text-slate-300">{sync.persistedStatus}</span></span>
+            )}
+            {sync.syncError && (
+              <span className="col-span-2 text-destructive">Error: {sync.syncError}</span>
+            )}
             <span>Approval: <span className="text-slate-300">{proposal.requiredApproval}</span></span>
             <span>Purpose: <span className="text-slate-300">{proposal.purpose || '—'}</span></span>
             <span>Expected: <span className="text-slate-300">{proposal.expectedResult || '—'}</span></span>
@@ -119,22 +203,42 @@ function ProposalCard({ proposal, onSubmit }) {
             {proposal.reviewNote && <span className="col-span-2">Review note: <span className="text-slate-300">{proposal.reviewNote}</span></span>}
           </div>
 
-          {proposal.status === 'DRAFT' && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onSubmit(proposal.id); }}
-              className="px-3 py-1.5 text-[9px] border border-amber-500/40 text-amber-500 hover:bg-amber-500/10 rounded font-bold transition-colors"
-            >
-              Submit for Approval →
-            </button>
-          )}
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2">
+            {proposal.status === 'DRAFT' && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onSubmit(proposal.id); }}
+                className="px-3 py-1.5 text-[9px] border border-amber-500/40 text-amber-500 hover:bg-amber-500/10 rounded font-bold transition-colors"
+              >
+                Submit for Approval →
+              </button>
+            )}
+            {canPersist && (
+              <button
+                type="button"
+                onClick={handlePersist}
+                disabled={persisting}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] border border-blue-400/40 text-blue-400 bg-blue-400/5 hover:bg-blue-400/15 rounded font-bold transition-colors disabled:opacity-50"
+              >
+                {persisting
+                  ? <><RefreshCw className="w-3 h-3 animate-spin" /> Persisting…</>
+                  : <><CloudUpload className="w-3 h-3" /> Persist Preview Proposal</>}
+              </button>
+            )}
+            {sync.syncStatus === 'PERSISTED' && (
+              <span className="flex items-center gap-1.5 text-[9px] text-primary font-bold">
+                <CheckCircle2 className="w-3 h-3" /> Persisted to Base44
+              </span>
+            )}
+          </div>
 
           <details>
             <summary className="text-[8px] text-slate-500 cursor-pointer hover:text-slate-300 uppercase tracking-widest font-semibold">
               Full JSON
             </summary>
             <pre className="mt-1.5 bg-secondary/40 border border-border/30 rounded p-2 text-[7px] font-mono text-slate-400 overflow-auto max-h-40">
-              {JSON.stringify(proposal, null, 2)}
+              {JSON.stringify({ ...proposal, _sync: sync }, null, 2)}
             </pre>
           </details>
         </div>
@@ -155,14 +259,18 @@ export default function SafeCommandBridge() {
   });
   const [proposals,   setProposals]   = useState(() => loadProposals());
   const [auditLog,    setAuditLog]    = useState(() => loadAudit());
+  const [syncMap,     setSyncMap]     = useState(() => loadSyncMap());
   const [lastMessage, setLastMessage] = useState(null);
   const [submitted,   setSubmitted]   = useState(false);
+
+  const refreshSync = () => setSyncMap(loadSyncMap());
 
   // Keep in sync when other tabs write to localStorage
   useEffect(() => {
     const onStorage = () => {
       setProposals(loadProposals());
       setAuditLog(loadAudit());
+      setSyncMap(loadSyncMap());
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
@@ -354,7 +462,7 @@ export default function SafeCommandBridge() {
           </div>
           <div className="space-y-1.5 max-h-80 overflow-y-auto">
             {proposals.map(p => (
-              <ProposalCard key={p.id} proposal={p} onSubmit={handleSubmitForApproval} />
+              <ProposalCard key={p.id} proposal={p} syncMap={syncMap} onSubmit={handleSubmitForApproval} onRefreshSync={refreshSync} />
             ))}
           </div>
         </div>

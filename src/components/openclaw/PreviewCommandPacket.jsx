@@ -6,7 +6,8 @@
  */
 import React, { useState } from 'react';
 import { FileText, Copy, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Zap, XCircle } from 'lucide-react';
-import { generatePacket, markPacketReadyForBridgeTest } from '@/lib/proposalStore';
+import { base44 } from '@/api/base44Client';
+import { generatePacket, markPacketReadyForBridgeTest, loadSyncMap, appendAudit } from '@/lib/proposalStore';
 
 const PACKET_STATUS_CFG = {
   GENERATED:              { label: 'GENERATED',               color: 'text-primary',     bg: 'bg-primary/5 border-primary/20' },
@@ -35,8 +36,44 @@ function PacketCard({ packet, onRefresh }) {
   const cfg = PACKET_STATUS_CFG[packet.packetStatus] || PACKET_STATUS_CFG.GENERATED;
   const isReady = packet.packetStatus === 'READY_FOR_BRIDGE_TEST';
 
-  const handleMarkReady = () => {
+  const handleMarkReady = async () => {
     markPacketReadyForBridgeTest(packet.packetId);
+
+    // If proposal was persisted to Base44, update its payloadPreview with packet metadata
+    const syncMap = loadSyncMap();
+    const sync = syncMap[packet.proposalId];
+    if (sync?.persistedProposalId) {
+      try {
+        await base44.entities.OpenClawProposal.update(sync.persistedProposalId, {
+          payloadPreview: {
+            localCommandType:       packet.commandType,
+            purpose:                packet.purpose || '',
+            expectedResult:         packet.expectedResult || '',
+            safetyMode:             'PREVIEW_ONLY',
+            executionAttempted:     false,
+            openclawCallAttempted:  false,
+            linkedPacketId:         packet.packetId,
+            packetStatus:           'READY_FOR_BRIDGE_TEST',
+            packetLinkedAt:         new Date().toISOString(),
+          },
+        });
+        appendAudit({
+          event:               'preview_packet_linked_to_persistent_proposal',
+          packetId:            packet.packetId,
+          proposalId:          packet.proposalId,
+          persistedProposalId: sync.persistedProposalId,
+          note:                `Packet ${packet.packetId} linked to persistent proposal ${sync.persistedProposalId}. No execution.`,
+        });
+      } catch (err) {
+        appendAudit({
+          event:      'preview_proposal_sync_failed',
+          packetId:   packet.packetId,
+          proposalId: packet.proposalId,
+          note:       `Failed to link packet to persistent proposal: ${err.message}`,
+        });
+      }
+    }
+
     onRefresh();
   };
 

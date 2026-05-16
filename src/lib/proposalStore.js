@@ -238,3 +238,29 @@ export function markPacketReadyForBridgeTest(packetId) {
   });
   return updated;
 }
+
+// ── Dual-write: persist sync metadata on local proposals ──────────────────────
+const SYNC_KEY = 'veridancore_proposal_sync_v1';
+
+export function loadSyncMap() {
+  return load(SYNC_KEY, {});
+}
+
+export function saveSyncEntry(localId, entry) {
+  const map = loadSyncMap();
+  map[localId] = { ...map[localId], ...entry, updatedAt: new Date().toISOString() };
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify(map)); } catch { /* quota */ }
+  return map;
+}
+
+// Map local commandType → OpenClawProposal commandType enum
+export function mapCommandType(localType) {
+  const map = {
+    STATUS_CHECK:   'READ',
+    READ_PAGE:      'READ',
+    INSPECT_PAGE:   'READ',
+    SUMMARIZE_PAGE: 'NAVIGATE_READ_ONLY',
+    CHECK_WEBHOOK:  'VERIFY',
+  };
+  return map[localType] || 'READ';
+}
