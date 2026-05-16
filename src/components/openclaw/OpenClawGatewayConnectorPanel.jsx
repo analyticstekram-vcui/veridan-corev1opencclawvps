@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { RefreshCw, ShieldCheck, AlertCircle, CheckCircle2, Clock, Activity, XCircle, HelpCircle, ArrowRight } from 'lucide-react';
+import ReadOnlyGatewayHealthCheck from './ReadOnlyGatewayHealthCheck.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
 
@@ -312,6 +313,11 @@ export default function OpenClawGatewayConnectorPanel() {
           </div>
         </div>
       )}
+
+      {/* ── Read-Only Gateway Health Check Phase ── */}
+      <div className="border-t border-border/40 pt-5">
+        <ReadOnlyGatewayHealthCheck />
+      </div>
 
       {/* Safety Footer */}
       <div className="flex items-start gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
