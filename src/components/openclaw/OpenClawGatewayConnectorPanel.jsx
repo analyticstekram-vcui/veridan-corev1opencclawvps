@@ -10,6 +10,7 @@ import OperatorSessionFinalArchiveExport from './OperatorSessionFinalArchiveExpo
 import ReadOnlyGatewayHealthCheck from './ReadOnlyGatewayHealthCheck.jsx';
 import FinalLockPanel from './FinalLockPanel.jsx';
 import BaselineArchiveManifestPanel from './BaselineArchiveManifestPanel.jsx';
+import BaselineExportPacketPanel from './BaselineExportPacketPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -370,6 +371,9 @@ export default function OpenClawGatewayConnectorPanel() {
             <FinalLockPanel />
             <div className="border-t border-border/40 pt-5">
               <BaselineArchiveManifestPanel />
+            </div>
+            <div className="border-t border-border/40 pt-5">
+              <BaselineExportPacketPanel />
             </div>
           </div>
         )}
