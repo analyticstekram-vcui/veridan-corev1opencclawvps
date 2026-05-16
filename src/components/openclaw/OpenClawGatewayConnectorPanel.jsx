@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { RefreshCw, ShieldCheck, AlertCircle, CheckCircle2, Clock, Activity, XCircle, HelpCircle, ArrowRight } from 'lucide-react';
 import ManualMonitoringControlRoomSummary from './ManualMonitoringControlRoomSummary.jsx';
-import GatewayConnectorSectionNav from './GatewayConnectorSectionNav.jsx';
 import OperatorDailyUsePanel from './OperatorDailyUsePanel.jsx';
 import OperatorSessionLog from './OperatorSessionLog.jsx';
 import OperatorSessionEvidenceExport from './OperatorSessionEvidenceExport.jsx';
@@ -123,11 +122,30 @@ const STATUS_BADGE = {
   UNKNOWN: 'border-slate-500/30 bg-slate-500/5 text-slate-400',
 };
 
+function loadJSON(key, fallback = []) {
+  try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
+}
+
+function saveTab(tabId) {
+  try { localStorage.setItem('openclawGatewayConnectorActiveTab', tabId); } catch {}
+}
+
+const TABS = [
+  { id: 'overview', label: 'Overview', icon: '📊' },
+  { id: 'daily-ops', label: 'Daily Operation', icon: '📋' },
+  { id: 'monitoring', label: 'Manual Monitoring', icon: '🔍' },
+  { id: 'bridge', label: 'Bridge Status', icon: '🌉' },
+  { id: 'governance', label: 'Governance', icon: '⚖️' },
+  { id: 'archive', label: 'Evidence Archive', icon: '📦' },
+  { id: 'diagnostics', label: 'Diagnostics', icon: '🔧' },
+];
+
 export default function OpenClawGatewayConnectorPanel() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [auditLog, setAuditLog] = useState([]);
+  const [activeTab, setActiveTab] = useState(() => loadJSON('openclawGatewayConnectorActiveTab', 'overview'));
   const [evidenceCollapsed, setEvidenceCollapsed] = useState(false);
 
   useEffect(() => {
@@ -137,6 +155,11 @@ export default function OpenClawGatewayConnectorPanel() {
     window.addEventListener('gateway-evidence-toggle', handleEvidenceToggle);
     return () => window.removeEventListener('gateway-evidence-toggle', handleEvidenceToggle);
   }, []);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    saveTab(tabId);
+  };
 
   const handleCheckStatus = async () => {
     setLoading(true);
@@ -184,34 +207,91 @@ export default function OpenClawGatewayConnectorPanel() {
         <ManualMonitoringControlRoomSummary refreshTrigger={Date.now()} />
       </div>
 
-      {/* ── Gateway Connector Section Navigator ── */}
-      <div className="border-b border-border/40 pb-5">
-        <GatewayConnectorSectionNav />
+      {/* ── Status Chip Row ── */}
+      <div className="flex flex-wrap gap-1.5 mb-5 px-4 py-2">
+        {['READ_ONLY', 'LOCKED', 'DISABLED', 'MANUAL_ONLY', 'NO_SCHEDULER', 'NO_POLLING', 'NO_DISPATCH', 'NO_EXECUTION'].map(status => (
+          <span key={status} className="text-[7px] px-2 py-1 border border-primary/30 bg-primary/5 text-primary rounded font-bold uppercase tracking-wider">
+            {status}
+          </span>
+        ))}
       </div>
 
-      {/* ── Operator Daily Use Panel ── */}
-      <div className="border-b border-border/40 pb-5">
-        <OperatorDailyUsePanel />
-      </div>
+      {/* ── Tabbed Layout ── */}
+      <div className="space-y-4">
+        {/* Tab Navigation */}
+        <div className="flex flex-wrap gap-1 border-b border-border/40 pb-0 overflow-x-auto">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={`px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
 
-      {/* ── Operator Session Log ── */}
-      <div className="border-b border-border/40 pb-5">
-        <OperatorSessionLog />
-      </div>
+        {/* Tab Footer */}
+        <div className="text-[8px] text-slate-500 px-4 py-1">
+          Tabbed layout only. No OpenClaw calls. No dispatch. No execution. No scheduler. No polling.
+        </div>
 
-      {/* ── Operator Session Evidence Export ── */}
-      <div className="border-b border-border/40 pb-5">
-        <OperatorSessionEvidenceExport />
-      </div>
+        {/* Tab Content - Overview */}
+        {activeTab === 'overview' && (
+          <div className="space-y-5 border-t border-border/40 pt-5">
+            <OperatorDailyUsePanel />
+          </div>
+        )}
 
-      {/* ── Operator Session Audit Dashboard ── */}
-      <div className="border-b border-border/40 pb-5">
-        <OperatorSessionAuditDashboard />
-      </div>
+        {/* Tab Content - Daily Operation */}
+        {activeTab === 'daily-ops' && (
+          <div className="space-y-5 border-t border-border/40 pt-5">
+            <div className="border-b border-border/40 pb-5"><OperatorDailyUsePanel /></div>
+            <div className="border-b border-border/40 pb-5"><OperatorSessionLog /></div>
+            <div className="border-b border-border/40 pb-5"><OperatorSessionEvidenceExport /></div>
+            <div className="border-b border-border/40 pb-5"><OperatorSessionAuditDashboard /></div>
+            <div className="border-b border-border/40 pb-5"><OperatorSessionFinalArchiveExport /></div>
+          </div>
+        )}
 
-      {/* ── Operator Session Final Archive Export ── */}
-      <div className="border-b border-border/40 pb-5">
-        <OperatorSessionFinalArchiveExport />
+        {/* Tab Content - Manual Monitoring */}
+        {activeTab === 'monitoring' && (
+          <div className="space-y-5 border-t border-border/40 pt-5">
+            <div className="text-[10px] text-slate-400 italic">Manual monitoring components reserved for future operator workflow panels.</div>
+          </div>
+        )}
+
+        {/* Tab Content - Bridge Status */}
+        {activeTab === 'bridge' && (
+          <div className="space-y-5 border-t border-border/40 pt-5">
+            <div className="border-b border-border/40 pb-5"><ReadOnlyGatewayHealthCheck /></div>
+          </div>
+        )}
+
+        {/* Tab Content - Governance */}
+        {activeTab === 'governance' && (
+          <div className="space-y-5 border-t border-border/40 pt-5">
+            <div className="text-[10px] text-slate-400 italic">Governance and capability approval components reserved for future implementation.</div>
+          </div>
+        )}
+
+        {/* Tab Content - Evidence Archive */}
+        {activeTab === 'archive' && (
+          <div className="space-y-5 border-t border-border/40 pt-5">
+            <div className="text-[10px] text-slate-400 italic">Evidence archive and baseline components reserved for future archival workflow.</div>
+          </div>
+        )}
+
+        {/* Tab Content - Diagnostics */}
+        {activeTab === 'diagnostics' && (
+          <div className="space-y-5 border-t border-border/40 pt-5">
+            <div className="text-[10px] text-slate-400 italic">Developer diagnostics panels reserved for future debugging and monitoring tools.</div>
+          </div>
+        )}
       </div>
 
       {/* Safety Banner */}
