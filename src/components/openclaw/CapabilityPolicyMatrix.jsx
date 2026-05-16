@@ -10,6 +10,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Copy, ShieldCheck, RefreshCw, Shield } from 'lucide-react';
+import CapabilityApprovalRules from './CapabilityApprovalRules.jsx';
 
 const SOURCE_KEYS = {
   capabilityReports:   'openclawCapabilityExplorerReports',
@@ -408,6 +409,11 @@ export default function CapabilityPolicyMatrix({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Capability policy matrix is local-only. No OpenClaw calls. No network calls. No execution. No dispatch. Unknown capabilities are blocked by default.
+      </div>
+
+      {/* ── Capability Approval Rules ── */}
+      <div className="border-t border-border/40 pt-4">
+        <CapabilityApprovalRules refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
