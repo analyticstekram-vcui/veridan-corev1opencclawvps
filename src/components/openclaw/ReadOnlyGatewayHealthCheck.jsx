@@ -21,6 +21,7 @@ import GatewayResponseInspector from './GatewayResponseInspector.jsx';
 import GatewayAlertingSystem from './GatewayAlertingSystem.jsx';
 import ProposalLifecycleTimeline from './ProposalLifecycleTimeline.jsx';
 import AuditReportExporter from './AuditReportExporter.jsx';
+import EvidenceChainVerifier from './EvidenceChainVerifier.jsx';
 
 const ENDPOINT        = 'https://openclaw.veridancore.com';
 const HEALTH_KEY      = 'openclawReadOnlyGatewayHealthChecks';
@@ -296,6 +297,11 @@ export default function ReadOnlyGatewayHealthCheck() {
       {/* ── Audit Report Exporter ── */}
       <div className="border-t border-border/40 pt-4">
         <AuditReportExporter refreshTrigger={inspectTrigger} />
+      </div>
+
+      {/* ── Evidence Chain Verifier ── */}
+      <div className="border-t border-border/40 pt-4">
+        <EvidenceChainVerifier refreshTrigger={inspectTrigger} />
       </div>
     </div>
   );
