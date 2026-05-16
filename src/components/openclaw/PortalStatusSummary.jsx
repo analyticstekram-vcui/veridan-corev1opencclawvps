@@ -80,20 +80,7 @@ export default function PortalStatusSummary({ loading, operatorMode }) {
         {loading && <span className="text-[8px] text-amber-500 animate-pulse ml-auto">POLLING…</span>}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
-        <StatusCell label="OpenClaw VPS" value={loading ? 'CHECKING…' : vps.label} valueClass={loading ? 'text-amber-500' : vps.valueClass}>
-          {/* Debug strip — TOP_CARD_RENDER_SOURCE */}
-          <div className="mt-1 pt-1 border-t border-border/20 text-[6px] font-mono text-slate-600 space-y-0.5">
-            <div>source: <span className="text-slate-500">TOP_CARD_RENDER_SOURCE</span></div>
-            <div>records: <span className="text-slate-500">{vps.count}</span></div>
-            <div>endpoint: <span className="text-slate-500">{c?.endpoint ?? '—'}</span></div>
-            <div>status: <span className="text-slate-500">{c?.status ?? '—'}</span></div>
-            <div>httpStatus: <span className="text-slate-500">{c?.httpStatus != null ? String(c.httpStatus) : '—'}</span></div>
-            <div>gatewayReachable: <span className="text-slate-500">{c?.gatewayReachable != null ? String(c.gatewayReachable) : '—'}</span></div>
-            <div>executionLock: <span className="text-slate-500">{c?.executionLock ?? '—'}</span></div>
-            <div>dispatchAllowed: <span className="text-slate-500">{c?.dispatchAllowed != null ? String(c.dispatchAllowed) : '—'}</span></div>
-            <div>resolved: <span className="text-slate-400 font-bold">{vps.resolvedStatus}</span></div>
-          </div>
-        </StatusCell>
+        <StatusCell label="OpenClaw VPS" value={loading ? 'CHECKING…' : vps.label} valueClass={loading ? 'text-amber-500' : vps.valueClass} />
         <StatusCell label="Gateway Mode"   value="READ_ONLY"          valueClass="text-amber-500" />
         <StatusCell label="Operator Mode"  value={operatorMode}       valueClass="text-slate-300" />
         <StatusCell label="Execution Lock" value="LOCKED"             valueClass="text-destructive" />
