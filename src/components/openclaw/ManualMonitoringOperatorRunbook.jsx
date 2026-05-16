@@ -11,6 +11,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, AlertTriangle, Copy, ShieldCheck, RefreshCw, FileJson, Lock, BookOpen } from 'lucide-react';
+import ManualMonitoringFinalAcceptancePacket from './ManualMonitoringFinalAcceptancePacket.jsx';
 
 const SOURCE_KEYS = {
   promotionGates:     'openclawManualMonitoringPromotionGates',
@@ -451,6 +452,11 @@ export default function ManualMonitoringOperatorRunbook({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Operator runbook is local-only. It documents manual read-only monitoring only. No scheduler. No polling. No dispatch. No execution.
+      </div>
+
+      {/* ── Manual Monitoring Final Acceptance Packet ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ManualMonitoringFinalAcceptancePacket refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
