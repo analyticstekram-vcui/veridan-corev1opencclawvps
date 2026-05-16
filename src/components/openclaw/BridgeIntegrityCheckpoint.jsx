@@ -11,6 +11,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Copy, ShieldCheck, RefreshCw, FileJson } from 'lucide-react';
+import ReadOnlyBridgePromotionGate from './ReadOnlyBridgePromotionGate.jsx';
 
 const SOURCE_KEYS = [
   'openclawControlledReadOnlyRouteBridgeCalls',
@@ -338,6 +339,11 @@ export default function BridgeIntegrityCheckpoint({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Bridge integrity checkpoint is local-only. No OpenClaw calls. No execution. No network calls. No dispatch.
+      </div>
+
+      {/* ── Read-Only Bridge Promotion Gate ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ReadOnlyBridgePromotionGate refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
