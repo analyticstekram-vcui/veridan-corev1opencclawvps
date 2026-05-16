@@ -27,7 +27,7 @@ import BaselineArchiveExport from './BaselineArchiveExport.jsx';
 import BaselineArchiveVerification from './BaselineArchiveVerification.jsx';
 import OperatorHandoffPacket from './OperatorHandoffPacket.jsx';
 import ReadOnlyAuthBridgeDesign from './ReadOnlyAuthBridgeDesign.jsx';
-import ReadOnlyBridgeStubPanel from './ReadOnlyBridgeStubPanel.jsx';
+import ReadOnlyStatusBridgePanel from './ReadOnlyStatusBridgePanel.jsx';
 
 const ENDPOINT        = 'https://openclaw.veridancore.com';
 const HEALTH_KEY      = 'openclawReadOnlyGatewayHealthChecks';
@@ -335,9 +335,9 @@ export default function ReadOnlyGatewayHealthCheck() {
         <ReadOnlyAuthBridgeDesign refreshTrigger={inspectTrigger} />
       </div>
 
-      {/* ── Read-Only Backend Bridge Stub ── */}
+      {/* ── Read-Only Authenticated Status Bridge ── */}
       <div className="border-t border-border/40 pt-4">
-        <ReadOnlyBridgeStubPanel refreshTrigger={inspectTrigger} />
+        <ReadOnlyStatusBridgePanel refreshTrigger={inspectTrigger} />
       </div>
     </div>
   );
