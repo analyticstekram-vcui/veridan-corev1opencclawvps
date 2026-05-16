@@ -13,46 +13,70 @@ function loadJSON(key, fallback = []) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
 }
 
+function getLatestCheck(checks) {
+  if (!checks || checks.length === 0) return null;
+  // Sort by createdAt/recordedAt descending to get the newest
+  return [...checks].sort((a, b) => {
+    const ta = new Date(a.createdAt || a.recordedAt || a.timestamp || 0).getTime();
+    const tb = new Date(b.createdAt || b.recordedAt || b.timestamp || 0).getTime();
+    return tb - ta;
+  })[0];
+}
+
 function computeVpsStatus() {
   const checks = loadJSON(CHECKS_KEY, []);
   if (!checks || checks.length === 0) {
-    return { status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED' };
+    return {
+      status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400',
+      bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED',
+      debug: { status: '—', httpStatus: '—', gatewayReachable: '—', checkedAt: '—' },
+    };
   }
 
-  // Find any valid successful check (any record, not just latest)
-  const successfulCheck = checks.find(c =>
-    c.status === 'SUCCESS' &&
-    (c.httpStatus === 200 || c.httpStatus === '200') &&
-    c.gatewayReachable === true &&
-    c.executionLock === 'LOCKED' &&
-    c.dispatchAllowed === false
-  );
-  if (successfulCheck) {
-    return { status: 'CONNECTED', icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/5 border-primary/30', label: 'OpenClaw VPS: CONNECTED' };
+  const latest = getLatestCheck(checks);
+  if (!latest) {
+    return {
+      status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400',
+      bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED',
+      debug: { status: '—', httpStatus: '—', gatewayReachable: '—', checkedAt: '—' },
+    };
   }
 
-  const latestCheck = checks[0];
-  if (!latestCheck) {
-    return { status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED' };
+  const debug = {
+    status: latest.status ?? '—',
+    httpStatus: latest.httpStatus != null ? String(latest.httpStatus) : 'N/A',
+    gatewayReachable: latest.gatewayReachable != null ? String(latest.gatewayReachable) : '—',
+    checkedAt: latest.createdAt || latest.recordedAt || latest.timestamp || '—',
+  };
+
+  // CONNECTED only if latest record passes all criteria
+  if (
+    latest.status === 'SUCCESS' &&
+    (latest.httpStatus === 200 || latest.httpStatus === '200') &&
+    latest.gatewayReachable === true &&
+    latest.executionLock === 'LOCKED' &&
+    latest.dispatchAllowed === false
+  ) {
+    return { status: 'CONNECTED', icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/5 border-primary/30', label: 'OpenClaw VPS: CONNECTED', debug };
   }
 
-  if (latestCheck.status === 'HOLD_FOR_AUTH_BOUNDARY') {
-    return { status: 'AUTH_REQUIRED', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'OpenClaw VPS: AUTH REQUIRED' };
+  if (latest.status === 'HOLD_FOR_AUTH_BOUNDARY') {
+    return { status: 'AUTH_REQUIRED', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'OpenClaw VPS: AUTH REQUIRED', debug };
   }
 
-  if (latestCheck.status === 'HOLD_FOR_BACKEND_ENV') {
-    return { status: 'ENV_MISSING', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'OpenClaw VPS: ENV MISSING' };
+  if (latest.status === 'HOLD_FOR_BACKEND_ENV') {
+    return { status: 'ENV_MISSING', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'OpenClaw VPS: ENV MISSING', debug };
   }
 
-  if (latestCheck.status === 'HOLD_FOR_GATEWAY_CONNECTIVITY') {
-    return { status: 'NOT_CONNECTED', icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20', label: 'OpenClaw VPS: NOT CONNECTED' };
+  if (latest.status === 'HOLD_FOR_GATEWAY_CONNECTIVITY' || latest.status === 'HOLD') {
+    return { status: 'NOT_CONNECTED', icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20', label: 'OpenClaw VPS: NOT CONNECTED', debug };
   }
 
-  if (latestCheck.status === 'BLOCKED_BY_SAFETY_FAILURE') {
-    return { status: 'BLOCKED', icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20', label: 'OpenClaw VPS: BLOCKED' };
+  if (latest.status === 'BLOCKED_BY_SAFETY_FAILURE') {
+    return { status: 'BLOCKED', icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20', label: 'OpenClaw VPS: BLOCKED', debug };
   }
 
-  return { status: 'HOLD', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'OpenClaw VPS: HOLD' };
+  return { status: 'HOLD', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/5 border-amber-500/20', label: 'OpenClaw VPS: HOLD', debug };
 }
 
 export default function OpenClawSystemStatusCard() {
@@ -108,6 +132,12 @@ export default function OpenClawSystemStatusCard() {
       </div>
       <div className="text-[8px] text-slate-500 flex items-center gap-1">
         <Lock className="w-2.5 h-2.5" /> Read-only monitoring • Manual checks only
+      </div>
+      <div className="text-[7px] text-slate-600 font-mono space-y-0.5 pt-1 border-t border-border/20">
+        <div>Latest Check Status: <span className="text-slate-400">{vpsStatus.debug.status}</span></div>
+        <div>Latest HTTP: <span className="text-slate-400">{vpsStatus.debug.httpStatus}</span></div>
+        <div>Latest Gateway Reachable: <span className="text-slate-400">{vpsStatus.debug.gatewayReachable}</span></div>
+        <div>Latest Check Time: <span className="text-slate-400">{vpsStatus.debug.checkedAt !== '—' ? new Date(vpsStatus.debug.checkedAt).toLocaleTimeString() : '—'}</span></div>
       </div>
     </div>
   );
