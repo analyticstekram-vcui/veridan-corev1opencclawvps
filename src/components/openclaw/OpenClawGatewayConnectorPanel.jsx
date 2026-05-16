@@ -8,6 +8,7 @@ import OperatorSessionEvidenceExport from './OperatorSessionEvidenceExport.jsx';
 import OperatorSessionAuditDashboard from './OperatorSessionAuditDashboard.jsx';
 import OperatorSessionFinalArchiveExport from './OperatorSessionFinalArchiveExport.jsx';
 import ReadOnlyGatewayHealthCheck from './ReadOnlyGatewayHealthCheck.jsx';
+import FinalLockPanel from './FinalLockPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -365,7 +366,7 @@ export default function OpenClawGatewayConnectorPanel() {
         {/* Tab Content - Evidence Archive */}
         {activeTab === 'archive' && (
           <div className="space-y-5 border-t border-border/40 pt-5">
-            <div className="text-[10px] text-slate-400 italic">Evidence archive and baseline components reserved for future archival workflow.</div>
+            <FinalLockPanel />
           </div>
         )}
 
