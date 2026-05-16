@@ -20,6 +20,7 @@ import { appendAudit } from '@/lib/proposalStore';
 import GatewayResponseInspector from './GatewayResponseInspector.jsx';
 import GatewayAlertingSystem from './GatewayAlertingSystem.jsx';
 import ProposalLifecycleTimeline from './ProposalLifecycleTimeline.jsx';
+import AuditReportExporter from './AuditReportExporter.jsx';
 
 const ENDPOINT        = 'https://openclaw.veridancore.com';
 const HEALTH_KEY      = 'openclawReadOnlyGatewayHealthChecks';
@@ -290,6 +291,11 @@ export default function ReadOnlyGatewayHealthCheck() {
       {/* ── Proposal Lifecycle Timeline ── */}
       <div className="border-t border-border/40 pt-4">
         <ProposalLifecycleTimeline refreshTrigger={inspectTrigger} />
+      </div>
+
+      {/* ── Audit Report Exporter ── */}
+      <div className="border-t border-border/40 pt-4">
+        <AuditReportExporter refreshTrigger={inspectTrigger} />
       </div>
     </div>
   );
