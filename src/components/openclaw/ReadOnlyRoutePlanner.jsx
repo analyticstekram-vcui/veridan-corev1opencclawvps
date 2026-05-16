@@ -10,6 +10,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Copy, ShieldCheck, RefreshCw, Map } from 'lucide-react';
+import ReadOnlyRouteSimulation from './ReadOnlyRouteSimulation.jsx';
 
 const SOURCE_KEYS = {
   approvalRules:   'openclawCapabilityApprovalRules',
@@ -337,6 +338,11 @@ export default function ReadOnlyRoutePlanner({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Route planner is local-only. No dispatch. No execution. No OpenClaw calls.
+      </div>
+
+      {/* ── Read-Only Route Simulation ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ReadOnlyRouteSimulation refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
