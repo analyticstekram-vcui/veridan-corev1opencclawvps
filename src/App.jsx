@@ -12,6 +12,7 @@ import BrowserControl from './pages/BrowserControl';
 import CommandQueue from './pages/CommandQueue';
 import BrowserSession from './pages/BrowserSession';
 import BrowserSessionRecords from './pages/BrowserSessionRecords';
+import ControlRoom from './pages/ControlRoom';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -47,6 +48,7 @@ const AuthenticatedApp = () => {
       <Route path="/command-queue" element={<CommandQueue />} />
       <Route path="/browser-session" element={<BrowserSession />} />
       <Route path="/browser-session-records" element={<BrowserSessionRecords />} />
+      <Route path="/control-room" element={<ControlRoom />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -10,12 +10,14 @@ import {
   ScrollText,
   Settings,
   Bot,
-  Globe
+  Globe,
+  Radio
 } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard', href: '/' },
   { icon: Terminal, label: 'AI Command', id: 'command', href: null },
+  { icon: Radio, label: 'Control Room', id: 'controlroom', href: '/control-room' },
   { icon: CreditCard, label: 'Credit Ledger', id: 'personal', href: '/credit-ledger' },
   { icon: Building2, label: 'Business Credit', id: 'business', href: null },
   { icon: TrendingUp, label: 'Trading', id: 'trading', href: null },
