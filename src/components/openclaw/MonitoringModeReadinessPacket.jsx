@@ -11,6 +11,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Copy, ShieldCheck, RefreshCw, FileJson, Lock } from 'lucide-react';
+import ManualReadOnlyMonitoringConsole from './ManualReadOnlyMonitoringConsole.jsx';
 
 const SOURCE_KEYS = {
   promotionGates:                'openclawReadOnlyBridgePromotionGates',
@@ -362,6 +363,11 @@ export default function MonitoringModeReadinessPacket({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Monitoring readiness packet is local-only. It approves read-only monitoring readiness only. No scheduler. No polling loop. No command dispatch. No execution.
+      </div>
+
+      {/* ── Manual Read-Only Monitoring Console ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ManualReadOnlyMonitoringConsole refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
