@@ -23,6 +23,7 @@ import BrowserObservationProposalQueuePanel from './BrowserObservationProposalQu
 import BrowserObservationProposalReviewLedgerPanel from './BrowserObservationProposalReviewLedgerPanel.jsx';
 import BrowserObservationReadinessGatePanel from './BrowserObservationReadinessGatePanel.jsx';
 import BrowserObservationProposalFinalLockPanel from './BrowserObservationProposalFinalLockPanel.jsx';
+import BrowserObservationExecutionContractPreviewPanel from './BrowserObservationExecutionContractPreviewPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -422,6 +423,9 @@ export default function OpenClawGatewayConnectorPanel() {
             </div>
             <div className="border-t border-border/40 pt-5">
               <BrowserObservationProposalFinalLockPanel />
+            </div>
+            <div className="border-t border-border/40 pt-5">
+              <BrowserObservationExecutionContractPreviewPanel />
             </div>
           </div>
         )}
