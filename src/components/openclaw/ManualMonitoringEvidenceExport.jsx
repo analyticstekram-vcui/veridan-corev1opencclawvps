@@ -58,6 +58,11 @@ function buildEvidenceExport() {
   const latestGate = promotionGates[0];
   const latestIntegrity = integrityCheckpoints[0];
 
+  // Count successful checks (status SUCCESS + httpStatus 200 + gatewayReachable true)
+  const successfulChecks = monitoringChecks.filter(c =>
+    c.status === 'SUCCESS' && c.httpStatus === 200 && c.gatewayReachable && !c.executionAttempted && !c.secretExposed && !c.dispatchAllowed
+  ).length;
+
   // Collect recent checks (up to 10)
   const recentChecks = monitoringChecks.slice(0, 10).map(c => ({
     checkId:         c.checkId,
@@ -107,6 +112,7 @@ function buildEvidenceExport() {
     phase:                     'MANUAL_MONITORING_EVIDENCE_EXPORT',
     systemName:                'VeridanCore OpenClaw Operator Portal',
     sourceCheckCount:          monitoringChecks.length,
+    successfulCheckCount:      successfulChecks,
     latestCheckId:             latestCheck?.checkId ?? null,
     latestEndpoint:            latestCheck?.endpoint ?? null,
     latestHttpStatus:          latestCheck?.httpStatus ?? null,
@@ -221,16 +227,16 @@ export default function ManualMonitoringEvidenceExport({ refreshTrigger }) {
 
           {/* Summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-            {[
-              { label: 'Latest Endpoint',        value: exp.latestEndpoint ?? 'N/A',            color: 'text-blue-400 font-mono text-[8px]' },
-              { label: 'Latest HTTP Status',     value: exp.latestHttpStatus ?? 'N/A',          color: 'text-foreground' },
-              { label: 'Gateway Reachable',      value: String(exp.latestGatewayReachable),     color: exp.latestGatewayReachable ? 'text-primary font-bold' : 'text-amber-500' },
-              { label: 'Checks Included',        value: exp.sourceCheckCount,                   color: 'text-primary font-bold' },
-              { label: 'Scheduler Active',       value: String(exp.schedulerActive),            color: 'text-destructive font-bold' },
-              { label: 'Polling Loop Active',    value: String(exp.pollingLoopActive),          color: 'text-destructive font-bold' },
-              { label: 'Dispatch Allowed',       value: String(exp.dispatchAllowed),            color: 'text-destructive font-bold' },
-              { label: 'Execution Attempted',    value: String(exp.executionAttempted),         color: 'text-destructive font-bold' },
-            ].map(c => (
+           {[
+             { label: 'Total Checks',           value: exp.sourceCheckCount,                   color: 'text-foreground' },
+             { label: 'Successful Checks',      value: exp.successfulCheckCount,               color: 'text-primary font-bold' },
+             { label: 'Latest Endpoint',        value: exp.latestEndpoint ?? 'N/A',            color: 'text-blue-400 font-mono text-[8px]' },
+             { label: 'Latest HTTP Status',     value: exp.latestHttpStatus ?? 'N/A',          color: 'text-foreground' },
+             { label: 'Gateway Reachable',      value: String(exp.latestGatewayReachable),     color: exp.latestGatewayReachable ? 'text-primary font-bold' : 'text-amber-500' },
+             { label: 'Scheduler Active',       value: String(exp.schedulerActive),            color: 'text-destructive font-bold' },
+             { label: 'Polling Loop Active',    value: String(exp.pollingLoopActive),          color: 'text-destructive font-bold' },
+             { label: 'Dispatch Allowed',       value: String(exp.dispatchAllowed),            color: 'text-destructive font-bold' },
+           ].map(c => (
               <div key={c.label} className="bg-card border border-border/60 rounded-lg px-2.5 py-2">
                 <div className="text-[7px] uppercase tracking-widest text-slate-500 font-semibold mb-0.5">{c.label}</div>
                 <div className={`text-[10px] break-all ${c.color}`}>{c.value}</div>

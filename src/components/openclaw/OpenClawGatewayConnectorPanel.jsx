@@ -19,6 +19,9 @@ import ControlledSchedulerOperatorReviewConsole from './ControlledSchedulerOpera
 import ControlledSchedulerOperatorSignOffPacket from './ControlledSchedulerOperatorSignOffPacket.jsx';
 import FinalLockBaselineExportPacket from './FinalLockBaselineExportPacket.jsx';
 import ManualReadOnlyMonitoringConsole from './ManualReadOnlyMonitoringConsole.jsx';
+import OpenClawSystemStatusCard from './OpenClawSystemStatusCard.jsx';
+import ManualMonitoringHistoricalStatusDashboard from './ManualMonitoringHistoricalStatusDashboard.jsx';
+import RegenerateEvidenceChainButton from './RegenerateEvidenceChainButton.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
 
@@ -211,6 +214,21 @@ export default function OpenClawGatewayConnectorPanel() {
         <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Gateway Connector</div>
         <div className="text-[13px] font-bold text-foreground">OpenClaw Gateway Readiness</div>
         <div className="text-[9px] text-slate-500 mt-0.5">Read-only status assessment — no execution, no credentials, no live actions</div>
+      </div>
+
+      {/* System Status Card */}
+      <div className="border-b border-border/40 pb-4">
+        <OpenClawSystemStatusCard />
+      </div>
+
+      {/* ── Historical Status Dashboard ── */}
+      <div id="historical-status" className="border-b border-border/40 pb-5">
+        <ManualMonitoringHistoricalStatusDashboard />
+      </div>
+
+      {/* ── Regenerate Evidence Chain Button ── */}
+      <div className="flex justify-center mb-5">
+        <RegenerateEvidenceChainButton />
       </div>
 
       {/* ── Manual Monitoring Control Room Summary ── */}
