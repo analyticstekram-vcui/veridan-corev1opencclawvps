@@ -14,6 +14,7 @@ import BaselineExportPacketPanel from './BaselineExportPacketPanel.jsx';
 import BaselineVerifyPacketPanel from './BaselineVerifyPacketPanel.jsx';
 import ReadOnlyBrowserObservationDesignPanel from './ReadOnlyBrowserObservationDesignPanel.jsx';
 import BrowserObservationPolicyMatrixPanel from './BrowserObservationPolicyMatrixPanel.jsx';
+import BrowserObservationApprovalRulesPanel from './BrowserObservationApprovalRulesPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -386,6 +387,9 @@ export default function OpenClawGatewayConnectorPanel() {
             </div>
             <div className="border-t border-border/40 pt-5">
               <BrowserObservationPolicyMatrixPanel />
+            </div>
+            <div className="border-t border-border/40 pt-5">
+              <BrowserObservationApprovalRulesPanel />
             </div>
           </div>
         )}
