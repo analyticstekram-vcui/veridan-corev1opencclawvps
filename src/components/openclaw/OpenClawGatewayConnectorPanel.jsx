@@ -154,6 +154,8 @@ const TABS = [
   { id: 'diagnostics', label: 'Diagnostics', icon: '🔧' },
 ];
 
+const CHECKS_KEY = 'openclawManualReadOnlyMonitoringChecks';
+
 export default function OpenClawGatewayConnectorPanel() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -161,6 +163,44 @@ export default function OpenClawGatewayConnectorPanel() {
   const [auditLog, setAuditLog] = useState([]);
   const [activeTab, setActiveTab] = useState(() => loadJSON('openclawGatewayConnectorActiveTab', 'overview'));
   const [evidenceCollapsed, setEvidenceCollapsed] = useState(false);
+
+  // Evidence chain refresh state
+  const [ecLastRefreshAt, setEcLastRefreshAt] = useState(null);
+  const [ecRecordsScanned, setEcRecordsScanned] = useState(null);
+  const [ecSuccessfulRecords, setEcSuccessfulRecords] = useState(null);
+  const [ecRefreshConfirmed, setEcRefreshConfirmed] = useState(false);
+
+  const handleEvidenceChainRefresh = () => {
+    let records = [];
+    try {
+      const raw = localStorage.getItem(CHECKS_KEY);
+      records = raw ? JSON.parse(raw) : [];
+    } catch { records = []; }
+
+    const total = records.length;
+    const successful = records.filter(r =>
+      r.status === 'SUCCESS' &&
+      (r.httpStatus === 200 || r.httpStatus === '200') &&
+      r.gatewayReachable === true &&
+      r.executionLock === 'LOCKED' &&
+      r.dispatchAllowed === false
+    ).length;
+
+    setEcLastRefreshAt(new Date().toISOString());
+    setEcRecordsScanned(total);
+    setEcSuccessfulRecords(successful);
+    setEcRefreshConfirmed(true);
+
+    window.dispatchEvent(new CustomEvent('veridan:regenerate-manual-monitoring-evidence-chain', {
+      detail: {
+        source: 'evidence-chain-controls-box',
+        createdAt: new Date().toISOString(),
+        recordsScanned: total,
+        successfulRecords: successful,
+        localOnly: true,
+      },
+    }));
+  };
 
   useEffect(() => {
     const handleEvidenceToggle = (e) => {
@@ -543,32 +583,25 @@ export default function OpenClawGatewayConnectorPanel() {
       </div>
 
       {/* Visible Evidence Chain Controls - directly above Historical Status */}
-      <div data-testid="visible-evidence-chain-controls" className="my-4 p-4 border-2 border-green-500 rounded-lg bg-green-950/20">
-        <div className="text-green-400 font-bold mb-2">
-          Evidence Chain Controls
-        </div>
+      <div data-testid="visible-evidence-chain-controls" className="my-4 p-4 border-2 border-green-500 rounded-lg bg-green-950/20 space-y-3">
+        <div className="text-green-400 font-bold">Evidence Chain Controls</div>
         <button
           type="button"
           data-testid="regenerate-full-manual-monitoring-evidence-chain-button"
-          className="px-4 py-2 border border-green-500 rounded text-green-300 bg-black hover:bg-green-950"
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent("veridan:regenerate-manual-monitoring-evidence-chain", {
-              detail: {
-                source: "visible-pre-historical-evidence-chain-button",
-                createdAt: new Date().toISOString(),
-                localOnly: true,
-                networkCalls: false,
-                executionAllowed: false,
-                dispatchAllowed: false
-              }
-            }));
-          }}
+          className="px-4 py-2 border border-green-500 rounded text-green-300 bg-black hover:bg-green-950 text-sm font-semibold"
+          onClick={handleEvidenceChainRefresh}
         >
           Regenerate Full Manual Monitoring Evidence Chain
         </button>
-        <div className="text-xs text-green-500 mt-2">
-          DEBUG: Evidence chain button mounted directly above Historical Status Dashboard.
-        </div>
+        {ecRefreshConfirmed && (
+          <div className="text-xs text-green-300 space-y-1 bg-green-900/20 border border-green-500/30 rounded p-2">
+            <div>✓ Last refresh status: <span className="font-bold text-green-400">Evidence chain refreshed</span></div>
+            <div>✓ Last refresh time: <span className="font-bold text-green-400">{ecLastRefreshAt ? new Date(ecLastRefreshAt).toLocaleTimeString() : '—'}</span></div>
+            <div>✓ Records scanned: <span className="font-bold text-green-400">{ecRecordsScanned}</span></div>
+            <div>✓ Successful records found: <span className="font-bold text-green-400">{ecSuccessfulRecords}</span></div>
+            <div>✓ Event dispatch confirmed: <span className="font-bold text-green-400">true</span></div>
+          </div>
+        )}
       </div>
 
       {/* Historical Status & Health Monitoring */}
