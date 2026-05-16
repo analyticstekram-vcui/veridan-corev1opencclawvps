@@ -11,6 +11,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Copy, ShieldCheck, RefreshCw, FileJson, AlertCircle } from 'lucide-react';
+import BridgeAuditReportDashboard from './BridgeAuditReportDashboard.jsx';
 
 const SOURCE_KEYS = {
   bridgeCalls: [
@@ -338,6 +339,11 @@ export default function BridgeCallResultEvidenceExport({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Evidence export is local-only. No command dispatch. No execution. No browser tools. No credentials exposed.
+      </div>
+
+      {/* ── Bridge Audit Report Dashboard ── */}
+      <div className="border-t border-border/40 pt-4">
+        <BridgeAuditReportDashboard refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
