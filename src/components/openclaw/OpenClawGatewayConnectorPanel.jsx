@@ -18,6 +18,7 @@ import ControlledSchedulerFinalDesignReviewPacket from './ControlledSchedulerFin
 import ControlledSchedulerOperatorReviewConsole from './ControlledSchedulerOperatorReviewConsole.jsx';
 import ControlledSchedulerOperatorSignOffPacket from './ControlledSchedulerOperatorSignOffPacket.jsx';
 import FinalLockBaselineExportPacket from './FinalLockBaselineExportPacket.jsx';
+import ManualReadOnlyMonitoringConsole from './ManualReadOnlyMonitoringConsole.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
 
@@ -271,7 +272,7 @@ export default function OpenClawGatewayConnectorPanel() {
         {/* Tab Content - Manual Monitoring */}
         {activeTab === 'monitoring' && (
           <div className="space-y-5 border-t border-border/40 pt-5">
-            <div className="text-[10px] text-slate-400 italic">Manual monitoring components reserved for future operator workflow panels.</div>
+            <div className="border-b border-border/40 pb-5"><ManualReadOnlyMonitoringConsole /></div>
           </div>
         )}
 

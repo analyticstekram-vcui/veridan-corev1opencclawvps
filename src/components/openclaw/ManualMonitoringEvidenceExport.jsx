@@ -14,7 +14,7 @@ import { CheckCircle2, AlertTriangle, Copy, ShieldCheck, RefreshCw, FileJson, Lo
 import ManualMonitoringAuditDashboard from './ManualMonitoringAuditDashboard.jsx';
 
 const SOURCE_KEYS = {
-  monitoringChecks:    'openclawManualReadOnlyMonitoringChecks',
+  monitoringChecks:    'openclawManualReadOnlyMonitoringChecks', // reads from ManualReadOnlyMonitoringConsole output
   readinessPackets:    'openclawMonitoringModeReadinessPackets',
   promotionGates:      'openclawReadOnlyBridgePromotionGates',
   integrityCheckpoints: 'openclawBridgeIntegrityCheckpoints',

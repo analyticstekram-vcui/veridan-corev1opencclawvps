@@ -17,7 +17,7 @@ const SOURCE_KEYS = {
   promotionGates:            'openclawManualMonitoringPromotionGates',
   auditDashboards:           'openclawManualMonitoringAuditDashboards',
   evidenceExports:           'openclawManualMonitoringEvidenceExports',
-  monitoringChecks:          'openclawManualReadOnlyMonitoringChecks',
+  monitoringChecks:          'openclawManualReadOnlyMonitoringChecks', // reads from ManualReadOnlyMonitoringConsole
   readinessPackets:          'openclawMonitoringModeReadinessPackets',
   bridgePromotionGates:      'openclawReadOnlyBridgePromotionGates',
   integrityCheckpoints:      'openclawBridgeIntegrityCheckpoints',

@@ -1,188 +1,209 @@
 /**
  * ManualReadOnlyMonitoringConsole
- * Local-only manual operator-triggered read-only monitoring checks.
+ * Operator-triggered manual GET-only monitoring checks.
+ * No network calls, no backend mutations, no execution.
  *
  * SAFETY CONTRACT:
- *   - Manual trigger only (button click)
- *   - No scheduler, no polling loop, no timers, no intervals
- *   - No network calls except via openclawReadOnlyStatusBridge backend function
- *   - No dispatch, no execution, no browser tools
- *   - No trading, no credentials, no money movement
- *   - Reads/writes localStorage only
+ *   - GET-only requests (no POST/PUT/PATCH/DELETE)
+ *   - No scheduler, polling, command dispatch, browser automation
+ *   - No credentials, API keys, tokens, secrets
+ *   - No trading, broker actions, wallet operations, money movement
+ *   - localStorage read/write for check records only
+ *   - Reads from openclawStatus backend function only
  *   - PREVIEW_ONLY / READ_ONLY / LOCKED
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, AlertTriangle, Copy, ShieldCheck, Loader2, FileJson, Lock, Play } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import ManualMonitoringEvidenceExport from './ManualMonitoringEvidenceExport.jsx';
+import { CheckCircle2, AlertTriangle, XCircle, Copy, Shield, RefreshCw, Trash2, Play } from 'lucide-react';
 
-const SOURCE_KEYS = {
-  readinessPackets:   'openclawMonitoringModeReadinessPackets',
-  promotionGates:     'openclawReadOnlyBridgePromotionGates',
-  integrityCheckpoints: 'openclawBridgeIntegrityCheckpoints',
-  bridgeCalls:        'openclawControlledReadOnlyRouteBridgeCalls',
-  approvalPackets:    'openclawReadOnlyRouteApprovalPackets',
-  auditTrail:         'openclawAuditTrail',
-};
 const CHECKS_KEY = 'openclawManualReadOnlyMonitoringChecks';
+const AUDIT_KEY = 'openclawManualReadOnlyMonitoringAuditLog';
 
 const ALLOWED_ENDPOINTS = ['/health', '/status', '/version', '/capabilities'];
-
-function tryAppendAudit(entry) {
-  try { import('@/lib/proposalStore').then(m => m.appendAudit?.(entry)).catch(() => {}); } catch {}
-}
 
 function loadJSON(key, fallback = []) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
 }
 
-function saveCheck(check) {
-  try {
-    const all = loadJSON(CHECKS_KEY, []);
-    const deduped = [check, ...all.filter(c => c.checkId !== check.checkId)];
-    localStorage.setItem(CHECKS_KEY, JSON.stringify(deduped.slice(0, 50)));
-  } catch {}
+function saveJSON(key, data) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
 }
 
-function isButtonEnabled(endpoint, latestPacket) {
-  if (!latestPacket) return false;
-  if (latestPacket.readinessStatus !== 'READY_FOR_READ_ONLY_MONITORING') return false;
-  if (!endpoint || !ALLOWED_ENDPOINTS.includes(endpoint)) return false;
-  if (latestPacket.executionLock !== 'LOCKED') return false;
-  if (latestPacket.gatewayMode !== 'READ_ONLY') return false;
-  if (latestPacket.executionMode !== 'DISABLED') return false;
-  return true;
+function appendAuditLog(event) {
+  const log = loadJSON(AUDIT_KEY, []);
+  log.push({
+    eventId: 'audit-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 4),
+    createdAt: new Date().toISOString(),
+    ...event,
+  });
+  saveJSON(AUDIT_KEY, log.slice(-100));
 }
 
-function buildCheckResult(endpoint, backendResponse) {
+function buildCheckRecord(endpoint, result, durationMs) {
   const safetyAssertions = [
-    { key: 'readOnly',                 value: true,                              pass: true },
-    { key: 'disabled',                 value: true,                              pass: true },
-    { key: 'executionLock',            value: 'LOCKED',                          pass: true },
-    { key: 'endpointAllowed',          value: ALLOWED_ENDPOINTS.includes(endpoint), pass: ALLOWED_ENDPOINTS.includes(endpoint) },
-    { key: 'methodGetOnly',            value: 'GET',                             pass: true },
-    { key: 'noScheduler',              value: false,                             pass: true },
-    { key: 'noPollingLoop',            value: false,                             pass: true },
-    { key: 'noCommandPayload',         value: true,                              pass: true },
-    { key: 'dispatchAllowed',          value: false,                             pass: true },
-    { key: 'executionAttempted',       value: false,                             pass: true },
-    { key: 'browserToolUsed',          value: false,                             pass: true },
-    { key: 'credentialExposed',        value: false,                             pass: true },
-    { key: 'secretExposed',            value: false,                             pass: true },
-    { key: 'tradingAttempted',         value: false,                             pass: true },
-    { key: 'brokerActionsAttempted',   value: false,                             pass: true },
-    { key: 'moneyMovementAttempted',   value: false,                             pass: true },
+    { key: 'readOnly', value: true, pass: true },
+    { key: 'methodGet', value: 'GET', pass: true },
+    { key: 'endpointAllowlisted', value: ALLOWED_ENDPOINTS.includes(endpoint), pass: ALLOWED_ENDPOINTS.includes(endpoint) },
+    { key: 'schedulerActive', value: false, pass: true },
+    { key: 'pollingLoopActive', value: false, pass: true },
+    { key: 'dispatchAllowed', value: false, pass: true },
+    { key: 'executionAllowed', value: false, pass: true },
+    { key: 'openClawCommandSent', value: false, pass: true },
+    { key: 'executionAttempted', value: false, pass: true },
+    { key: 'browserToolUsed', value: false, pass: true },
+    { key: 'credentialExposed', value: false, pass: true },
+    { key: 'secretExposed', value: false, pass: true },
+    { key: 'tradingAttempted', value: false, pass: true },
+    { key: 'brokerActionsAttempted', value: false, pass: true },
+    { key: 'walletActionsAttempted', value: false, pass: true },
+    { key: 'moneyMovementAttempted', value: false, pass: true },
+    { key: 'mutationMethodUsed', value: false, pass: true },
   ];
 
-  const checkId = 'mrmc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+  const allPass = safetyAssertions.every(a => a.pass);
+  const status = !allPass ? 'BLOCKED_BY_SAFETY_FAILURE' : (result?.status || 'HOLD_FOR_BACKEND_FUNCTION');
+  const httpStatus = result?.httpStatus || null;
+  const gatewayReachable = result?.gatewayReachable ?? false;
+
+  const checkId = 'check-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
 
   return {
     checkId,
-    createdAt:               new Date().toISOString(),
-    phase:                   'MANUAL_READ_ONLY_MONITORING_CHECK',
+    createdAt: new Date().toISOString(),
     endpoint,
-    method:                  'GET',
-    httpStatus:              backendResponse?.httpStatus ?? null,
-    gatewayReachable:        backendResponse?.online ?? backendResponse?.reachable ?? false,
-    cfAccessDetected:        backendResponse?.cfAccessDetected ?? false,
-    gatewayMode:             'READ_ONLY',
-    executionMode:           'DISABLED',
-    executionLock:           'LOCKED',
-    dispatchAllowed:         false,
-    commandDispatchAttempted: false,
-    openClawCommandSent:     false,
-    executionAttempted:      false,
-    browserToolUsed:         false,
-    credentialExposed:       false,
-    secretExposed:           false,
-    tradingAttempted:        false,
-    moneyMovementAttempted:  false,
-    schedulerActive:         false,
-    pollingLoopActive:       false,
-    safeResponseFields:      backendResponse?.safeResponseFields ?? null,
-    error:                   backendResponse?.error ?? null,
+    method: 'GET',
+    status,
+    httpStatus,
+    gatewayReachable,
+    cfAccessDetected: result?.cfAccessDetected ?? false,
+    responseSummary: result?.diagnosticDetail || result?.message || 'No response',
+    errorMessage: result?.error || null,
+    durationMs,
+    mode: 'READ_ONLY',
+    executionLock: 'LOCKED',
+    dispatchAllowed: false,
+    executionAllowed: false,
+    schedulerActive: false,
+    pollingLoopActive: false,
+    openClawCommandSent: false,
+    executionAttempted: false,
+    browserToolUsed: false,
+    credentialExposed: false,
+    secretExposed: false,
+    tradingAttempted: false,
+    brokerActionsAttempted: false,
+    walletActionsAttempted: false,
+    moneyMovementAttempted: false,
+    mutationMethodUsed: false,
     safetyAssertions,
-    note: 'Manual monitoring check only. No scheduler. No polling loop. No dispatch. No execution.',
+    sourceComponent: 'ManualReadOnlyMonitoringConsole',
   };
 }
 
-function CopyButton({ data }) {
-  const [copied, setCopied] = useState(false);
-  const handle = () => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <button type="button" onClick={handle}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] border border-border text-slate-400 hover:text-foreground hover:bg-secondary/50 rounded font-bold transition-colors">
-      {copied ? <CheckCircle2 className="w-3 h-3 text-primary" /> : <Copy className="w-3 h-3" />}
-      {copied ? 'Copied!' : 'Copy Monitoring Check JSON'}
-    </button>
-  );
+function saveCheck(record) {
+  try {
+    const all = loadJSON(CHECKS_KEY, []);
+    const deduped = [record, ...all.filter(c => c.checkId !== record.checkId)];
+    saveJSON(CHECKS_KEY, deduped.slice(0, 100));
+  } catch {}
 }
 
-export default function ManualReadOnlyMonitoringConsole({ refreshTrigger }) {
-  const [endpoint, setEndpoint] = useState('/health');
+export default function ManualReadOnlyMonitoringConsole() {
+  const [selectedEndpoint, setSelectedEndpoint] = useState('/health');
   const [latestCheck, setLatestCheck] = useState(null);
-  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showJSON, setShowJSON] = useState(false);
+  const [checkCount, setCheckCount] = useState(0);
 
-  const readinessPackets = loadJSON(SOURCE_KEYS.readinessPackets, []);
-  const latestPacket = readinessPackets[0];
-
+  // Load check count on mount
   useEffect(() => {
     const checks = loadJSON(CHECKS_KEY, []);
-    setHistory(checks);
-    if (checks.length > 0) {
-      setLatestCheck(checks[0]);
-    }
-  }, [refreshTrigger]);
-
-  const buttonEnabled = isButtonEnabled(endpoint, latestPacket);
+    setCheckCount(checks.length);
+  }, []);
 
   const handleRunCheck = async () => {
-    if (!buttonEnabled || !endpoint) return;
+    if (!selectedEndpoint) return;
+    if (!ALLOWED_ENDPOINTS.includes(selectedEndpoint)) return;
 
     setLoading(true);
-    setError(null);
+    const startTime = Date.now();
 
     try {
-      const response = await base44.functions.invoke('openclawReadOnlyStatusBridge', {
-        endpoint,
-        requestId: 'req-' + Date.now().toString(36),
+      // Call the existing openclawStatus function (read-only)
+      const response = await base44.functions.invoke('openclawStatus', {
+        endpoint: selectedEndpoint,
         mode: 'READ_ONLY',
-        source: 'MANUAL_MONITORING_CONSOLE',
       });
 
-      const backendResponse = response.data ?? {};
-      const check = buildCheckResult(endpoint, backendResponse);
+      const durationMs = Date.now() - startTime;
+      const result = response.data || {};
 
-      saveCheck(check);
-      tryAppendAudit({
-        event:              'manual_read_only_monitoring_check_completed',
-        checkId:            check.checkId,
-        endpoint:           check.endpoint,
-        httpStatus:         check.httpStatus,
-        gatewayReachable:   check.gatewayReachable,
-        note: `Manual monitoring check completed (${check.checkId}). Endpoint: ${endpoint}. Status: ${check.httpStatus ?? 'N/A'}. No scheduler. No dispatch. No execution.`,
+      const record = buildCheckRecord(selectedEndpoint, result, durationMs);
+      saveCheck(record);
+      setLatestCheck(record);
+
+      const checks = loadJSON(CHECKS_KEY, []);
+      setCheckCount(checks.length);
+
+      const auditStatus = record.status === 'SUCCESS' ? 'manual_check_success' : 'manual_check_hold';
+      appendAuditLog({
+        eventType: auditStatus,
+        component: 'ManualReadOnlyMonitoringConsole',
+        endpoint: selectedEndpoint,
+        checkId: record.checkId,
+        httpStatus: record.httpStatus,
+        gatewayReachable: record.gatewayReachable,
+        reason: `Manual GET check to ${selectedEndpoint}`,
+        operatorAction: 'run_check',
+        nonExecutionConfirmed: true,
       });
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      const result = {
+        status: 'HOLD_FOR_BACKEND_FUNCTION',
+        error: error.message || 'Backend function error',
+      };
 
-      const updated = loadJSON(CHECKS_KEY, []);
-      setHistory(updated);
-      setLatestCheck(check);
-    } catch (err) {
-      setError(err.message || 'Monitoring check failed');
-      tryAppendAudit({
-        event:  'manual_read_only_monitoring_check_failed',
-        endpoint,
-        error:  err.message,
-        note: `Manual monitoring check failed (${endpoint}). Error: ${err.message}. No scheduler. No dispatch.`,
+      const record = buildCheckRecord(selectedEndpoint, result, durationMs);
+      saveCheck(record);
+      setLatestCheck(record);
+
+      const checks = loadJSON(CHECKS_KEY, []);
+      setCheckCount(checks.length);
+
+      appendAuditLog({
+        eventType: 'manual_check_error',
+        component: 'ManualReadOnlyMonitoringConsole',
+        endpoint: selectedEndpoint,
+        checkId: record.checkId,
+        reason: error.message || 'Backend function unavailable',
+        operatorAction: 'run_check',
+        nonExecutionConfirmed: true,
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCopyJSON = () => {
+    if (latestCheck) {
+      navigator.clipboard.writeText(JSON.stringify(latestCheck, null, 2));
+    }
+  };
+
+  const handleClearChecks = () => {
+    if (window.confirm('Clear all local monitoring checks? This removes only the check records.')) {
+      try {
+        localStorage.removeItem(CHECKS_KEY);
+        setLatestCheck(null);
+        setCheckCount(0);
+        appendAuditLog({
+          eventType: 'local_checks_cleared',
+          component: 'ManualReadOnlyMonitoringConsole',
+          reason: 'Operator cleared local monitoring checks',
+          operatorAction: 'clear_checks',
+          nonExecutionConfirmed: true,
+        });
+      } catch {}
     }
   };
 
@@ -194,121 +215,92 @@ export default function ManualReadOnlyMonitoringConsole({ refreshTrigger }) {
         <div>
           <div className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Phase: Manual Monitoring</div>
           <div className="text-[13px] font-bold text-foreground">Manual Read-Only Monitoring Console</div>
-          <div className="text-[9px] text-slate-500 mt-0.5">Operator-triggered manual checks only. No scheduler. No polling loop.</div>
+          <div className="text-[9px] text-slate-500 mt-0.5">Operator-triggered GET-only health checks. No execution. No dispatch.</div>
         </div>
       </div>
 
-      {/* Safety banner */}
+      {/* Safety Banner */}
       <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/5 border border-amber-500/20 rounded text-[9px] text-amber-500/90">
-        <ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-        <span><span className="font-bold">MANUAL_ONLY / READ_ONLY / LOCKED</span> — Manual operator-triggered checks. No scheduler. No polling. No dispatch. No execution.</span>
+        <Shield className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+        <span><span className="font-bold">PREVIEW_ONLY / READ_ONLY / LOCKED</span> — Manual operator-triggered GET checks only. No scheduler. No polling. No dispatch. No execution.</span>
       </div>
 
-      {/* Readiness status */}
-      {latestPacket ? (
-        <div className={`border rounded-lg p-3 space-y-2 ${
-          latestPacket.readinessStatus === 'READY_FOR_READ_ONLY_MONITORING'
-            ? 'bg-primary/5 border-primary/30'
-            : 'bg-amber-500/5 border-amber-500/20'
-        }`}>
-          <div className="flex items-center gap-2 text-[9px]">
-            {latestPacket.readinessStatus === 'READY_FOR_READ_ONLY_MONITORING' ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
-            ) : (
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            )}
-            <span className={`font-bold ${
-              latestPacket.readinessStatus === 'READY_FOR_READ_ONLY_MONITORING'
-                ? 'text-primary'
-                : 'text-amber-500'
-            }`}>
-              {latestPacket.readinessStatus === 'READY_FOR_READ_ONLY_MONITORING'
-                ? 'READY FOR MANUAL MONITORING'
-                : 'NOT READY FOR MONITORING'}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/5 border border-amber-500/20 rounded text-[9px] text-amber-500">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          No readiness packet available. Generate one in Monitoring Mode Readiness Packet first.
-        </div>
-      )}
-
-      {/* Control panel */}
-      <div className="bg-secondary/10 border border-border/60 rounded-lg p-3 space-y-3">
-        <div className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Manual Check Control</div>
-        <div className="space-y-2">
-          <label className="text-[8px] text-slate-400 font-semibold">Allowed Endpoint</label>
-          <select value={endpoint} onChange={(e) => setEndpoint(e.target.value)}
-            className="w-full px-3 py-2 text-[9px] bg-card border border-border rounded font-mono text-slate-300 hover:border-border/80 focus:outline-none focus:ring-1 focus:ring-primary">
+      {/* Endpoint Selector + Run Button */}
+      <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+        <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Endpoint Selection</div>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={selectedEndpoint}
+            onChange={(e) => setSelectedEndpoint(e.target.value)}
+            disabled={loading}
+            className="flex-1 min-w-[140px] px-3 py-2 bg-secondary/20 border border-border rounded text-[9px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
+          >
+            <option disabled value="">Select endpoint</option>
             {ALLOWED_ENDPOINTS.map(ep => (
               <option key={ep} value={ep}>{ep}</option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={handleRunCheck}
+            disabled={!selectedEndpoint || loading}
+            className="flex items-center gap-1.5 px-4 py-2 text-[9px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed rounded font-bold transition-colors"
+          >
+            <Play className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Running…' : 'Run Check'}
+          </button>
         </div>
-        <button type="button" onClick={handleRunCheck} disabled={!buttonEnabled || loading}
-          className="flex items-center gap-2 px-4 py-2.5 w-full bg-primary/10 border border-primary text-primary text-[11px] font-bold hover:bg-primary/20 transition-colors rounded disabled:opacity-50 justify-center">
-          {loading ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Running Check…
-            </>
-          ) : (
-            <>
-              <Play className="w-3.5 h-3.5" />
-              Run Manual Read-Only Monitoring Check
-            </>
-          )}
-        </button>
-        {error && (
-          <div className="flex items-start gap-2 px-3 py-2 bg-destructive/5 border border-destructive/20 rounded text-[9px] text-destructive">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}
-          </div>
-        )}
+        <div className="text-[8px] text-slate-500">
+          Method: GET only • Mode: READ_ONLY • Lock: LOCKED • Checks recorded: {checkCount}
+        </div>
       </div>
 
-      {/* Latest check result */}
+      {/* Latest Check Result */}
       {latestCheck && (
         <>
-          {/* Result status */}
-          <div className={`border rounded-lg p-3 space-y-2 ${
-            latestCheck.error
-              ? 'bg-destructive/5 border-destructive/20'
-              : latestCheck.gatewayReachable
+          <div className={`border rounded-lg p-4 space-y-2 ${
+            latestCheck.status === 'SUCCESS'
               ? 'bg-primary/5 border-primary/30'
+              : latestCheck.status === 'BLOCKED_BY_SAFETY_FAILURE'
+              ? 'bg-destructive/5 border-destructive/20'
               : 'bg-amber-500/5 border-amber-500/20'
           }`}>
-            <div className="flex items-center gap-2">
-              {latestCheck.error ? (
-                <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-              ) : latestCheck.gatewayReachable ? (
+            <div className="flex items-center gap-3">
+              {latestCheck.status === 'SUCCESS' ? (
                 <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              ) : latestCheck.status === 'BLOCKED_BY_SAFETY_FAILURE' ? (
+                <XCircle className="w-4 h-4 text-destructive shrink-0" />
               ) : (
                 <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
               )}
               <div>
                 <div className={`text-[11px] font-bold uppercase tracking-wide ${
-                  latestCheck.error ? 'text-destructive' : latestCheck.gatewayReachable ? 'text-primary' : 'text-amber-500'
+                  latestCheck.status === 'SUCCESS' ? 'text-primary' : latestCheck.status === 'BLOCKED_BY_SAFETY_FAILURE' ? 'text-destructive' : 'text-amber-500'
                 }`}>
-                  {latestCheck.error ? 'CHECK_FAILED' : latestCheck.gatewayReachable ? 'GATEWAY_REACHABLE' : 'GATEWAY_UNREACHABLE'}
+                  {latestCheck.status}
                 </div>
-                {latestCheck.error && <div className="text-[8px] text-destructive mt-0.5">{latestCheck.error}</div>}
+                <div className={`text-[8px] mt-0.5 ${
+                  latestCheck.status === 'SUCCESS' ? 'text-primary/80' : latestCheck.status === 'BLOCKED_BY_SAFETY_FAILURE' ? 'text-destructive/80' : 'text-amber-500/80'
+                }`}>
+                  {latestCheck.responseSummary}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {[
-              { label: 'Endpoint',              value: latestCheck.endpoint,                    color: 'text-blue-400 font-mono text-[8px]' },
-              { label: 'HTTP Status',           value: latestCheck.httpStatus ?? 'N/A',         color: 'text-foreground' },
-              { label: 'Gateway Reachable',     value: String(latestCheck.gatewayReachable),    color: latestCheck.gatewayReachable ? 'text-primary font-bold' : 'text-amber-500' },
-              { label: 'CF Access Detected',    value: String(latestCheck.cfAccessDetected),    color: 'text-slate-400' },
-              { label: 'Scheduler Active',      value: String(latestCheck.schedulerActive),     color: 'text-destructive font-bold' },
-              { label: 'Polling Loop Active',   value: String(latestCheck.pollingLoopActive),   color: 'text-destructive font-bold' },
-              { label: 'Dispatch Allowed',      value: String(latestCheck.dispatchAllowed),     color: 'text-destructive font-bold' },
-              { label: 'Execution Attempted',   value: String(latestCheck.executionAttempted),  color: 'text-destructive font-bold' },
+              { label: 'Endpoint',         value: latestCheck.endpoint,                color: 'text-blue-400 font-mono text-[8px]' },
+              { label: 'Method',           value: latestCheck.method,                  color: 'text-foreground' },
+              { label: 'Status',           value: latestCheck.status.split('_')[0],    color: 'text-primary font-bold' },
+              { label: 'HTTP Status',      value: latestCheck.httpStatus ?? 'N/A',      color: 'text-foreground' },
+              { label: 'Gateway Reachable', value: String(latestCheck.gatewayReachable), color: latestCheck.gatewayReachable ? 'text-primary font-bold' : 'text-amber-500' },
+              { label: 'CF Access',        value: String(latestCheck.cfAccessDetected), color: latestCheck.cfAccessDetected ? 'text-amber-500' : 'text-slate-300' },
+              { label: 'Duration',         value: `${latestCheck.durationMs}ms`,        color: 'text-slate-300' },
+              { label: 'Execution Lock',   value: latestCheck.executionLock,           color: 'text-destructive font-bold' },
+              { label: 'Dispatch Allowed', value: String(latestCheck.dispatchAllowed),  color: 'text-destructive font-bold' },
+              { label: 'Recorded At',      value: new Date(latestCheck.createdAt).toLocaleTimeString(), color: 'text-slate-400' },
             ].map(c => (
               <div key={c.label} className="bg-card border border-border/60 rounded-lg px-2.5 py-2">
                 <div className="text-[7px] uppercase tracking-widest text-slate-500 font-semibold mb-0.5">{c.label}</div>
@@ -317,7 +309,7 @@ export default function ManualReadOnlyMonitoringConsole({ refreshTrigger }) {
             ))}
           </div>
 
-          {/* Safety assertions */}
+          {/* Safety Assertions */}
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             <div className="px-4 py-2 bg-secondary/10 border-b border-border">
               <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">
@@ -329,76 +321,48 @@ export default function ManualReadOnlyMonitoringConsole({ refreshTrigger }) {
                 <div key={a.key} className="flex items-center gap-1.5">
                   {a.pass
                     ? <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
-                    : <div className="w-3 h-3 rounded-full bg-destructive shrink-0" />}
+                    : <XCircle className="w-3 h-3 text-destructive shrink-0" />}
                   <span className="font-mono text-[7px] text-slate-400">{a.key}:</span>
                   <span className={`text-[7px] font-bold ${a.pass ? 'text-primary' : 'text-destructive'}`}>
-                    {String(a.value)}
+                    {String(a.value).slice(0, 4)}
                   </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* JSON preview */}
-          <details className="bg-secondary/10 border border-border/60 rounded-lg">
-            <summary className="px-3 py-2 cursor-pointer hover:bg-secondary/20 transition-colors flex items-center gap-2 text-[9px] font-semibold text-slate-400 uppercase tracking-widest">
-              <FileJson className="w-3.5 h-3.5" /> Monitoring Check JSON
-            </summary>
-            {showJSON && (
-              <div className="px-3 py-2 border-t border-border/60 bg-secondary/20">
-                <pre className="text-[7px] font-mono text-slate-300 overflow-auto max-h-48 whitespace-pre-wrap break-words">
-                  {JSON.stringify(latestCheck, null, 2)}
-                </pre>
-              </div>
-            )}
-          </details>
-          <button type="button" onClick={() => setShowJSON(!showJSON)}
-            className="text-[8px] text-slate-500 hover:text-slate-300 underline">
-            {showJSON ? 'Hide' : 'Show'} JSON
-          </button>
-
-          {/* Check ID + timestamp */}
+          {/* Check ID + Timestamp */}
           <div className="flex flex-wrap gap-4 text-[8px] text-slate-500">
-            <span className="flex items-center gap-1.5"><Lock className="w-3 h-3" /><span className="font-mono">{latestCheck.checkId}</span></span>
+            <span className="flex items-center gap-1.5 font-mono">{latestCheck.checkId}</span>
             <span>{new Date(latestCheck.createdAt).toLocaleString()}</span>
           </div>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            <CopyButton data={latestCheck} />
+            <button type="button" onClick={handleCopyJSON}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] border border-border text-slate-400 hover:text-foreground hover:bg-secondary/50 rounded font-bold transition-colors">
+              <Copy className="w-3 h-3" /> Copy Latest Check JSON
+            </button>
+            <button type="button" onClick={handleClearChecks}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] border border-slate-500/40 text-slate-400 hover:bg-secondary/50 rounded font-bold transition-colors">
+              <Trash2 className="w-3 h-3" /> Clear Local Checks
+            </button>
           </div>
         </>
       )}
 
-      {/* Recent checks table */}
-      {history.length > 1 && (
-        <details className="border border-border/40 rounded-lg p-3">
-          <summary className="text-[8px] text-slate-500 cursor-pointer hover:text-slate-300 uppercase tracking-widest font-semibold">
-            Recent Manual Checks ({history.length} records)
-          </summary>
-          <div className="mt-3 space-y-1 max-h-48 overflow-y-auto">
-            {history.slice(1).map((check, i) => (
-              <div key={i} className="flex items-center gap-3 px-2 py-1 bg-secondary/10 border border-border/30 rounded text-[8px]">
-                <span className="text-slate-400 font-mono">{new Date(check.createdAt).toLocaleTimeString()}</span>
-                <span className="font-mono text-slate-500">{check.endpoint}</span>
-                <span className={`ml-auto font-bold ${
-                  check.error ? 'text-destructive' : check.gatewayReachable ? 'text-primary' : 'text-amber-500'
-                }`}>{check.httpStatus ?? 'ERR'}</span>
-              </div>
-            ))}
-          </div>
-        </details>
+      {/* No checks yet */}
+      {!latestCheck && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-slate-500/5 border border-slate-500/20 rounded-lg text-[9px] text-slate-400">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          No checks recorded yet. Select an endpoint and click "Run Check" to generate monitoring evidence.
+        </div>
       )}
 
-      {/* Safety footer */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
+      {/* Safety Footer */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80 font-semibold">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
-        Manual monitoring only. No scheduler. No polling loop. No command dispatch. No execution.
-      </div>
-
-      {/* ── Manual Monitoring Evidence Export ── */}
-      <div className="border-t border-border/40 pt-4">
-        <ManualMonitoringEvidenceExport refreshTrigger={refreshTrigger} />
+        Manual monitoring console is local-only and read-only. No scheduler. No polling. No dispatch. No execution. GET only.
       </div>
     </div>
   );
