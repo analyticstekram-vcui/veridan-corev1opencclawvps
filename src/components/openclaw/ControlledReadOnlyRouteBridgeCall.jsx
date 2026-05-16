@@ -12,6 +12,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Copy, ShieldCheck, RefreshCw, Network, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import BridgeCallResultEvidenceExport from './BridgeCallResultEvidenceExport.jsx';
 
 const SOURCE_KEYS = {
   executionPreviews: 'openclawControlledReadOnlyRouteExecutionPreviews',
@@ -425,6 +426,11 @@ export default function ControlledReadOnlyRouteBridgeCall({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Controlled bridge call is read-only. No command dispatch. No execution. No browser tools. No trading. No credentials exposed.
+      </div>
+
+      {/* ── Bridge Call Result Evidence Export ── */}
+      <div className="border-t border-border/40 pt-4">
+        <BridgeCallResultEvidenceExport refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
