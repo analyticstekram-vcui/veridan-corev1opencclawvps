@@ -9,6 +9,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Copy, ShieldCheck, RefreshCw, FileJson } from 'lucide-react';
+import BridgeIntegrityCheckpoint from './BridgeIntegrityCheckpoint.jsx';
 
 const SOURCE_KEYS = {
   approvalPackets:     'openclawReadOnlyRouteApprovalPackets',
@@ -452,6 +453,11 @@ export default function BridgeAuditReportDashboard({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Bridge Audit Dashboard is local-only. No network calls. No OpenClaw command dispatch. No execution. No credentials.
+      </div>
+
+      {/* ── Bridge Integrity Checkpoint ── */}
+      <div className="border-t border-border/40 pt-4">
+        <BridgeIntegrityCheckpoint refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
