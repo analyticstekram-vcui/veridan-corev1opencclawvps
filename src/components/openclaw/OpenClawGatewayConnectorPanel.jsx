@@ -276,7 +276,8 @@ export default function OpenClawGatewayConnectorPanel() {
         {activeTab === 'monitoring' && (
           <div className="space-y-5 border-t border-border/40 pt-5">
             <div className="border-b border-border/40 pb-5"><ManualReadOnlyMonitoringConsole /></div>
-            <div className="flex justify-center mb-5">
+            <div className="my-4 p-4 border border-green-500 rounded">
+              <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mb-3">Evidence Chain Controls</div>
               <RegenerateEvidenceChainButton />
             </div>
             <div id="historical-status" className="border-b border-border/40 pb-5"><ManualMonitoringHistoricalStatusDashboard /></div>
