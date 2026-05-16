@@ -183,6 +183,22 @@ export default function SignedBridgeRequestPreview({ run, packet }) {
             <span className="text-[10px] font-bold text-primary uppercase tracking-wide">Signed Request Preview Generated</span>
           </div>
 
+          {/* Completion banner */}
+          <div className="px-3 py-2.5 bg-gradient-to-r from-primary/10 to-amber-500/5 border border-primary/30 rounded space-y-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wide">Bridge Request Preview Complete</span>
+            </div>
+            <div className="text-[9px] text-slate-300 font-semibold">Execution Remains Disabled</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[8px] text-slate-500">
+              <span>Bridge Mode: <span className="text-amber-500 font-semibold">{preview.bridgeMode}</span></span>
+              <span>Allowed for Dispatch: <span className="text-destructive font-bold">{String(preview.allowedForDispatch)}</span></span>
+              <span>OpenClaw Call Attempted: <span className="text-destructive font-bold">{String(preview.openclawCallAttempted)}</span></span>
+              <span>Execution Attempted: <span className="text-destructive font-bold">{String(preview.executionAttempted)}</span></span>
+              <span className="col-span-2">Signature Type: <span className="text-amber-500 font-semibold">{preview.signatureStatus}</span></span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[8px] text-slate-500">
             <span>ID: <span className="text-slate-300 font-mono">{preview.signedRequestId}</span></span>
             <span>Dry Run ID: <span className="text-slate-300 font-mono">{preview.dryRunId}</span></span>
