@@ -1,280 +1,221 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, Wifi, WifiOff, Server, Clock, Activity, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, ShieldCheck, AlertCircle, CheckCircle2, Clock, Activity } from 'lucide-react';
+
+const ENDPOINT = 'https://openclaw.veridancore.com';
+
+// Map backend diagnostic keys → display config
+const DIAGNOSTIC_DISPLAY = {
+  openclaw_online: {
+    label: 'OPENCLAW_ONLINE',
+    color: 'text-primary',
+    bg: 'bg-primary/5 border-primary/20',
+    icon: CheckCircle2,
+  },
+  cloudflare_protected_reachable: {
+    label: 'CLOUDFLARE_PROTECTED_REACHABLE',
+    color: 'text-amber-500',
+    bg: 'bg-amber-500/5 border-amber-500/20',
+    icon: ShieldCheck,
+  },
+  gateway_unreachable: {
+    label: 'GATEWAY_UNREACHABLE',
+    color: 'text-destructive',
+    bg: 'bg-destructive/5 border-destructive/20',
+    icon: WifiOff,
+  },
+  gateway_error: {
+    label: 'GATEWAY_ERROR',
+    color: 'text-destructive',
+    bg: 'bg-destructive/5 border-destructive/20',
+    icon: AlertCircle,
+  },
+  backend_unreachable: {
+    label: 'CONFIG_MISSING',
+    color: 'text-slate-400',
+    bg: 'bg-slate-500/5 border-slate-500/20',
+    icon: AlertCircle,
+  },
+};
 
 export default function OpenClawGatewayConnectorPanel() {
-  const [status, setStatus] = useState(null);
+  const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [lastRefresh, setLastRefresh] = useState(null);
-  const [lastSuccessAt, setLastSuccessAt] = useState(null);
-  const [lastFailureAt, setLastFailureAt] = useState(null);
-  const [readLogs, setReadLogs] = useState([]);
-  const [autoPolling, setAutoPolling] = useState(false);
-  const [pollingInterval, setPollingInterval] = useState(30); // seconds
-  const pollingRef = useRef(null);
+  const [auditLog, setAuditLog] = useState([]);
 
-  const fetchGatewayStatus = async (readType = 'health') => {
+  const handleCheckStatus = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await base44.functions.invoke('openclawGatewayReadOnlyConnector', {
-        readType,
-      });
-      setStatus(response.data);
-      setLastRefresh(new Date().toLocaleTimeString());
-      
-      if (response.data?.success && response.data?.gatewayOnline) {
-        setLastSuccessAt(new Date().toISOString());
-      } else if (!response.data?.success) {
-        setLastFailureAt(new Date().toISOString());
-      }
-      
-      // Load recent logs
-      const logs = await base44.entities.OpenClawGatewayConnectorLog.list('-readAt', 10);
-      setReadLogs(logs || []);
+      const response = await base44.functions.invoke('openclawStatus', {});
+      const data = response.data;
+      setResult(data);
+
+      // Write local audit preview entry
+      const entry = {
+        timestamp: new Date().toISOString(),
+        action: 'OpenClaw gateway status check performed — read-only.',
+        endpoint: data?.url || ENDPOINT,
+        httpStatus: data?.gatewayStatus ?? 'N/A',
+        gatewayStatus: DIAGNOSTIC_DISPLAY[data?.diagnostic]?.label || data?.diagnostic?.toUpperCase() || 'UNKNOWN',
+        mode: 'READ_ONLY',
+        note: 'No command execution was attempted.',
+      };
+      setAuditLog(prev => [entry, ...prev].slice(0, 20));
     } catch (err) {
-      setError(err.message || 'Failed to fetch gateway status');
-      setStatus(null);
-      setLastFailureAt(new Date().toISOString());
+      setError(err.message || 'Status check failed');
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle auto-polling
-  useEffect(() => {
-    if (autoPolling) {
-      // Initial fetch
-      fetchGatewayStatus('health');
-      // Set up polling interval
-      pollingRef.current = setInterval(() => {
-        fetchGatewayStatus('health');
-      }, pollingInterval * 1000);
-    } else {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-    }
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
-    };
-  }, [autoPolling, pollingInterval]);
-
-  // Initial load
-  useEffect(() => {
-    fetchGatewayStatus('health');
-  }, []);
+  const diag = result ? (DIAGNOSTIC_DISPLAY[result.diagnostic] || DIAGNOSTIC_DISPLAY.backend_unreachable) : null;
+  const DiagIcon = diag?.icon || AlertCircle;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 max-w-2xl">
+
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Real Gateway Connector</div>
-          <div className="text-[13px] font-semibold text-foreground">OpenClaw Gateway Read-Only Diagnostics</div>
+      <div>
+        <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Gateway Connector</div>
+        <div className="text-[13px] font-semibold text-foreground">OpenClaw Gateway Status Check</div>
+      </div>
+
+      {/* Safety Banner */}
+      <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+        <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+        <div className="text-[9px] text-amber-500/90">
+          <span className="font-bold">READ_ONLY / PREVIEW_ONLY</span> — This check requests only safe status/health information.
+          No commands are executed. No browser actions. No trading commands. No credentials requested. No live execution enabled.
+        </div>
+      </div>
+
+      {/* Endpoint + Button */}
+      <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+        <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Endpoint</div>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 px-3 py-2 bg-secondary/40 border border-border rounded text-[10px] font-mono text-blue-400 select-all">
+            {ENDPOINT}
+          </div>
+          <span className="text-[8px] px-2 py-1 border border-slate-500/30 bg-slate-500/5 text-slate-400 rounded font-bold uppercase whitespace-nowrap">
+            GET · manual redirect
+          </span>
         </div>
         <button
           type="button"
-          onClick={() => fetchGatewayStatus('health')}
+          onClick={handleCheckStatus}
           disabled={loading}
-          className="px-3 py-1.5 text-[10px] border border-primary bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 font-semibold rounded flex items-center gap-1.5"
+          className="flex items-center gap-2 px-5 py-2.5 bg-primary/10 border border-primary text-primary text-[11px] font-bold hover:bg-primary/20 transition-colors rounded disabled:opacity-50"
         >
-          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Checking…' : 'Check Gateway Status'}
         </button>
       </div>
 
-      {/* Connection Status */}
-      <div className={`rounded-lg p-4 border ${
-        status?.gatewayOnline 
-          ? 'bg-primary/5 border-primary/20' 
-          : 'bg-slate-500/5 border-slate-500/20'
-      }`}>
-        <div className="flex items-center gap-3 mb-3">
-          {status?.gatewayOnline ? (
-            <>
-              <Wifi className="w-5 h-5 text-primary" />
-              <div className="flex-1">
-                <div className="text-[11px] font-semibold text-primary uppercase tracking-wider">GATEWAY ONLINE</div>
-                <div className="text-[9px] text-primary/70 mt-0.5">Connected to OpenClaw gateway (READ_ONLY mode)</div>
-              </div>
-            </>
-          ) : (
-            <>
-              <WifiOff className="w-5 h-5 text-slate-500" />
-              <div className="flex-1">
-                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">GATEWAY OFFLINE</div>
-                <div className="text-[9px] text-slate-400/70 mt-0.5">Gateway is unreachable — running in local preview mode (SIMULATED)</div>
-              </div>
-            </>
-          )}
-        </div>
-        {status && (
-          <div className="grid grid-cols-4 gap-2 text-[9px] mt-3">
-            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Mode</div>
-              <div className="font-semibold text-foreground">{status.gatewayOnline ? 'READ_ONLY' : 'SIMULATED'}</div>
-            </div>
-            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Latency</div>
-              <div className="font-semibold text-foreground">{status.latencyMs}ms</div>
-            </div>
-            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">HTTP</div>
-              <div className="font-semibold text-foreground">{status.httpStatus || 'N/A'}</div>
-            </div>
-            <div className="bg-card/50 border border-border/30 px-2 py-1.5 rounded">
-              <div className="text-[8px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Version</div>
-              <div className="font-semibold text-foreground">{status.data?.version || 'N/A'}</div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Health Timestamps */}
-      <div className="grid grid-cols-2 gap-3">
-        {lastSuccessAt && (
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-              <div className="text-[9px] font-semibold text-primary uppercase tracking-wider">Last Success</div>
-            </div>
-            <div className="text-[8px] text-foreground/70 font-mono">{new Date(lastSuccessAt).toLocaleString()}</div>
-          </div>
-        )}
-        {lastFailureAt && (
-          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle className="w-3.5 h-3.5 text-destructive" />
-              <div className="text-[9px] font-semibold text-destructive uppercase tracking-wider">Last Failure</div>
-            </div>
-            <div className="text-[8px] text-foreground/70 font-mono">{new Date(lastFailureAt).toLocaleString()}</div>
-          </div>
-        )}
-      </div>
-
-      {/* Auto-Polling Controls */}
-      <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
-        <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Auto-Polling</div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setAutoPolling(!autoPolling)}
-            className={`px-3 py-1.5 text-[10px] border font-semibold rounded transition-colors ${
-              autoPolling
-                ? 'bg-primary/10 border-primary/30 text-primary'
-                : 'border-border text-foreground hover:bg-secondary/50'
-            }`}
-          >
-            {autoPolling ? '⏸ Stop Polling' : '▶ Start Polling'}
-          </button>
-          {autoPolling && (
-            <>
-              <input
-                type="number"
-                min="5"
-                max="300"
-                value={pollingInterval}
-                onChange={(e) => setPollingInterval(Math.max(5, parseInt(e.target.value)))}
-                className="w-16 px-2 py-1.5 text-[10px] border border-border bg-card rounded text-foreground"
-              />
-              <span className="text-[9px] text-muted-foreground">seconds</span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Diagnostic Buttons */}
-      <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
-        <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider mb-2">Diagnostic Reads</div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {['health', 'version', 'status', 'capabilities', 'session_status', 'audit_summary'].map(type => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => fetchGatewayStatus(type)}
-              disabled={loading}
-              className="px-3 py-2 text-[9px] border border-border text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-50 font-semibold rounded capitalize"
-            >
-              {type.replace('_', ' ')}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Gateway Data Display */}
-      {status?.data && (
-        <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-2">
-          <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider mb-2">Gateway Response</div>
-          <div className="bg-card border border-border/30 px-3 py-2.5 rounded text-[9px] text-foreground/80 font-mono max-h-48 overflow-y-auto">
-            <pre>{JSON.stringify(status.safeSnapshot || status.data, null, 2)}</pre>
-          </div>
-        </div>
-      )}
-
-      {/* Error Display */}
+      {/* Error */}
       {error && (
         <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg">
           <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
           <div className="text-[10px] text-destructive">
-            <div className="font-semibold mb-0.5">Read Failed</div>
+            <div className="font-semibold mb-0.5">Check Failed</div>
             <div className="text-[9px] text-destructive/80">{error}</div>
           </div>
         </div>
       )}
 
-      {/* Recent Reads Audit Log */}
-      {readLogs.length > 0 && (
-        <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Activity className="w-4 h-4 text-muted-foreground" />
-            <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Recent Reads ({readLogs.length})</div>
+      {/* Result Card */}
+      {result && diag && (
+        <div className={`border rounded-lg p-4 space-y-4 ${diag.bg}`}>
+          {/* Status Row */}
+          <div className="flex items-center gap-3">
+            <DiagIcon className={`w-5 h-5 ${diag.color} shrink-0`} />
+            <div>
+              <div className={`text-[12px] font-bold uppercase tracking-wide ${diag.color}`}>
+                {diag.label}
+              </div>
+              <div className="text-[9px] text-slate-400 mt-0.5">{result.diagnosticDetail}</div>
+            </div>
           </div>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {readLogs.map(log => (
-              <div key={log.id} className="bg-card border border-border/30 px-3 py-2 rounded text-[8px] space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-foreground capitalize">{log.readType}</span>
-                  {log.success ? (
-                    <CheckCircle2 className="w-3 h-3 text-primary" />
-                  ) : (
-                    <AlertCircle className="w-3 h-3 text-destructive" />
-                  )}
+
+          {/* Detail Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[9px]">
+            <div className="bg-card/60 border border-border/40 px-3 py-2 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">Endpoint Checked</div>
+              <div className="font-mono text-blue-400 text-[8px] truncate">{result.url || ENDPOINT}</div>
+            </div>
+            <div className="bg-card/60 border border-border/40 px-3 py-2 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">HTTP Status</div>
+              <div className="font-semibold text-foreground">{result.gatewayStatus ?? 'N/A'}</div>
+            </div>
+            <div className="bg-card/60 border border-border/40 px-3 py-2 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">Gateway Status</div>
+              <div className={`font-bold ${diag.color}`}>{diag.label}</div>
+            </div>
+            <div className="bg-card/60 border border-border/40 px-3 py-2 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">Timestamp</div>
+              <div className="text-foreground/80 text-[8px]">{result.lastChecked ? new Date(result.lastChecked).toLocaleString() : '—'}</div>
+            </div>
+            <div className="bg-card/60 border border-border/40 px-3 py-2 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">Mode</div>
+              <div className="font-bold text-amber-500">READ_ONLY</div>
+            </div>
+            <div className="bg-card/60 border border-border/40 px-3 py-2 rounded">
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-0.5 font-semibold">CF Access</div>
+              <div className="font-semibold text-foreground">{result.protected ? 'Protected' : result.online ? 'Open' : '—'}</div>
+            </div>
+          </div>
+
+          {/* Note */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-card/40 border border-border/30 rounded text-[9px] text-slate-400">
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            No command execution was attempted.
+          </div>
+        </div>
+      )}
+
+      {/* Local Audit Preview Log */}
+      {auditLog.length > 0 && (
+        <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Activity className="w-3.5 h-3.5 text-muted-foreground" />
+            <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Local Audit Preview</div>
+            <span className="ml-auto text-[8px] text-slate-500 uppercase tracking-widest">Session only — not persisted</span>
+          </div>
+          <div className="space-y-2 max-h-56 overflow-y-auto">
+            {auditLog.map((entry, i) => (
+              <div key={i} className="bg-card border border-border/30 rounded px-3 py-2 text-[8px] space-y-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3 h-3 text-slate-500 shrink-0" />
+                  <span className="text-slate-400 font-mono">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+                  <span className={`ml-auto font-bold px-1.5 py-0.5 rounded border text-[7px] uppercase ${
+                    entry.gatewayStatus === 'OPENCLAW_ONLINE' ? 'text-primary border-primary/30 bg-primary/5' :
+                    entry.gatewayStatus === 'CLOUDFLARE_PROTECTED_REACHABLE' ? 'text-amber-500 border-amber-500/30 bg-amber-500/5' :
+                    'text-destructive border-destructive/30 bg-destructive/5'
+                  }`}>{entry.gatewayStatus}</span>
                 </div>
-                <div className="text-muted-foreground flex items-center gap-2">
-                  <Clock className="w-3 h-3" />
-                  <span>{new Date(log.readAt).toLocaleTimeString()}</span>
-                  <span className="text-muted-foreground/50">•</span>
-                  <span>{log.latencyMs}ms</span>
+                <div className="text-slate-300">{entry.action}</div>
+                <div className="text-slate-500 grid grid-cols-2 gap-x-4">
+                  <span>Endpoint: <span className="text-blue-400 font-mono">{entry.endpoint}</span></span>
+                  <span>HTTP: <span className="text-foreground">{entry.httpStatus}</span></span>
+                  <span>Mode: <span className="text-amber-500 font-semibold">{entry.mode}</span></span>
+                  <span>{entry.note}</span>
                 </div>
-                {log.errorMessage && (
-                  <div className="text-destructive/70 mt-0.5">Error: {log.errorMessage}</div>
-                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Safety Notice */}
+      {/* Safety Footer */}
       <div className="flex items-start gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <div className="text-[10px] text-primary/80">
-          <div className="font-semibold mb-0.5">Read-Only Gateway Connector</div>
-          <div className="text-[9px] text-primary/70">Only health, version, status, capabilities, session status, and audit summaries are fetched. No command execution, mutations, credential entry, or data movement. All reads logged to audit trail. Baseline constraints remain locked.</div>
+        <div className="text-[9px] text-primary/80">
+          <span className="font-semibold">Read-Only Gateway Connector</span> — Only safe status/health information is requested.
+          Uses <code className="text-primary/70">redirect: manual</code> to detect Cloudflare Access responses without following redirects.
+          No credentials, no execution, no trading, no mutations.
         </div>
       </div>
-
-      {/* Last Refresh */}
-      {lastRefresh && (
-        <div className="text-[8px] text-muted-foreground/50 text-center border-t border-border/30 pt-2 mt-2">
-          Last refresh: {lastRefresh}
-        </div>
-      )}
     </div>
   );
 }
