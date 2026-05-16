@@ -10,6 +10,7 @@
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import { CheckCircle2, XCircle, Copy, ShieldCheck, RefreshCw, Clock, Wifi, WifiOff, Shield } from 'lucide-react';
+import AutomatedHealthMonitoring from './AutomatedHealthMonitoring.jsx';
 
 const BRIDGE_KEY    = 'openclawReadOnlyStatusBridgeReports';
 const DASHBOARD_KEY = 'openclawHistoricalStatusDashboardReports';
@@ -250,6 +251,11 @@ export default function HistoricalStatusDashboard({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Historical status dashboard is read-only. No OpenClaw command dispatch. No execution. No trading. No credentials exposed.
+      </div>
+
+      {/* ── Automated Health Monitoring ── */}
+      <div className="border-t border-border/40 pt-4">
+        <AutomatedHealthMonitoring refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
