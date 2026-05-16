@@ -10,6 +10,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Copy, ShieldCheck, RefreshCw, Lock } from 'lucide-react';
+import ReadOnlyRoutePlanner from './ReadOnlyRoutePlanner.jsx';
 
 const SOURCE_KEYS = {
   policyReports:     'openclawCapabilityPolicyMatrixReports',
@@ -338,6 +339,11 @@ export default function CapabilityApprovalRules({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Capability approval rules are local-only. No dispatch. No execution. No OpenClaw calls.
+      </div>
+
+      {/* ── Read-Only Route Planner ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ReadOnlyRoutePlanner refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
