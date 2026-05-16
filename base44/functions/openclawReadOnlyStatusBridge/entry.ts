@@ -14,19 +14,19 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const ALLOWED_ENDPOINTS = ['/health', '/status', '/version', '/capabilities'];
-const BLOCKED_METHODS   = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user   = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (BLOCKED_METHODS.includes(req.method)) {
-    return Response.json({ error: `Method ${req.method} not allowed`, allowed: false }, { status: 405 });
-  }
-
   const body = await req.json().catch(() => ({}));
   const { endpoint, requestId, mode } = body;
+
+  // Block any explicit mutation mode in payload
+  if (mode && mode !== 'READ_ONLY') {
+    return Response.json({ error: `mode "${mode}" not allowed. Only READ_ONLY is accepted.`, allowed: false }, { status: 400 });
+  }
 
   // Block any command/dispatch/execution payloads
   const forbidden = ['command', 'dispatch', 'execute', 'payload', 'selector', 'inputText', 'trade'];
