@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Shield, ChevronDown, ChevronRight, CheckCircle2, XCircle,
-  Clock, AlertTriangle, RefreshCw, ScrollText
+  Clock, AlertTriangle, RefreshCw, ScrollText, Package
 } from 'lucide-react';
 import {
-  loadProposals, loadAudit,
+  loadProposals, loadAudit, loadPackets,
   approveProposal, denyProposal,
   submitForApproval, queuePreview, blockPreview,
 } from '@/lib/proposalStore';
+import PreviewCommandPacket from './PreviewCommandPacket';
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 const STATUS_CFG = {
@@ -92,7 +93,7 @@ function ReviewForm({ proposal, onApprove, onDeny, onClose }) {
 }
 
 // ── Proposal Row ───────────────────────────────────────────────────────────────
-function ProposalRow({ proposal, onRefresh, currentUser }) {
+function ProposalRow({ proposal, packets, onRefresh, currentUser }) {
   const [expanded,     setExpanded]     = useState(false);
   const [showReview,   setShowReview]   = useState(false);
   const [actionError,  setActionError]  = useState('');
@@ -226,6 +227,14 @@ function ProposalRow({ proposal, onRefresh, currentUser }) {
             <div className="text-[9px] text-destructive">{actionError}</div>
           )}
 
+          {/* Preview Command Packet — available for APPROVED and QUEUED_PREVIEW */}
+          {['APPROVED', 'QUEUED_PREVIEW'].includes(proposal.status) && (
+            <div className="border-t border-border/20 pt-3">
+              <div className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold mb-2">Preview Command Packet</div>
+              <PreviewCommandPacket proposal={proposal} packets={packets} onRefresh={onRefresh} />
+            </div>
+          )}
+
           {/* Full JSON */}
           <details>
             <summary className="text-[8px] text-slate-500 cursor-pointer hover:text-slate-300 uppercase tracking-widest font-semibold">
@@ -245,6 +254,7 @@ function ProposalRow({ proposal, onRefresh, currentUser }) {
 export default function CommandApprovalWorkflowPanel() {
   const [proposals, setProposals] = useState([]);
   const [auditLog,  setAuditLog]  = useState([]);
+  const [packets,   setPackets]   = useState([]);
   const [filter,    setFilter]    = useState('ALL');
   const [currentUser, setCurrentUser] = useState('operator');
   const [showAudit, setShowAudit] = useState(false);
@@ -252,6 +262,7 @@ export default function CommandApprovalWorkflowPanel() {
   const refresh = useCallback(() => {
     setProposals(loadProposals());
     setAuditLog(loadAudit());
+    setPackets(loadPackets());
   }, []);
 
   useEffect(() => {
@@ -302,6 +313,28 @@ export default function CommandApprovalWorkflowPanel() {
         </div>
       </div>
 
+      {/* Packet Summary Card */}
+      <div className="bg-card border border-border rounded-lg p-3 space-y-2">
+        <div className="flex items-center gap-2 mb-1">
+          <Package className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Preview Packet Summary</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          {[
+            { label: 'Total Packets',          value: packets.length,                                                    color: 'text-foreground',  bg: 'bg-secondary/20 border-border' },
+            { label: 'Ready for Bridge Test',  value: packets.filter(p => p.packetStatus === 'READY_FOR_BRIDGE_TEST').length, color: 'text-blue-400', bg: 'bg-blue-400/5 border-blue-400/20' },
+            { label: 'Blocked Packets',        value: packets.filter(p => !p.allowedCommand).length,                    color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20' },
+            { label: 'OpenClaw Calls Attempted', value: 0,                                                              color: 'text-slate-400',   bg: 'bg-secondary/10 border-border' },
+            { label: 'Execution Attempted',    value: 0,                                                                color: 'text-slate-400',   bg: 'bg-secondary/10 border-border' },
+          ].map(({ label, value, color, bg }) => (
+            <div key={label} className={`border rounded px-2 py-1.5 ${bg}`}>
+              <div className="text-[7px] uppercase tracking-widest text-slate-500 font-semibold mb-0.5">{label}</div>
+              <div className={`text-[13px] font-bold ${color}`}>{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Governance Summary Card */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {[
@@ -343,7 +376,7 @@ export default function CommandApprovalWorkflowPanel() {
           </div>
         ) : (
           filtered.map(p => (
-            <ProposalRow key={p.id} proposal={p} onRefresh={refresh} currentUser={currentUser} />
+            <ProposalRow key={p.id} proposal={p} packets={packets} onRefresh={refresh} currentUser={currentUser} />
           ))
         )}
       </div>

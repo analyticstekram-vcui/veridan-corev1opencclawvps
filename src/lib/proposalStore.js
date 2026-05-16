@@ -162,3 +162,79 @@ export function blockPreview(proposalId, reason) {
   appendAudit({ event: 'blocked_preview', proposalId, note: reason || 'Blocked in preview queue.' });
   return updated;
 }
+
+// ── Preview Packets ────────────────────────────────────────────────────────────
+const PACKETS_KEY = 'veridancore_packets_v1';
+
+export function loadPackets() {
+  return load(PACKETS_KEY);
+}
+
+/** Generate a preview packet from an approved proposal. Returns { error } or { packet, packets }. */
+export function generatePacket(proposal) {
+  if (!proposal) return { error: 'Proposal not found.' };
+  if (proposal.riskTier === 'HIGH') return { error: 'Cannot generate packet for HIGH risk proposal.' };
+  if (proposal.blockedReasons?.length) return { error: 'Cannot generate packet — proposal has blocked reasons.' };
+  if (['DENIED', 'BLOCKED_PREVIEW'].includes(proposal.status)) return { error: 'Cannot generate packet for DENIED or BLOCKED_PREVIEW proposal.' };
+  if (!proposal.reviewNote) return { error: 'Cannot generate packet — review note is missing.' };
+
+  const allowedCommand = !proposal.blockedReasons?.length && proposal.riskTier !== 'HIGH';
+
+  // Simple deterministic hash placeholder from proposal id + timestamp
+  const auditHashPlaceholder = btoa(`${proposal.id}:${proposal.reviewedAt || proposal.createdAt}`).slice(0, 32);
+
+  const packet = {
+    packetId:             'pkt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+    proposalId:           proposal.id,
+    createdAt:            new Date().toISOString(),
+    commandType:          proposal.commandType,
+    target:               proposal.target,
+    purpose:              proposal.purpose || '',
+    expectedResult:       proposal.expectedResult || '',
+    riskTier:             proposal.riskTier,
+    approvalStatus:       proposal.status,
+    reviewedBy:           proposal.reviewedBy || '',
+    reviewedAt:           proposal.reviewedAt || '',
+    governanceDecision:   proposal.governanceDecision || '',
+    safetyMode:           'PREVIEW_ONLY',
+    gatewayMode:          'READ_ONLY',
+    executionAttempted:   false,
+    openclawCallAttempted:false,
+    allowedCommand,
+    blockedReasons:       proposal.blockedReasons || [],
+    auditHashPlaceholder,
+    packetStatus:         'GENERATED',
+  };
+
+  const packets = load(PACKETS_KEY);
+  packets.unshift(packet);
+  save(PACKETS_KEY, packets.slice(0, 200));
+
+  appendAudit({
+    event:      'command_packet_generated',
+    proposalId: proposal.id,
+    packetId:   packet.packetId,
+    note:       'Preview packet generated — read-only JSON only. No execution.',
+  });
+
+  return { packet, packets };
+}
+
+/** Mark packet as READY_FOR_BRIDGE_TEST (no OpenClaw call). */
+export function markPacketReadyForBridgeTest(packetId) {
+  const packets = load(PACKETS_KEY);
+  let proposalId = '';
+  const updated = packets.map(pk => {
+    if (pk.packetId !== packetId) return pk;
+    proposalId = pk.proposalId;
+    return { ...pk, packetStatus: 'READY_FOR_BRIDGE_TEST', markedReadyAt: new Date().toISOString() };
+  });
+  save(PACKETS_KEY, updated);
+  appendAudit({
+    event:     'command_packet_ready_for_bridge_test',
+    packetId,
+    proposalId,
+    note:      'Packet marked READY_FOR_BRIDGE_TEST — no OpenClaw call attempted.',
+  });
+  return updated;
+}
