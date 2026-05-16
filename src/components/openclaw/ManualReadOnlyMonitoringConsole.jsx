@@ -128,16 +128,26 @@ export default function ManualReadOnlyMonitoringConsole() {
     const startTime = Date.now();
 
     try {
-      // Call the existing openclawStatus function (read-only)
+      // Call backend with minimal frontend payload (no secrets)
       const response = await base44.functions.invoke('openclawStatus', {
         endpoint: selectedEndpoint,
+        method: 'GET',
+        requestId: 'req-' + Date.now().toString(36),
         mode: 'READ_ONLY',
+        dispatchAllowed: false,
+        executionAttempted: false,
       });
 
       const durationMs = Date.now() - startTime;
       const result = response.data || {};
 
-      const record = buildCheckRecord(selectedEndpoint, result, durationMs);
+      // Map backend statuses to frontend display
+      const mappedResult = {
+        ...result,
+        status: mapBackendStatus(result.status),
+      };
+
+      const record = buildCheckRecord(selectedEndpoint, mappedResult, durationMs);
       saveCheck(record);
       setLatestCheck(record);
 
@@ -182,6 +192,16 @@ export default function ManualReadOnlyMonitoringConsole() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Map backend status codes to display status
+  const mapBackendStatus = (backendStatus) => {
+    if (backendStatus === 'SUCCESS') return 'SUCCESS';
+    if (backendStatus === 'HOLD_FOR_BACKEND_ENV') return 'HOLD_FOR_BACKEND_ENV';
+    if (backendStatus === 'HOLD_FOR_AUTH_BOUNDARY') return 'HOLD_FOR_AUTH_BOUNDARY';
+    if (backendStatus === 'HOLD_FOR_GATEWAY_CONNECTIVITY') return 'HOLD_FOR_GATEWAY_CONNECTIVITY';
+    if (backendStatus === 'BLOCKED_BY_SAFETY_FAILURE') return 'BLOCKED_BY_SAFETY_FAILURE';
+    return 'HOLD_FOR_BACKEND_FUNCTION';
   };
 
   const handleCopyJSON = () => {

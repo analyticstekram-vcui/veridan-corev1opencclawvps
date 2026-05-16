@@ -10,76 +10,209 @@ Deno.serve(async (req) => {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const url = Deno.env.get('OPENCLAW_GATEWAY_URL') || GATEWAY_URL;
-  const lastChecked = new Date().toISOString();
+  // Parse request body for authenticated endpoint checks
+  let payload = {};
+  try {
+    if (req.method === 'POST') {
+      payload = await req.json();
+    }
+  } catch {}
 
-  let online = false;
-  let gatewayStatus = null;
-  let diagnostic = 'backend_unreachable';
-  let diagnosticDetail = 'Health check not attempted';
+  const endpoint = payload.endpoint || '';
+  const method = payload.method || 'GET';
+  const requestId = payload.requestId || '';
+  const mode = payload.mode || 'READ_ONLY';
+
+  // Allowlist endpoints
+  const ALLOWLISTED_ENDPOINTS = ['/health', '/status', '/version', '/capabilities'];
+
+  // Validate request (frontend must only send these)
+  if (method !== 'GET') {
+    return Response.json({
+      ok: false,
+      status: 'REJECTED_BY_BACKEND',
+      reason: 'Only GET method allowed',
+      gatewayReachable: false,
+      executionLock: 'LOCKED',
+      dispatchAllowed: false,
+    }, { status: 400 });
+  }
+
+  // If endpoint is specified, validate it's allowlisted
+  if (endpoint && !ALLOWLISTED_ENDPOINTS.includes(endpoint)) {
+    return Response.json({
+      ok: false,
+      status: 'REJECTED_BY_BACKEND',
+      reason: 'Endpoint not allowlisted',
+      gatewayReachable: false,
+      executionLock: 'LOCKED',
+      dispatchAllowed: false,
+    }, { status: 400 });
+  }
+
+  // Backend reads secrets only from environment
+  const baseUrl = Deno.env.get('OPENCLAW_GATEWAY_URL') || Deno.env.get('OPENCLAW_BASE_URL') || GATEWAY_URL;
+  const openclawToken = Deno.env.get('OPENCLAW_SERVICE_TOKEN') || '';
+  const cfClientId = Deno.env.get('CF_ACCESS_CLIENT_ID') || '';
+  const cfClientSecret = Deno.env.get('CF_ACCESS_CLIENT_SECRET') || '';
+
+  // Check if required env vars are present
+  if (!baseUrl) {
+    return Response.json({
+      ok: false,
+      status: 'HOLD_FOR_BACKEND_ENV',
+      httpStatus: null,
+      gatewayReachable: false,
+      cfAccessDetected: false,
+      endpoint,
+      method: 'GET',
+      responseSummary: 'Backend configuration missing (OPENCLAW_GATEWAY_URL)',
+      durationMs: 0,
+      requestId,
+      mode: 'READ_ONLY',
+      executionLock: 'LOCKED',
+      dispatchAllowed: false,
+      executionAllowed: false,
+      openClawCommandSent: false,
+      executionAttempted: false,
+      browserToolUsed: false,
+      credentialExposed: false,
+      secretExposed: false,
+      tradingAttempted: false,
+      brokerActionsAttempted: false,
+      walletActionsAttempted: false,
+      moneyMovementAttempted: false,
+      mutationMethodUsed: false,
+    });
+  }
+
+  // Build request URL (endpoint or base URL)
+  const targetUrl = endpoint ? `${baseUrl}${endpoint}` : baseUrl;
+  const startTime = Date.now();
+
+  // Build headers with secrets injected server-side only
+  const headers = new Headers({
+    'User-Agent': 'VeridanCore-HealthCheck/1.0',
+  });
+
+  // Inject Cloudflare Access headers if available (server-side only)
+  if (cfClientId && cfClientSecret) {
+    headers.set('CF-Access-Client-Id', cfClientId);
+    headers.set('CF-Access-Client-Secret', cfClientSecret);
+  }
+
+  // Inject OpenClaw token if available (server-side only)
+  if (openclawToken) {
+    headers.set('Authorization', `Bearer ${openclawToken}`);
+  }
+
+  let httpStatus = null;
+  let gatewayReachable = false;
+  let cfAccessDetected = false;
+  let responseSummary = '';
+  let errorMessage = null;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
+
   try {
-    const res = await fetch(url, {
+    const res = await fetch(targetUrl, {
       method: 'GET',
-      // Do NOT follow redirects — we want to see Cloudflare 302 as proof of reachability
       redirect: 'manual',
       signal: controller.signal,
-      headers: { 'User-Agent': 'VeridanCore-HealthCheck/1.0' },
+      headers,
     });
-    gatewayStatus = res.status;
+
+    httpStatus = res.status;
+    const durationMs = Date.now() - startTime;
 
     if (res.status === 200) {
-      online = true;
-      diagnostic = 'openclaw_online';
-      diagnosticDetail = 'OpenClaw gateway returned HTTP 200 — fully online.';
-    } else if (res.status === 302 || res.status === 301 || res.status === 307 || res.status === 308) {
-      // Cloudflare Access redirect to login — endpoint is live and protected
-      online = true;
-      diagnostic = 'cloudflare_protected_reachable';
-      diagnosticDetail = `OpenClaw gateway reachable — Cloudflare Access redirect (HTTP ${res.status}). Authentication required to proceed.`;
-    } else if (res.status === 401 || res.status === 403) {
-      online = true;
-      diagnostic = 'cloudflare_protected_reachable';
-      diagnosticDetail = `OpenClaw gateway reachable — Cloudflare Access enforced (HTTP ${res.status}).`;
+      gatewayReachable = true;
+      responseSummary = 'OpenClaw gateway returned HTTP 200 — endpoint accessible.';
+    } else if ([301, 302, 307, 308].includes(res.status)) {
+      gatewayReachable = true;
+      cfAccessDetected = true;
+      responseSummary = `Cloudflare Access redirect (HTTP ${res.status}) — authentication required.`;
+    } else if ([401, 403].includes(res.status)) {
+      gatewayReachable = true;
+      cfAccessDetected = true;
+      responseSummary = `Cloudflare Access enforced (HTTP ${res.status}).`;
     } else if (res.status >= 500) {
-      online = false;
-      diagnostic = 'gateway_error';
-      diagnosticDetail = `OpenClaw gateway returned server error HTTP ${res.status}.`;
+      gatewayReachable = false;
+      responseSummary = `OpenClaw gateway server error HTTP ${res.status}.`;
     } else {
-      // Any other 4xx (404, 429, etc.) still means the server is up
-      online = true;
-      diagnostic = 'openclaw_online';
-      diagnosticDetail = `OpenClaw gateway responded HTTP ${res.status}.`;
+      gatewayReachable = true;
+      responseSummary = `OpenClaw gateway responded HTTP ${res.status}.`;
     }
-  } catch (err) {
-    online = false;
-    if (err?.name === 'AbortError') {
-      diagnostic = 'gateway_unreachable';
-      diagnosticDetail = 'Health check timed out after 8s — OpenClaw gateway did not respond.';
-    } else {
-      diagnostic = 'gateway_unreachable';
-      diagnosticDetail = `OpenClaw gateway unreachable: ${err?.message || 'network error'}.`;
-    }
-  } finally {
-    clearTimeout(timeout);
-  }
 
-  return Response.json({
-    online,
-    url,
-    wsUrl: GATEWAY_WS,
-    lastChecked,
-    gatewayStatus,
-    diagnostic,
-    diagnosticDetail,
-    authLayer: 'Cloudflare Access',
-    mode: 'external-control',
-    protected: diagnostic === 'cloudflare_protected_reachable',
-    version: OPENCLAW_VERSION,
-    cdpPort: CDP_PORT,
-    browserAutomation: 'operational',
-    baselineNote: 'Stable backend baseline saved at /root/VERIDAN_OPENCLAW_STABLE_BASELINE.md',
-  });
+    clearTimeout(timeout);
+
+    const status = gatewayReachable ? (cfAccessDetected ? 'HOLD_FOR_AUTH_BOUNDARY' : 'SUCCESS') : 'HOLD_FOR_GATEWAY_CONNECTIVITY';
+
+    return Response.json({
+      ok: status === 'SUCCESS',
+      status,
+      httpStatus,
+      gatewayReachable,
+      cfAccessDetected,
+      endpoint,
+      method: 'GET',
+      responseSummary,
+      durationMs,
+      requestId,
+      mode: 'READ_ONLY',
+      executionLock: 'LOCKED',
+      dispatchAllowed: false,
+      executionAllowed: false,
+      openClawCommandSent: false,
+      executionAttempted: false,
+      browserToolUsed: false,
+      credentialExposed: false,
+      secretExposed: false,
+      tradingAttempted: false,
+      brokerActionsAttempted: false,
+      walletActionsAttempted: false,
+      moneyMovementAttempted: false,
+      mutationMethodUsed: false,
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    const durationMs = Date.now() - startTime;
+
+    let status = 'HOLD_FOR_GATEWAY_CONNECTIVITY';
+    let summary = 'OpenClaw gateway unreachable.';
+
+    if (err?.name === 'AbortError') {
+      summary = 'Health check timed out after 8s.';
+    } else {
+      summary = `OpenClaw gateway error: ${err?.message || 'network error'}`;
+    }
+
+    return Response.json({
+      ok: false,
+      status,
+      httpStatus: null,
+      gatewayReachable: false,
+      cfAccessDetected: false,
+      endpoint,
+      method: 'GET',
+      responseSummary: summary,
+      durationMs,
+      requestId,
+      mode: 'READ_ONLY',
+      executionLock: 'LOCKED',
+      dispatchAllowed: false,
+      executionAllowed: false,
+      openClawCommandSent: false,
+      executionAttempted: false,
+      browserToolUsed: false,
+      credentialExposed: false,
+      secretExposed: false,
+      tradingAttempted: false,
+      brokerActionsAttempted: false,
+      walletActionsAttempted: false,
+      moneyMovementAttempted: false,
+      mutationMethodUsed: false,
+    });
+  }
 });
