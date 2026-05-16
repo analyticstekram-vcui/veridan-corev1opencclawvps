@@ -7,6 +7,7 @@ import OperatorDailyUsePanel from './OperatorDailyUsePanel.jsx';
 import OperatorSessionLog from './OperatorSessionLog.jsx';
 import OperatorSessionEvidenceExport from './OperatorSessionEvidenceExport.jsx';
 import OperatorSessionAuditDashboard from './OperatorSessionAuditDashboard.jsx';
+import OperatorSessionFinalArchiveExport from './OperatorSessionFinalArchiveExport.jsx';
 import ReadOnlyGatewayHealthCheck from './ReadOnlyGatewayHealthCheck.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
@@ -206,6 +207,11 @@ export default function OpenClawGatewayConnectorPanel() {
       {/* ── Operator Session Audit Dashboard ── */}
       <div className="border-b border-border/40 pb-5">
         <OperatorSessionAuditDashboard />
+      </div>
+
+      {/* ── Operator Session Final Archive Export ── */}
+      <div className="border-b border-border/40 pb-5">
+        <OperatorSessionFinalArchiveExport />
       </div>
 
       {/* Safety Banner */}
