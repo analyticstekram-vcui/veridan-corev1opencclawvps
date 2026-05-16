@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { RefreshCw, ShieldCheck, AlertCircle, CheckCircle2, Clock, Activity, XCircle, HelpCircle, ArrowRight } from 'lucide-react';
 import ManualMonitoringControlRoomSummary from './ManualMonitoringControlRoomSummary.jsx';
 import GatewayConnectorSectionNav from './GatewayConnectorSectionNav.jsx';
+import OperatorDailyUsePanel from './OperatorDailyUsePanel.jsx';
 import ReadOnlyGatewayHealthCheck from './ReadOnlyGatewayHealthCheck.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
@@ -182,6 +183,11 @@ export default function OpenClawGatewayConnectorPanel() {
       {/* ── Gateway Connector Section Navigator ── */}
       <div className="border-b border-border/40 pb-5">
         <GatewayConnectorSectionNav />
+      </div>
+
+      {/* ── Operator Daily Use Panel ── */}
+      <div className="border-b border-border/40 pb-5">
+        <OperatorDailyUsePanel />
       </div>
 
       {/* Safety Banner */}
