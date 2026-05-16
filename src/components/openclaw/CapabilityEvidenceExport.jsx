@@ -10,6 +10,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Copy, ShieldCheck, RefreshCw, FileDown, Cpu } from 'lucide-react';
+import CapabilityPolicyMatrix from './CapabilityPolicyMatrix.jsx';
 
 const SOURCE_KEYS = {
   bridgeReports:       'openclawReadOnlyStatusBridgeReports',
@@ -313,6 +314,11 @@ export default function CapabilityEvidenceExport({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Capability evidence export is local-only. No OpenClaw call. No command dispatch. No execution. No credentials. No network calls.
+      </div>
+
+      {/* ── Capability Policy Matrix ── */}
+      <div className="border-t border-border/40 pt-4">
+        <CapabilityPolicyMatrix refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
