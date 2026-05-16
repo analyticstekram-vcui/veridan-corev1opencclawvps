@@ -11,6 +11,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Copy, ShieldCheck, RefreshCw, Eye } from 'lucide-react';
+import ControlledReadOnlyRouteBridgeCall from './ControlledReadOnlyRouteBridgeCall.jsx';
 
 const SOURCE_KEYS = {
   approvalPackets:  'openclawReadOnlyRouteApprovalPackets',
@@ -362,6 +363,11 @@ export default function ControlledReadOnlyRouteExecutionPreview({ refreshTrigger
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Execution preview is local-only. No route dispatched. No OpenClaw call. No execution.
+      </div>
+
+      {/* ── Controlled Read-Only Route Bridge Call ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ControlledReadOnlyRouteBridgeCall refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
