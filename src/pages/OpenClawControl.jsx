@@ -48,6 +48,8 @@ import OpenClawControlTower from '@/components/openclaw/OpenClawControlTower';
 import OperatorDashboard from '@/components/openclaw/OperatorDashboard';
 import PersistentHeader from '@/components/navigation/PersistentHeader';
 import BackToDashboard from '@/components/navigation/BackToDashboard';
+import PortalStatusSummary from '@/components/openclaw/PortalStatusSummary';
+import MonitoringPlaceholderPanel from '@/components/openclaw/MonitoringPlaceholderPanel';
 
 // Tab groups for organized navigation
 const TAB_GROUPS = {
@@ -92,6 +94,16 @@ const TAB_GROUPS = {
       { id: 'baseline_archive', label: '🧷 Baseline Archive' },
       { id: 'export_packet', label: '📦 Export Packet' },
       { id: 'verify_packet', label: '🔎 Verify Packet' },
+    ],
+  },
+  monitoring: {
+    label: 'Monitoring',
+    tabs: [
+      { id: 'monitoring_setup',       label: '👁️ Monitoring Setup' },
+      { id: 'watch_rules',            label: '📋 Watch Rules' },
+      { id: 'alert_routes',           label: '🔔 Alert Routes' },
+      { id: 'tradingview_signals',    label: '📈 TradingView Signals' },
+      { id: 'openclaw_health',        label: '💚 OpenClaw Health' },
     ],
   },
   diagnostics: {
@@ -209,17 +221,23 @@ export default function OpenClawControl() {
       <PersistentHeader currentPage="Control Tower" />
 
       {/* ── Title bar with description ── */}
-      <div style={{ flexShrink: 0, position: 'relative', zIndex: 20 }} className="border-b border-border bg-card px-6 py-4">
-        <div className="flex items-start gap-3 mb-3">
-          <div className="w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
-            <Terminal className="w-4 h-4 text-primary" />
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 20 }} className="border-b border-border bg-card px-6 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
+            <Terminal className="w-3.5 h-3.5 text-primary" />
           </div>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold tracking-wide text-foreground">OpenClaw Control</h1>
-            <p className="text-[10px] text-slate-400 mt-1">Governed browser and task control for Veridan Core. Execution remains disabled unless explicitly approved by policy.</p>
+            <h1 className="text-[14px] font-bold tracking-wide text-foreground">VeridanCore AI Operator Portal</h1>
+            <p className="text-[9px] text-slate-400">OpenClaw Governed Control Panel · PREVIEW_ONLY · Execution locked until explicitly authorized by policy</p>
           </div>
+          <Link to="/control-room" className="px-3 py-1.5 text-[9px] border border-border text-slate-400 hover:bg-secondary/50 transition-colors rounded font-semibold whitespace-nowrap">
+            Control Room →
+          </Link>
         </div>
       </div>
+
+      {/* ── Status Summary Card ── */}
+      <PortalStatusSummary gatewayOnline={online} loading={loading} operatorMode={operatorMode} />
 
       {/* ── Safety Boundary Banner ── */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 15 }} className="bg-amber-500/5 border-b-2 border-amber-500/30 px-6 py-4">
@@ -298,8 +316,8 @@ export default function OpenClawControl() {
 
         {/* Tab groups - filtered by Operator Mode */}
         {Object.entries(TAB_GROUPS).map(([groupKey, group]) => {
-          // In SIMPLE mode, hide Diagnostics and Advanced Audit Tools
-          if (operatorMode === 'SIMPLE' && (groupKey === 'diagnostics' || groupKey === 'advanced_audit')) {
+          // In SIMPLE mode, hide Diagnostics, Monitoring, and Advanced Audit Tools
+          if (operatorMode === 'SIMPLE' && (groupKey === 'diagnostics' || groupKey === 'monitoring' || groupKey === 'advanced_audit')) {
             return null;
           }
 
@@ -526,6 +544,10 @@ export default function OpenClawControl() {
 
         {activeView === 'baseline_archive' && (
           <div className="p-6"><OpenClawBaselineArchive /></div>
+        )}
+
+        {['monitoring_setup', 'watch_rules', 'alert_routes', 'tradingview_signals', 'openclaw_health'].includes(activeView) && (
+          <div className="p-6"><MonitoringPlaceholderPanel tabId={activeView} /></div>
         )}
 
         {activeView === 'status' && (
