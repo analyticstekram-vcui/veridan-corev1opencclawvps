@@ -11,6 +11,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, XCircle, Copy, ShieldCheck, Activity, RefreshCw, AlertTriangle, Clock } from 'lucide-react';
+import CapabilityExplorerInterface from './CapabilityExplorerInterface.jsx';
 
 const BRIDGE_KEY    = 'openclawReadOnlyStatusBridgeReports';
 const DASHBOARD_KEY = 'openclawHistoricalStatusDashboardReports';
@@ -315,6 +316,11 @@ export default function AutomatedHealthMonitoring({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Automated monitoring is local-only preview logic. No scheduler active. No network calls. No OpenClaw calls. No execution. No dispatch.
+      </div>
+
+      {/* ── Capability Explorer Interface ── */}
+      <div className="border-t border-border/40 pt-4">
+        <CapabilityExplorerInterface refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
