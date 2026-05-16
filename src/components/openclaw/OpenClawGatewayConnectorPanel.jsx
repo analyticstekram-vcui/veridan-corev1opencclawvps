@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { RefreshCw, ShieldCheck, AlertCircle, CheckCircle2, Clock, Activity, XCircle, HelpCircle, ArrowRight } from 'lucide-react';
+import ManualMonitoringControlRoomSummary from './ManualMonitoringControlRoomSummary.jsx';
 import ReadOnlyGatewayHealthCheck from './ReadOnlyGatewayHealthCheck.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
@@ -161,6 +162,11 @@ export default function OpenClawGatewayConnectorPanel() {
         <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Gateway Connector</div>
         <div className="text-[13px] font-bold text-foreground">OpenClaw Gateway Readiness</div>
         <div className="text-[9px] text-slate-500 mt-0.5">Read-only status assessment — no execution, no credentials, no live actions</div>
+      </div>
+
+      {/* ── Manual Monitoring Control Room Summary ── */}
+      <div className="border-b border-border/40 pb-5">
+        <ManualMonitoringControlRoomSummary refreshTrigger={Date.now()} />
       </div>
 
       {/* Safety Banner */}
