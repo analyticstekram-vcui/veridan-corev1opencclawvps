@@ -54,13 +54,27 @@ const BLOCKED_CAPABILITIES = [
   'Direct OpenAI API calls',
 ];
 
+// Picks the timestamp from any of the known field names
+function recordTs(r) {
+  if (!r) return 0;
+  const t = r.createdAt || r.generatedAt || r.verifiedAt || r.timestamp || r.snapshotAt || 0;
+  return t ? new Date(t).getTime() : 0;
+}
+
 function safeLoad(key) {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return [];
     const p = JSON.parse(raw);
-    return Array.isArray(p) ? p : [p];
+    if (Array.isArray(p)) return p;
+    if (p && typeof p === 'object') return [p];
+    return [];
   } catch { return []; }
+}
+
+function latest(arr) {
+  if (!arr || arr.length === 0) return null;
+  return arr.slice().sort((a, b) => recordTs(b) - recordTs(a))[0];
 }
 
 function tryAppendAudit(entry) {
@@ -70,22 +84,65 @@ function tryAppendAudit(entry) {
 }
 
 function buildPacket() {
+  // Load all four critical sources defensively
+  const archiveArr      = safeLoad('openclawBaselineArchiveExports');
+  const verifyArr       = safeLoad('openclawBaselineArchiveVerificationReports');
+  const snapshotArr     = safeLoad('openclawFinalBaselineLockSnapshots');
+  const evidenceChainArr = safeLoad('openclawEvidenceChainVerificationReports');
+
+  // Also load remaining sources for the loaded map (used for other fields)
   const loaded = {};
   for (const [name, key] of Object.entries(SOURCES)) {
-    loaded[name] = safeLoad(key).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    loaded[name] = safeLoad(key);
   }
 
-  const latestVerification = loaded.verificationReports[0] || null;
-  const latestArchive      = loaded.archiveExports[0] || null;
-  const latestSnapshot     = loaded.finalBaselineSnapshots[0] || null;
-  const latestEvidence     = loaded.finalNonExecutionEvidence[0] || null;
+  const latestArchive      = latest(archiveArr);
+  const latestVerification = latest(verifyArr);
+  const latestSnapshot     = latest(snapshotArr);
 
-  const baselineStatus      = latestSnapshot?.overallStatus || latestArchive?.baselineStatus || 'LOCKED';
-  const verificationStatus  = latestVerification?.verificationStatus || 'NO_VERIFICATION_FOUND';
-  const latestArchiveId     = latestArchive?.archiveId || null;
-  const latestVerificationId = latestVerification?.reportId || null;
-  const latestBaselineHash  = latestSnapshot?.snapshotHash || null;
-  const latestArchiveHash   = latestArchive?.archiveHash || null;
+  // Source diagnostic counts (for the panel)
+  const sourceDiag = {
+    baselineSnapshots:          snapshotArr.length,
+    archiveExports:             archiveArr.length,
+    archiveVerificationReports: verifyArr.length,
+    evidenceChainReports:       evidenceChainArr.length,
+  };
+
+  // ── Defensive field resolution ────────────────────────────────────────────
+  const latestArchiveId =
+    latestArchive?.archiveId || null;
+
+  const latestVerificationId =
+    latestVerification?.reportId ||
+    latestVerification?.verificationId ||
+    latestVerification?.id || null;
+
+  // Verification status — map all known field variants
+  const verificationStatus =
+    latestVerification?.verificationStatus ||
+    latestVerification?.overallStatus ||
+    latestVerification?.status ||
+    (latestVerification ? 'VERIFIED' : 'NO_VERIFICATION_FOUND');
+
+  // Archive hash — map all known field variants
+  const latestArchiveHash =
+    latestArchive?.archiveHash ||
+    latestArchive?.PLACEHOLDER_LOCAL_ARCHIVE_HASH ||
+    latestArchive?.localArchiveHash || null;
+
+  // Baseline snapshot hash — map all known field variants
+  const latestBaselineHash =
+    latestSnapshot?.snapshotHash ||
+    latestSnapshot?.baselineHash ||
+    latestSnapshot?.localBaselineHash ||
+    latestSnapshot?.hashPlaceholder ||
+    latestSnapshot?.placeholderHash || null;
+
+  const baselineStatus =
+    latestSnapshot?.overallStatus ||
+    latestSnapshot?.baselineStatus ||
+    latestArchive?.baselineStatus ||
+    'LOCKED';
 
   const safetyAssertions = [
     { key: 'previewOnly',               value: true,                          pass: true },
@@ -135,6 +192,7 @@ function buildPacket() {
     blockedCapabilities:      BLOCKED_CAPABILITIES,
     nextRecommendedPhase:     'Read-only authenticated OpenClaw status bridge design — no command dispatch.',
     operatorNotes:            'All phases complete. System is in PREVIEW_ONLY / READ_ONLY / LOCKED state. No execution has occurred. Ready for operator handoff review.',
+    sourceDiag,
     note:                     'Handoff packet is local-only. No OpenClaw calls. No execution. No network calls. No dispatch.',
   };
 }
@@ -234,6 +292,24 @@ export default function OperatorHandoffPacket({ refreshTrigger }) {
               <span>Baseline: <span className="text-primary font-semibold">{packet.baselineStatus}</span></span>
               <span>Verification: <span className="text-primary font-semibold">{packet.verificationStatus}</span></span>
               <span>Created: <span className="text-slate-300">{new Date(packet.createdAt).toLocaleString()}</span></span>
+            </div>
+          </div>
+
+          {/* Source diagnostic panel */}
+          <div className="bg-secondary/10 border border-border/40 rounded px-3 py-2.5">
+            <div className="text-[8px] uppercase tracking-widest text-slate-500 font-semibold mb-2">Source Diagnostics</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { label: 'Baseline Snapshots',           value: packet.sourceDiag?.baselineSnapshots ?? 0 },
+                { label: 'Archive Exports',              value: packet.sourceDiag?.archiveExports ?? 0 },
+                { label: 'Archive Verifications',        value: packet.sourceDiag?.archiveVerificationReports ?? 0 },
+                { label: 'Evidence Chain Reports',       value: packet.sourceDiag?.evidenceChainReports ?? 0 },
+              ].map(({ label, value }) => (
+                <div key={label} className="bg-secondary/20 border border-border/30 px-2 py-1.5 rounded">
+                  <div className="text-[7px] uppercase tracking-widest text-slate-600 font-semibold mb-0.5">{label}</div>
+                  <div className={`text-[12px] font-bold ${value > 0 ? 'text-foreground' : 'text-slate-600'}`}>{value}</div>
+                </div>
+              ))}
             </div>
           </div>
 
