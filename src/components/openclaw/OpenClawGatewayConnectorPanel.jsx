@@ -16,6 +16,7 @@ import ControlledSchedulerApprovalEvidencePacket from './ControlledSchedulerAppr
 import ControlledSchedulerQAChecklist from './ControlledSchedulerQAChecklist.jsx';
 import ControlledSchedulerFinalDesignReviewPacket from './ControlledSchedulerFinalDesignReviewPacket.jsx';
 import ControlledSchedulerOperatorReviewConsole from './ControlledSchedulerOperatorReviewConsole.jsx';
+import ControlledSchedulerOperatorSignOffPacket from './ControlledSchedulerOperatorSignOffPacket.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
 
@@ -305,6 +306,7 @@ export default function OpenClawGatewayConnectorPanel() {
             <div className="border-b border-border/40 pb-5"><ControlledSchedulerQAChecklist /></div>
             <div className="border-b border-border/40 pb-5"><ControlledSchedulerFinalDesignReviewPacket /></div>
             <div className="border-b border-border/40 pb-5"><ControlledSchedulerOperatorReviewConsole /></div>
+            <div className="border-b border-border/40 pb-5"><ControlledSchedulerOperatorSignOffPacket /></div>
             <div className="text-[10px] text-slate-400 italic">Additional developer diagnostics panels reserved for future debugging and monitoring tools.</div>
           </div>
         )}
