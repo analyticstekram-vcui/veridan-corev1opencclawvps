@@ -383,35 +383,6 @@ export default function OpenClawGatewayConnectorPanel() {
         <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Manual Monitoring Console</div>
       </div>
 
-      {/* Visible Evidence Chain Controls - Inline Fallback Button */}
-      <div data-testid="visible-evidence-chain-controls" className="my-4 p-4 border-2 border-green-500 rounded-lg bg-green-950/20">
-        <div className="text-green-400 font-bold mb-2">
-          Evidence Chain Controls
-        </div>
-        <button
-          type="button"
-          data-testid="regenerate-full-manual-monitoring-evidence-chain-button"
-          className="px-4 py-2 border border-green-500 rounded text-green-300 bg-black hover:bg-green-950"
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent("veridan:regenerate-manual-monitoring-evidence-chain", {
-              detail: {
-                source: "visible-inline-fallback-button",
-                createdAt: new Date().toISOString(),
-                localOnly: true,
-                networkCalls: false,
-                executionAllowed: false,
-                dispatchAllowed: false
-              }
-            }));
-          }}
-        >
-          Regenerate Full Manual Monitoring Evidence Chain
-        </button>
-        <div className="text-xs text-green-500 mt-2">
-          DEBUG: Evidence chain button mounted in visible monitoring JSX.
-        </div>
-      </div>
-
       {/* Error */}
       {error && (
         <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg">
@@ -571,9 +542,33 @@ export default function OpenClawGatewayConnectorPanel() {
         <ReadOnlyGatewayHealthCheck />
       </div>
 
-      {/* Pre-Historical Debug Marker */}
-      <div data-testid="pre-historical-debug-marker" className="my-2 p-2 border border-yellow-500 text-yellow-400">
-        DEBUG: This line is immediately above Historical Status Dashboard.
+      {/* Visible Evidence Chain Controls - directly above Historical Status */}
+      <div data-testid="visible-evidence-chain-controls" className="my-4 p-4 border-2 border-green-500 rounded-lg bg-green-950/20">
+        <div className="text-green-400 font-bold mb-2">
+          Evidence Chain Controls
+        </div>
+        <button
+          type="button"
+          data-testid="regenerate-full-manual-monitoring-evidence-chain-button"
+          className="px-4 py-2 border border-green-500 rounded text-green-300 bg-black hover:bg-green-950"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("veridan:regenerate-manual-monitoring-evidence-chain", {
+              detail: {
+                source: "visible-pre-historical-evidence-chain-button",
+                createdAt: new Date().toISOString(),
+                localOnly: true,
+                networkCalls: false,
+                executionAllowed: false,
+                dispatchAllowed: false
+              }
+            }));
+          }}
+        >
+          Regenerate Full Manual Monitoring Evidence Chain
+        </button>
+        <div className="text-xs text-green-500 mt-2">
+          DEBUG: Evidence chain button mounted directly above Historical Status Dashboard.
+        </div>
       </div>
 
       {/* Historical Status & Health Monitoring */}
