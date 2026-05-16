@@ -19,8 +19,14 @@ function computeVpsStatus() {
     return { status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED' };
   }
 
-  // Find first valid successful check
-  const successfulCheck = checks.find(c => c.status === 'SUCCESS' && c.httpStatus === 200 && c.gatewayReachable && c.executionLock === 'LOCKED' && !c.dispatchAllowed);
+  // Find any valid successful check (any record, not just latest)
+  const successfulCheck = checks.find(c =>
+    c.status === 'SUCCESS' &&
+    (c.httpStatus === 200 || c.httpStatus === '200') &&
+    c.gatewayReachable === true &&
+    c.executionLock === 'LOCKED' &&
+    c.dispatchAllowed === false
+  );
   if (successfulCheck) {
     return { status: 'CONNECTED', icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/5 border-primary/30', label: 'OpenClaw VPS: CONNECTED' };
   }
@@ -63,10 +69,24 @@ export default function OpenClawSystemStatusCard() {
     };
     window.addEventListener('storage', handleStorageChange);
     
+    // Listen for manual monitoring evidence chain regeneration event
+    const handleEvidenceChainRefresh = () => {
+      setVpsStatus(computeVpsStatus());
+    };
+    window.addEventListener('veridan:regenerate-manual-monitoring-evidence-chain', handleEvidenceChainRefresh);
+    
+    // Listen for manual monitoring check recorded event (if it exists)
+    const handleCheckRecorded = () => {
+      setVpsStatus(computeVpsStatus());
+    };
+    window.addEventListener('veridan:manual-monitoring-check-recorded', handleCheckRecorded);
+    
     // Also poll every 2 seconds for local changes
     const interval = setInterval(handleRefresh, 2000);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('veridan:regenerate-manual-monitoring-evidence-chain', handleEvidenceChainRefresh);
+      window.removeEventListener('veridan:manual-monitoring-check-recorded', handleCheckRecorded);
       clearInterval(interval);
     };
   }, []);
