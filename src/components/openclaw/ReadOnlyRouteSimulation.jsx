@@ -10,6 +10,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Copy, ShieldCheck, RefreshCw, FlaskConical } from 'lucide-react';
+import ReadOnlyRouteSimulationEvidenceExport from './ReadOnlyRouteSimulationEvidenceExport.jsx';
 
 const SOURCE_KEYS = {
   routePlans:      'openclawReadOnlyRoutePlans',
@@ -353,6 +354,11 @@ export default function ReadOnlyRouteSimulation({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Route simulation is local-only. No dispatch. No execution. No OpenClaw calls. No network calls.
+      </div>
+
+      {/* ── Read-Only Route Simulation Evidence Export ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ReadOnlyRouteSimulationEvidenceExport refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
