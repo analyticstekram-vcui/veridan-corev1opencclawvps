@@ -23,6 +23,7 @@ import ProposalLifecycleTimeline from './ProposalLifecycleTimeline.jsx';
 import AuditReportExporter from './AuditReportExporter.jsx';
 import EvidenceChainVerifier from './EvidenceChainVerifier.jsx';
 import FinalBaselineLockSnapshot from './FinalBaselineLockSnapshot.jsx';
+import BaselineArchiveExport from './BaselineArchiveExport.jsx';
 
 const ENDPOINT        = 'https://openclaw.veridancore.com';
 const HEALTH_KEY      = 'openclawReadOnlyGatewayHealthChecks';
@@ -308,6 +309,11 @@ export default function ReadOnlyGatewayHealthCheck() {
       {/* ── Final Baseline Lock Snapshot ── */}
       <div className="border-t border-border/40 pt-4">
         <FinalBaselineLockSnapshot refreshTrigger={inspectTrigger} />
+      </div>
+
+      {/* ── Baseline Archive Export ── */}
+      <div className="border-t border-border/40 pt-4">
+        <BaselineArchiveExport refreshTrigger={inspectTrigger} />
       </div>
     </div>
   );
