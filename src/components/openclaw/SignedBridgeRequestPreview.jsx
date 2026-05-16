@@ -227,6 +227,25 @@ export default function SignedBridgeRequestPreview({ run, packet }) {
             </button>
           </div>
 
+          {/* Completion banner with all verification checks */}
+          <div className="px-3 py-2.5 bg-gradient-to-r from-primary/10 to-amber-500/5 border border-primary/40 rounded-lg space-y-2">
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div className="text-[9px] text-slate-200 leading-relaxed">
+                <span className="font-bold">Signed bridge request preview generated.</span>
+                {' '}Preview only. Not dispatchable. Not sent to OpenClaw. No execution occurred.
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[8px] text-slate-400 ml-6">
+              <span>Bridge Mode: <span className="text-amber-500 font-semibold">SIGNED_REQUEST_PREVIEW_ONLY</span></span>
+              <span>Allowed for Dispatch: <span className="text-destructive font-bold">false</span></span>
+              <span>OpenClaw Call: <span className="text-destructive font-bold">false</span></span>
+              <span>Execution Attempted: <span className="text-destructive font-bold">false</span></span>
+              <span>Signature Type: <span className="text-amber-500 font-semibold">placeholder-only</span></span>
+              <span>Secret Exposed: <span className="text-destructive font-bold">false</span></span>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2 px-2 py-1.5 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
             <ShieldCheck className="w-3 h-3 shrink-0" />
             Preview only · allowedForDispatch: false · No OpenClaw call · No execution · Signature is a placeholder
