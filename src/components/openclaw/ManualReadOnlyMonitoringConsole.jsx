@@ -280,8 +280,8 @@ export default function ManualReadOnlyMonitoringConsole() {
         </div>
       </div>
 
-      {/* Latest Check Result */}
-      {latestCheck && (
+      {/* Latest Check Result - only show if checks exist */}
+      {checkCount > 0 && latestCheck && (
         <>
           <div className={`border rounded-lg p-4 space-y-2 ${
             latestCheck.status === 'SUCCESS'
@@ -386,8 +386,8 @@ export default function ManualReadOnlyMonitoringConsole() {
         </>
       )}
 
-      {/* No checks yet */}
-      {!latestCheck && (
+      {/* No checks yet - only show if zero checks exist */}
+      {checkCount === 0 && (
         <div className="flex items-center gap-2 px-4 py-3 bg-slate-500/5 border border-slate-500/20 rounded-lg text-[9px] text-slate-400">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
           No checks recorded yet. Select an endpoint and click "Run Check" to generate monitoring evidence.

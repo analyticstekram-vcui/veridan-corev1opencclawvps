@@ -15,14 +15,19 @@ function loadJSON(key, fallback = []) {
 
 function computeVpsStatus() {
   const checks = loadJSON(CHECKS_KEY, []);
-  const latestCheck = checks[0];
-
-  if (!latestCheck) {
+  if (!checks || checks.length === 0) {
     return { status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED' };
   }
 
-  if (latestCheck.status === 'SUCCESS' && latestCheck.httpStatus === 200 && latestCheck.gatewayReachable && latestCheck.executionLock === 'LOCKED' && !latestCheck.dispatchAllowed) {
+  // Find first valid successful check
+  const successfulCheck = checks.find(c => c.status === 'SUCCESS' && c.httpStatus === 200 && c.gatewayReachable && c.executionLock === 'LOCKED' && !c.dispatchAllowed);
+  if (successfulCheck) {
     return { status: 'CONNECTED', icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/5 border-primary/30', label: 'OpenClaw VPS: CONNECTED' };
+  }
+
+  const latestCheck = checks[0];
+  if (!latestCheck) {
+    return { status: 'NOT_CHECKED', icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-500/5 border-slate-500/20', label: 'OpenClaw VPS: NOT CHECKED' };
   }
 
   if (latestCheck.status === 'HOLD_FOR_AUTH_BOUNDARY') {
@@ -52,8 +57,18 @@ export default function OpenClawSystemStatusCard() {
   };
 
   useEffect(() => {
-    const interval = setInterval(handleRefresh, 5000);
-    return () => clearInterval(interval);
+    // Listen for storage changes
+    const handleStorageChange = () => {
+      setVpsStatus(computeVpsStatus());
+    };
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also poll every 2 seconds for local changes
+    const interval = setInterval(handleRefresh, 2000);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
   }, []);
 
   const Icon = vpsStatus.icon;

@@ -221,21 +221,6 @@ export default function OpenClawGatewayConnectorPanel() {
         <OpenClawSystemStatusCard />
       </div>
 
-      {/* ── Historical Status Dashboard ── */}
-      <div id="historical-status" className="border-b border-border/40 pb-5">
-        <ManualMonitoringHistoricalStatusDashboard />
-      </div>
-
-      {/* ── Regenerate Evidence Chain Button ── */}
-      <div className="flex justify-center mb-5">
-        <RegenerateEvidenceChainButton />
-      </div>
-
-      {/* ── Manual Monitoring Control Room Summary ── */}
-      <div id="control-room-summary" className="border-b border-border/40 pb-5">
-        <ManualMonitoringControlRoomSummary refreshTrigger={Date.now()} />
-      </div>
-
       {/* ── Status Chip Row ── */}
       <div className="flex flex-wrap gap-1.5 mb-5 px-4 py-2">
         {['READ_ONLY', 'LOCKED', 'DISABLED', 'MANUAL_ONLY', 'NO_SCHEDULER', 'NO_POLLING', 'NO_DISPATCH', 'NO_EXECUTION'].map(status => (
@@ -291,6 +276,10 @@ export default function OpenClawGatewayConnectorPanel() {
         {activeTab === 'monitoring' && (
           <div className="space-y-5 border-t border-border/40 pt-5">
             <div className="border-b border-border/40 pb-5"><ManualReadOnlyMonitoringConsole /></div>
+            <div className="flex justify-center mb-5">
+              <RegenerateEvidenceChainButton />
+            </div>
+            <div id="historical-status" className="border-b border-border/40 pb-5"><ManualMonitoringHistoricalStatusDashboard /></div>
           </div>
         )}
 

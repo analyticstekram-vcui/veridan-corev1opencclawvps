@@ -59,7 +59,7 @@ export default function RegenerateEvidenceChainButton() {
       ) : (
         <>
           <RefreshCw className={`w-3.5 h-3.5 ${regenerating ? 'animate-spin' : ''}`} />
-          {regenerating ? 'Regenerating…' : 'Regenerate Full Evidence Chain'}
+          {regenerating ? 'Regenerating…' : 'Regenerate Full Manual Monitoring Evidence Chain'}
         </>
       )}
     </button>
