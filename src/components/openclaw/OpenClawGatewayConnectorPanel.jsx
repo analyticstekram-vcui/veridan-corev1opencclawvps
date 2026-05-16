@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { RefreshCw, ShieldCheck, AlertCircle, CheckCircle2, Clock, Activity, XCircle, HelpCircle, ArrowRight } from 'lucide-react';
 import ManualMonitoringControlRoomSummary from './ManualMonitoringControlRoomSummary.jsx';
+import GatewayConnectorSectionNav from './GatewayConnectorSectionNav.jsx';
 import ReadOnlyGatewayHealthCheck from './ReadOnlyGatewayHealthCheck.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
@@ -122,6 +123,15 @@ export default function OpenClawGatewayConnectorPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [auditLog, setAuditLog] = useState([]);
+  const [evidenceCollapsed, setEvidenceCollapsed] = useState(false);
+
+  useEffect(() => {
+    const handleEvidenceToggle = (e) => {
+      setEvidenceCollapsed(e.detail?.collapsed || false);
+    };
+    window.addEventListener('gateway-evidence-toggle', handleEvidenceToggle);
+    return () => window.removeEventListener('gateway-evidence-toggle', handleEvidenceToggle);
+  }, []);
 
   const handleCheckStatus = async () => {
     setLoading(true);
@@ -165,8 +175,13 @@ export default function OpenClawGatewayConnectorPanel() {
       </div>
 
       {/* ── Manual Monitoring Control Room Summary ── */}
-      <div className="border-b border-border/40 pb-5">
+      <div id="control-room-summary" className="border-b border-border/40 pb-5">
         <ManualMonitoringControlRoomSummary refreshTrigger={Date.now()} />
+      </div>
+
+      {/* ── Gateway Connector Section Navigator ── */}
+      <div className="border-b border-border/40 pb-5">
+        <GatewayConnectorSectionNav />
       </div>
 
       {/* Safety Banner */}
@@ -198,6 +213,11 @@ export default function OpenClawGatewayConnectorPanel() {
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           {loading ? 'Checking…' : 'Check Gateway Status'}
         </button>
+      </div>
+
+      {/* Manual Monitoring Console */}
+      <div id="manual-monitoring-console" className="border-t border-border/40 pt-5">
+        <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Manual Monitoring Console</div>
       </div>
 
       {/* Error */}
@@ -288,8 +308,33 @@ export default function OpenClawGatewayConnectorPanel() {
         </div>
       </div>
 
+      {/* Evidence Export & Audit */}
+      {!evidenceCollapsed && (
+        <>
+          <div id="evidence-export" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Evidence Export</div>
+          </div>
+
+          <div id="audit-dashboard" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Audit Dashboard</div>
+          </div>
+
+          <div id="promotion-gate" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Promotion Gate</div>
+          </div>
+
+          <div id="operator-runbook" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Operator Runbook</div>
+          </div>
+
+          <div id="final-acceptance" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Final Acceptance Packet</div>
+          </div>
+        </>
+      )}
+
       {/* Local Audit Preview Log */}
-      {auditLog.length > 0 && (
+      {!evidenceCollapsed && auditLog.length > 0 && (
         <div className="bg-secondary/10 border border-border/50 rounded-lg p-4 space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <Activity className="w-3.5 h-3.5 text-muted-foreground" />
@@ -320,10 +365,48 @@ export default function OpenClawGatewayConnectorPanel() {
         </div>
       )}
 
+      {/* Bridge Call & Status Bridge */}
+      {!evidenceCollapsed && (
+        <>
+          <div id="bridge-call" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Bridge Call & Results</div>
+          </div>
+        </>
+      )}
+
       {/* ── Read-Only Gateway Health Check Phase ── */}
-      <div className="border-t border-border/40 pt-5">
+      <div id="status-bridge" className="border-t border-border/40 pt-5">
         <ReadOnlyGatewayHealthCheck />
       </div>
+
+      {/* Historical Status & Health Monitoring */}
+      {!evidenceCollapsed && (
+        <>
+          <div id="historical-status" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Historical Status Dashboard</div>
+          </div>
+
+          <div id="health-monitoring" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Automated Health Monitoring</div>
+          </div>
+
+          <div id="capability-governance" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Capability Governance</div>
+          </div>
+
+          <div id="route-governance" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Route Governance</div>
+          </div>
+
+          <div id="bridge-audit" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Bridge Audit and Integrity</div>
+          </div>
+
+          <div id="baseline-archive" className="border-t border-border/40 pt-5">
+            <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-3 font-semibold">Baseline and Archive Evidence</div>
+          </div>
+        </>
+      )}
 
       {/* Safety Footer */}
       <div className="flex items-start gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
