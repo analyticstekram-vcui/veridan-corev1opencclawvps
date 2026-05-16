@@ -11,6 +11,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, XCircle, Copy, ShieldCheck, RefreshCw, Lock, Activity } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import HistoricalStatusDashboard from './HistoricalStatusDashboard.jsx';
 
 const STORAGE_KEY       = 'openclawReadOnlyStatusBridgeReports';
 const ALLOWED_ENDPOINTS = ['/health', '/status', '/version', '/capabilities'];
@@ -250,6 +251,11 @@ export default function ReadOnlyStatusBridgePanel({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         No execution · No dispatch · No browser automation · No trading · No credentials exposed.
+      </div>
+
+      {/* ── Historical Status Dashboard ── */}
+      <div className="border-t border-border/40 pt-4">
+        <HistoricalStatusDashboard refreshTrigger={result?.timestamp} />
       </div>
     </div>
   );
