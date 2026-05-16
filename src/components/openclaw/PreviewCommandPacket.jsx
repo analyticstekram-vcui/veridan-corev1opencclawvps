@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { generatePacket, markPacketReadyForBridgeTest, loadSyncMap, appendAudit } from '@/lib/proposalStore';
+import SignedBridgeRequestPreview from './SignedBridgeRequestPreview.jsx';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const ALLOWED_COMMAND_TYPES = ['READ', 'VERIFY', 'NAVIGATE_READ_ONLY', 'SNAPSHOT', 'EXPORT_LOG', 'PROPOSE_WORKFLOW'];
@@ -360,6 +361,11 @@ function PacketCard({ packet, onRefresh }) {
 
           {/* Dry Run Result */}
           {dryRunResult && <DryRunResultCard run={dryRunResult} />}
+
+          {/* Signed Bridge Request Preview — only after a passing dry run */}
+          {dryRunResult && (dryRunResult.dryRunStatus === 'PASSED' || dryRunResult.acceptedForDryRun === true) && (
+            <SignedBridgeRequestPreview run={dryRunResult} packet={packet} />
+          )}
 
           {/* Safety note */}
           <div className="flex items-center gap-2 px-2 py-1.5 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
