@@ -1,364 +1,394 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import {
-  Shield, Play, Loader2, CheckCircle2, XCircle,
-  Globe, FileText, Camera, AlertTriangle, ScrollText, Ban
+  Shield, FileText, Globe, AlertTriangle, Ban, CheckCircle2,
+  ScrollText, Clock, PlusCircle, XCircle, AlertCircle
 } from 'lucide-react';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const COMMAND_TYPES = [
-  { id: 'OPEN_URL_AND_READ_TITLE',  label: 'Read Title',    icon: FileText },
-  { id: 'OPEN_URL_AND_SCREENSHOT',  label: 'Screenshot',    icon: Camera  },
-  { id: 'SESSION_STATUS',           label: 'Session Status', icon: Shield  },
-  { id: 'START_SESSION',            label: 'Start Session',  icon: Play    },
-  { id: 'NAVIGATE',                 label: 'Navigate',       icon: Globe   },
-  { id: 'SCREENSHOT',               label: 'Screenshot (v2)',icon: Camera  },
+// ── Constants ──────────────────────────────────────────────────────────────────
+const COMMAND_TYPES = ['STATUS_CHECK', 'READ_PAGE', 'INSPECT_PAGE', 'SUMMARIZE_PAGE', 'CHECK_WEBHOOK'];
+const RISK_TIERS    = ['LOW', 'MEDIUM', 'HIGH'];
+const APPROVALS     = ['AUTO_BLOCKED', 'REVIEW_REQUIRED', 'APPROVAL_REQUIRED'];
+
+// ── Validation ─────────────────────────────────────────────────────────────────
+const BLOCK_PATTERNS = [
+  { re: /^$/,                                           reason: 'Target URL is required' },
+  { re: /localhost/i,                                   reason: 'Blocked: localhost not permitted' },
+  { re: /127\.0\.0\.1/,                                 reason: 'Blocked: loopback IP not permitted' },
+  { re: /0\.0\.0\.0/,                                   reason: 'Blocked: unroutable IP not permitted' },
+  { re: /192\.168\./,                                   reason: 'Blocked: private IP range (192.168.x.x)' },
+  { re: /^https?:\/\/10\./,                             reason: 'Blocked: private IP range (10.x.x.x)' },
+  { re: /172\.(1[6-9]|2\d|3[01])\./,                   reason: 'Blocked: private IP range (172.16-31.x)' },
+  { re: /^http:\/\//i,                                  reason: 'Blocked: http:// not permitted — use https://' },
+  { re: /file:\/\//i,                                   reason: 'Blocked: file:// protocol not permitted' },
+  { re: /javascript:/i,                                 reason: 'Blocked: javascript: protocol not permitted' },
+  { re: /login|signin|sign-in/i,                        reason: 'Blocked: login/sign-in pages not permitted' },
+  { re: /broker|tradovate|alpaca|blofin|binance|coinbase|kraken|bybit/i, reason: 'Blocked: broker/exchange login pages not permitted' },
+  { re: /bank|chase\.com|wellsfargo|citibank|bankofamerica/i,            reason: 'Blocked: bank login pages not permitted' },
+  { re: /wallet|private.?key|seed.?phrase|metamask|ledger/i,             reason: 'Blocked: wallet/private key pages not permitted' },
+  { re: /execute.?trade|place.?order|market.?order|limit.?order/i,       reason: 'Blocked: trading execution keywords detected' },
+  { re: /credential|password|apikey|api.?key|secret.?key/i,              reason: 'Blocked: credential-entry keywords detected' },
 ];
 
-// Client-side URL block patterns (server is final authority)
-const CLIENT_BLOCKED = [
-  /^http:\/\//i,
-  /localhost/i,
-  /127\.0\.0\.1/,
-  /0\.0\.0\.0/,
-  /192\.168\./,
-  /^https?:\/\/10\./,
-  /172\.(1[6-9]|2\d|3[01])\./,
-  /file:\/\//i,
-  /javascript:/i,
-];
-
-function clientBlockReason(url) {
-  if (!url) return null;
-  if (!url.startsWith('https://')) return 'URL must start with https://';
-  for (const re of CLIENT_BLOCKED) {
-    if (re.test(url)) return `Blocked: private/unsafe URL pattern detected`;
+function validateTarget(url) {
+  const reasons = [];
+  if (!url || !url.trim()) { return ['Target URL is required']; }
+  for (const { re, reason } of BLOCK_PATTERNS) {
+    if (re.test(url)) reasons.push(reason);
   }
-  return null;
+  if (!url.startsWith('https://') && !reasons.some(r => r.includes('http://'))) {
+    reasons.push('URL must start with https://');
+  }
+  return reasons;
 }
 
-// ── Status config ─────────────────────────────────────────────────────────────
-const STATUS = {
-  ready:      { label: 'Ready',      color: 'text-muted-foreground',  dot: 'bg-muted-foreground/40', icon: null },
-  executing:  { label: 'Executing',  color: 'text-blue-400',          dot: 'bg-blue-400',            icon: Loader2, spin: true },
-  success:    { label: 'Success',    color: 'text-primary',           dot: 'bg-primary',             icon: CheckCircle2 },
-  blocked:    { label: 'Blocked',    color: 'text-amber-500',         dot: 'bg-amber-500',           icon: Ban },
-  failed:     { label: 'Failed',     color: 'text-destructive',       dot: 'bg-destructive',         icon: XCircle },
-};
-
-function nowTs() {
-  return new Date().toLocaleTimeString('en-US', { hour12: false });
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function genId() {
+  return 'prop-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
 }
 
-// ── Result Panel ──────────────────────────────────────────────────────────────
-function ResultPanel({ result, uiStatus }) {
-  const cfg   = STATUS[uiStatus] || STATUS.ready;
-  const Icon  = cfg.icon;
-  const isReal = result?.executionMode === 'REAL';
+// ── Sub-components ─────────────────────────────────────────────────────────────
+function StatusSummaryCard() {
+  const items = [
+    { label: 'Execution',     value: 'DISABLED',      vc: 'text-destructive' },
+    { label: 'Gateway Mode',  value: 'READ_ONLY',     vc: 'text-amber-500' },
+    { label: 'Proposal Mode', value: 'ENABLED',       vc: 'text-primary' },
+    { label: 'OpenClaw Call', value: 'NOT_ATTEMPTED', vc: 'text-slate-400' },
+  ];
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {items.map(({ label, value, vc }) => (
+        <div key={label} className="bg-card border border-border/60 rounded px-3 py-2">
+          <div className="text-[8px] uppercase tracking-widest text-slate-500 font-semibold mb-0.5">{label}</div>
+          <div className={`text-[10px] font-bold ${vc}`}>{value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProposalCard({ proposal, index }) {
+  const statusColor = proposal.status === 'PENDING_APPROVAL' ? 'text-amber-500 border-amber-500/30 bg-amber-500/5'
+                    : proposal.status === 'DRAFT'             ? 'text-slate-400 border-slate-500/30 bg-slate-500/5'
+                    : 'text-primary border-primary/30 bg-primary/5';
+  const riskColor = proposal.riskTier === 'HIGH' ? 'text-destructive' : proposal.riskTier === 'MEDIUM' ? 'text-amber-500' : 'text-primary';
 
   return (
-    <div className="bg-card border border-border p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-[9px] uppercase tracking-widest text-muted-foreground/50">Command Result</span>
-        {result && uiStatus !== 'executing' && (
-          isReal
-            ? <span className="text-[9px] px-2 py-0.5 border border-primary/30 text-primary bg-primary/5 uppercase tracking-wider">REAL MODE</span>
-            : <span className="text-[9px] px-2 py-0.5 border border-amber-500/30 text-amber-400 bg-amber-500/5 uppercase tracking-wider">SIMULATED</span>
-        )}
+    <div className="bg-card border border-border/50 rounded-lg p-3 space-y-2">
+      <div className="flex items-start gap-2">
+        <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-bold text-foreground font-mono">{proposal.commandType}</span>
+            <span className={`text-[7px] px-1.5 py-0.5 border rounded font-bold uppercase ${statusColor}`}>{proposal.status}</span>
+            <span className={`text-[7px] font-bold uppercase ${riskColor}`}>{proposal.riskTier}</span>
+            <span className="text-[7px] text-slate-500 ml-auto font-mono">{proposal.id}</span>
+          </div>
+          <div className="text-[9px] text-blue-400 font-mono truncate mt-0.5">{proposal.target}</div>
+        </div>
       </div>
 
-      {/* Status row */}
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-        {Icon && <Icon className={`w-3.5 h-3.5 ${cfg.color} ${cfg.spin ? 'animate-spin' : ''}`} />}
-        <span className={`text-[13px] font-semibold uppercase ${cfg.color}`}>{cfg.label}</span>
-      </div>
-
-      {result && (
-        <div className="grid grid-cols-2 gap-2 text-[10px]">
-          {[
-            ['Command ID',    result.commandId,    'font-mono'],
-            ['Command Type',  result.commandType,  'font-mono truncate'],
-          ].map(([label, val, extra]) => (
-            <div key={label} className="bg-secondary/30 border border-border px-3 py-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">{label}</div>
-              <div className={`text-foreground ${extra}`}>{val || '—'}</div>
+      {proposal.blockedReasons?.length > 0 && (
+        <div className="px-2 py-1.5 bg-destructive/5 border border-destructive/20 rounded space-y-0.5">
+          {proposal.blockedReasons.map((r, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-[8px] text-destructive">
+              <XCircle className="w-2.5 h-2.5 shrink-0" /> {r}
             </div>
           ))}
-
-          <div className="bg-secondary/30 border border-border px-3 py-2 col-span-2">
-            <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Target URL</div>
-            <div className="text-blue-400 font-mono truncate">{result.targetUrl}</div>
-          </div>
-
-          {result.pageTitle && (
-            <div className="bg-secondary/30 border border-border px-3 py-2 col-span-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Page Title</div>
-              <div className="text-foreground">{result.pageTitle}</div>
-              {result.isMockTitle && (
-                <div className="mt-1.5 flex items-start gap-1.5 px-2 py-1.5 bg-amber-500/5 border border-amber-500/20">
-                  <span className="text-amber-500 text-[9px] mt-0.5">⚠</span>
-                  <span className="text-[10px] text-amber-400/80 leading-relaxed">
-                    Bridge connected, but VPS browser automation is not yet returning real page title.
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {(result.screenshotBase64 || result.screenshotUrl) && (
-            <div className="bg-secondary/30 border border-border px-3 py-2 col-span-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-1.5 text-[9px]">Screenshot Preview</div>
-              {(() => {
-                const src = result.screenshotBase64
-                  ? `data:image/png;base64,${result.screenshotBase64}`
-                  : result.screenshotUrl;
-                return src.startsWith('data:') || src.startsWith('http')
-                  ? <img src={src} alt="Screenshot" className="w-full rounded border border-border/50 max-h-80 object-contain" />
-                  : <div className="text-blue-400 font-mono text-[11px] break-all">{src}</div>;
-              })()}
-            </div>
-          )}
-
-          <div className="bg-secondary/30 border border-border px-3 py-2">
-            <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Started</div>
-            <div className="text-foreground font-mono">{result.startedAt ? new Date(result.startedAt).toLocaleTimeString() : '—'}</div>
-          </div>
-          <div className="bg-secondary/30 border border-border px-3 py-2">
-            <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Completed</div>
-            <div className="text-foreground font-mono">{result.completedAt ? new Date(result.completedAt).toLocaleTimeString() : '—'}</div>
-          </div>
-
-          {result.error && (
-            <div className="bg-destructive/5 border border-destructive/20 px-3 py-2 col-span-2">
-              <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Error</div>
-              <div className="text-destructive break-all">{result.error}</div>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Diagnostics */}
-      {result?.diagnostics?.length > 0 && (
-        <div className="bg-secondary/30 border border-border px-3 py-2">
-          <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-1.5">Diagnostics</div>
-          <div className="space-y-0.5">
-            {result.diagnostics.map((d, i) => {
-              const ok   = d.includes(': YES') || d.includes(': REAL') || d.includes('executed');
-              const fail = d.includes('FAILED') || d.includes('command_failed') || d.includes('SIMULATED') || d.includes('exception');
-              return (
-                <div key={i} className={`font-mono text-[10px] ${fail ? 'text-amber-400' : ok ? 'text-primary' : 'text-muted-foreground/60'}`}>
-                  › {d}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Audit Log Table ───────────────────────────────────────────────────────────
-function AuditLogTable({ entries }) {
-  return (
-    <div className="bg-card border border-border">
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
-        <ScrollText className="w-3.5 h-3.5 text-primary" />
-        <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Audit Log</span>
-        <span className="text-[9px] text-muted-foreground/40">({entries.length} entries)</span>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[8px] text-slate-500">
+        <span>Purpose: <span className="text-slate-300">{proposal.purpose || '—'}</span></span>
+        <span>Approval: <span className="text-slate-300">{proposal.requiredApproval}</span></span>
+        <span>Expected: <span className="text-slate-300">{proposal.expectedResult || '—'}</span></span>
+        <span>Created: <span className="text-slate-300 font-mono">{new Date(proposal.createdAt).toLocaleTimeString()}</span></span>
+        <span>Safety: <span className="text-primary font-semibold">{proposal.safetyMode}</span></span>
+        <span>Executed: <span className="text-destructive font-semibold">{String(proposal.executionAttempted)}</span></span>
       </div>
-
-      {entries.length === 0 ? (
-        <div className="flex items-center justify-center h-12 text-[11px] text-muted-foreground/30">
-          No commands executed yet
-        </div>
-      ) : (
-        <>
-          {/* Header */}
-          <div className="grid grid-cols-5 gap-2 px-4 py-1.5 border-b border-border/40 text-[9px] text-muted-foreground/30 uppercase tracking-wider">
-            <div>Time</div>
-            <div className="col-span-2">Command Type</div>
-            <div>Status</div>
-            <div className="text-right">Mode</div>
-          </div>
-          {/* Rows */}
-          <div className="divide-y divide-border/30 max-h-52 overflow-auto">
-            {[...entries].reverse().map((e, i) => {
-              const statusCfg = STATUS[e.uiStatus] || STATUS.ready;
-              return (
-                <div key={i} className="grid grid-cols-5 gap-2 px-4 py-2 text-[10px] font-mono hover:bg-secondary/20 transition-colors">
-                  <div className="text-muted-foreground/50">{e.time}</div>
-                  <div className="text-foreground col-span-2 truncate">{e.commandType}</div>
-                  <div className={statusCfg.color}>{statusCfg.label}</div>
-                  <div className={`text-right ${e.executionMode === 'REAL' ? 'text-primary' : 'text-amber-400/60'}`}>
-                    {e.executionMode || 'SIMULATED'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
     </div>
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Main Component ─────────────────────────────────────────────────────────────
 export default function SafeCommandBridge() {
-  const [targetUrl,   setTargetUrl]   = useState('https://example.com');
-  const [commandType, setCommandType] = useState('OPEN_URL_AND_READ_TITLE');
-  const [running,     setRunning]     = useState(false);
-  const [uiStatus,    setUiStatus]    = useState('ready');
-  const [result,      setResult]      = useState(null);
-  const [clientError, setClientError] = useState(null);
-  const [auditLog,    setAuditLog]    = useState([]);
+  const [form, setForm] = useState({
+    commandType:    'STATUS_CHECK',
+    target:         '',
+    purpose:        '',
+    expectedResult: '',
+    riskTier:       'LOW',
+    requiredApproval: 'REVIEW_REQUIRED',
+  });
+  const [proposals,      setProposals]      = useState([]);
+  const [auditLog,       setAuditLog]       = useState([]);
+  const [lastMessage,    setLastMessage]    = useState(null);
+  const [submitted,      setSubmitted]      = useState(false);
 
-  const blockReason = clientBlockReason(targetUrl);
+  const blockReasons = validateTarget(form.target);
+  const hasBlocks    = blockReasons.length > 0;
 
-  const handleExecute = async () => {
-    if (running) return;
+  const handleCreate = () => {
+    setSubmitted(true);
+    if (!form.purpose.trim()) return; // require purpose
 
-    // Client-side block check
-    const clientBlock = clientBlockReason(targetUrl);
-    if (clientBlock) {
-      setClientError(clientBlock);
-      setUiStatus('blocked');
-      setResult({ commandId: '—', commandType, targetUrl, error: clientBlock, diagnostics: [`client_blocked: ${clientBlock}`] });
-      setAuditLog(prev => [...prev, { time: nowTs(), commandType, targetUrl, uiStatus: 'blocked', executionMode: 'N/A' }]);
-      return;
-    }
+    const blockedReasons = validateTarget(form.target);
+    const isBlocked      = blockedReasons.length > 0;
+    const status         = isBlocked ? 'DRAFT'
+                         : form.requiredApproval === 'APPROVAL_REQUIRED' ? 'PENDING_APPROVAL'
+                         : 'DRAFT';
 
-    setClientError(null);
-    setRunning(true);
-    setUiStatus('executing');
-    setResult(null);
+    const proposal = {
+      id:               genId(),
+      createdAt:        new Date().toISOString(),
+      commandType:      form.commandType,
+      target:           form.target,
+      purpose:          form.purpose,
+      expectedResult:   form.expectedResult,
+      riskTier:         form.riskTier,
+      requiredApproval: form.requiredApproval,
+      status,
+      blockedReasons,
+      safetyMode:          'PREVIEW_ONLY',
+      executionAttempted:  false,
+    };
 
-    let res;
-    try {
-      const response = await base44.functions.invoke('openclawSafeBridge', {
-        commandType,
-        targetUrl,
-        operator: 'VeridanCore',
-        governanceLevel: 'SAFE_READ_ONLY',
-      });
-      res = response.data;
-    } catch (err) {
-      const errMsg = err?.response?.data?.error || err.message || 'Request failed';
-      setUiStatus('failed');
-      setResult({ commandId: '—', commandType, targetUrl, error: errMsg, diagnostics: [`exception: ${errMsg}`], executionMode: 'SIMULATED' });
-      setAuditLog(prev => [...prev, { time: nowTs(), commandType, targetUrl, uiStatus: 'failed', executionMode: 'SIMULATED' }]);
-      setRunning(false);
-      return;
-    }
+    setProposals(prev => [proposal, ...prev]);
+    setAuditLog(prev => [{
+      time:        new Date().toISOString(),
+      proposalId:  proposal.id,
+      commandType: proposal.commandType,
+      target:      proposal.target,
+      status:      proposal.status,
+      note:        'Command proposal created — no execution attempted.',
+    }, ...prev].slice(0, 50));
 
-    const finalStatus = res.status === 'success' ? 'success' : res.status === 'blocked' ? 'blocked' : 'failed';
-    setUiStatus(finalStatus);
-    setResult(res);
-    setAuditLog(prev => [...prev, {
-      time: nowTs(),
-      commandType: res.commandType,
-      targetUrl:   res.targetUrl,
-      uiStatus:    finalStatus,
-      executionMode: res.executionMode || 'SIMULATED',
-    }]);
-    setRunning(false);
+    setLastMessage(
+      isBlocked
+        ? `Proposal created as DRAFT — ${blockedReasons.length} safety block(s) detected. No execution attempted.`
+        : 'Proposal created — no execution attempted.'
+    );
+
+    // Reset form
+    setForm(f => ({ ...f, target: '', purpose: '', expectedResult: '' }));
+    setSubmitted(false);
   };
 
+  const field = (label, children, required) => (
+    <div>
+      <label className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold block mb-1">
+        {label}{required && <span className="text-destructive ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+
+  const inputCls = (err) =>
+    `w-full px-3 py-2 bg-secondary/40 border text-[11px] font-mono text-foreground rounded outline-none transition-colors placeholder:text-slate-600 ${
+      err ? 'border-destructive/50 focus:border-destructive' : 'border-border focus:border-primary/50'
+    }`;
+
+  const showTargetError = form.target && hasBlocks;
+  const purposeMissing  = submitted && !form.purpose.trim();
+
   return (
-    <div className="p-6 max-w-3xl space-y-5 font-mono">
+    <div className="p-6 max-w-2xl space-y-5 font-mono">
+
       {/* Header */}
       <div className="flex items-center gap-3 pb-2 border-b border-border">
         <div className="w-7 h-7 bg-primary/10 border border-primary/30 flex items-center justify-center">
           <Shield className="w-3.5 h-3.5 text-primary" />
         </div>
         <div>
-          <h2 className="text-[13px] font-semibold tracking-wider text-foreground">SAFE BROWSER COMMAND BRIDGE</h2>
-          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">
-            Live · bridge.veridancore.com via openclawSafeBridge · Read-only governance
-          </p>
+          <h2 className="text-[13px] font-semibold tracking-wider text-foreground">SAFE COMMAND TEST</h2>
+          <p className="text-[9px] text-slate-500 uppercase tracking-widest">Proposal-only · Read-only · No execution</p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 border border-primary/30 bg-primary/5">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-[10px] text-primary">GOVERNANCE: SAFE_READ_ONLY</span>
+        <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 border border-amber-500/30 bg-amber-500/5">
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          <span className="text-[9px] text-amber-500 font-bold">PROPOSAL_ONLY</span>
         </div>
       </div>
 
-      {/* Command Builder */}
-      <div className="bg-card border border-border p-4 space-y-4">
-        <div className="text-[9px] uppercase tracking-widest text-muted-foreground/50">
-        Command Builder · Veridan Bridge secured · Token server-side only
-        </div>
+      {/* Status Summary Card */}
+      <StatusSummaryCard />
 
-        {/* Target URL */}
-        <div>
-          <label className="text-[9px] uppercase tracking-wider text-muted-foreground/50 flex items-center gap-1.5 mb-1.5">
-            <Globe className="w-2.5 h-2.5" /> Target URL
-          </label>
-          <input
-            type="text"
-            value={targetUrl}
-            onChange={e => { setTargetUrl(e.target.value); setClientError(null); if (uiStatus !== 'ready') setUiStatus('ready'); }}
-            className={`w-full px-3 py-2 bg-secondary/50 border text-[12px] text-blue-400 font-mono outline-none transition-colors ${
-              blockReason ? 'border-amber-500/50 focus:border-amber-500' : 'border-border focus:border-primary/50'
-            }`}
-            placeholder="https://example.com"
-          />
-          {blockReason && (
-            <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-amber-500">
-              <Ban className="w-3 h-3" /> {blockReason}
-            </div>
-          )}
+      {/* Safety Banner */}
+      <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+        <div className="text-[9px] text-amber-500/90 leading-relaxed">
+          <span className="font-bold">No commands are executed here.</span> This form creates a read-only proposal record only.
+          No OpenClaw calls, no browser tools, no trading commands, no credentials, no live actions.
         </div>
+      </div>
+
+      {/* Proposal Form */}
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+        <div className="text-[9px] uppercase tracking-widest text-slate-500 font-semibold">Draft Command Proposal</div>
 
         {/* Command Type */}
-        <div>
-          <label className="text-[9px] uppercase tracking-wider text-muted-foreground/50 block mb-1.5">
-            Command Type
-          </label>
-          <div className="flex gap-2">
-            {COMMAND_TYPES.map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => setCommandType(id)}
-                className={`flex items-center gap-1.5 px-3 py-2 border text-[10px] transition-colors flex-1 justify-center ${
-                  commandType === id
+        {field('Command Type', (
+          <div className="flex flex-wrap gap-1.5">
+            {COMMAND_TYPES.map(t => (
+              <button key={t} type="button" onClick={() => setForm(f => ({ ...f, commandType: t }))}
+                className={`px-2.5 py-1.5 border text-[9px] font-bold rounded transition-colors ${
+                  form.commandType === t
                     ? 'border-primary text-primary bg-primary/10'
-                    : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                    : 'border-border text-slate-400 hover:text-foreground hover:bg-secondary/50'
                 }`}>
-                <Icon className="w-3 h-3" /> {label}
+                {t}
               </button>
             ))}
           </div>
+        ))}
+
+        {/* Target URL */}
+        {field('Target URL or Endpoint', (
+          <>
+            <input
+              type="text"
+              value={form.target}
+              onChange={e => setForm(f => ({ ...f, target: e.target.value }))}
+              placeholder="https://example.com/api/status"
+              className={inputCls(showTargetError)}
+            />
+            {showTargetError && (
+              <div className="mt-1.5 space-y-0.5">
+                {blockReasons.map((r, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-[9px] text-destructive">
+                    <Ban className="w-3 h-3 shrink-0" /> {r}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ), true)}
+
+        {/* Purpose */}
+        {field('Purpose / Reason', (
+          <>
+            <input
+              type="text"
+              value={form.purpose}
+              onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))}
+              placeholder="e.g. Verify gateway health before proposal review"
+              className={inputCls(purposeMissing)}
+            />
+            {purposeMissing && <div className="text-[9px] text-destructive mt-1">Purpose is required</div>}
+          </>
+        ), true)}
+
+        {/* Expected Result */}
+        {field('Expected Result', (
+          <input
+            type="text"
+            value={form.expectedResult}
+            onChange={e => setForm(f => ({ ...f, expectedResult: e.target.value }))}
+            placeholder="e.g. HTTP 200 status response with gateway metadata"
+            className={inputCls(false)}
+          />
+        ))}
+
+        {/* Risk Tier + Required Approval */}
+        <div className="grid grid-cols-2 gap-4">
+          {field('Risk Tier', (
+            <div className="flex gap-1.5">
+              {RISK_TIERS.map(t => (
+                <button key={t} type="button" onClick={() => setForm(f => ({ ...f, riskTier: t }))}
+                  className={`flex-1 px-2 py-1.5 border text-[9px] font-bold rounded transition-colors ${
+                    form.riskTier === t
+                      ? t === 'HIGH'   ? 'border-destructive text-destructive bg-destructive/10'
+                      : t === 'MEDIUM' ? 'border-amber-500 text-amber-500 bg-amber-500/10'
+                                       : 'border-primary text-primary bg-primary/10'
+                      : 'border-border text-slate-400 hover:bg-secondary/50'
+                  }`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          ))}
+          {field('Required Approval', (
+            <select
+              value={form.requiredApproval}
+              onChange={e => setForm(f => ({ ...f, requiredApproval: e.target.value }))}
+              className="w-full px-3 py-2 bg-secondary/40 border border-border text-[10px] font-mono text-foreground rounded outline-none focus:border-primary/50"
+            >
+              {APPROVALS.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          ))}
         </div>
 
-        {/* Execute Button */}
+        {/* Submit */}
         <button
-          onClick={handleExecute}
-          disabled={running || !!blockReason || !targetUrl.trim()}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          type="button"
+          onClick={handleCreate}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 border border-primary text-primary text-[11px] font-bold hover:bg-primary/20 transition-colors rounded"
         >
-          {running
-            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Executing...</>
-            : <><Play className="w-3.5 h-3.5" /> Execute Command</>
-          }
+          <PlusCircle className="w-4 h-4" /> Create Command Proposal
         </button>
 
-        {/* Warning */}
-        <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/5 border border-amber-500/20">
-          <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
-          <div className="text-[9px] text-amber-500/70 leading-relaxed">
-            Safe read-only mode only. No login, no form submission, no trading, no credentials.
-            VERIDAN_BRIDGE_TOKEN sent server-side only via openclawSafeBridge — never exposed to browser.
+        {/* Success message */}
+        {lastMessage && (
+          <div className="flex items-start gap-2 px-3 py-2.5 bg-primary/5 border border-primary/20 rounded text-[9px] text-primary">
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            {lastMessage}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Result Panel — always visible after first attempt */}
-      {(result || uiStatus !== 'ready') && (
-        <ResultPanel result={result} uiStatus={uiStatus} />
+      {/* Proposal Queue */}
+      {proposals.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <FileText className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">
+              Local Proposal Queue ({proposals.length})
+            </span>
+            <span className="ml-auto text-[8px] text-slate-500 uppercase tracking-widest">Session only — not persisted</span>
+          </div>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {proposals.map((p, i) => <ProposalCard key={p.id} proposal={p} index={i} />)}
+          </div>
+        </div>
       )}
 
       {/* Audit Log */}
-      <AuditLogTable entries={auditLog} />
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-secondary/10">
+          <ScrollText className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Audit Log</span>
+          <span className="text-[8px] text-slate-600">({auditLog.length} entries)</span>
+        </div>
+        {auditLog.length === 0 ? (
+          <div className="flex items-center justify-center h-10 text-[10px] text-slate-600">No proposals created yet</div>
+        ) : (
+          <div className="divide-y divide-border/30 max-h-48 overflow-y-auto">
+            {auditLog.map((e, i) => (
+              <div key={i} className="px-4 py-2 text-[8px] space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3 h-3 text-slate-500 shrink-0" />
+                  <span className="text-slate-400 font-mono">{new Date(e.time).toLocaleTimeString()}</span>
+                  <span className="font-bold text-primary ml-1">{e.commandType}</span>
+                  <span className={`ml-auto font-bold text-[7px] px-1.5 py-0.5 border rounded uppercase ${
+                    e.status === 'PENDING_APPROVAL' ? 'text-amber-500 border-amber-500/30 bg-amber-500/5' : 'text-slate-400 border-slate-500/30 bg-slate-500/5'
+                  }`}>{e.status}</span>
+                </div>
+                <div className="text-slate-500">
+                  <span className="text-blue-400 font-mono">{e.target || '—'}</span>
+                  {' · '}{e.note}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Safety Footer */}
+      <div className="flex items-start gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-[9px] text-primary/80">
+          <span className="font-semibold">Proposal-only mode.</span> No OpenClaw calls, no browser tools, no command execution,
+          no trading, no credentials, no live actions. All proposals are local session records only.
+        </div>
+      </div>
     </div>
   );
 }
