@@ -10,6 +10,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Copy, ShieldCheck, RefreshCw, FileJson, Lock } from 'lucide-react';
+import MonitoringModeReadinessPacket from './MonitoringModeReadinessPacket.jsx';
 
 const SOURCE_KEYS = {
   integrityCheckpoints:    'openclawBridgeIntegrityCheckpoints',
@@ -394,6 +395,11 @@ export default function ReadOnlyBridgePromotionGate({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Promotion gate approves read-only monitoring only. No command dispatch. No execution. No trading. No credentials. No money movement.
+      </div>
+
+      {/* ── Monitoring Mode Readiness Packet ── */}
+      <div className="border-t border-border/40 pt-4">
+        <MonitoringModeReadinessPacket refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
