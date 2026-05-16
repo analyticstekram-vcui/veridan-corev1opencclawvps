@@ -11,6 +11,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Copy, ShieldCheck, RefreshCw, ClipboardCheck } from 'lucide-react';
+import ControlledReadOnlyRouteExecutionPreview from './ControlledReadOnlyRouteExecutionPreview.jsx';
 
 const SOURCE_KEYS = {
   evidenceExports: 'openclawReadOnlyRouteSimulationEvidenceExports',
@@ -363,6 +364,11 @@ export default function ReadOnlyRouteApprovalPacket({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Route approval packet is local-only. It approves read-only status routes only. No dispatch. No execution.
+      </div>
+
+      {/* ── Controlled Read-Only Route Execution Preview ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ControlledReadOnlyRouteExecutionPreview refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
