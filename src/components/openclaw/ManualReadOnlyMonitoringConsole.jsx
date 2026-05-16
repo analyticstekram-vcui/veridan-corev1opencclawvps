@@ -14,6 +14,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, AlertTriangle, Copy, ShieldCheck, Loader2, FileJson, Lock, Play } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import ManualMonitoringEvidenceExport from './ManualMonitoringEvidenceExport.jsx';
 
 const SOURCE_KEYS = {
   readinessPackets:   'openclawMonitoringModeReadinessPackets',
@@ -393,6 +394,11 @@ export default function ManualReadOnlyMonitoringConsole({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Manual monitoring only. No scheduler. No polling loop. No command dispatch. No execution.
+      </div>
+
+      {/* ── Manual Monitoring Evidence Export ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ManualMonitoringEvidenceExport refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
