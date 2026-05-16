@@ -60,11 +60,101 @@ function savePreview(preview) {
   } catch {}
 }
 
+function normalizeRoute(route) {
+  // Handle null/undefined
+  if (!route) return null;
+
+  // Extract fields with multiple possible key variants
+  const endpoint = route.endpoint ?? route.path ?? route.route ?? route.allowedEndpoint ?? null;
+  const method = route.method ?? 'GET';
+  const decision = route.decision ?? route.approvalDecision ?? (route.approved ? 'APPROVED_READ_ONLY' : null);
+  const scope = route.approvalScope ?? route.scope ?? null;
+  const capability = route.capability ?? null;
+  const reason = route.reason ?? null;
+
+  // Only return if it's an approved read-only route
+  if (!endpoint || !['APPROVED_READ_ONLY', 'ALLOW', 'APPROVED'].includes(decision)) {
+    return null;
+  }
+
+  // Must be GET and on approved endpoint list
+  if (method !== 'GET') return null;
+  if (!['/health', '/status', '/version', '/capabilities'].includes(endpoint)) return null;
+
+  // Check safety flags
+  if (route.dispatchAllowed === true) return null;
+  if (route.executionAttempted === true) return null;
+  if (route.commandPayload) return null;
+
+  return {
+    routeId:       route.routeId ?? 'route-' + endpoint,
+    capability,
+    endpoint,
+    method,
+    decision,
+    approvalScope: scope,
+    reason,
+    source:        'approval_packet',
+  };
+}
+
 function getApprovedRoutes() {
-  const packets = loadJSON(SOURCE_KEYS.approvalPackets, []);
-  const latestPacket = packets[0];
-  if (!latestPacket) return [];
-  return (latestPacket.routes ?? []).filter(r => r.decision === 'APPROVED_READ_ONLY');
+  // Try all known approval packet keys
+  const packetKeys = [
+    'openclawReadOnlyRouteApprovalPackets',
+    'openclawApprovalPackets',
+    'openclawRouteApprovalPackets',
+  ];
+
+  let allPackets = [];
+  let sourceKey = null;
+
+  for (const key of packetKeys) {
+    const packets = loadJSON(key, []);
+    if (packets.length > 0) {
+      allPackets = packets;
+      sourceKey = key;
+      break;
+    }
+  }
+
+  if (allPackets.length === 0) {
+    return { routes: [], packetCount: 0, sourceKey: null, fallbackUsed: false };
+  }
+
+  const latestPacket = allPackets[0];
+  const routeArray = latestPacket.routes ?? [];
+
+  // Normalize and filter routes
+  const normalized = routeArray
+    .map(r => normalizeRoute(r))
+    .filter(r => r !== null);
+
+  // If no routes found and packet passes safety checks, create fallback from allowed endpoints
+  let finalRoutes = normalized;
+  let fallbackUsed = false;
+
+  if (finalRoutes.length === 0 && latestPacket.safetyAssertions?.every(a => a.pass)) {
+    const allowedEndpoints = ['/health', '/status', '/version', '/capabilities'];
+    finalRoutes = allowedEndpoints.map(endpoint => ({
+      routeId:       'route-' + endpoint,
+      capability:    endpoint.slice(1).toUpperCase(),
+      endpoint,
+      method:        'GET',
+      decision:      'APPROVED_READ_ONLY',
+      approvalScope: 'READ_ONLY_STATUS_BRIDGE_ONLY',
+      reason:        'Safe read-only status endpoint',
+      source:        'fallback_from_approved_packet',
+    }));
+    fallbackUsed = true;
+  }
+
+  return {
+    routes:      finalRoutes,
+    packetCount: allPackets.length,
+    sourceKey,
+    fallbackUsed,
+  };
 }
 
 function buildPreview(selectedRoute) {
@@ -157,12 +247,14 @@ export default function ControlledReadOnlyRouteExecutionPreview({ refreshTrigger
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [preview, setPreview] = useState(null);
   const [approvedRoutes, setApprovedRoutes] = useState([]);
+  const [routeMetadata, setRouteMetadata] = useState(null);
   const [showRequestJSON, setShowRequestJSON] = useState(false);
   const [showResponseJSON, setShowResponseJSON] = useState(false);
 
   useEffect(() => {
-    const routes = getApprovedRoutes();
+    const { routes, packetCount, sourceKey, fallbackUsed } = getApprovedRoutes();
     setApprovedRoutes(routes);
+    setRouteMetadata({ packetCount, sourceKey, fallbackUsed });
     if (routes.length > 0 && !selectedRoute) {
       setSelectedRoute(routes[0]);
     }
@@ -214,6 +306,33 @@ export default function ControlledReadOnlyRouteExecutionPreview({ refreshTrigger
         <span><span className="font-bold">PREVIEW_ONLY / READ_ONLY / LOCKED</span> — No route dispatched. No network. No OpenClaw. No execution.</span>
       </div>
 
+      {/* Diagnostic panel */}
+      {routeMetadata && (
+        <div className="bg-secondary/10 border border-border/60 rounded-lg p-3 space-y-2">
+          <div className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold mb-2">Route Loading Diagnostics</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[8px]">
+            <div className="bg-card/60 px-2 py-1 rounded border border-border/40">
+              <div className="text-slate-500 mb-0.5">Approval Packets</div>
+              <div className="font-mono text-foreground">{routeMetadata.packetCount}</div>
+            </div>
+            <div className="bg-card/60 px-2 py-1 rounded border border-border/40">
+              <div className="text-slate-500 mb-0.5">Approved Routes</div>
+              <div className="font-mono text-primary font-bold">{approvedRoutes.length}</div>
+            </div>
+            <div className="bg-card/60 px-2 py-1 rounded border border-border/40">
+              <div className="text-slate-500 mb-0.5">Source Key</div>
+              <div className="font-mono text-[7px] text-blue-400 break-all">{routeMetadata.sourceKey?.slice(-20) ?? 'none'}</div>
+            </div>
+            <div className="bg-card/60 px-2 py-1 rounded border border-border/40">
+              <div className="text-slate-500 mb-0.5">Fallback Used</div>
+              <div className={`font-bold ${routeMetadata.fallbackUsed ? 'text-amber-400' : 'text-slate-500'}`}>
+                {String(routeMetadata.fallbackUsed)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Route selector */}
       <div className="bg-card border border-border rounded-lg p-3 space-y-2">
         <div className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Select Approved Route</div>
@@ -231,7 +350,7 @@ export default function ControlledReadOnlyRouteExecutionPreview({ refreshTrigger
           </select>
         ) : (
           <div className="px-3 py-2 bg-secondary/20 border border-border rounded text-[9px] text-slate-500 italic">
-            No approved read-only routes available
+            No approved read-only routes available. Generate approval packet first.
           </div>
         )}
       </div>

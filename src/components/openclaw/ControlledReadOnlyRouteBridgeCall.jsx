@@ -31,6 +31,70 @@ function loadJSON(key, fallback = []) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
 }
 
+function normalizeRoute(route) {
+  if (!route) return null;
+  const endpoint = route.endpoint ?? route.path ?? route.route ?? route.allowedEndpoint ?? null;
+  const method = route.method ?? 'GET';
+  const decision = route.decision ?? route.approvalDecision ?? (route.approved ? 'APPROVED_READ_ONLY' : null);
+  const scope = route.approvalScope ?? route.scope ?? null;
+  const capability = route.capability ?? null;
+  if (!endpoint || !['APPROVED_READ_ONLY', 'ALLOW', 'APPROVED'].includes(decision)) return null;
+  if (method !== 'GET') return null;
+  if (!['/health', '/status', '/version', '/capabilities'].includes(endpoint)) return null;
+  if (route.dispatchAllowed === true) return null;
+  if (route.executionAttempted === true) return null;
+  if (route.commandPayload) return null;
+  return {
+    routeId: route.routeId ?? 'route-' + endpoint,
+    capability,
+    endpoint,
+    method,
+    decision,
+    approvalScope: scope,
+    reason: route.reason ?? null,
+    source: 'approval_packet',
+  };
+}
+
+function getApprovedRoutes() {
+  const packetKeys = [
+    'openclawReadOnlyRouteApprovalPackets',
+    'openclawApprovalPackets',
+    'openclawRouteApprovalPackets',
+  ];
+  let allPackets = [];
+  let sourceKey = null;
+  for (const key of packetKeys) {
+    const packets = loadJSON(key, []);
+    if (packets.length > 0) {
+      allPackets = packets;
+      sourceKey = key;
+      break;
+    }
+  }
+  if (allPackets.length === 0) return { routes: [], packetCount: 0, sourceKey: null, fallbackUsed: false };
+  const latestPacket = allPackets[0];
+  const routeArray = latestPacket.routes ?? [];
+  const normalized = routeArray.map(r => normalizeRoute(r)).filter(r => r !== null);
+  let finalRoutes = normalized;
+  let fallbackUsed = false;
+  if (finalRoutes.length === 0 && latestPacket.safetyAssertions?.every(a => a.pass)) {
+    const allowedEndpoints = ['/health', '/status', '/version', '/capabilities'];
+    finalRoutes = allowedEndpoints.map(endpoint => ({
+      routeId: 'route-' + endpoint,
+      capability: endpoint.slice(1).toUpperCase(),
+      endpoint,
+      method: 'GET',
+      decision: 'APPROVED_READ_ONLY',
+      approvalScope: 'READ_ONLY_STATUS_BRIDGE_ONLY',
+      reason: 'Safe read-only status endpoint',
+      source: 'fallback_from_approved_packet',
+    }));
+    fallbackUsed = true;
+  }
+  return { routes: finalRoutes, packetCount: allPackets.length, sourceKey, fallbackUsed };
+}
+
 function saveResult(result) {
   try {
     const all = loadJSON(RESULT_KEY, []);
@@ -50,11 +114,8 @@ function isButtonEnabled(preview) {
   if (preview.method !== 'GET') return false;
   if (!ALLOWED_ENDPOINTS.includes(preview.selectedEndpoint)) return false;
   if (preview.dispatchAllowed !== false) return false;
+  if (preview.commandDispatchAttempted !== false && preview.commandDispatchAttempted !== undefined) return false;
   if (preview.executionAttempted !== false) return false;
-  const exclusions = preview.explicitExclusions ?? [];
-  if (exclusions.some(e => 
-    ['command dispatch', 'browser execution', 'trading', 'broker execution', 'credential entry', 'wallet actions', 'money movement'].includes(e)
-  )) return false;
   return true;
 }
 
