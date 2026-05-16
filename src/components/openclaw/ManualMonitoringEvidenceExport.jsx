@@ -11,6 +11,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, AlertTriangle, Copy, ShieldCheck, RefreshCw, FileJson, Lock } from 'lucide-react';
+import ManualMonitoringAuditDashboard from './ManualMonitoringAuditDashboard.jsx';
 
 const SOURCE_KEYS = {
   monitoringChecks:    'openclawManualReadOnlyMonitoringChecks',
@@ -353,6 +354,11 @@ export default function ManualMonitoringEvidenceExport({ refreshTrigger }) {
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
         Manual monitoring evidence export is local-only. No new OpenClaw calls. No scheduler. No polling. No dispatch. No execution.
+      </div>
+
+      {/* ── Manual Monitoring Audit Dashboard ── */}
+      <div className="border-t border-border/40 pt-4">
+        <ManualMonitoringAuditDashboard refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
