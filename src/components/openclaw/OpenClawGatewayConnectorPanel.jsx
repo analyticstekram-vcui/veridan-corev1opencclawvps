@@ -36,6 +36,7 @@ import ReadOnlyOpenClawBridgeDryRunAuditLedgerPanel from './ReadOnlyOpenClawBrid
 import ReadOnlyOpenClawRuntimeBridgeReadinessGatePanel from './ReadOnlyOpenClawRuntimeBridgeReadinessGatePanel.jsx';
 import ReadOnlyOpenClawRuntimeBridgeReadinessFinalLockPanel from './ReadOnlyOpenClawRuntimeBridgeReadinessFinalLockPanel.jsx';
 import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummaryPanel.jsx';
+import OpenClawOperatorApprovalWorkflowPanel from './OpenClawOperatorApprovalWorkflowPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -474,6 +475,9 @@ export default function OpenClawGatewayConnectorPanel() {
             </div>
             <div className="border-t border-border/40 pt-5">
               <OpenClawGovernancePhaseSummaryPanel />
+            </div>
+            <div className="border-t border-border/40 pt-5">
+              <OpenClawOperatorApprovalWorkflowPanel />
             </div>
           </div>
         )}
