@@ -28,6 +28,7 @@ import BrowserObservationExecutionContractFinalLockPanel from './BrowserObservat
 import BrowserObservationContractValidatorPanel from './BrowserObservationContractValidatorPanel.jsx';
 import BrowserObservationContractValidatorFinalLockPanel from './BrowserObservationContractValidatorFinalLockPanel.jsx';
 import BrowserObservationDryRunAuditLedgerPanel from './BrowserObservationDryRunAuditLedgerPanel.jsx';
+import ReadOnlyOpenClawBridgeDesignPanel from './ReadOnlyOpenClawBridgeDesignPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -442,6 +443,9 @@ export default function OpenClawGatewayConnectorPanel() {
             </div>
             <div className="border-t border-border/40 pt-5">
               <BrowserObservationDryRunAuditLedgerPanel />
+            </div>
+            <div className="border-t border-border/40 pt-5">
+              <ReadOnlyOpenClawBridgeDesignPanel />
             </div>
           </div>
         )}
