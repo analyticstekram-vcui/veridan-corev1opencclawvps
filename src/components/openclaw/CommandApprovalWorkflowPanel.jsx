@@ -1,14 +1,44 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Shield, ChevronDown, ChevronRight, CheckCircle2, XCircle,
-  Clock, AlertTriangle, RefreshCw, ScrollText, Package
+  Clock, AlertTriangle, RefreshCw, ScrollText, Package, Database
 } from 'lucide-react';
 import {
   loadProposals, loadAudit, loadPackets,
   approveProposal, denyProposal,
   submitForApproval, queuePreview, blockPreview,
 } from '@/lib/proposalStore';
+import { base44 } from '@/api/base44Client';
 import PreviewCommandPacket from './PreviewCommandPacket';
+
+// Statuses to fetch from Base44
+const BASE44_FETCH_STATUSES = ['APPROVED', 'PENDING_APPROVAL', 'QUEUED_PREVIEW', 'READY_FOR_BRIDGE_TEST', 'BLOCKED_PREVIEW'];
+
+// Normalize a Base44 OpenClawProposal record to the local proposal shape
+function normalizeBase44Proposal(rec) {
+  return {
+    id:                 rec.id,
+    _base44Id:          rec.id,
+    _source:            'base44',
+    createdAt:          rec.createdAt || rec.created_date,
+    commandType:        rec.commandType || 'READ',
+    target:             rec.url || rec.target || '',
+    purpose:            rec.payloadPreview?.purpose || '',
+    expectedResult:     rec.payloadPreview?.expectedResult || '',
+    riskTier:           rec.riskTier || 'LOW',
+    requiredApproval:   'APPROVAL_REQUIRED',
+    status:             rec.status,
+    blockedReasons:     [],
+    safetyMode:         'PREVIEW_ONLY',
+    executionAttempted: false,
+    governanceDecision: rec.status === 'APPROVED' ? 'APPROVED_FOR_PREVIEW' : undefined,
+    reviewedBy:         rec.reviewedBy || '',
+    reviewedAt:         rec.reviewedAt || '',
+    reviewNote:         rec.reviewNote || 'Approved via Base44 record',
+    auditTraceId:       rec.auditTraceId || rec.requestId || rec.id,
+    requestId:          rec.requestId || rec.id,
+  };
+}
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 const STATUS_CFG = {
@@ -252,31 +282,61 @@ function ProposalRow({ proposal, packets, onRefresh, currentUser }) {
 
 // ── Main Panel ─────────────────────────────────────────────────────────────────
 export default function CommandApprovalWorkflowPanel() {
-  const [proposals, setProposals] = useState([]);
-  const [auditLog,  setAuditLog]  = useState([]);
-  const [packets,   setPackets]   = useState([]);
-  const [filter,    setFilter]    = useState('ALL');
-  const [currentUser, setCurrentUser] = useState('operator');
-  const [showAudit, setShowAudit] = useState(false);
+  const [proposals,    setProposals]    = useState([]);
+  const [auditLog,     setAuditLog]     = useState([]);
+  const [packets,      setPackets]      = useState([]);
+  const [filter,       setFilter]       = useState('ALL');
+  const [currentUser,  setCurrentUser]  = useState('operator');
+  const [showAudit,    setShowAudit]    = useState(false);
+  const [loadingDb,    setLoadingDb]    = useState(false);
+  const [dbError,      setDbError]      = useState('');
 
-  const refresh = useCallback(() => {
-    setProposals(loadProposals());
+  const refresh = useCallback(async () => {
+    // 1. Load localStorage proposals
+    const local = loadProposals();
     setAuditLog(loadAudit());
     setPackets(loadPackets());
+
+    // 2. Fetch Base44 proposals with relevant statuses
+    setLoadingDb(true);
+    setDbError('');
+    try {
+      const results = await Promise.all(
+        BASE44_FETCH_STATUSES.map(status =>
+          base44.entities.OpenClawProposal.filter({ status }).catch(() => [])
+        )
+      );
+      const dbRecords = results.flat();
+
+      // 3. Merge: prefer localStorage version if same id exists, else add from DB
+      const localIds = new Set(local.map(p => p.id));
+      const dbNormalized = dbRecords
+        .filter(r => !localIds.has(r.id))
+        .map(normalizeBase44Proposal);
+
+      // Also update local proposals that have a matching Base44 record by _base44Id / requestId
+      const merged = [...local, ...dbNormalized];
+      // Deduplicate by id
+      const seen = new Set();
+      const deduped = merged.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+
+      setProposals(deduped);
+    } catch (err) {
+      setDbError('Could not load Base44 proposals: ' + err.message);
+      setProposals(local);
+    } finally {
+      setLoadingDb(false);
+    }
   }, []);
 
   useEffect(() => {
     refresh();
-    // sync on other-tab writes
     window.addEventListener('storage', refresh);
     return () => window.removeEventListener('storage', refresh);
   }, [refresh]);
 
-  // Try to get current user
   useEffect(() => {
-    import('@/api/base44Client').then(({ base44 }) => {
-      base44.auth.me().then(u => { if (u?.email) setCurrentUser(u.email); }).catch(() => {});
-    });
+    base44.auth.me().then(u => { if (u?.email) setCurrentUser(u.email); }).catch(() => {});
   }, []);
 
   const filtered = filter === 'ALL' ? proposals : proposals.filter(p => p.status === filter);
@@ -298,11 +358,29 @@ export default function CommandApprovalWorkflowPanel() {
           <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1 font-semibold">Approval Workflow</div>
           <div className="text-[13px] font-semibold text-foreground">Command Proposal Governance</div>
         </div>
-        <button type="button" onClick={refresh}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] border border-border text-slate-400 hover:bg-secondary/50 rounded font-semibold transition-colors">
-          <RefreshCw className="w-3 h-3" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {loadingDb && (
+            <div className="flex items-center gap-1.5 text-[9px] text-slate-400">
+              <RefreshCw className="w-3 h-3 animate-spin" /> Loading DB…
+            </div>
+          )}
+          {!loadingDb && (
+            <div className="flex items-center gap-1.5 text-[8px] text-slate-500">
+              <Database className="w-3 h-3" /> Base44 + localStorage
+            </div>
+          )}
+          <button type="button" onClick={refresh}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] border border-border text-slate-400 hover:bg-secondary/50 rounded font-semibold transition-colors">
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+        </div>
       </div>
+
+      {dbError && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-destructive/5 border border-destructive/20 rounded text-[9px] text-destructive">
+          <AlertTriangle className="w-3 h-3 shrink-0" /> {dbError}
+        </div>
+      )}
 
       {/* Safety Banner */}
       <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
