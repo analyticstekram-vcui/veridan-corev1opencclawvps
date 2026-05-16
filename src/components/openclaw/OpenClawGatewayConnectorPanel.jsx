@@ -9,6 +9,7 @@ import OperatorSessionAuditDashboard from './OperatorSessionAuditDashboard.jsx';
 import OperatorSessionFinalArchiveExport from './OperatorSessionFinalArchiveExport.jsx';
 import ReadOnlyGatewayHealthCheck from './ReadOnlyGatewayHealthCheck.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
+import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
 
@@ -291,6 +292,7 @@ export default function OpenClawGatewayConnectorPanel() {
         {activeTab === 'diagnostics' && (
           <div className="space-y-5 border-t border-border/40 pt-5">
             <div className="border-b border-border/40 pb-5"><GatewayConnectorQAReport /></div>
+            <div className="border-b border-border/40 pb-5"><ControlledSchedulerDesignPacket /></div>
             <div className="text-[10px] text-slate-400 italic">Additional developer diagnostics panels reserved for future debugging and monitoring tools.</div>
           </div>
         )}
