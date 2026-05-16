@@ -18,6 +18,7 @@ import { Activity, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, Copy, Cloc
 import { base44 } from '@/api/base44Client';
 import { appendAudit } from '@/lib/proposalStore';
 import GatewayResponseInspector from './GatewayResponseInspector.jsx';
+import GatewayAlertingSystem from './GatewayAlertingSystem.jsx';
 
 const ENDPOINT        = 'https://openclaw.veridancore.com';
 const HEALTH_KEY      = 'openclawReadOnlyGatewayHealthChecks';
@@ -278,6 +279,11 @@ export default function ReadOnlyGatewayHealthCheck() {
       {/* ── Gateway Response Inspector ── */}
       <div className="border-t border-border/40 pt-4">
         <GatewayResponseInspector refreshTrigger={inspectTrigger} />
+      </div>
+
+      {/* ── Gateway Alerting System ── */}
+      <div className="border-t border-border/40 pt-4">
+        <GatewayAlertingSystem refreshTrigger={inspectTrigger} />
       </div>
     </div>
   );
