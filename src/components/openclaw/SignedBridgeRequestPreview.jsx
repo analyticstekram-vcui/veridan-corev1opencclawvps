@@ -13,11 +13,25 @@
  *   - allowedForDispatch: false — NEVER dispatchable
  */
 import React, { useState } from 'react';
-import { Copy, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, ShieldCheck, Ban } from 'lucide-react';
+import { Copy, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, ShieldCheck, Ban, Lock } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { appendAudit } from '@/lib/proposalStore';
 
-const SIGNED_KEY = 'vc_signed_bridge_previews';
+const SIGNED_KEY   = 'vc_signed_bridge_previews';
+const EVIDENCE_KEY = 'openclawFinalNonExecutionLockEvidence';
+
+// ── Evidence helpers ───────────────────────────────────────────────────────────
+function loadEvidenceRecords() {
+  try { return JSON.parse(localStorage.getItem(EVIDENCE_KEY) || '[]'); } catch { return []; }
+}
+function findEvidenceBySignedRequestId(signedRequestId) {
+  return loadEvidenceRecords().find(r => r.signedRequestId === signedRequestId) || null;
+}
+function saveEvidenceRecord(record) {
+  const all = loadEvidenceRecords();
+  all.unshift(record);
+  localStorage.setItem(EVIDENCE_KEY, JSON.stringify(all.slice(0, 200)));
+}
 
 // ── localStorage helpers ───────────────────────────────────────────────────────
 export function loadSignedPreviews() {
@@ -44,7 +58,23 @@ function validateForSignedPreview(run, packet) {
   return failures;
 }
 
-// ── Copy button ────────────────────────────────────────────────────────────────
+// ── Copy buttons ───────────────────────────────────────────────────────────────
+function CopyEvidenceButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  const handle = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button type="button" onClick={handle}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] border border-border text-slate-400 hover:text-foreground hover:bg-secondary/50 rounded font-bold transition-colors">
+      {copied ? <CheckCircle2 className="w-3 h-3 text-primary" /> : <Copy className="w-3 h-3" />}
+      {copied ? 'Copied!' : 'Copy Evidence JSON'}
+    </button>
+  );
+}
+
 function CopyPreviewButton({ text }) {
   const [copied, setCopied] = useState(false);
   const handle = () => {
@@ -63,9 +93,11 @@ function CopyPreviewButton({ text }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function SignedBridgeRequestPreview({ run, packet }) {
-  const [generating, setGenerating] = useState(false);
-  const [preview,    setPreview]    = useState(null);
-  const [failures,   setFailures]   = useState([]);
+  const [generating,    setGenerating]    = useState(false);
+  const [preview,       setPreview]       = useState(null);
+  const [failures,      setFailures]      = useState([]);
+  const [evidence,      setEvidence]      = useState(null);
+  const [creatingEvidence, setCreatingEvidence] = useState(false);
 
   const canGenerate = run.dryRunStatus === 'PASSED' || run.acceptedForDryRun === true;
 
@@ -141,6 +173,66 @@ export default function SignedBridgeRequestPreview({ run, packet }) {
 
     setPreview(signedPreview);
     setGenerating(false);
+    // Check if evidence already exists for this signed request
+    const existing = findEvidenceBySignedRequestId(signedPreview.signedRequestId);
+    if (existing) setEvidence(existing);
+  };
+
+  const handleCreateEvidence = async () => {
+    if (!preview) return;
+    // Prevent duplicates
+    const existing = findEvidenceBySignedRequestId(preview.signedRequestId);
+    if (existing) { setEvidence(existing); return; }
+
+    setCreatingEvidence(true);
+    const operatorId = await base44.auth.me().then(u => u?.email || 'operator').catch(() => 'operator');
+    const now = new Date().toISOString();
+    const evidenceId = 'evid-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+
+    const record = {
+      evidenceId,
+      createdAt:                now,
+      operatorId,
+      proposalId:               preview.proposalId,
+      persistedProposalId:      preview.persistedProposalId || null,
+      packetId:                 preview.packetId,
+      dryRunId:                 preview.dryRunId,
+      dryRunAuditId:            preview.dryRunAuditId || null,
+      signedRequestId:          preview.signedRequestId,
+      commandType:              preview.commandType,
+      targetUrl:                preview.targetUrl,
+      riskTier:                 preview.riskTier,
+      baselineStatus:           'PREVIEW_ONLY',
+      gatewayMode:              'READ_ONLY',
+      executionLock:            'LOCKED',
+      executionDisabled:        true,
+      openClawCallsAttempted:   0,
+      executionAttempts:        0,
+      browserAutomationStatus:  'GOVERNED_OR_DISABLED',
+      apiTradingDisabled:       true,
+      directOpenAIDisabled:     true,
+      moneyMovementDisabled:    true,
+      credentialEntryDisabled:  true,
+      secretsExposed:           false,
+      bridgeDispatchAllowed:    false,
+      allowedForDispatch:       false,
+      signatureType:            'PLACEHOLDER_ONLY',
+      signedPreviewOnly:        true,
+      finalLockStatus:          'NON_EXECUTION_LOCK_RECORDED',
+      note:                     'Final non-execution evidence record. No OpenClaw dispatch. No command execution. No browser action. No trading. No money movement.',
+    };
+
+    saveEvidenceRecord(record);
+    appendAudit({
+      event:          'final_non_execution_lock_evidence_recorded',
+      evidenceId,
+      signedRequestId: preview.signedRequestId,
+      proposalId:      preview.proposalId,
+      note:            `Final non-execution lock evidence recorded (${evidenceId}). System remains PREVIEW_ONLY. No dispatch. No execution.`,
+    });
+
+    setEvidence(record);
+    setCreatingEvidence(false);
   };
 
   if (!canGenerate) return null;
@@ -250,6 +342,60 @@ export default function SignedBridgeRequestPreview({ run, packet }) {
             <ShieldCheck className="w-3 h-3 shrink-0" />
             Preview only · allowedForDispatch: false · No OpenClaw call · No execution · Signature is a placeholder
           </div>
+
+          {/* ── Final Non-Execution Lock Evidence Record ── */}
+          {!evidence && (
+            <button type="button" onClick={handleCreateEvidence} disabled={creatingEvidence}
+              className="flex items-center gap-1.5 px-3 py-2 text-[9px] border border-amber-500/40 text-amber-500 bg-amber-500/5 hover:bg-amber-500/15 rounded font-bold transition-colors disabled:opacity-50 w-full justify-center">
+              {creatingEvidence
+                ? <><RefreshCw className="w-3 h-3 animate-spin" /> Creating Evidence Record…</>
+                : <><Lock className="w-3.5 h-3.5" /> Create Final Non-Execution Lock Evidence Record</>}
+            </button>
+          )}
+
+          {evidence && (
+            <div className="border border-primary/30 rounded-lg overflow-hidden">
+              {/* Evidence confirmation banner */}
+              <div className="px-3 py-2.5 bg-gradient-to-r from-primary/15 to-amber-500/5 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Lock className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-[10px] font-bold text-primary uppercase tracking-wide">
+                      Final Non-Execution Lock Evidence Recorded
+                    </div>
+                    <div className="text-[8px] text-slate-300 mt-0.5">
+                      System remains PREVIEW_ONLY and execution remains disabled.
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[8px] text-slate-400 ml-6">
+                  <span>Baseline Status: <span className="text-primary font-semibold">{evidence.baselineStatus}</span></span>
+                  <span>Gateway Mode: <span className="text-amber-500 font-semibold">{evidence.gatewayMode}</span></span>
+                  <span>Execution Lock: <span className="text-amber-500 font-semibold">{evidence.executionLock}</span></span>
+                  <span>OpenClaw Calls Attempted: <span className="text-destructive font-bold">{evidence.openClawCallsAttempted}</span></span>
+                  <span>Execution Attempts: <span className="text-destructive font-bold">{evidence.executionAttempts}</span></span>
+                  <span>Bridge Dispatch Allowed: <span className="text-destructive font-bold">{String(evidence.bridgeDispatchAllowed)}</span></span>
+                  <span>Secrets Exposed: <span className="text-destructive font-bold">{String(evidence.secretsExposed)}</span></span>
+                  <span>API Trading Disabled: <span className="text-primary font-bold">{String(evidence.apiTradingDisabled)}</span></span>
+                  <span className="col-span-2">Money Movement Disabled: <span className="text-primary font-bold">{String(evidence.moneyMovementDisabled)}</span></span>
+                </div>
+                <div className="text-[7px] text-slate-500 ml-6">Evidence ID: <span className="font-mono text-slate-400">{evidence.evidenceId}</span></div>
+              </div>
+
+              {/* Copy + JSON inspector */}
+              <div className="px-3 py-2 bg-black/10 border-t border-border/20 space-y-2">
+                <CopyEvidenceButton text={JSON.stringify(evidence, null, 2)} />
+                <details>
+                  <summary className="text-[8px] text-slate-500 cursor-pointer hover:text-slate-300 uppercase tracking-widest font-semibold">
+                    View Evidence JSON
+                  </summary>
+                  <pre className="mt-1.5 bg-secondary/40 border border-border/30 rounded p-2 text-[7px] font-mono text-slate-300 overflow-auto max-h-40">
+                    {JSON.stringify(evidence, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
