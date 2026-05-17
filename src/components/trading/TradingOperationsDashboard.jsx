@@ -795,6 +795,311 @@ export default function TradingOperationsDashboard() {
           </div>
         </div>
 
+        {/* Paper Trading Requirements Draft */}
+        <div className="mt-8 bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Paper Trading Requirements Draft</h2>
+            <p className="text-[9px] font-mono text-slate-400 mt-1">This draft defines what must exist before paper trading can be enabled. It does not place paper trades, connect to brokers, call market data, submit orders, or execute strategies.</p>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* Paper Trading Preconditions Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Paper Trading Preconditions</h3>
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="text-[8px] font-mono text-slate-300 space-y-0.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Master baseline approved</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Trading Operations baseline approved</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>TradingView webhook requirements approved for planning</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Signal validation requirements approved for planning</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Risk engine requirements defined</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Broker sandbox selected</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>API key vault design approved</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Operator review gate active</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Required Paper Trade Fields Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Required Paper Trade Fields</h3>
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="text-[8px] font-mono text-slate-300 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">paperTradeId</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">sourceSignalId</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">symbol</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">direction</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">entryPriceReference</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">stopLossReference</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">takeProfitReference</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">positionSize</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">riskAmount</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">strategyName</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">status</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">createdAt</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Paper Trade Statuses Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Paper Trade Statuses</h3>
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="text-[8px] font-mono text-slate-300 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">DRAFT_ONLY</span>
+                    <span className="text-slate-400">Initial state</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">READY_FOR_REVIEW</span>
+                    <span className="text-slate-400">Pending operator review</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">APPROVED_FOR_PAPER</span>
+                    <span className="text-primary">Operator approved</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">REJECTED</span>
+                    <span className="text-destructive">Operator rejected</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">SIMULATED</span>
+                    <span className="text-slate-400">Paper simulation run</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">CLOSED</span>
+                    <span className="text-slate-400">Paper trade closed</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">ERROR_REVIEW</span>
+                    <span className="text-destructive">Error occurred</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Risk Controls Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Risk Controls</h3>
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="text-[8px] font-mono text-slate-300 space-y-0.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Max daily paper loss required</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Max daily paper profit required</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Max trades per day required</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Max position size required</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Stop loss required</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Take profit required</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>No live order routing</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Human review required</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Safety Gates Card */}
+            <div className="bg-destructive/5 border border-destructive/20 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-destructive/80">Safety Gates</h3>
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-1.5">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Broker Connection</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Market Data Feed</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Paper Order Submission</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Live Trading</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Order Execution</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">API Key Entry</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm col-span-2">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Money Movement</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Future Flow */}
+            <div className="bg-slate-700/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-slate-700/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-300">Future Flow (Planning Only)</h3>
+              </div>
+              <div className="p-3">
+                <div className="text-[8px] font-mono text-slate-300 space-y-1 leading-relaxed">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Validated Signal</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Paper Trade Draft</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Operator Review</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Paper Approval Gate</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Paper Simulation</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Paper Journal</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Reconciliation Review</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Card */}
+            <div className="bg-slate-700/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-slate-700/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-300">Paper Trading Requirements Status</h3>
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Requirements Draft</span>
+                  <span className="text-[8px] font-mono font-bold text-primary">APPROVED_FOR_PLANNING</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Paper Trading</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Backend Route</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">NOT_CREATED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">External Calls</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Execution Approval</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">NOT_GRANTED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Planning-Only Notice */}
+            <div className="bg-primary/5 border border-primary/20 rounded-sm px-3 py-2">
+              <p className="text-[9px] font-mono text-slate-300 leading-relaxed">
+                This paper trading requirements draft is planning and documentation only. No paper trading functions are created, no broker connections are established, no market data feeds are activated, no paper orders are submitted, and no trading logic is executed.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* MCP + TradingView Planning Blueprint Section */}
         <div className="mt-8 bg-card border border-border/50 rounded-sm overflow-hidden">
           <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
