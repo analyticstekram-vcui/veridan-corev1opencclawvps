@@ -128,6 +128,16 @@ const PHASES = [
     safetyColor: 'text-primary',
   },
   {
+    phase: 38,
+    title: 'Read-Only Backend Route Contract',
+    plainEnglish: 'Defines local-only backend route contracts for future controlled read-only connector checks. Specifies server-side proxy routes and safety constraints.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase38ReadOnlyBackendRouteContracts',
+    safetyStatus: 'LOCKED',
+    safetyColor: 'text-primary',
+  },
+  {
     phase: 'FUTURE',
     title: 'Live Execution Gate',
     plainEnglish: 'Future phase: Final authorization gate for live execution. Operator confirms intent. Still subject to all safety constraints.',
@@ -161,7 +171,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <div className="text-[13px] font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" /> Runtime Bridge Flow Map
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–37 and future gates. How it all connects.</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–38 and future gates. How it all connects.</div>
       </div>
 
       {/* Current position badge */}
@@ -169,7 +179,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
         <div>
           <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">Current Build Position</div>
-          <div className="text-[10px] text-primary mt-0.5">Phase 37 Complete — Controlled Read-Only Connector Test Plan Installed</div>
+          <div className="text-[10px] text-primary mt-0.5">Phase 38 Complete — Read-Only Backend Route Contract Installed</div>
         </div>
       </div>
 
