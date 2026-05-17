@@ -181,6 +181,53 @@ export default function ControlRoom() {
         </div>
       </div>
 
+      {/* Evidence Snapshot Export Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <div className="space-y-3">
+          <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide">Evidence Snapshot Export</h2>
+          <p className="text-[10px] text-slate-300 leading-relaxed">
+            Export a local proof record of the current safe read-only Control Room baseline.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              const snapshot = {
+                snapshotType: "CONTROL_ROOM_SAFE_READ_ONLY_BASELINE",
+                baselineName: "Safe Read-Only Control Room",
+                baselineStatus: "APPROVED",
+                mode: "PREVIEW / GOVERNED",
+                openClaw: "READ_ONLY",
+                gatewayHealth: "MANUAL_READ_ONLY_CHECK_ONLY",
+                statusTab: "STATIC_SAFETY_SUMMARY_ONLY",
+                execution: "DISABLED",
+                trading: "DISABLED",
+                moneyMovement: "DISABLED",
+                credentialValues: "NEVER_DISPLAYED",
+                generatedAt: new Date().toISOString(),
+                safetyClaims: [
+                  "No command execution",
+                  "No browser control",
+                  "No trading",
+                  "No money movement",
+                  "No credential values displayed",
+                  "Manual read-only gateway check only",
+                ],
+              };
+              const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `control-room-baseline-snapshot-${Date.now()}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="px-4 py-2 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
+          >
+            Export Baseline Snapshot
+          </button>
+        </div>
+      </div>
+
       {/* Tab Bar */}
       <div className="shrink-0 border-b border-border bg-card px-2 flex items-end gap-0 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
