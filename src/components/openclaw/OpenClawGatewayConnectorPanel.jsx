@@ -48,6 +48,7 @@ import OpenClawRuntimeBridgeContractValidator from './OpenClawRuntimeBridgeContr
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
 import OpenClawRuntimeBridgeApprovalQueuePreview from './OpenClawRuntimeBridgeApprovalQueuePreview.jsx';
 import OpenClawRuntimeBridgeApprovalDecisionAuditTrail from './OpenClawRuntimeBridgeApprovalDecisionAuditTrail.jsx';
+import OpenClawPhase32FinalGovernanceSnapshot from './OpenClawPhase32FinalGovernanceSnapshot.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -554,13 +555,14 @@ export default function OpenClawGatewayConnectorPanel() {
                >
                  <div>
                    <div className="text-[11px] uppercase tracking-widest font-bold text-slate-300">OPERATOR ORIENTATION: Runtime Bridge Flow Map</div>
-                   <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–30 and future gates. Start here if you're new.</div>
+                   <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–32 and future gates. Start here if you're new.</div>
                  </div>
                  <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'flowmap' ? 'rotate-90' : ''}`}>▶</span>
                </button>
                {expandedGroup === 'flowmap' === false ? null : (
                  <div className="space-y-5 p-5">
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawRuntimeBridgeFlowMap /></div>
+                   <div className="border-t border-slate-600/40 pt-5"><OpenClawPhase32FinalGovernanceSnapshot /></div>
                  </div>
                )}
              </div>
