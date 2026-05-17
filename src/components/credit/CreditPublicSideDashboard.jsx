@@ -82,6 +82,83 @@ export default function CreditPublicSideDashboard() {
           </Link>
         </div>
 
+        {/* Public Credit Safety Summary Card */}
+        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Public Credit Safety Summary</h2>
+          </div>
+          <div className="p-4 space-y-2">
+            <StatusBadge label="Mode" value="PLANNING_ONLY" type="planning" />
+            <StatusBadge label="Bureau Login" value="NOT_CONNECTED" type="neutral" />
+            <StatusBadge label="Credit Pull" value="DISABLED" type="disabled" />
+            <StatusBadge label="Dispute Automation" value="DISABLED" type="disabled" />
+            <StatusBadge label="Funding Applications" value="DISABLED" type="disabled" />
+            <StatusBadge label="Credential Entry" value="DISABLED" type="disabled" />
+            <StatusBadge label="Client Data Entry" value="DISABLED" type="disabled" />
+            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3 mt-3">
+              <p className="text-[10px] text-slate-300 leading-relaxed">
+                This module is for planning and structure only. It does not connect to credit bureaus, collect client data, submit disputes, pull credit, or apply for funding.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Operator Next Action Card */}
+        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Operator Next Action</h2>
+          </div>
+          <div className="p-4 space-y-3">
+            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
+              <p className="text-[11px] font-mono font-bold text-primary mb-2">Build credit profile intake structure and dispute tracker.</p>
+              <p className="text-[10px] text-slate-300 leading-relaxed">
+                Set up the foundational planning structure for personal and business credit tracking before enabling any bureau connections or client data entry.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70 mb-2">Action Checklist</div>
+              <button
+                type="button"
+                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+              >
+                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
+                <span className="text-[10px] text-slate-300">Review personal credit sections</span>
+              </button>
+              <button
+                type="button"
+                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+              >
+                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
+                <span className="text-[10px] text-slate-300">Review business credit sections</span>
+              </button>
+              <button
+                type="button"
+                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+              >
+                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
+                <span className="text-[10px] text-slate-300">Confirm no bureau login exists</span>
+              </button>
+              <button
+                type="button"
+                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+              >
+                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
+                <span className="text-[10px] text-slate-300">Confirm no credential entry exists</span>
+              </button>
+              <button
+                type="button"
+                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+              >
+                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
+                <span className="text-[10px] text-slate-300">Confirm no automatic dispute submission exists</span>
+              </button>
+              <div className="text-[8px] font-mono text-muted-foreground/50 mt-3">
+                Checklist is local and resets on page refresh.
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Grid of sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* 1. Public Credit Status */}
