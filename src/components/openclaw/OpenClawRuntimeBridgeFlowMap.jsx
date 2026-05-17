@@ -298,6 +298,16 @@ const PHASES = [
     safetyColor: 'text-primary',
   },
   {
+    phase: 55,
+    title: 'OpenClaw Status / Version / Capabilities Evidence Record',
+    plainEnglish: 'Records evidence from Phase 54 read-only results for /status, /version, /capabilities. Validates all safety flags before creating evidence records. Does not call OpenClaw, access secrets, dispatch commands, or execute anything.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase55StatusVersionCapabilitiesEvidenceRecords',
+    safetyStatus: 'OPENCLAW_READ_ONLY_SVC_EVIDENCE',
+    safetyColor: 'text-primary',
+  },
+  {
     phase: 'FUTURE',
     title: 'Live Execution Gate',
     plainEnglish: 'Future phase: Final authorization gate for live execution. Operator confirms intent. Still subject to all safety constraints.',
@@ -331,7 +341,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <div className="text-[13px] font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" /> Runtime Bridge Flow Map
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–54 and future gates. How it all connects.</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–55 and future gates. How it all connects.</div>
       </div>
 
       {/* Current position badge */}
@@ -339,7 +349,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
         <div>
           <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">Current Build Position</div>
-          <div className="text-[10px] text-primary mt-0.5">Phase 54 Complete — OpenClaw Status / Version / Capabilities Read-Only Route Installed</div>
+          <div className="text-[10px] text-primary mt-0.5">Phase 55 Complete — OpenClaw Status / Version / Capabilities Evidence Record Installed</div>
         </div>
       </div>
 
