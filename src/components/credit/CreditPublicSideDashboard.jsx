@@ -17,6 +17,7 @@
 import React from 'react';
 import { CreditCard, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import CreditProfileIntakeStructure from './CreditProfileIntakeStructure';
+import LocalOnlyDisputeTrackerPreview from './LocalOnlyDisputeTrackerPreview';
 
 function StatusBadge({ label, value, type = 'neutral' }) {
   const colors = {
@@ -209,6 +210,9 @@ export default function CreditPublicSideDashboard() {
 
         {/* Credit Profile Intake Structure */}
         <CreditProfileIntakeStructure />
+
+        {/* Local-Only Dispute Tracker Preview */}
+        <LocalOnlyDisputeTrackerPreview />
       </div>
     </div>
   );
