@@ -515,6 +515,55 @@ export default function ControlRoom() {
         </div>
       </div>
 
+      {/* Draft Review Summary Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide mb-2">Draft Review Summary</h2>
+            <p className="text-[10px] text-slate-300 leading-relaxed mb-2">
+              Local page state only. Counts update as drafts are created, modified, or cleared.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-slate-700/30 text-slate-300 border border-slate-600/30 rounded-sm">LOCAL_COUNTS_ONLY</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_BACKEND_METRICS</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXECUTION_APPROVAL</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-sm">RESETS_ON_REFRESH</span>
+            </div>
+          </div>
+
+          {/* Summary Note */}
+          <div className="bg-primary/5 border border-primary/20 rounded-sm px-3 py-2">
+            <p className="text-[9px] font-mono text-slate-300 leading-relaxed">
+              Summary counts are computed from local page state only and reset on refresh.
+            </p>
+          </div>
+
+          {/* Counts Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className="bg-secondary/30 border border-border/30 rounded-sm p-3 text-center">
+              <div className="text-[8px] font-mono uppercase text-muted-foreground/70 mb-1">Total Drafts</div>
+              <div className="text-[14px] font-mono font-bold text-foreground">{drafts.length}</div>
+            </div>
+            <div className="bg-secondary/30 border border-border/30 rounded-sm p-3 text-center">
+              <div className="text-[8px] font-mono uppercase text-muted-foreground/70 mb-1">Local Only</div>
+              <div className="text-[14px] font-mono font-bold text-slate-300">{drafts.filter(d => d.status === 'LOCAL_DRAFT_ONLY').length}</div>
+            </div>
+            <div className="bg-secondary/30 border border-border/30 rounded-sm p-3 text-center">
+              <div className="text-[8px] font-mono uppercase text-muted-foreground/70 mb-1">Ready Review</div>
+              <div className="text-[14px] font-mono font-bold text-amber-400">{drafts.filter(d => d.status === 'READY_FOR_REVIEW').length}</div>
+            </div>
+            <div className="bg-secondary/30 border border-border/30 rounded-sm p-3 text-center">
+              <div className="text-[8px] font-mono uppercase text-muted-foreground/70 mb-1">Reviewed</div>
+              <div className="text-[14px] font-mono font-bold text-primary">{drafts.filter(d => d.status === 'REVIEWED').length}</div>
+            </div>
+            <div className="bg-secondary/30 border border-border/30 rounded-sm p-3 text-center">
+              <div className="text-[8px] font-mono uppercase text-muted-foreground/70 mb-1">Rejected</div>
+              <div className="text-[14px] font-mono font-bold text-destructive">{drafts.filter(d => d.status === 'REJECTED').length}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Controlled Local Drafts Card */}
       <div className="shrink-0 border-b border-border bg-card px-6 py-4">
         <div className="space-y-3">
