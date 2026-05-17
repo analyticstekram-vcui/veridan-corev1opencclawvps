@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Home, Radio, Eye, Terminal, Layers, Shield, Wrench, FileText, Activity } from 'lucide-react';
 import SafetyBoundaryBanner from '@/components/controlroom/SafetyBoundaryBanner';
+import ModuleNav from '@/components/navigation/ModuleNav';
 import OpenClawGatewayHealthPanel from '@/components/terminal/OpenClawGatewayHealthPanel';
 import CRStatusTab from '@/components/controlroom/CRStatusTab';
 import CRMonitoringTab from '@/components/controlroom/CRMonitoringTab';
@@ -40,6 +41,9 @@ export default function ControlRoom() {
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-background font-mono">
+
+      {/* Module Navigation */}
+      <ModuleNav />
 
       {/* Header */}
       <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center gap-4">

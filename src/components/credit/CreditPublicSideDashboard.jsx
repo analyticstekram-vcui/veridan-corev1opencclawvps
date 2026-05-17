@@ -17,6 +17,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CreditCard, Lock, AlertCircle, CheckCircle2, Home } from 'lucide-react';
+import ModuleNav from '@/components/navigation/ModuleNav';
 import CreditProfileIntakeStructure from './CreditProfileIntakeStructure';
 import LocalOnlyDisputeTrackerPreview from './LocalOnlyDisputeTrackerPreview';
 
@@ -59,10 +60,12 @@ function CreditItemCard({ label }) {
 
 export default function CreditPublicSideDashboard() {
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-[1200px] mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
+    <div className="min-h-screen bg-background">
+      <ModuleNav />
+      <div className="p-6">
+        <div className="max-w-[1200px] mx-auto">
+          {/* Header */}
+          <div className="mb-8 flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <CreditCard className="w-6 h-6 text-primary" />
@@ -650,6 +653,7 @@ export default function CreditPublicSideDashboard() {
 
         {/* Local-Only Dispute Tracker Preview */}
         <LocalOnlyDisputeTrackerPreview />
+        </div>
       </div>
     </div>
   );

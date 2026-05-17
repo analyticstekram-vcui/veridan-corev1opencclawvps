@@ -15,6 +15,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Lock, AlertCircle, Briefcase, TrendingUp, Users, Settings, Home } from 'lucide-react';
+import ModuleNav from '@/components/navigation/ModuleNav';
 import BusinessOperationsIntakeStructure from './BusinessOperationsIntakeStructure';
 import LocalOnlyBusinessTaskTrackerPreview from './LocalOnlyBusinessTaskTrackerPreview';
 import LocalOnlyBusinessTaskTracker from './LocalOnlyBusinessTaskTracker';
@@ -75,10 +76,12 @@ function TrackerItem({ title, description }) {
 
 export default function BusinessOperationsDashboard() {
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
+    <div className="min-h-screen bg-background">
+      <ModuleNav />
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="mb-8 flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
               <Briefcase className="w-6 h-6 text-primary" />
@@ -435,6 +438,7 @@ export default function BusinessOperationsDashboard() {
 
         {/* Local-Only Business Task Tracker */}
         <LocalOnlyBusinessTaskTracker />
+        </div>
       </div>
     </div>
   );

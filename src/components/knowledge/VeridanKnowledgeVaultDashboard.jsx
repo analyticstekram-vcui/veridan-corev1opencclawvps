@@ -16,6 +16,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Lock, Info, Home, AlertCircle } from 'lucide-react';
+import ModuleNav from '@/components/navigation/ModuleNav';
 
 function StatusBadge({ label, value, type = 'neutral' }) {
   const colors = {
@@ -52,10 +53,12 @@ function KnowledgeSection({ title, description, items }) {
 
 export default function VeridanKnowledgeVaultDashboard() {
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-[1200px] mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
+    <div className="min-h-screen bg-background">
+      <ModuleNav />
+      <div className="p-6">
+        <div className="max-w-[1200px] mx-auto">
+          {/* Header */}
+          <div className="mb-8 flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <BookOpen className="w-6 h-6 text-primary" />
@@ -350,6 +353,7 @@ export default function VeridanKnowledgeVaultDashboard() {
             <p className="font-bold mb-1">About the Knowledge Vault</p>
             <p>This dashboard is a read-only reference for Veridan Core's internal procedures, rules, and governance. It organizes operational knowledge across trading, credit, entities, and security. In future phases, this will sync with your Obsidian vault as a bidirectional source of truth.</p>
           </div>
+        </div>
         </div>
       </div>
     </div>

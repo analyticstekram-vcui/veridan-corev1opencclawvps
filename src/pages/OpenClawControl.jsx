@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor, ChevronDown, ChevronRight, Settings, AlertTriangle, Home } from 'lucide-react';
+import ModuleNav from '@/components/navigation/ModuleNav';
 import SafeCommandBridge from '@/components/openclaw/SafeCommandBridge';
 import CommandQueuePanel from '@/components/openclaw/CommandQueuePanel';
 import ExecutionReadinessPanel from '@/components/openclaw/ExecutionReadinessPanel';
@@ -216,6 +217,9 @@ export default function OpenClawControl() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }} className="bg-background font-mono">
+
+      {/* Module Navigation */}
+      <ModuleNav />
 
       {/* ── Persistent Header ── */}
       <PersistentHeader currentPage="Control Tower" />

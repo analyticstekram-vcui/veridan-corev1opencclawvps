@@ -19,6 +19,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { TrendingUp, Lock, AlertCircle, CheckCircle2, Home } from 'lucide-react';
+import ModuleNav from '@/components/navigation/ModuleNav';
 
 function StatusBadge({ label, value, type = 'neutral' }) {
   const colors = {
@@ -59,10 +60,12 @@ function CreditItemCard({ label }) {
 
 export default function TradingOperationsDashboard() {
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-[1200px] mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
+    <div className="min-h-screen bg-background">
+      <ModuleNav />
+      <div className="p-6">
+        <div className="max-w-[1200px] mx-auto">
+          {/* Header */}
+          <div className="mb-8 flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <TrendingUp className="w-6 h-6 text-primary" />
@@ -361,6 +364,7 @@ export default function TradingOperationsDashboard() {
             <p className="font-bold mb-1">About Trading Operations</p>
             <p>This dashboard provides read-only visibility into the planning and structure of Veridan Core's trading operations. It is for planning and visibility only. No brokers are connected, no API keys are stored, and no trades (paper or live) are executed. All trading actions require manual operator approval and are disabled until explicitly enabled.</p>
           </div>
+        </div>
         </div>
       </div>
     </div>
