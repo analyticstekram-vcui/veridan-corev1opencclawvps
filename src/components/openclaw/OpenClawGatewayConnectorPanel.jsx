@@ -40,6 +40,7 @@ import OpenClawOperatorApprovalWorkflowPanel from './OpenClawOperatorApprovalWor
 import OpenClawRuntimeImplementationPlanPanel from './OpenClawRuntimeImplementationPlanPanel.jsx';
 import OpenClawRuntimeImplementationPlanFinalLockPanel from './OpenClawRuntimeImplementationPlanFinalLockPanel.jsx';
 import OpenClawRuntimeBridgeImplementationPlanReviewPanel from './OpenClawRuntimeBridgeImplementationPlanReviewPanel.jsx';
+import OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel from './OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -639,6 +640,7 @@ export default function OpenClawGatewayConnectorPanel() {
                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeImplementationPlanPanel /></div>
                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeImplementationPlanFinalLockPanel /></div>
                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeImplementationPlanReviewPanel /></div>
+                  <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel /></div>
                 </div>
               )}
             </div>
