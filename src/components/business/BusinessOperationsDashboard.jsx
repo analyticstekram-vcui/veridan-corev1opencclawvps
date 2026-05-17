@@ -15,6 +15,7 @@
 import React from 'react';
 import { CheckCircle2, Lock, AlertCircle, Briefcase, TrendingUp, Users, Settings } from 'lucide-react';
 import BusinessOperationsIntakeStructure from './BusinessOperationsIntakeStructure';
+import LocalOnlyBusinessTaskTrackerPreview from './LocalOnlyBusinessTaskTrackerPreview';
 
 function StatusBadge({ label, value, type = 'neutral' }) {
   const colors = {
@@ -262,6 +263,9 @@ export default function BusinessOperationsDashboard() {
 
         {/* Business Operations Intake Structure */}
         <BusinessOperationsIntakeStructure />
+
+        {/* Local-Only Business Task Tracker Preview */}
+        <LocalOnlyBusinessTaskTrackerPreview />
       </div>
     </div>
   );
