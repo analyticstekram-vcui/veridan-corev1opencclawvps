@@ -70,6 +70,7 @@ import OpenClawReadOnlyHealthCheckRoute from './OpenClawReadOnlyHealthCheckRoute
 import OpenClawHealthCheckEvidenceRecord from './OpenClawHealthCheckEvidenceRecord.jsx';
 import OpenClawStatusVersionCapabilitiesContract from './OpenClawStatusVersionCapabilitiesContract.jsx';
 import OpenClawStatusVersionCapabilitiesActivationLock from './OpenClawStatusVersionCapabilitiesActivationLock.jsx';
+import OpenClawStatusVersionCapabilitiesReadOnlyRoute from './OpenClawStatusVersionCapabilitiesReadOnlyRoute.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -605,6 +606,7 @@ export default function OpenClawGatewayConnectorPanel() {
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawHealthCheckEvidenceRecord /></div>
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawStatusVersionCapabilitiesContract /></div>
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawStatusVersionCapabilitiesActivationLock /></div>
+                   <div className="border-t border-slate-600/40 pt-5"><OpenClawStatusVersionCapabilitiesReadOnlyRoute /></div>
                  </div>
                )}
              </div>
