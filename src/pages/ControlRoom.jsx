@@ -26,6 +26,13 @@ const TABS = [
 
 export default function ControlRoom() {
   const [activeTab, setActiveTab] = useState('status');
+  const [checklistCompleted, setChecklistCompleted] = useState({
+    openGatewayHealth: false,
+    clickRunCheck: false,
+    confirmReadOnly: false,
+    confirmNoCredentials: false,
+    confirmExecutionDisabled: false,
+  });
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background font-mono">
@@ -111,25 +118,68 @@ export default function ControlRoom() {
           </div>
           <div className="space-y-1.5">
             <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70 mb-2">Action Checklist</div>
-            <div className="flex items-start gap-2">
-              <span className="text-primary font-bold mt-0.5">☐</span>
-              <span className="text-[10px] text-slate-300">Open Gateway Health tab</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-primary font-bold mt-0.5">☐</span>
-              <span className="text-[10px] text-slate-300">Click Run Check</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-primary font-bold mt-0.5">☐</span>
-              <span className="text-[10px] text-slate-300">Confirm READ_ONLY status</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-primary font-bold mt-0.5">☐</span>
-              <span className="text-[10px] text-slate-300">Confirm no credential values are shown</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-primary font-bold mt-0.5">☐</span>
-              <span className="text-[10px] text-slate-300">Confirm execution remains disabled</span>
+            <button
+              type="button"
+              onClick={() => setChecklistCompleted(prev => ({ ...prev, openGatewayHealth: !prev.openGatewayHealth }))}
+              className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+            >
+              <span className={`font-bold mt-0.5 shrink-0 ${checklistCompleted.openGatewayHealth ? 'text-primary' : 'text-primary'}`}>
+                {checklistCompleted.openGatewayHealth ? '☑' : '☐'}
+              </span>
+              <span className={`text-[10px] ${checklistCompleted.openGatewayHealth ? 'text-muted-foreground line-through' : 'text-slate-300'}`}>
+                Open Gateway Health tab
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setChecklistCompleted(prev => ({ ...prev, clickRunCheck: !prev.clickRunCheck }))}
+              className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+            >
+              <span className={`font-bold mt-0.5 shrink-0 ${checklistCompleted.clickRunCheck ? 'text-primary' : 'text-primary'}`}>
+                {checklistCompleted.clickRunCheck ? '☑' : '☐'}
+              </span>
+              <span className={`text-[10px] ${checklistCompleted.clickRunCheck ? 'text-muted-foreground line-through' : 'text-slate-300'}`}>
+                Click Run Check
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setChecklistCompleted(prev => ({ ...prev, confirmReadOnly: !prev.confirmReadOnly }))}
+              className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+            >
+              <span className={`font-bold mt-0.5 shrink-0 ${checklistCompleted.confirmReadOnly ? 'text-primary' : 'text-primary'}`}>
+                {checklistCompleted.confirmReadOnly ? '☑' : '☐'}
+              </span>
+              <span className={`text-[10px] ${checklistCompleted.confirmReadOnly ? 'text-muted-foreground line-through' : 'text-slate-300'}`}>
+                Confirm READ_ONLY status
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setChecklistCompleted(prev => ({ ...prev, confirmNoCredentials: !prev.confirmNoCredentials }))}
+              className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+            >
+              <span className={`font-bold mt-0.5 shrink-0 ${checklistCompleted.confirmNoCredentials ? 'text-primary' : 'text-primary'}`}>
+                {checklistCompleted.confirmNoCredentials ? '☑' : '☐'}
+              </span>
+              <span className={`text-[10px] ${checklistCompleted.confirmNoCredentials ? 'text-muted-foreground line-through' : 'text-slate-300'}`}>
+                Confirm no credential values are shown
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setChecklistCompleted(prev => ({ ...prev, confirmExecutionDisabled: !prev.confirmExecutionDisabled }))}
+              className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
+            >
+              <span className={`font-bold mt-0.5 shrink-0 ${checklistCompleted.confirmExecutionDisabled ? 'text-primary' : 'text-primary'}`}>
+                {checklistCompleted.confirmExecutionDisabled ? '☑' : '☐'}
+              </span>
+              <span className={`text-[10px] ${checklistCompleted.confirmExecutionDisabled ? 'text-muted-foreground line-through' : 'text-slate-300'}`}>
+                Confirm execution remains disabled
+              </span>
+            </button>
+            <div className="text-[8px] font-mono text-muted-foreground/50 mt-3">
+              Checklist progress is local to this page view only and resets on refresh.
             </div>
           </div>
         </div>
