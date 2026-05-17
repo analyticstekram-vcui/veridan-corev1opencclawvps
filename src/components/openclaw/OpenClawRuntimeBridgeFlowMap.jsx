@@ -118,6 +118,16 @@ const PHASES = [
     safetyColor: 'text-primary',
   },
   {
+    phase: 37,
+    title: 'Controlled Read-Only Connector Test Plan',
+    plainEnglish: 'Creates local-only test plans for future controlled read-only connector checks. Defines allowed endpoints, methods, and safety constraints.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase37ControlledReadOnlyConnectorTestPlans',
+    safetyStatus: 'LOCKED',
+    safetyColor: 'text-primary',
+  },
+  {
     phase: 'FUTURE',
     title: 'Live Execution Gate',
     plainEnglish: 'Future phase: Final authorization gate for live execution. Operator confirms intent. Still subject to all safety constraints.',
@@ -151,7 +161,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <div className="text-[13px] font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" /> Runtime Bridge Flow Map
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–36 and future gates. How it all connects.</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–37 and future gates. How it all connects.</div>
       </div>
 
       {/* Current position badge */}
@@ -159,7 +169,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
         <div>
           <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">Current Build Position</div>
-          <div className="text-[10px] text-primary mt-0.5">Phase 36 Complete — Read-Only Connector Validator Installed</div>
+          <div className="text-[10px] text-primary mt-0.5">Phase 37 Complete — Controlled Read-Only Connector Test Plan Installed</div>
         </div>
       </div>
 
