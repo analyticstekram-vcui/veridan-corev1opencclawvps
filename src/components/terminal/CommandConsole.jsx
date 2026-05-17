@@ -5,6 +5,7 @@ import OpenClawGatewayHealthPanel from './OpenClawGatewayHealthPanel';
 import TradingPaperReadinessDashboard from '@/components/trading/TradingPaperReadinessDashboard';
 import TradingPaperContract from '@/components/trading/TradingPaperContract';
 import TradingPaperContractValidator from '@/components/trading/TradingPaperContractValidator';
+import PaperBrokerSandboxConnectorRequirements from '@/components/trading/PaperBrokerSandboxConnectorRequirements';
 
 const riskColors = { low: 'text-primary', medium: 'text-amber-500', high: 'text-destructive' };
 
@@ -318,6 +319,7 @@ export default function CommandConsole({ onOpenClawStatus, onStatusUpdate }) {
           <TradingPaperReadinessDashboard />
           <TradingPaperContract />
           <TradingPaperContractValidator />
+          <PaperBrokerSandboxConnectorRequirements />
         </div>
       )}
     </div>
