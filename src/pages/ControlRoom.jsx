@@ -26,6 +26,10 @@ const TABS = [
 
 export default function ControlRoom() {
   const [activeTab, setActiveTab] = useState('status');
+  const [drafts, setDrafts] = useState([]);
+  const [draftType, setDraftType] = useState('');
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftNotes, setDraftNotes] = useState('');
   const [checklistCompleted, setChecklistCompleted] = useState({
     openGatewayHealth: false,
     clickRunCheck: false,
@@ -508,6 +512,154 @@ export default function ControlRoom() {
           >
             Export Master Baseline Snapshot
           </button>
+        </div>
+      </div>
+
+      {/* Controlled Local Drafts Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide mb-2">Controlled Local Drafts</h2>
+            <p className="text-[10px] text-slate-300 leading-relaxed mb-2">
+              Create temporary browser-session draft notes for future review only.
+            </p>
+            <p className="text-[9px] font-mono text-slate-400 mb-3">
+              Drafts exist only in the current page session and reset on refresh.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-slate-700/30 text-slate-300 border border-slate-600/30 rounded-sm">LOCAL_STATE_ONLY</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_BACKEND_SAVE</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXECUTION</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXTERNAL_CONNECTIONS</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-sm">RESETS_ON_REFRESH</span>
+            </div>
+          </div>
+
+          {/* Draft Creation Form */}
+          <div className="space-y-2 p-3 bg-secondary/20 border border-border/30 rounded-sm">
+            <div className="space-y-1.5">
+              <label className="text-[8px] font-mono font-semibold uppercase text-muted-foreground/70">Draft Type</label>
+              <select
+                value={draftType}
+                onChange={(e) => setDraftType(e.target.value)}
+                className="w-full px-2 py-1 text-[10px] font-mono bg-secondary/40 border border-border/40 text-foreground rounded-sm focus:outline-none focus:border-primary/50"
+              >
+                <option value="">-- Select draft type --</option>
+                <option value="CREDIT_PROFILE_INTAKE_DRAFT">CREDIT_PROFILE_INTAKE_DRAFT</option>
+                <option value="DISPUTE_TRACKER_DRAFT">DISPUTE_TRACKER_DRAFT</option>
+                <option value="BUSINESS_OPERATIONS_DRAFT">BUSINESS_OPERATIONS_DRAFT</option>
+                <option value="KNOWLEDGE_VAULT_DRAFT">KNOWLEDGE_VAULT_DRAFT</option>
+                <option value="TRADING_OPERATIONS_DRAFT">TRADING_OPERATIONS_DRAFT</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[8px] font-mono font-semibold uppercase text-muted-foreground/70">Draft Title</label>
+              <input
+                type="text"
+                placeholder="Enter draft title..."
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                className="w-full px-2 py-1 text-[10px] font-mono bg-secondary/40 border border-border/40 text-foreground rounded-sm focus:outline-none focus:border-primary/50"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[8px] font-mono font-semibold uppercase text-muted-foreground/70">Draft Notes (Optional)</label>
+              <textarea
+                placeholder="Enter draft notes..."
+                value={draftNotes}
+                onChange={(e) => setDraftNotes(e.target.value)}
+                rows="3"
+                className="w-full px-2 py-1 text-[10px] font-mono bg-secondary/40 border border-border/40 text-foreground rounded-sm focus:outline-none focus:border-primary/50 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!draftType || !draftTitle) {
+                    return;
+                  }
+                  const newDraft = {
+                    id: `draft-${Date.now()}`,
+                    draftType,
+                    title: draftTitle,
+                    notes: draftNotes,
+                    status: "LOCAL_DRAFT_ONLY",
+                    execution: "DISABLED",
+                    externalConnections: "DISABLED",
+                    generatedAt: new Date().toISOString(),
+                  };
+                  setDrafts([...drafts, newDraft]);
+                  setDraftType('');
+                  setDraftTitle('');
+                  setDraftNotes('');
+                }}
+                className="px-3 py-1.5 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm disabled:opacity-50"
+                disabled={!draftType || !draftTitle}
+              >
+                Create Local Draft
+              </button>
+              {drafts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDrafts([])}
+                  className="px-3 py-1.5 text-[10px] font-mono font-bold border border-destructive/40 text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors rounded-sm"
+                >
+                  Clear Local Drafts
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Drafts List */}
+          {drafts.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70">
+                {drafts.length} local draft{drafts.length !== 1 ? 's' : ''}
+              </div>
+              {drafts.map((draft) => (
+                <div key={draft.id} className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-[9px] font-mono font-bold text-foreground">{draft.title}</div>
+                      <div className="text-[8px] font-mono text-muted-foreground/70 mt-0.5">{draft.draftType}</div>
+                    </div>
+                    <span className="text-[8px] font-mono px-1.5 py-0.5 bg-slate-700/30 text-slate-300 border border-slate-600/30 rounded-sm shrink-0">
+                      {draft.status}
+                    </span>
+                  </div>
+
+                  {draft.notes && (
+                    <div className="text-[9px] font-mono text-slate-300 py-1.5 px-2 bg-secondary/40 border border-border/20 rounded-sm whitespace-pre-wrap">
+                      {draft.notes}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-[8px] font-mono text-muted-foreground/60 pt-1">
+                    <div>{new Date(draft.generatedAt).toLocaleString()}</div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const blob = new Blob([JSON.stringify(draft, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `draft-${draft.id}-${Date.now()}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="text-[8px] font-mono font-bold px-1.5 py-0.5 border border-primary/30 text-primary hover:bg-primary/10 transition-colors rounded-sm"
+                    >
+                      Export JSON
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
