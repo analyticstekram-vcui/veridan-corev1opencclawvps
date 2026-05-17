@@ -47,6 +47,7 @@ import OpenClawRuntimeBridgeRequestContractPreview from './OpenClawRuntimeBridge
 import OpenClawRuntimeBridgeContractValidator from './OpenClawRuntimeBridgeContractValidator.jsx';
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
 import OpenClawRuntimeBridgeApprovalQueuePreview from './OpenClawRuntimeBridgeApprovalQueuePreview.jsx';
+import OpenClawRuntimeBridgeApprovalDecisionAuditTrail from './OpenClawRuntimeBridgeApprovalDecisionAuditTrail.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -640,6 +641,26 @@ export default function OpenClawGatewayConnectorPanel() {
                {expandedGroup === 'phase31' === false ? null : (
                  <div className="space-y-5 p-5">
                    <div className="border-t border-slate-600 pt-5"><OpenClawRuntimeBridgeApprovalQueuePreview /></div>
+                 </div>
+               )}
+             </div>
+
+             {/* AUDIT TRAIL: Phase 32 — Approval Decision Audit Trail */}
+             <div className="border-2 border-slate-600 rounded-lg overflow-hidden opacity-80">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase32')}
+                 className="w-full px-4 py-3 bg-slate-900/10 border-b-2 border-slate-600 hover:bg-slate-900/20 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-slate-300">AUDIT TRAIL: Phase 32 Approval Decision Audit Trail</div>
+                   <div className="text-[9px] text-slate-500 mt-0.5">Immutable audit trail from Phase 31 approval/denial decisions. Local-only record.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase32' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase32' === false ? null : (
+                 <div className="space-y-5 p-5">
+                   <div className="border-t border-slate-600 pt-5"><OpenClawRuntimeBridgeApprovalDecisionAuditTrail /></div>
                  </div>
                )}
              </div>
