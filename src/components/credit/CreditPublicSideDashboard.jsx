@@ -283,6 +283,133 @@ export default function CreditPublicSideDashboard() {
           </div>
         </div>
 
+        {/* Credit Profile Intake Blueprint Section */}
+        <div className="mt-8 mb-8 bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Credit Profile Intake Blueprint</h2>
+            <p className="text-[9px] font-mono text-slate-400 mt-1">Read-only blueprint of future intake fields. No client data is collected, saved, submitted, or transmitted.</p>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* Personal Credit Profile Blueprint */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-4 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Personal Credit Profile Blueprint</h3>
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Full legal name</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Date of birth</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Current address</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Previous addresses</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Credit monitoring provider</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Current score range</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Negative item inventory</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Inquiry inventory</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Utilization summary</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Dispute status</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Business Credit Profile Blueprint */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-4 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Business Credit Profile Blueprint</h3>
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Legal business name</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>EIN status</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Entity type</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Formation state</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Business address</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Business phone</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Business email</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>D-U-N-S status</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Business bank account readiness</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Vendor tradeline readiness</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Funding readiness</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Safety Constraints */}
+            <div className="bg-destructive/5 border border-destructive/20 rounded-sm overflow-hidden">
+              <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-destructive/80">Safety Constraints</h3>
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No form inputs</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No client data collection</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No credit pull</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No bureau login</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No dispute submission</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No funding application submission</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No credential storage</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Info footer */}
         <div className="mt-8 p-4 bg-secondary/20 border border-border/30 rounded-sm flex items-start gap-3">
           <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
