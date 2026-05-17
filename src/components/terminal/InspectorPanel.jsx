@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PanelRightClose, PanelRightOpen, ShieldAlert } from 'lucide-react';
+import OpenClawStatusRollup from './OpenClawStatusRollup';
 
 const InspectorRow = ({ label, value, color }) => (
   <div className="px-3 py-2 border-b border-border/50">
@@ -62,6 +63,9 @@ export default function InspectorPanel({ collapsed, onToggle, pendingApprovals =
           value={veridanStatus ? 'NOMINAL' : 'INITIALIZING'}
           color={veridanStatus ? 'text-primary' : 'text-amber-500'}
         />
+
+        {/* OpenClaw Archive Rollup */}
+        <OpenClawStatusRollup />
 
         {/* Pending Approvals */}
         <div className="px-3 py-2 border-b border-border/50">
