@@ -4,6 +4,7 @@ import { postCommand, postApprove, getStatus } from '@/lib/veridanApi';
 import OpenClawGatewayHealthPanel from './OpenClawGatewayHealthPanel';
 import TradingPaperReadinessDashboard from '@/components/trading/TradingPaperReadinessDashboard';
 import TradingPaperContract from '@/components/trading/TradingPaperContract';
+import TradingPaperContractValidator from '@/components/trading/TradingPaperContractValidator';
 
 const riskColors = { low: 'text-primary', medium: 'text-amber-500', high: 'text-destructive' };
 
@@ -316,6 +317,7 @@ export default function CommandConsole({ onOpenClawStatus, onStatusUpdate }) {
         <div className="flex-1 overflow-y-auto flex flex-col space-y-4 p-3">
           <TradingPaperReadinessDashboard />
           <TradingPaperContract />
+          <TradingPaperContractValidator />
         </div>
       )}
     </div>
