@@ -238,6 +238,16 @@ const PHASES = [
     safetyColor: 'text-primary',
   },
   {
+    phase: 49,
+    title: 'OpenClaw Health Check Activation Lock',
+    plainEnglish: 'Final local-only activation lock before the first real OpenClaw read-only health check route is implemented. Prepares the checkpoint for Phase 50. Does not call OpenClaw, dispatch commands, access secrets, or execute anything.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase49HealthCheckActivationLocks',
+    safetyStatus: 'LOCKED',
+    safetyColor: 'text-primary',
+  },
+  {
     phase: 'FUTURE',
     title: 'Live Execution Gate',
     plainEnglish: 'Future phase: Final authorization gate for live execution. Operator confirms intent. Still subject to all safety constraints.',
@@ -271,7 +281,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <div className="text-[13px] font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" /> Runtime Bridge Flow Map
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–48 and future gates. How it all connects.</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–49 and future gates. How it all connects.</div>
       </div>
 
       {/* Current position badge */}
@@ -279,7 +289,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
         <div>
           <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">Current Build Position</div>
-          <div className="text-[10px] text-primary mt-0.5">Phase 48 Complete — OpenClaw Health Check Contract Installed</div>
+          <div className="text-[10px] text-primary mt-0.5">Phase 49 Complete — OpenClaw Health Check Activation Lock Installed</div>
         </div>
       </div>
 
