@@ -588,11 +588,11 @@ export default function OpenClawGatewayConnectorPanel() {
                  onClick={() => toggleGroup('proposal_review')}
                  className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
                >
-                 <div>
+                 <div className="flex-1">
                    <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Proposal + Review</div>
-                   <div className="text-[8px] text-slate-500 mt-0.5">Command Proposal Box / Review Panel / Summary (3 panels)</div>
+                   <div className="text-[9px] text-slate-400 mt-1">Create, review, approve, deny, or request changes for local command proposals.</div>
                  </div>
-                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'proposal_review' ? 'rotate-90' : ''}`}>▶</span>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ml-3 shrink-0 ${expandedGroup === 'proposal_review' ? 'rotate-90' : ''}`}>▶</span>
                </button>
                {expandedGroup === 'proposal_review' && (
                  <div className="space-y-3 p-4">
@@ -631,11 +631,11 @@ export default function OpenClawGatewayConnectorPanel() {
                  onClick={() => toggleGroup('evidence_baseline')}
                  className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
                >
-                 <div>
+                 <div className="flex-1">
                    <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Evidence + Baseline</div>
-                   <div className="text-[8px] text-slate-500 mt-0.5">Evidence Export / Baseline Lock (2 panels)</div>
+                   <div className="text-[9px] text-slate-400 mt-1">Export proof records and lock the verified read-only baseline.</div>
                  </div>
-                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'evidence_baseline' ? 'rotate-90' : ''}`}>▶</span>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ml-3 shrink-0 ${expandedGroup === 'evidence_baseline' ? 'rotate-90' : ''}`}>▶</span>
                </button>
                {expandedGroup === 'evidence_baseline' && (
                  <div className="space-y-3 p-4">
@@ -666,11 +666,11 @@ export default function OpenClawGatewayConnectorPanel() {
                  onClick={() => toggleGroup('dryrun_planning')}
                  className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
                >
-                 <div>
+                 <div className="flex-1">
                    <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Planning</div>
-                   <div className="text-[8px] text-slate-500 mt-0.5">Planning Gate / Contract Designer / Contract Validator (3 panels)</div>
+                   <div className="text-[9px] text-slate-400 mt-1">Prepare and validate the contract rules for future dry-run actions.</div>
                  </div>
-                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'dryrun_planning' ? 'rotate-90' : ''}`}>▶</span>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ml-3 shrink-0 ${expandedGroup === 'dryrun_planning' ? 'rotate-90' : ''}`}>▶</span>
                </button>
                {expandedGroup === 'dryrun_planning' && (
                  <div className="space-y-3 p-4">
@@ -709,11 +709,11 @@ export default function OpenClawGatewayConnectorPanel() {
                  onClick={() => toggleGroup('draft_simulation')}
                  className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
                >
-                 <div>
+                 <div className="flex-1">
                    <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Draft + Simulation</div>
-                   <div className="text-[8px] text-slate-500 mt-0.5">Draft Builder / Draft Validator / Preview / Preview Validator (4 panels)</div>
+                   <div className="text-[9px] text-slate-400 mt-1">Create, validate, and preview local-only dry-run action records.</div>
                  </div>
-                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'draft_simulation' ? 'rotate-90' : ''}`}>▶</span>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ml-3 shrink-0 ${expandedGroup === 'draft_simulation' ? 'rotate-90' : ''}`}>▶</span>
                </button>
                {expandedGroup === 'draft_simulation' && (
                  <div className="space-y-3 p-4">
@@ -760,11 +760,11 @@ export default function OpenClawGatewayConnectorPanel() {
                  onClick={() => toggleGroup('result_package')}
                  className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
                >
-                 <div>
+                 <div className="flex-1">
                    <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Result Package</div>
-                   <div className="text-[8px] text-slate-500 mt-0.5">Dry-Run Result Packager (1 panel)</div>
+                   <div className="text-[9px] text-slate-400 mt-1">Package the validated preview into a local dry-run result artifact.</div>
                  </div>
-                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'result_package' ? 'rotate-90' : ''}`}>▶</span>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ml-3 shrink-0 ${expandedGroup === 'result_package' ? 'rotate-90' : ''}`}>▶</span>
                </button>
                {expandedGroup === 'result_package' && (
                  <div className="space-y-3 p-4">
