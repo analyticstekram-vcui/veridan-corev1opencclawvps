@@ -78,9 +78,29 @@ const PHASES = [
     safetyColor: 'text-primary',
   },
   {
+    phase: 33,
+    title: 'Dry-Run Execution Gate Preview',
+    plainEnglish: 'Simulates an execution gate for approved requests without executing anything. Validates all Phase 32 governance locks are in place before simulation.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase33DryRunExecutionGateResults',
+    safetyStatus: 'LOCKED',
+    safetyColor: 'text-primary',
+  },
+  {
+    phase: 34,
+    title: 'Dry-Run Execution Result Simulator',
+    plainEnglish: 'Generates local-only simulated execution results from Phase 33 PASS checks. Shows what would happen in a dry-run without any live action.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase34DryRunExecutionSimulationResults',
+    safetyStatus: 'LOCKED',
+    safetyColor: 'text-primary',
+  },
+  {
     phase: 'FUTURE',
-    title: 'Dry-Run Execution Gate',
-    plainEnglish: 'Future phase: Test-mode execution of approved contracts. Results logged but no live trades, credentials, or money movement.',
+    title: 'OpenClaw Read-Only Connector Dry-Run',
+    plainEnglish: 'Future phase: Connect to OpenClaw read-only connector for test-mode simulation. Results logged but no live trades, credentials, or money movement.',
     built: false,
     required: false,
     storageKey: null,
@@ -121,7 +141,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <div className="text-[13px] font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" /> Runtime Bridge Flow Map
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–32 and future gates. How it all connects.</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–34 and future gates. How it all connects.</div>
       </div>
 
       {/* Current position badge */}
@@ -129,7 +149,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
         <div>
           <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">Current Build Position</div>
-          <div className="text-[10px] text-primary mt-0.5">Phase 32 Complete — Approval Audit Trail Installed and Operational</div>
+          <div className="text-[10px] text-primary mt-0.5">Phase 34 Complete — Dry-Run Simulation Installed and Operational</div>
         </div>
       </div>
 
