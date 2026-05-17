@@ -66,25 +66,22 @@ function runLock() {
   const phase25Lock = loadJSON('openclawRuntimeImplementationPlanFinalLock', null);
   const phase26Review = loadJSON('openclawRuntimeBridgeImplementationPlanReview', null);
 
-  const p25 = phase25Lock ?? {};
-  const p26 = phase26Review ?? {};
-
   // Check if all auth flags in Phase 26 review are false
-  const allAuthFalse = p26.authorizationFlags
-    ? Object.values(p26.authorizationFlags).every(v => v === false)
+  const allAuthFalse = phase26Review?.authorizationFlags
+    ? Object.values(phase26Review.authorizationFlags).every(v => v === false)
     : false;
 
   // Check if any auth flag is true (policy violation)
-  const anyAuthTrue = p26.authorizationFlags
-    ? Object.values(p26.authorizationFlags).some(v => v === true)
+  const anyAuthTrue = phase26Review?.authorizationFlags
+    ? Object.values(phase26Review.authorizationFlags).some(v => v === true)
     : false;
 
   const lockChecks = {
     phase25FinalLockPresent: !!phase25Lock,
-    phase25LockReady: p25.lockStatus === 'LOCK_READY',
+    phase25LockReady: phase25Lock?.lockStatus === 'LOCK_READY',
     phase26ReviewPresent: !!phase26Review,
-    phase26ReviewReady: p26.reviewDecision === 'REVIEW_READY',
-    reviewScopePlanningOnly: p26.reviewScope === 'PLANNING_REVIEW_ONLY_NO_RUNTIME_ACTIVATION',
+    phase26ReviewReady: phase26Review?.reviewDecision === 'REVIEW_READY',
+    reviewScopePlanningOnly: phase26Review?.reviewScope === 'PLANNING_REVIEW_ONLY_NO_RUNTIME_ACTIVATION',
     runtimeBridgeNotActivated: true,
     openClawCallsNotAuthorized: true,
     backendForwardingNotAuthorized: true,
@@ -113,11 +110,11 @@ function runLock() {
     phaseName: PHASE_NAME,
     sourcePhase25FinalLockPresent: !!phase25Lock,
     sourcePhase26ReviewPresent: !!phase26Review,
-    phase25LockStatus: p25.lockStatus ?? null,
-    phase26ReviewDecision: p26.reviewDecision ?? null,
+    phase25LockStatus: phase25Lock?.lockStatus ?? null,
+    phase26ReviewDecision: phase26Review?.reviewDecision ?? null,
     lockChecks,
     lockStatus,
-    authorizationFlags: p26.authorizationFlags ?? {
+    authorizationFlags: phase26Review?.authorizationFlags ?? {
       runtimeBridgeActivationAllowed: false,
       openClawCallAllowed: false,
       backendForwardingAllowed: false,
@@ -228,6 +225,21 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPa
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Source debug row — localStorage keys and parse status */}
+      <div className="bg-secondary/10 border border-border/40 rounded-lg px-3 py-2 space-y-1">
+        <div className="text-[8px] uppercase tracking-widest text-slate-500 font-semibold">Source Keys Debug</div>
+        <div className="text-[8px] text-slate-400 space-y-0.5">
+          <div>
+            <span className="font-mono text-slate-500">openclawRuntimeImplementationPlanFinalLock</span>
+            <span className={`ml-2 font-bold ${phase25Lock ? 'text-primary' : 'text-slate-500'}`}>{phase25Lock ? '✓ PARSED' : '— MISSING'}</span>
+          </div>
+          <div>
+            <span className="font-mono text-slate-500">openclawRuntimeBridgeImplementationPlanReview</span>
+            <span className={`ml-2 font-bold ${phase26Review ? 'text-primary' : 'text-slate-500'}`}>{phase26Review ? '✓ PARSED' : '— MISSING'}</span>
+          </div>
         </div>
       </div>
 
