@@ -59,6 +59,46 @@ export default function ControlRoom() {
       {/* Safety Banner */}
       <SafetyBoundaryBanner />
 
+      {/* Safety Summary Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4 space-y-3">
+        <div>
+          <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide mb-3">Control Room Safety Summary</h2>
+          <p className="text-[10px] text-slate-300 leading-relaxed">
+            This page can monitor and review system state, but it cannot execute commands, place trades, move money, or reveal secrets.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+          <div className="bg-secondary/30 border border-border/50 rounded-sm px-3 py-2">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">Mode</div>
+            <div className="text-[10px] font-mono font-bold text-slate-300">PREVIEW</div>
+          </div>
+          <div className="bg-secondary/30 border border-border/50 rounded-sm px-3 py-2">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">OpenClaw</div>
+            <div className="text-[10px] font-mono font-bold text-amber-500">READ_ONLY</div>
+          </div>
+          <div className="bg-secondary/30 border border-border/50 rounded-sm px-3 py-2">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">Execution</div>
+            <div className="text-[10px] font-mono font-bold text-destructive">DISABLED</div>
+          </div>
+          <div className="bg-secondary/30 border border-border/50 rounded-sm px-3 py-2">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">Browser Control</div>
+            <div className="text-[10px] font-mono font-bold text-destructive">NOT ACTIVE</div>
+          </div>
+          <div className="bg-secondary/30 border border-border/50 rounded-sm px-3 py-2">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">Trading</div>
+            <div className="text-[10px] font-mono font-bold text-destructive">DISABLED</div>
+          </div>
+          <div className="bg-secondary/30 border border-border/50 rounded-sm px-3 py-2">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">Money Movement</div>
+            <div className="text-[10px] font-mono font-bold text-destructive">DISABLED</div>
+          </div>
+          <div className="bg-secondary/30 border border-border/50 rounded-sm px-3 py-2">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">Credential Values</div>
+            <div className="text-[10px] font-mono font-bold text-destructive">NEVER DISPLAYED</div>
+          </div>
+        </div>
+      </div>
+
       {/* Tab Bar */}
       <div className="shrink-0 border-b border-border bg-card px-2 flex items-end gap-0 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
