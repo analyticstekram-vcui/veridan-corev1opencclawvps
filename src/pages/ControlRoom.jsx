@@ -228,6 +228,76 @@ export default function ControlRoom() {
         </div>
       </div>
 
+      {/* Evidence Archive Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <div className="space-y-3">
+          <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide">Evidence Archive</h2>
+          <p className="text-[10px] text-slate-300 leading-relaxed">
+            This archive lists local proof records for read-only monitoring and governance review.
+          </p>
+          
+          {/* Record 1: Baseline Snapshot Exported */}
+          <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+            <div className="px-3 py-2 bg-secondary/40 border-b border-border/30 flex items-center justify-between">
+              <span className="text-[9px] font-mono font-bold uppercase text-slate-300">BASELINE_SNAPSHOT_EXPORTED</span>
+              <span className="text-[8px] font-mono px-2 py-1 bg-primary/10 text-primary border border-primary/30 rounded-sm">APPROVED</span>
+            </div>
+            <div className="px-3 py-2 space-y-1">
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Baseline</span>
+                <span className="text-foreground">Safe Read-Only Control Room</span>
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Status</span>
+                <span className="text-primary">APPROVED</span>
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Execution</span>
+                <span className="text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Trading</span>
+                <span className="text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Money Movement</span>
+                <span className="text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Credential Values</span>
+                <span className="text-destructive">NEVER_DISPLAYED</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Record 2: Gateway Health Verified */}
+          <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+            <div className="px-3 py-2 bg-secondary/40 border-b border-border/30 flex items-center justify-between">
+              <span className="text-[9px] font-mono font-bold uppercase text-slate-300">GATEWAY_HEALTH_VERIFIED</span>
+              <span className="text-[8px] font-mono px-2 py-1 bg-primary/10 text-primary border border-primary/30 rounded-sm">ONLINE</span>
+            </div>
+            <div className="px-3 py-2 space-y-1">
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Gateway Status</span>
+                <span className="text-primary">ONLINE — ALL ENDPOINTS REACHABLE</span>
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Endpoints</span>
+                <span className="text-foreground">/health, /status, /version, /capabilities</span>
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Execution</span>
+                <span className="text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono py-0.5">
+                <span className="text-muted-foreground/70">Mode</span>
+                <span className="text-amber-400">READ_ONLY</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Tab Bar */}
       <div className="shrink-0 border-b border-border bg-card px-2 flex items-end gap-0 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
