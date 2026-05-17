@@ -81,6 +81,7 @@ import OpenClawProposalReviewEvidenceExport from './OpenClawProposalReviewEviden
 import OpenClawReadOnlyGovernanceBaselineLock from './OpenClawReadOnlyGovernanceBaselineLock.jsx';
 import OpenClawDryRunExecutionPlanningGate from './OpenClawDryRunExecutionPlanningGate.jsx';
 import OpenClawDryRunActionContractDesigner from './OpenClawDryRunActionContractDesigner.jsx';
+import OpenClawDryRunActionContractValidator from './OpenClawDryRunActionContractValidator.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -620,6 +621,16 @@ export default function OpenClawGatewayConnectorPanel() {
                </div>
                <div className="p-4">
                  <OpenClawDryRunActionContractDesigner />
+               </div>
+             </div>
+
+             {/* ── DRY-RUN ACTION CONTRACT VALIDATOR ── */}
+             <div className="border border-border/60 rounded-lg overflow-hidden">
+               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
+                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Contract Validator</div>
+               </div>
+               <div className="p-4">
+                 <OpenClawDryRunActionContractValidator />
                </div>
              </div>
 
