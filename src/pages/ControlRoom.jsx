@@ -348,6 +348,94 @@ export default function ControlRoom() {
         </div>
       </div>
 
+      {/* Master Baseline Index Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide mb-2">Master Baseline Index</h2>
+            <p className="text-[10px] text-slate-300 leading-relaxed">
+              This index lists approved safe baselines across Veridan Core modules.
+            </p>
+          </div>
+
+          {/* Baseline Records */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono text-slate-300">Control Room</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-slate-400">Safe Read-Only Control Room</span>
+                <span className="text-[8px] font-mono px-2 py-0.5 bg-primary/10 text-primary border border-primary/30 rounded-sm">APPROVED</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono text-slate-300">Public Credit</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-slate-400">Public Credit Planning Baseline</span>
+                <span className="text-[8px] font-mono px-2 py-0.5 bg-primary/10 text-primary border border-primary/30 rounded-sm">APPROVED</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono text-slate-300">Business Operations</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-slate-400">Business Operations Planning Baseline</span>
+                <span className="text-[8px] font-mono px-2 py-0.5 bg-primary/10 text-primary border border-primary/30 rounded-sm">APPROVED</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono text-slate-300">Knowledge Vault</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-slate-400">Knowledge Vault Planning Baseline</span>
+                <span className="text-[8px] font-mono px-2 py-0.5 bg-primary/10 text-primary border border-primary/30 rounded-sm">APPROVED</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono text-slate-300">OpenClaw Gateway Health</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-slate-400">Manual Read-Only Gateway Check</span>
+                <span className="text-[8px] font-mono px-2 py-0.5 bg-primary/10 text-primary border border-primary/30 rounded-sm">VERIFIED</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Global Safety State */}
+          <div className="pt-2 border-t border-border/30">
+            <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70 mb-2">Global Safety State</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/10 border border-border/20 rounded-sm">
+                <span className="text-[8px] text-muted-foreground/70">Execution</span>
+                <span className="text-[8px] font-bold text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/10 border border-border/20 rounded-sm">
+                <span className="text-[8px] text-muted-foreground/70">Trading</span>
+                <span className="text-[8px] font-bold text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/10 border border-border/20 rounded-sm">
+                <span className="text-[8px] text-muted-foreground/70">Money Movement</span>
+                <span className="text-[8px] font-bold text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/10 border border-border/20 rounded-sm">
+                <span className="text-[8px] text-muted-foreground/70">Credential Values</span>
+                <span className="text-[8px] font-bold text-destructive">NEVER_DISPLAYED</span>
+              </div>
+              <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/10 border border-border/20 rounded-sm">
+                <span className="text-[8px] text-muted-foreground/70">Backend Expansion</span>
+                <span className="text-[8px] font-bold text-destructive">NOT_ADDED</span>
+              </div>
+              <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/10 border border-border/20 rounded-sm">
+                <span className="text-[8px] text-muted-foreground/70">External Connectors</span>
+                <span className="text-[8px] font-bold text-destructive">DISABLED</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
+            <p className="text-[10px] text-slate-300 leading-relaxed">
+              This index is display-only and does not validate, fetch, sync, or execute anything.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Tab Bar */}
       <div className="shrink-0 border-b border-border bg-card px-2 flex items-end gap-0 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
