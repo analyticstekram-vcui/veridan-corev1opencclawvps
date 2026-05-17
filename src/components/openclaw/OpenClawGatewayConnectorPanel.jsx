@@ -79,6 +79,7 @@ import OpenClawProposalReviewPanel from './OpenClawProposalReviewPanel.jsx';
 import OpenClawProposalReviewSummaryDashboard from './OpenClawProposalReviewSummaryDashboard.jsx';
 import OpenClawProposalReviewEvidenceExport from './OpenClawProposalReviewEvidenceExport.jsx';
 import OpenClawReadOnlyGovernanceBaselineLock from './OpenClawReadOnlyGovernanceBaselineLock.jsx';
+import OpenClawDryRunExecutionPlanningGate from './OpenClawDryRunExecutionPlanningGate.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -598,6 +599,16 @@ export default function OpenClawGatewayConnectorPanel() {
                </div>
                <div className="p-4">
                  <OpenClawReadOnlyGovernanceBaselineLock />
+               </div>
+             </div>
+
+             {/* ── DRY-RUN EXECUTION PLANNING GATE ── */}
+             <div className="border border-border/60 rounded-lg overflow-hidden">
+               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
+                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Controlled Dry-Run Execution Planning Gate</div>
+               </div>
+               <div className="p-4">
+                 <OpenClawDryRunExecutionPlanningGate />
                </div>
              </div>
 
