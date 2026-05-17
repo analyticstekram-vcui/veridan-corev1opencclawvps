@@ -395,6 +395,13 @@ export default function ControlRoom() {
                 <span className="text-[8px] font-mono px-2 py-0.5 bg-primary/10 text-primary border border-primary/30 rounded-sm">VERIFIED</span>
               </div>
             </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono text-slate-300">Trading Operations</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-slate-400">Trading Operations Planning Baseline</span>
+                <span className="text-[8px] font-mono px-2 py-0.5 bg-primary/10 text-primary border border-primary/30 rounded-sm">APPROVED</span>
+              </div>
+            </div>
           </div>
 
           {/* Global Safety State */}
