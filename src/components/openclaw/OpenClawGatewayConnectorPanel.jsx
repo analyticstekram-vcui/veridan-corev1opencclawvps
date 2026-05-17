@@ -39,6 +39,7 @@ import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummar
 import OpenClawOperatorApprovalWorkflowPanel from './OpenClawOperatorApprovalWorkflowPanel.jsx';
 import OpenClawRuntimeImplementationPlanPanel from './OpenClawRuntimeImplementationPlanPanel.jsx';
 import OpenClawRuntimeImplementationPlanFinalLockPanel from './OpenClawRuntimeImplementationPlanFinalLockPanel.jsx';
+import OpenClawRuntimeBridgeImplementationPlanReviewPanel from './OpenClawRuntimeBridgeImplementationPlanReviewPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -619,24 +620,25 @@ export default function OpenClawGatewayConnectorPanel() {
               )}
             </div>
 
-            {/* Group 5: Phases 24–25 — Operator Approval + Runtime Planning */}
+            {/* Group 5: Phases 24–26 — Operator Approval + Runtime Planning + Review */}
             <div className="border border-border rounded-lg overflow-hidden">
               <button
                 type="button"
-                onClick={() => toggleGroup('phase2425')}
+                onClick={() => toggleGroup('phase2426')}
                 className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
               >
                 <div>
-                  <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">Phases 24–25 — Operator Approval + Runtime Planning</div>
-                  <div className="text-[9px] text-slate-400 mt-0.5">Operator approval / runtime implementation plan / plan lock (3 panels)</div>
+                  <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">Phases 24–26 — Operator Approval + Runtime Planning + Review</div>
+                  <div className="text-[9px] text-slate-400 mt-0.5">Operator approval / runtime plan / plan lock / plan review (4 panels)</div>
                 </div>
-                <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase2425' ? 'rotate-90' : ''}`}>▶</span>
+                <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase2426' ? 'rotate-90' : ''}`}>▶</span>
               </button>
-              {expandedGroup === 'phase2425' && (
+              {expandedGroup === 'phase2426' && (
                 <div className="space-y-5 p-5">
                   <div className="border-t border-border/40 pt-5"><OpenClawOperatorApprovalWorkflowPanel /></div>
                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeImplementationPlanPanel /></div>
                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeImplementationPlanFinalLockPanel /></div>
+                  <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeImplementationPlanReviewPanel /></div>
                 </div>
               )}
             </div>
