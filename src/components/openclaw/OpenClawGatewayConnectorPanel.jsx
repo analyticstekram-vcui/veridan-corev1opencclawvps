@@ -501,173 +501,209 @@ export default function OpenClawGatewayConnectorPanel() {
         )}
 
         {/* Tab Content - Evidence Archive */}
-        {activeTab === 'archive' && (
-          <div className="space-y-5 border-t border-border/40 pt-5">
-            
-            {/* Summary Panel - Always Visible */}
-            <div className="bg-card border border-primary/20 rounded-lg p-4 space-y-3">
-              <OpenClawGovernancePhaseSummaryPanel />
-              <button
-                type="button"
-                onClick={generateLocalGovernanceBaseline}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-bold hover:bg-amber-500/20 transition-colors rounded"
-              >
-                ✓ Generate Local Governance Baseline
-              </button>
-              <div className="text-[8px] text-slate-500">
-                Creates test baseline packets for Phases 14–23 in localStorage (development only). No backend calls, no execution.
-              </div>
-            </div>
+         {activeTab === 'archive' && (
+           <div className="space-y-5 border-t border-border/40 pt-5">
 
-            {/* Group 1: Phase 14 — Monitoring Evidence */}
-            <div className="border border-border rounded-lg overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleGroup('phase14')}
-                className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">Phase 14 — Monitoring Evidence</div>
-                  <div className="text-[9px] text-slate-400 mt-0.5">Final Lock / Baseline Archive / Export / Verify (4 panels)</div>
-                </div>
-                <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase14' ? 'rotate-90' : ''}`}>▶</span>
-              </button>
-              {expandedGroup === 'phase14' && (
-                <div className="space-y-5 p-5">
-                  <div className="border-t border-border/40 pt-5"><FinalLockPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BaselineArchiveManifestPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BaselineExportPacketPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BaselineVerifyPacketPanel /></div>
-                </div>
-              )}
-            </div>
-
-            {/* Group 2: Phases 15–17 — Browser Observation Governance */}
-            <div className="border border-border rounded-lg overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleGroup('phase1517')}
-                className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">Phases 15–17 — Browser Observation Governance</div>
-                  <div className="text-[9px] text-slate-400 mt-0.5">Design / Policy / Approval / Routes / Simulation / Proposal / Contract (13 panels)</div>
-                </div>
-                <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase1517' ? 'rotate-90' : ''}`}>▶</span>
-              </button>
-              {expandedGroup === 'phase1517' && (
-                <div className="space-y-5 p-5">
-                  <div className="border-t border-border/40 pt-5"><ReadOnlyBrowserObservationDesignPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationPolicyMatrixPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationApprovalRulesPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationRoutePlannerPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationSimulationPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationEvidenceExportPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationFinalLockPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationProposalQueuePanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationProposalReviewLedgerPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationReadinessGatePanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationProposalFinalLockPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationExecutionContractPreviewPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationExecutionContractFinalLockPanel /></div>
-                </div>
-              )}
-            </div>
-
-            {/* Group 3: Phases 18–19 — Dry-Run Validation + Audit */}
-            <div className="border border-border rounded-lg overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleGroup('phase1819')}
-                className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">Phases 18–19 — Dry-Run Validation + Audit</div>
-                  <div className="text-[9px] text-slate-400 mt-0.5">Contract validator / validator lock / audit ledger (3 panels)</div>
-                </div>
-                <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase1819' ? 'rotate-90' : ''}`}>▶</span>
-              </button>
-              {expandedGroup === 'phase1819' && (
-                <div className="space-y-5 p-5">
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationContractValidatorPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationContractValidatorFinalLockPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><BrowserObservationDryRunAuditLedgerPanel /></div>
-                </div>
-              )}
-            </div>
-
-            {/* Group 4: Phases 20–23 — Bridge Governance */}
-            <div className="border border-border rounded-lg overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleGroup('phase2023')}
-                className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">Phases 20–23 — Bridge Governance</div>
-                  <div className="text-[9px] text-slate-400 mt-0.5">Bridge design / bridge validator / audit / readiness (7 panels)</div>
-                </div>
-                <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase2023' ? 'rotate-90' : ''}`}>▶</span>
-              </button>
-              {expandedGroup === 'phase2023' && (
-                <div className="space-y-5 p-5">
-                  <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeDesignPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeDesignFinalLockPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeValidatorPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeValidatorFinalLockPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeDryRunAuditLedgerPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawRuntimeBridgeReadinessGatePanel /></div>
-                  <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawRuntimeBridgeReadinessFinalLockPanel /></div>
-                </div>
-              )}
-            </div>
-
-            {/* Group 5: Phases 24–26 — Operator Approval + Runtime Planning + Review */}
-            <div className="border border-border rounded-lg overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleGroup('phase2426')}
-                className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">Phases 24–26 — Operator Approval + Runtime Planning + Review</div>
-                  <div className="text-[9px] text-slate-400 mt-0.5">Operator approval / runtime plan / plan lock / plan review (4 panels)</div>
-                </div>
-                <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase2426' ? 'rotate-90' : ''}`}>▶</span>
-              </button>
-              {expandedGroup === 'phase2426' && (
-                <div className="space-y-5 p-5">
-                  <div className="border-t border-border/40 pt-5"><OpenClawOperatorApprovalWorkflowPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><OpenClawRuntimeImplementationPlanPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><OpenClawRuntimeImplementationPlanFinalLockPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeImplementationPlanReviewPanel /></div>
-                  <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel /></div>
-                </div>
-              )}
-              </div>
-
-              {/* Group 5 (Extended): Phase 27 — Governance Checkpoint Index */}
-              <div className="border border-border rounded-lg overflow-hidden">
-              <button
-               type="button"
-               onClick={() => toggleGroup('phase27')}
-               className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
-              >
-               <div>
-                 <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">Phase 27 — Governance Cleanup + Checkpoint Index</div>
-                 <div className="text-[9px] text-slate-400 mt-0.5">Checkpoint index summarizing Phases 14-26 completion (1 panel)</div>
+             {/* Summary Panel - Always Visible */}
+             <div className="bg-card border border-primary/20 rounded-lg p-4 space-y-3">
+               <OpenClawGovernancePhaseSummaryPanel />
+               <button
+                 type="button"
+                 onClick={generateLocalGovernanceBaseline}
+                 className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-bold hover:bg-amber-500/20 transition-colors rounded"
+               >
+                 ✓ Generate Local Governance Baseline
+               </button>
+               <div className="text-[8px] text-slate-500">
+                 Creates test baseline packets for Phases 14–23 in localStorage (development only). No backend calls, no execution.
                </div>
-               <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase27' ? 'rotate-90' : ''}`}>▶</span>
-              </button>
-              {expandedGroup === 'phase27' && (
-               <div className="space-y-5 p-5">
-                 <div className="border-t border-border/40 pt-5"><OpenClawGovernanceCheckpointIndexPanel /></div>
-               </div>
-              )}
-              </div>
+             </div>
 
-              </div>
-              )}
+             {/* CHECKPOINT: Phase 27 — Governance Index (HIGHEST PRIORITY) */}
+             <div className="border-2 border-primary rounded-lg overflow-hidden bg-primary/2">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase27')}
+                 className="w-full px-4 py-3 bg-primary/10 border-b-2 border-primary hover:bg-primary/15 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-primary">CHECKPOINT: Phase 27 Governance Index</div>
+                   <div className="text-[9px] text-primary/70 mt-0.5">Single source of truth for governance completion. Required before Phase 28.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-primary transition-transform ${expandedGroup === 'phase27' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase27' === false ? null : (
+                 <div className="space-y-5 p-5">
+                   <div className="border-t border-primary/20 pt-5"><OpenClawGovernanceCheckpointIndexPanel /></div>
+                 </div>
+               )}
+             </div>
+
+             {/* ACTIVE: Phases 24–26 — Governance Approval Chain */}
+             <div className="border-2 border-primary/40 rounded-lg overflow-hidden">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase2426')}
+                 className="w-full px-4 py-3 bg-primary/5 border-b-2 border-primary/40 hover:bg-primary/10 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">ACTIVE: Governance Approval Chain — Phases 24–26</div>
+                   <div className="text-[9px] text-slate-400 mt-0.5">In use. Operator approval → Runtime planning → Review. 5 panels.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase2426' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase2426' === false ? null : (
+                 <div className="space-y-5 p-5">
+                   <div className="border-t border-border/40 pt-5"><OpenClawOperatorApprovalWorkflowPanel /></div>
+                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeImplementationPlanPanel /></div>
+                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeImplementationPlanFinalLockPanel /></div>
+                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeImplementationPlanReviewPanel /></div>
+                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel /></div>
+                 </div>
+               )}
+             </div>
+
+             {/* LEGACY BASELINE: Phases 14–23 — Initial Governance Summary */}
+             <div className="border border-slate-600 rounded-lg overflow-hidden opacity-80">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase1423')}
+                 className="w-full px-4 py-3 bg-slate-900/30 border-b border-slate-600 hover:bg-slate-900/40 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-slate-300">LEGACY BASELINE: Phase 14–23 Governance Summary</div>
+                   <div className="text-[9px] text-slate-500 mt-0.5">Initial Governance Baseline — COMPLETE / Reference Only</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase1423' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase1423' && (
+                 <div className="space-y-5 p-5">
+                   {/* Group 1: Phase 14 — Monitoring Evidence */}
+                   <div className="border border-border rounded-lg overflow-hidden">
+                     <button
+                       type="button"
+                       onClick={() => toggleGroup('phase14')}
+                       className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
+                     >
+                       <div>
+                         <div className="text-[10px] uppercase tracking-widest font-bold text-foreground">Phase 14 — Monitoring Evidence</div>
+                         <div className="text-[8px] text-slate-400 mt-0.5">Final Lock / Baseline Archive / Export / Verify (4 panels)</div>
+                       </div>
+                       <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase14' ? 'rotate-90' : ''}`}>▶</span>
+                     </button>
+                     {expandedGroup === 'phase14' && (
+                       <div className="space-y-5 p-5">
+                         <div className="border-t border-border/40 pt-5"><FinalLockPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BaselineArchiveManifestPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BaselineExportPacketPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BaselineVerifyPacketPanel /></div>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               )}
+             </div>
+
+             {/* ADVANCED / FUTURE: Phases 15–19 — Browser Observation & Validation */}
+             <div className="border border-slate-600 rounded-lg overflow-hidden opacity-70">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase1519')}
+                 className="w-full px-4 py-3 bg-slate-900/30 border-b border-slate-600 hover:bg-slate-900/40 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-slate-300">ADVANCED / FUTURE: Browser Observation Governance</div>
+                   <div className="text-[9px] text-slate-500 mt-0.5">Not required for current Phase 27 checkpoint. Future capability reference only.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase1519' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase1519' && (
+                 <div className="space-y-5 p-5">
+                   {/* Group 2: Phases 15–17 */}
+                   <div className="border border-border rounded-lg overflow-hidden">
+                     <button
+                       type="button"
+                       onClick={() => toggleGroup('phase1517')}
+                       className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
+                     >
+                       <div>
+                         <div className="text-[10px] uppercase tracking-widest font-bold text-foreground">Phases 15–17 — Browser Observation Design</div>
+                         <div className="text-[8px] text-slate-400 mt-0.5">Design / Policy / Approval / Routes / Simulation / Proposal / Contract (7 panels)</div>
+                       </div>
+                       <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase1517' ? 'rotate-90' : ''}`}>▶</span>
+                     </button>
+                     {expandedGroup === 'phase1517' && (
+                       <div className="space-y-5 p-5">
+                         <div className="border-t border-border/40 pt-5"><ReadOnlyBrowserObservationDesignPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationPolicyMatrixPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationApprovalRulesPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationRoutePlannerPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationSimulationPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationEvidenceExportPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationFinalLockPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationProposalQueuePanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationProposalReviewLedgerPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationReadinessGatePanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationProposalFinalLockPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationExecutionContractPreviewPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationExecutionContractFinalLockPanel /></div>
+                       </div>
+                     )}
+                   </div>
+
+                   {/* Group 3: Phases 18–19 */}
+                   <div className="border border-border rounded-lg overflow-hidden">
+                     <button
+                       type="button"
+                       onClick={() => toggleGroup('phase1819')}
+                       className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
+                     >
+                       <div>
+                         <div className="text-[10px] uppercase tracking-widest font-bold text-foreground">Phases 18–19 — Dry-Run Validation + Audit</div>
+                         <div className="text-[8px] text-slate-400 mt-0.5">Contract validator / validator lock / audit ledger (3 panels)</div>
+                       </div>
+                       <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase1819' ? 'rotate-90' : ''}`}>▶</span>
+                     </button>
+                     {expandedGroup === 'phase1819' && (
+                       <div className="space-y-5 p-5">
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationContractValidatorPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationContractValidatorFinalLockPanel /></div>
+                         <div className="border-t border-border/40 pt-5"><BrowserObservationDryRunAuditLedgerPanel /></div>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               )}
+             </div>
+
+             {/* ADVANCED / REFERENCE: Phases 20–23 — Bridge Design & Validation */}
+             <div className="border border-slate-600 rounded-lg overflow-hidden opacity-70">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase2023')}
+                 className="w-full px-4 py-3 bg-slate-900/30 border-b border-slate-600 hover:bg-slate-900/40 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-slate-300">ADVANCED / REFERENCE: Bridge Design & Validation</div>
+                   <div className="text-[9px] text-slate-500 mt-0.5">Reference only. Runtime bridge activation is still not authorized.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase2023' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase2023' && (
+                 <div className="space-y-5 p-5">
+                   <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeDesignPanel /></div>
+                   <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeDesignFinalLockPanel /></div>
+                   <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeValidatorPanel /></div>
+                   <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeValidatorFinalLockPanel /></div>
+                   <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawBridgeDryRunAuditLedgerPanel /></div>
+                   <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawRuntimeBridgeReadinessGatePanel /></div>
+                   <div className="border-t border-border/40 pt-5"><ReadOnlyOpenClawRuntimeBridgeReadinessFinalLockPanel /></div>
+                 </div>
+               )}
+             </div>
+
+           </div>
+         )}
 
         {/* Tab Content - Diagnostics */}
         {activeTab === 'diagnostics' && (
