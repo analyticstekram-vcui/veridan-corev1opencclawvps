@@ -6,6 +6,7 @@ import TradingPaperReadinessDashboard from '@/components/trading/TradingPaperRea
 import TradingPaperContract from '@/components/trading/TradingPaperContract';
 import TradingPaperContractValidator from '@/components/trading/TradingPaperContractValidator';
 import PaperBrokerSandboxConnectorRequirements from '@/components/trading/PaperBrokerSandboxConnectorRequirements';
+import PaperConnectorContract from '@/components/trading/PaperConnectorContract';
 
 const riskColors = { low: 'text-primary', medium: 'text-amber-500', high: 'text-destructive' };
 
@@ -320,6 +321,7 @@ export default function CommandConsole({ onOpenClawStatus, onStatusUpdate }) {
           <TradingPaperContract />
           <TradingPaperContractValidator />
           <PaperBrokerSandboxConnectorRequirements />
+          <PaperConnectorContract />
         </div>
       )}
     </div>
