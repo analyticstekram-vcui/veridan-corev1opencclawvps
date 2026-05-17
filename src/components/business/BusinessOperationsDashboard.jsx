@@ -14,6 +14,7 @@
  */
 import React from 'react';
 import { CheckCircle2, Lock, AlertCircle, Briefcase, TrendingUp, Users, Settings } from 'lucide-react';
+import BusinessOperationsIntakeStructure from './BusinessOperationsIntakeStructure';
 
 function StatusBadge({ label, value, type = 'neutral' }) {
   const colors = {
@@ -258,6 +259,9 @@ export default function BusinessOperationsDashboard() {
             <p>This dashboard provides planning visibility and organization for Veridan Core's income-producing business operations. No bank connections, payment processing, client data entry, or live business execution are enabled at this phase. This is a read-only planning tool for operator coordination and roadmap visibility only.</p>
           </div>
         </div>
+
+        {/* Business Operations Intake Structure */}
+        <BusinessOperationsIntakeStructure />
       </div>
     </div>
   );
