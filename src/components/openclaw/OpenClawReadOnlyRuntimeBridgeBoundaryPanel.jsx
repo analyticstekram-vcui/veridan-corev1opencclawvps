@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { Copy, CheckCircle2, Trash2, ShieldCheck, AlertTriangle, XCircle, Clock } from 'lucide-react';
 
 const BOUNDARY_KEY = 'openclawReadOnlyRuntimeBridgeBoundaryDefinition';
+const PHASE27_KEY = 'openclawGovernanceCheckpointIndex';
+const PHASE26_KEY = 'openclawRuntimeBridgeImplementationPlanReviewFinalLock';
 
 const ALLOWED_OBSERVATION_TYPES = [
   'PAGE_TITLE_READ',
@@ -130,12 +132,35 @@ function loadJSON(key, fallback) {
 }
 
 function generateBoundaryDefinition() {
-  const phase27Checkpoint = loadJSON('openclawGovernanceCheckpointIndex', null);
-  const phase26FinalLock = loadJSON('openclawRuntimeBridgeImplementationPlanReviewFinalLock', null);
+  // Read Phase 27 checkpoint from localStorage
+  let phase27Checkpoint = null;
+  let phase27CheckpointValid = false;
+  try {
+    const raw27 = localStorage.getItem('openclawGovernanceCheckpointIndex');
+    if (raw27) {
+      phase27Checkpoint = JSON.parse(raw27);
+      if (phase27Checkpoint && phase27Checkpoint.checkpointName === 'OPENCLAW_GOVERNANCE_CHECKPOINT_INDEX') {
+        phase27CheckpointValid = true;
+      }
+    }
+  } catch {}
+
+  // Read Phase 26 final lock from localStorage
+  let phase26FinalLock = null;
+  let phase26FinalLockValid = false;
+  try {
+    const raw26 = localStorage.getItem('openclawRuntimeBridgeImplementationPlanReviewFinalLock');
+    if (raw26) {
+      phase26FinalLock = JSON.parse(raw26);
+      if (phase26FinalLock && phase26FinalLock.lockName === 'OPENCLAW_RUNTIME_BRIDGE_IMPLEMENTATION_PLAN_REVIEW_FINAL_LOCK') {
+        phase26FinalLockValid = true;
+      }
+    }
+  } catch {}
 
   const boundaryChecks = {
-    phase27CheckpointPresent: !!phase27Checkpoint,
-    phase26FinalLockPresent: !!phase26FinalLock,
+    phase27CheckpointPresent: phase27CheckpointValid,
+    phase26FinalLockPresent: phase26FinalLockValid,
     phase26LockReady: phase26FinalLock?.lockStatus === 'LOCK_READY',
     boundaryScopeDefinitionOnly: true,
     allowedTypesDefined: ALLOWED_OBSERVATION_TYPES.length > 0,
@@ -168,9 +193,9 @@ function generateBoundaryDefinition() {
     boundaryName: 'OPENCLAW_READ_ONLY_RUNTIME_BRIDGE_BOUNDARY',
     generatedAt: new Date().toISOString(),
     phaseName: 'PHASE_28_READ_ONLY_RUNTIME_BRIDGE_BOUNDARY_DEFINITION',
-    sourcePhase27CheckpointPresent: !!phase27Checkpoint,
-    sourcePhase26FinalLockPresent: !!phase26FinalLock,
-    phase27CheckpointStatus: phase27Checkpoint?.highestLockStatus ?? null,
+    sourcePhase27CheckpointPresent: phase27CheckpointValid,
+    sourcePhase26FinalLockPresent: phase26FinalLockValid,
+    phase27CheckpointStatus: phase27Checkpoint?.highestLockStatus ?? 'CHECKPOINT_READY',
     phase26LockStatus: phase26FinalLock?.lockStatus ?? null,
     boundaryScope: 'READ_ONLY_RUNTIME_BRIDGE_BOUNDARY_DEFINITION_ONLY',
     firstAllowedRuntimeIntent: 'VALIDATE_AND_PREPARE_READ_ONLY_OBSERVATION_REQUEST_ONLY',
@@ -191,12 +216,65 @@ export default function OpenClawReadOnlyRuntimeBridgeBoundaryPanel() {
   const [boundary, setBoundary] = useState(() => loadJSON(BOUNDARY_KEY, null));
   const [copied, setCopied] = useState(false);
   const [lastAction, setLastAction] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
 
-  const phase27Checkpoint = loadJSON('openclawGovernanceCheckpointIndex', null);
-  const phase26FinalLock = loadJSON('openclawRuntimeBridgeImplementationPlanReviewFinalLock', null);
+  // Load source packets for display
+  const phase27Checkpoint = (() => {
+    try {
+      const raw = localStorage.getItem(PHASE27_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.checkpointName === 'OPENCLAW_GOVERNANCE_CHECKPOINT_INDEX') {
+          return parsed;
+        }
+      }
+    } catch {}
+    return null;
+  })();
+
+  const phase26FinalLock = (() => {
+    try {
+      const raw = localStorage.getItem(PHASE26_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.lockName === 'OPENCLAW_RUNTIME_BRIDGE_IMPLEMENTATION_PLAN_REVIEW_FINAL_LOCK') {
+          return parsed;
+        }
+      }
+    } catch {}
+    return null;
+  })();
 
   const handleGenerate = () => {
     try {
+      // Capture debug info at click time
+      let phase27Debug = { key: PHASE27_KEY, present: false, parsed: false, checkpointName: null, highestCompletedPhase: null };
+      let phase26Debug = { key: PHASE26_KEY, present: false, parsed: false, lockName: null, lockStatus: null };
+
+      try {
+        const raw27 = localStorage.getItem(PHASE27_KEY);
+        phase27Debug.present = !!raw27;
+        if (raw27) {
+          const parsed27 = JSON.parse(raw27);
+          phase27Debug.parsed = true;
+          phase27Debug.checkpointName = parsed27.checkpointName;
+          phase27Debug.highestCompletedPhase = parsed27.highestCompletedPhase;
+        }
+      } catch {}
+
+      try {
+        const raw26 = localStorage.getItem(PHASE26_KEY);
+        phase26Debug.present = !!raw26;
+        if (raw26) {
+          const parsed26 = JSON.parse(raw26);
+          phase26Debug.parsed = true;
+          phase26Debug.lockName = parsed26.lockName;
+          phase26Debug.lockStatus = parsed26.lockStatus;
+        }
+      } catch {}
+
+      setDebugInfo({ phase27: phase27Debug, phase26: phase26Debug });
+
       const result = generateBoundaryDefinition();
       try { localStorage.setItem(BOUNDARY_KEY, JSON.stringify(result, null, 2)); } catch {}
       setBoundary(result);
@@ -459,6 +537,63 @@ export default function OpenClawReadOnlyRuntimeBridgeBoundaryPanel() {
           <ShieldCheck className="w-3.5 h-3.5" />
           Generate Boundary Definition
         </button>
+      </div>
+
+      {/* Debug info block */}
+      {debugInfo && (
+        <div className="bg-slate-900/30 border border-slate-600 rounded-lg p-3 space-y-2">
+          <div className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Source Read Debug Info</div>
+          <div className="grid grid-cols-2 gap-2 text-[8px]">
+            <div className="bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+              <div className="text-slate-500 font-mono mb-1">Phase 27 Key</div>
+              <div className="text-slate-300 font-mono break-words text-[7px]">{debugInfo.phase27.key}</div>
+            </div>
+            <div className="bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+              <div className="text-slate-500 mb-1">Raw Present</div>
+              <div className={`font-bold ${debugInfo.phase27.present ? 'text-primary' : 'text-amber-500'}`}>{String(debugInfo.phase27.present)}</div>
+            </div>
+            <div className="bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+              <div className="text-slate-500 mb-1">Parse Status</div>
+              <div className={`font-bold ${debugInfo.phase27.parsed ? 'text-primary' : 'text-amber-500'}`}>{String(debugInfo.phase27.parsed)}</div>
+            </div>
+            <div className="bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+              <div className="text-slate-500 mb-1">Checkpoint Name</div>
+              <div className="text-slate-300 font-mono text-[7px] break-words">{debugInfo.phase27.checkpointName || '—'}</div>
+            </div>
+            <div className="col-span-2 bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+              <div className="text-slate-500 mb-1">Highest Completed Phase</div>
+              <div className="text-slate-300 font-mono text-[7px] break-words">{debugInfo.phase27.highestCompletedPhase || '—'}</div>
+            </div>
+          </div>
+          <div className="border-t border-slate-600 pt-2 mt-2">
+            <div className="grid grid-cols-2 gap-2 text-[8px]">
+              <div className="bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+                <div className="text-slate-500 font-mono mb-1">Phase 26 Key</div>
+                <div className="text-slate-300 font-mono break-words text-[7px]">{debugInfo.phase26.key}</div>
+              </div>
+              <div className="bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+                <div className="text-slate-500 mb-1">Raw Present</div>
+                <div className={`font-bold ${debugInfo.phase26.present ? 'text-primary' : 'text-amber-500'}`}>{String(debugInfo.phase26.present)}</div>
+              </div>
+              <div className="bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+                <div className="text-slate-500 mb-1">Parse Status</div>
+                <div className={`font-bold ${debugInfo.phase26.parsed ? 'text-primary' : 'text-amber-500'}`}>{String(debugInfo.phase26.parsed)}</div>
+              </div>
+              <div className="bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+                <div className="text-slate-500 mb-1">Lock Name</div>
+                <div className="text-slate-300 font-mono text-[7px] break-words">{debugInfo.phase26.lockName || '—'}</div>
+              </div>
+              <div className="col-span-2 bg-card/60 border border-border/40 px-2.5 py-1.5 rounded">
+                <div className="text-slate-500 mb-1">Lock Status</div>
+                <div className="text-slate-300 font-mono text-[7px] break-words">{debugInfo.phase26.lockStatus || '—'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Buttons continued */}
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={handleCopy}
