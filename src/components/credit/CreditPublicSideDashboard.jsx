@@ -410,6 +410,133 @@ export default function CreditPublicSideDashboard() {
           </div>
         </div>
 
+        {/* Dispute Tracker Blueprint Section */}
+        <div className="mt-8 mb-8 bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Dispute Tracker Blueprint</h2>
+            <p className="text-[9px] font-mono text-slate-400 mt-1">Read-only blueprint for future dispute tracking. No disputes are created, submitted, mailed, or transmitted.</p>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* Planned Dispute Item Fields */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-4 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Planned Dispute Item Fields</h3>
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Creditor / Furnisher</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Bureau reporting item</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Account number masked</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Negative item type</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Reported balance</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Date opened</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Last reported date</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Dispute reason</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Evidence needed</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Letter round</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Response deadline</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>Current status</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Planned Dispute Statuses */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-4 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Planned Dispute Statuses</h3>
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>NOT_STARTED</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>NEEDS_REVIEW</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>EVIDENCE_REQUIRED</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>READY_FOR_DRAFT</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>DRAFT_ONLY</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>SENT_MANUALLY</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>RESPONSE_PENDING</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>RESOLVED</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/70 py-1.5 px-2 bg-secondary/10 border border-border/20 rounded-sm">
+                  <span>ESCALATION_REVIEW</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Safety Constraints */}
+            <div className="bg-destructive/5 border border-destructive/20 rounded-sm overflow-hidden">
+              <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-destructive/80">Safety Constraints</h3>
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No dispute submission</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No automatic letter sending</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No bureau connection</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No client data collection</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No credential entry</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No document upload yet</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5 px-2">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>No legal claims generated automatically</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Info footer */}
         <div className="mt-8 p-4 bg-secondary/20 border border-border/30 rounded-sm flex items-start gap-3">
           <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
