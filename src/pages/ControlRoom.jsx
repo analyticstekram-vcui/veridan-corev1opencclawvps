@@ -630,7 +630,7 @@ export default function ControlRoom() {
               />
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-wrap gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -658,13 +658,55 @@ export default function ControlRoom() {
                 Create Local Draft
               </button>
               {drafts.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setDrafts([])}
-                  className="px-3 py-1.5 text-[10px] font-mono font-bold border border-destructive/40 text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors rounded-sm"
-                >
-                  Clear Local Drafts
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setDrafts([])}
+                    className="px-3 py-1.5 text-[10px] font-mono font-bold border border-destructive/40 text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors rounded-sm"
+                  >
+                    Clear Local Drafts
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const snapshot = {
+                        snapshotType: "CONTROLLED_LOCAL_DRAFTS_SNAPSHOT",
+                        generatedAt: new Date().toISOString(),
+                        persistence: "NONE",
+                        stateSource: "REACT_COMPONENT_STATE_ONLY",
+                        execution: "DISABLED",
+                        externalConnections: "DISABLED",
+                        summary: {
+                          totalDrafts: drafts.length,
+                          localDraftOnly: drafts.filter(d => d.status === 'LOCAL_DRAFT_ONLY').length,
+                          readyForReview: drafts.filter(d => d.status === 'READY_FOR_REVIEW').length,
+                          reviewed: drafts.filter(d => d.status === 'REVIEWED').length,
+                          rejected: drafts.filter(d => d.status === 'REJECTED').length,
+                        },
+                        drafts: drafts,
+                        safetyClaims: [
+                          "Drafts are local to the current page session",
+                          "No backend persistence",
+                          "No command execution",
+                          "No external connector calls",
+                          "No credential or API key storage",
+                          "No money movement",
+                          "Resets on refresh",
+                        ],
+                      };
+                      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `controlled-drafts-snapshot-${Date.now()}.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="px-3 py-1.5 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
+                  >
+                    Export All Drafts Snapshot
+                  </button>
+                </>
               )}
             </div>
           </div>
