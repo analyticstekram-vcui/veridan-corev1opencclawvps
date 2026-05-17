@@ -589,6 +589,142 @@ export default function ControlRoom() {
         </div>
       </div>
 
+      {/* OpenClaw + Codex Planning Blueprint Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">OpenClaw + Codex Planning Blueprint</h2>
+            <p className="text-[9px] font-mono text-slate-400 mt-1">This blueprint defines the separate roles of OpenClaw and Codex inside Veridan Core. OpenClaw is the future operator/runtime layer. Codex is the future developer/code-editing layer. Neither is granted execution authority from this UI.</p>
+          </div>
+          <div className="p-4 space-y-3">
+            {/* OpenClaw Role Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">OpenClaw Role: AI Operator Runtime</h3>
+              </div>
+              <div className="p-3 space-y-1.5">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Current Status</span>
+                  <span className="text-[8px] font-mono font-bold text-primary">READ_ONLY_GATEWAY_HEALTH</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-primary/5 border border-primary/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Allowed Now</span>
+                  <span className="text-[8px] font-mono font-bold text-slate-300">Health/status visibility only</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Future Use</span>
+                  <span className="text-[8px] font-mono font-bold text-slate-300">Tool bridge, proposals, workflows</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Execution Authority</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Codex Role Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Codex Role: AI Developer / Code Agent</h3>
+              </div>
+              <div className="p-3 space-y-1.5">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Current Status</span>
+                  <span className="text-[8px] font-mono font-bold text-amber-500">PLANNED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Allowed Now</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">Not connected inside Veridan Core</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Future Use</span>
+                  <span className="text-[8px] font-mono font-bold text-slate-300">Code review, bugs, components, tests</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Execution Authority</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Veridan Core Role Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Veridan Core Role: Governance Cockpit</h3>
+              </div>
+              <div className="p-3 space-y-1.5">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-primary/5 border border-primary/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Current Status</span>
+                  <span className="text-[8px] font-mono font-bold text-primary">AI_OPERATOR_CONSOLE</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-primary/5 border border-primary/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Allows</span>
+                  <span className="text-[8px] font-mono font-bold text-slate-300">Baselines, evidence, drafts, review</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Blocks</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">Execution, connectors, credentials</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/30 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Human Review</span>
+                  <span className="text-[8px] font-mono font-bold text-slate-300">REQUIRED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Future Integration Flow */}
+            <div className="bg-slate-700/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-slate-700/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-300">Future Integration Flow</h3>
+              </div>
+              <div className="p-3">
+                <div className="text-[8px] font-mono text-slate-300 space-y-0.5 leading-relaxed">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Codex builds/updates code</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>GitHub stores source</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Veridan Core exposes governed UI</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>OpenClaw reads/operates approved workflows</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Human approves gates</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Safety Chips */}
+            <div className="space-y-2 border-t border-border/30 pt-3">
+              <div className="text-[9px] font-mono font-semibold uppercase text-slate-400 mb-2">Safety Profile</div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="px-2 py-1 text-[7px] font-mono font-bold uppercase bg-primary/10 text-primary border border-primary/30 rounded-sm">OPENCLAW_READ_ONLY</span>
+                <span className="px-2 py-1 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">CODEX_NOT_CONNECTED</span>
+                <span className="px-2 py-1 text-[7px] font-mono font-bold uppercase bg-secondary/30 text-slate-300 border border-border/40 rounded-sm">HUMAN_REVIEW_REQUIRED</span>
+                <span className="px-2 py-1 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">EXECUTION_DISABLED</span>
+                <span className="px-2 py-1 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">EXTERNAL_CONNECTORS_DISABLED</span>
+              </div>
+            </div>
+
+            {/* Planning-Only Notice */}
+            <div className="bg-primary/5 border border-primary/20 rounded-sm px-3 py-2">
+              <p className="text-[9px] font-mono text-slate-300 leading-relaxed">
+                This blueprint is planning and documentation only. No OpenClaw execution, Codex integration, GitHub writes, MCP calls, broker/TradingView/bureau/bank/payment/file connectors, or external services are enabled.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Controlled Local Drafts Card */}
       <div className="shrink-0 border-b border-border bg-card px-6 py-4">
         <div className="space-y-3">
