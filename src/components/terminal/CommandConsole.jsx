@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Trash2, ShieldAlert, ChevronRight, Bot, User, Loader2, Activity } from 'lucide-react';
+import { Send, Trash2, ShieldAlert, ChevronRight, Bot, User, Loader2, Activity, TrendingUp } from 'lucide-react';
 import { postCommand, postApprove, getStatus } from '@/lib/veridanApi';
 import OpenClawGatewayHealthPanel from './OpenClawGatewayHealthPanel';
+import TradingPaperReadinessDashboard from '@/components/trading/TradingPaperReadinessDashboard';
 
 const riskColors = { low: 'text-primary', medium: 'text-amber-500', high: 'text-destructive' };
 
@@ -251,6 +252,13 @@ export default function CommandConsole({ onOpenClawStatus, onStatusUpdate }) {
           <Activity className="w-3 h-3" />
           GATEWAY HEALTH
         </button>
+        <button
+          onClick={() => setActiveTab('trading')}
+          className={`flex items-center gap-1.5 px-3 h-full text-[10px] font-mono border-b-2 transition-colors ${activeTab === 'trading' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+        >
+          <TrendingUp className="w-3 h-3" />
+          PAPER TRADING
+        </button>
         {activeTab === 'console' && (
           <div className="ml-auto flex items-center gap-2 pr-2">
             {loading && <Loader2 className="w-3 h-3 text-primary animate-spin" />}
@@ -301,6 +309,9 @@ export default function CommandConsole({ onOpenClawStatus, onStatusUpdate }) {
 
       {/* Gateway Health tab */}
       {activeTab === 'gateway' && <OpenClawGatewayHealthPanel />}
+
+      {/* Paper Trading tab */}
+      {activeTab === 'trading' && <TradingPaperReadinessDashboard />}
     </div>
   );
 }
