@@ -99,6 +99,42 @@ export default function ControlRoom() {
         </div>
       </div>
 
+      {/* Operator Next Action Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <div className="space-y-3">
+          <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide">Operator Next Action</h2>
+          <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
+            <p className="text-[11px] font-mono font-bold text-primary mb-2">Run a manual Gateway Health check, then review the result.</p>
+            <p className="text-[10px] text-slate-300 leading-relaxed">
+              This verifies whether OpenClaw is reachable without enabling execution, automation, trading, browser control, or money movement.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70 mb-2">Action Checklist</div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold mt-0.5">☐</span>
+              <span className="text-[10px] text-slate-300">Open Gateway Health tab</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold mt-0.5">☐</span>
+              <span className="text-[10px] text-slate-300">Click Run Check</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold mt-0.5">☐</span>
+              <span className="text-[10px] text-slate-300">Confirm READ_ONLY status</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold mt-0.5">☐</span>
+              <span className="text-[10px] text-slate-300">Confirm no credential values are shown</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold mt-0.5">☐</span>
+              <span className="text-[10px] text-slate-300">Confirm execution remains disabled</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Tab Bar */}
       <div className="shrink-0 border-b border-border bg-card px-2 flex items-end gap-0 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
