@@ -39,7 +39,7 @@ export default function ControlRoom() {
   });
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-background font-mono">
+    <div className="min-h-screen w-full flex flex-col bg-background font-mono">
 
       {/* Header */}
       <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center gap-4">
@@ -682,7 +682,7 @@ export default function ControlRoom() {
       </div>
 
       {/* Panel Area */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-auto p-6">
         {activeTab === 'status'     && <CRStatusTab />}
         {activeTab === 'monitoring' && <CRMonitoringTab />}
         {activeTab === 'safe_cmd'   && <CRSafeCommandTab />}

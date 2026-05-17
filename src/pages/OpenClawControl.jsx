@@ -215,7 +215,7 @@ export default function OpenClawControl() {
   const online = status?.online;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }} className="bg-background font-mono">
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }} className="bg-background font-mono">
 
       {/* ── Persistent Header ── */}
       <PersistentHeader currentPage="Control Tower" />
