@@ -66,6 +66,7 @@ import OpenClawBackendEnvPresenceBooleanRoute from './OpenClawBackendEnvPresence
 import OpenClawBackendEnvPresenceEvidenceRecord from './OpenClawBackendEnvPresenceEvidenceRecord.jsx';
 import OpenClawHealthCheckContract from './OpenClawHealthCheckContract.jsx';
 import OpenClawHealthCheckActivationLock from './OpenClawHealthCheckActivationLock.jsx';
+import OpenClawReadOnlyHealthCheckRoute from './OpenClawReadOnlyHealthCheckRoute.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -597,6 +598,7 @@ export default function OpenClawGatewayConnectorPanel() {
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawBackendEnvPresenceEvidenceRecord /></div>
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawHealthCheckContract /></div>
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawHealthCheckActivationLock /></div>
+                   <div className="border-t border-slate-600/40 pt-5"><OpenClawReadOnlyHealthCheckRoute /></div>
                  </div>
                )}
              </div>
