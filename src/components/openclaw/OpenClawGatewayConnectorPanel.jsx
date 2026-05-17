@@ -41,6 +41,7 @@ import OpenClawRuntimeImplementationPlanPanel from './OpenClawRuntimeImplementat
 import OpenClawRuntimeImplementationPlanFinalLockPanel from './OpenClawRuntimeImplementationPlanFinalLockPanel.jsx';
 import OpenClawRuntimeBridgeImplementationPlanReviewPanel from './OpenClawRuntimeBridgeImplementationPlanReviewPanel.jsx';
 import OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel from './OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel.jsx';
+import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -643,10 +644,30 @@ export default function OpenClawGatewayConnectorPanel() {
                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel /></div>
                 </div>
               )}
-            </div>
+              </div>
 
-          </div>
-        )}
+              {/* Group 5 (Extended): Phase 27 — Governance Checkpoint Index */}
+              <div className="border border-border rounded-lg overflow-hidden">
+              <button
+               type="button"
+               onClick={() => toggleGroup('phase27')}
+               className="w-full px-4 py-3 bg-secondary/20 border-b border-border hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
+              >
+               <div>
+                 <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">Phase 27 — Governance Cleanup + Checkpoint Index</div>
+                 <div className="text-[9px] text-slate-400 mt-0.5">Checkpoint index summarizing Phases 14-26 completion (1 panel)</div>
+               </div>
+               <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase27' ? 'rotate-90' : ''}`}>▶</span>
+              </button>
+              {expandedGroup === 'phase27' && (
+               <div className="space-y-5 p-5">
+                 <div className="border-t border-border/40 pt-5"><OpenClawGovernanceCheckpointIndexPanel /></div>
+               </div>
+              )}
+              </div>
+
+              </div>
+              )}
 
         {/* Tab Content - Diagnostics */}
         {activeTab === 'diagnostics' && (
