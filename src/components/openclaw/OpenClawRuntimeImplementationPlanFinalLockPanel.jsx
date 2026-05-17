@@ -163,6 +163,8 @@ export default function OpenClawRuntimeImplementationPlanFinalLockPanel() {
     const result = runLock();
     try { localStorage.setItem(LOCK_KEY, JSON.stringify(result, null, 2)); } catch {}
     setLock(result);
+    // Dispatch event for Phase 26 final lock to re-read sources
+    window.dispatchEvent(new CustomEvent('openclaw:governance-storage-updated'));
   };
 
   const handleCopy = () => {

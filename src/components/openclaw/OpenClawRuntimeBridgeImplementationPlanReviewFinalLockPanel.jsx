@@ -3,7 +3,7 @@
  * Local-only Phase 26 final lock for runtime bridge implementation plan review checkpoint.
  * Planning-review-only. No OpenClaw calls, no runtime activation, no execution, no dispatch.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, Copy, CheckCircle2, Trash2, ShieldCheck, AlertTriangle, XCircle, Clock } from 'lucide-react';
 
 const LOCK_KEY    = 'openclawRuntimeBridgeImplementationPlanReviewFinalLock';
@@ -137,12 +137,27 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPa
   const [lock, setLock] = useState(() => loadJSON(LOCK_KEY, null));
   const [copied, setCopied] = useState(false);
   const [lastAction, setLastAction] = useState(null);
+  const [phase25Lock, setPhase25Lock] = useState(() => loadJSON('openclawRuntimeImplementationPlanFinalLock', null));
+  const [phase26Review, setPhase26Review] = useState(() => loadJSON('openclawRuntimeBridgeImplementationPlanReview', null));
 
-  const phase25Lock = loadJSON('openclawRuntimeImplementationPlanFinalLock', null);
-  const phase26Review = loadJSON('openclawRuntimeBridgeImplementationPlanReview', null);
+  // Listen for storage updates from Phase 25 or Phase 26 panels
+  useEffect(() => {
+    const handleStorageUpdate = () => {
+      setPhase25Lock(loadJSON('openclawRuntimeImplementationPlanFinalLock', null));
+      setPhase26Review(loadJSON('openclawRuntimeBridgeImplementationPlanReview', null));
+    };
+    window.addEventListener('openclaw:governance-storage-updated', handleStorageUpdate);
+    return () => window.removeEventListener('openclaw:governance-storage-updated', handleStorageUpdate);
+  }, []);
 
   const handleGenerate = () => {
     try {
+      // Re-read sources fresh from localStorage before building lock
+      const p25 = loadJSON('openclawRuntimeImplementationPlanFinalLock', null);
+      const p26 = loadJSON('openclawRuntimeBridgeImplementationPlanReview', null);
+      setPhase25Lock(p25);
+      setPhase26Review(p26);
+      
       const result = runLock();
       try { localStorage.setItem(LOCK_KEY, JSON.stringify(result, null, 2)); } catch {}
       setLock(result);
@@ -229,16 +244,35 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPa
       </div>
 
       {/* Source debug row — localStorage keys and parse status */}
-      <div className="bg-secondary/10 border border-border/40 rounded-lg px-3 py-2 space-y-1">
-        <div className="text-[8px] uppercase tracking-widest text-slate-500 font-semibold">Source Keys Debug</div>
-        <div className="text-[8px] text-slate-400 space-y-0.5">
-          <div>
-            <span className="font-mono text-slate-500">openclawRuntimeImplementationPlanFinalLock</span>
-            <span className={`ml-2 font-bold ${phase25Lock ? 'text-primary' : 'text-slate-500'}`}>{phase25Lock ? '✓ PARSED' : '— MISSING'}</span>
+      <div className="bg-secondary/10 border border-border/40 rounded-lg px-3 py-2 space-y-2">
+        <div className="text-[8px] uppercase tracking-widest text-slate-500 font-semibold">Source Keys Debug — Read & Parse Status</div>
+        <div className="text-[8px] text-slate-400 space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-slate-500 flex-1">readKeyPhase25:</span>
+            <span className="font-mono text-primary text-[7px]">openclawRuntimeImplementationPlanFinalLock</span>
           </div>
-          <div>
-            <span className="font-mono text-slate-500">openclawRuntimeBridgeImplementationPlanReview</span>
-            <span className={`ml-2 font-bold ${phase26Review ? 'text-primary' : 'text-slate-500'}`}>{phase26Review ? '✓ PARSED' : '— MISSING'}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 flex-1">phase25RawExists:</span>
+            <span className={`font-bold ${!!phase25Lock ? 'text-primary' : 'text-slate-500'}`}>{!!phase25Lock ? 'true' : 'false'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 flex-1">phase25Parsed:</span>
+            <span className={`font-bold ${!!phase25Lock ? 'text-primary' : 'text-slate-500'}`}>{!!phase25Lock ? 'true' : 'false'}</span>
+          </div>
+
+          <div className="border-t border-border/20 pt-1 mt-1">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-slate-500 flex-1">readKeyPhase26:</span>
+              <span className="font-mono text-primary text-[7px]">openclawRuntimeBridgeImplementationPlanReview</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 flex-1">phase26RawExists:</span>
+              <span className={`font-bold ${!!phase26Review ? 'text-primary' : 'text-slate-500'}`}>{!!phase26Review ? 'true' : 'false'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 flex-1">phase26Parsed:</span>
+              <span className={`font-bold ${!!phase26Review ? 'text-primary' : 'text-slate-500'}`}>{!!phase26Review ? 'true' : 'false'}</span>
+            </div>
           </div>
         </div>
       </div>

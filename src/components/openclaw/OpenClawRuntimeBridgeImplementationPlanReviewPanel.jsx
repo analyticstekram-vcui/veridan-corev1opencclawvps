@@ -175,6 +175,8 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewPanel() {
     const result = runReview();
     try { localStorage.setItem(REVIEW_KEY, JSON.stringify(result, null, 2)); } catch {}
     setReview(result);
+    // Dispatch event for Phase 26 final lock to re-read sources
+    window.dispatchEvent(new CustomEvent('openclaw:governance-storage-updated'));
   };
 
   const handleCopy = () => {
