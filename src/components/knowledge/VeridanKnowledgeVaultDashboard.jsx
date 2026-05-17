@@ -17,20 +17,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Lock, Info, Home, AlertCircle } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
-
-function StatusBadge({ label, value, type = 'neutral' }) {
-  const colors = {
-    neutral: 'text-slate-400 border-slate-600/30 bg-slate-600/5',
-    disabled: 'text-destructive border-destructive/30 bg-destructive/5',
-    planning: 'text-amber-500 border-amber-500/30 bg-amber-500/5',
-  };
-  return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 border rounded-sm ${colors[type]}`}>
-      <span className="text-[8px] font-mono text-muted-foreground/60 uppercase">{label}</span>
-      <span className="text-[10px] font-mono font-bold flex-1">{value}</span>
-    </div>
-  );
-}
+import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
 
 function KnowledgeSection({ title, description, items }) {
   return (
@@ -78,156 +65,76 @@ export default function VeridanKnowledgeVaultDashboard() {
           </Link>
         </div>
 
-        {/* Knowledge Vault Safety Summary Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Knowledge Vault Safety Summary</h2>
-          </div>
-          <div className="p-4 space-y-2">
-            <StatusBadge label="Mode" value="PLANNING_ONLY" type="planning" />
-            <StatusBadge label="Document Upload" value="DISABLED" type="disabled" />
-            <StatusBadge label="AI Indexing" value="DISABLED" type="disabled" />
-            <StatusBadge label="Vault Sync" value="DISABLED" type="disabled" />
-            <StatusBadge label="Credential Storage" value="DISABLED" type="disabled" />
-            <StatusBadge label="Private Documents" value="NOT_COLLECTED" type="neutral" />
-            <StatusBadge label="External Connectors" value="DISABLED" type="disabled" />
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3 mt-3">
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                This module is for planning and structure only. It does not upload documents, index private files, sync to external vaults, store credentials, collect private records, or connect to external services.
-              </p>
-            </div>
-          </div>
-        </div>
+        <SafetyStatusCard
+          title="Knowledge Vault Safety Summary"
+          statuses={[
+            { label: 'Mode', value: 'PLANNING_ONLY', type: 'planning' },
+            { label: 'Document Upload', value: 'DISABLED', type: 'disabled' },
+            { label: 'AI Indexing', value: 'DISABLED', type: 'disabled' },
+            { label: 'Vault Sync', value: 'DISABLED', type: 'disabled' },
+            { label: 'Credential Storage', value: 'DISABLED', type: 'disabled' },
+            { label: 'Private Documents', value: 'NOT_COLLECTED', type: 'neutral' },
+            { label: 'External Connectors', value: 'DISABLED', type: 'disabled' },
+          ]}
+          disclaimer="This module is for planning and structure only. It does not upload documents, index private files, sync to external vaults, store credentials, collect private records, or connect to external services."
+        />
 
-        {/* Operator Next Action Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Operator Next Action</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
-              <p className="text-[11px] font-mono font-bold text-primary mb-2">Review Knowledge Vault structure before enabling document workflows.</p>
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                Verify that vault categories, governance structure, and safety constraints are properly documented before any document or AI features are enabled.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70 mb-2">Action Checklist</div>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Review vault categories</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Review document governance structure</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no document upload exists</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no AI indexing exists</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no credential storage exists</span>
-              </button>
-              <div className="text-[8px] font-mono text-muted-foreground/50 mt-3">
-                Checklist is local and resets on page refresh.
-              </div>
-            </div>
-          </div>
-        </div>
+        <OperatorNextActionCard
+          title="Operator Next Action"
+          summaryTitle="Review Knowledge Vault structure before enabling document workflows."
+          summaryText="Verify that vault categories, governance structure, and safety constraints are properly documented before any document or AI features are enabled."
+          checklist={[
+            'Review vault categories',
+            'Review document governance structure',
+            'Confirm no document upload exists',
+            'Confirm no AI indexing exists',
+            'Confirm no credential storage exists',
+          ]}
+          note="Checklist is local and resets on page refresh."
+        />
 
-        {/* Knowledge Vault Baseline Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Knowledge Vault Baseline</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Name</span>
-                <span className="text-[10px] font-mono font-bold text-slate-300">Knowledge Vault Planning Baseline</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Status</span>
-                <span className="text-[10px] font-mono font-bold text-primary">APPROVED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Mode</span>
-                <span className="text-[10px] font-mono font-bold text-amber-500">PLANNING_ONLY</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Document Upload</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">AI Indexing</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Vault Sync</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Credential Storage</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Private Documents</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">NOT_COLLECTED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">External Connectors</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-            </div>
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                This baseline confirms the Knowledge Vault module is approved for planning and structure review only.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const snapshot = {
-                  snapshotType: "KNOWLEDGE_VAULT_PLANNING_BASELINE",
-                  baselineName: "Knowledge Vault Planning Baseline",
-                  baselineStatus: "APPROVED",
-                  mode: "PLANNING_ONLY",
-                  documentUpload: "DISABLED",
-                  aiIndexing: "DISABLED",
-                  vaultSync: "DISABLED",
-                  credentialStorage: "DISABLED",
-                  privateDocuments: "NOT_COLLECTED",
-                  externalConnectors: "DISABLED",
-                  generatedAt: new Date().toISOString(),
-                  safetyClaims: [
-                    "No document upload",
-                    "No AI indexing",
-                    "No vault sync",
-                    "No credential storage",
-                    "No private document collection",
-                    "No external connectors",
-                    "Planning-only baseline mode",
-                  ],
-                };
-                const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `knowledge-vault-baseline-snapshot-${Date.now()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="px-4 py-2 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
-            >
-              Export Knowledge Vault Snapshot
-            </button>
-          </div>
-        </div>
+        <BaselineCard
+          title="Knowledge Vault Baseline"
+          rows={[
+            { label: 'Baseline Name', value: 'Knowledge Vault Planning Baseline' },
+            { label: 'Baseline Status', value: 'APPROVED', valueClassName: 'text-primary' },
+            { label: 'Mode', value: 'PLANNING_ONLY', valueClassName: 'text-amber-500' },
+            { label: 'Document Upload', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'AI Indexing', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Vault Sync', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Credential Storage', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Private Documents', value: 'NOT_COLLECTED', valueClassName: 'text-destructive' },
+            { label: 'External Connectors', value: 'DISABLED', valueClassName: 'text-destructive' },
+          ]}
+          disclaimer="This baseline confirms the Knowledge Vault module is approved for planning and structure review only."
+        >
+          <SnapshotExportButton
+            snapshot={{
+              snapshotType: 'KNOWLEDGE_VAULT_PLANNING_BASELINE',
+              baselineName: 'Knowledge Vault Planning Baseline',
+              baselineStatus: 'APPROVED',
+              mode: 'PLANNING_ONLY',
+              documentUpload: 'DISABLED',
+              aiIndexing: 'DISABLED',
+              vaultSync: 'DISABLED',
+              credentialStorage: 'DISABLED',
+              privateDocuments: 'NOT_COLLECTED',
+              externalConnectors: 'DISABLED',
+              generatedAt: new Date().toISOString(),
+              safetyClaims: [
+                'No document upload',
+                'No AI indexing',
+                'No vault sync',
+                'No credential storage',
+                'No private document collection',
+                'No external connectors',
+                'Planning-only baseline mode',
+              ],
+            }}
+            filenamePrefix="knowledge-vault-baseline-snapshot"
+            label="Export Knowledge Vault Snapshot"
+          />
+        </BaselineCard>
 
         {/* Grid of sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

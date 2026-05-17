@@ -18,22 +18,9 @@
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, Lock, AlertCircle, CheckCircle2, Home } from 'lucide-react';
+import { TrendingUp, Lock, CheckCircle2, Home } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
-
-function StatusBadge({ label, value, type = 'neutral' }) {
-  const colors = {
-    neutral: 'text-slate-400 border-slate-600/30 bg-slate-600/5',
-    disabled: 'text-destructive border-destructive/30 bg-destructive/5',
-    planning: 'text-amber-500 border-amber-500/30 bg-amber-500/5',
-  };
-  return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 border rounded-sm ${colors[type]}`}>
-      <span className="text-[8px] font-mono text-muted-foreground/60 uppercase">{label}</span>
-      <span className="text-[10px] font-mono font-bold flex-1">{value}</span>
-    </div>
-  );
-}
+import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
 
 function DashboardSection({ title, description, children }) {
   return (
@@ -85,174 +72,85 @@ export default function TradingOperationsDashboard() {
           </Link>
         </div>
 
-        {/* Trading Operations Safety Summary Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Trading Operations Safety Summary</h2>
-          </div>
-          <div className="p-4 space-y-2">
-            <StatusBadge label="Mode" value="PLANNING_ONLY" type="planning" />
-            <StatusBadge label="Broker Connection" value="NOT_CONNECTED" type="neutral" />
-            <StatusBadge label="TradingView Integration" value="DISABLED" type="disabled" />
-            <StatusBadge label="Market Data Feed" value="DISABLED" type="disabled" />
-            <StatusBadge label="Paper Trading" value="DISABLED" type="disabled" />
-            <StatusBadge label="Live Trading" value="DISABLED" type="disabled" />
-            <StatusBadge label="Order Execution" value="DISABLED" type="disabled" />
-            <StatusBadge label="API Key Entry" value="DISABLED" type="disabled" />
-            <StatusBadge label="Money Movement" value="DISABLED" type="disabled" />
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3 mt-3">
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                This module is for planning and structure only. It does not connect to brokers, read live market data, place paper trades, place live trades, submit orders, store API keys, or move money.
-              </p>
-            </div>
-          </div>
-        </div>
+        <SafetyStatusCard
+          title="Trading Operations Safety Summary"
+          statuses={[
+            { label: 'Mode', value: 'PLANNING_ONLY', type: 'planning' },
+            { label: 'Broker Connection', value: 'NOT_CONNECTED', type: 'neutral' },
+            { label: 'TradingView Integration', value: 'DISABLED', type: 'disabled' },
+            { label: 'Market Data Feed', value: 'DISABLED', type: 'disabled' },
+            { label: 'Paper Trading', value: 'DISABLED', type: 'disabled' },
+            { label: 'Live Trading', value: 'DISABLED', type: 'disabled' },
+            { label: 'Order Execution', value: 'DISABLED', type: 'disabled' },
+            { label: 'API Key Entry', value: 'DISABLED', type: 'disabled' },
+            { label: 'Money Movement', value: 'DISABLED', type: 'disabled' },
+          ]}
+          disclaimer="This module is for planning and structure only. It does not connect to brokers, read live market data, place paper trades, place live trades, submit orders, store API keys, or move money."
+        />
 
-        {/* Operator Next Action Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Operator Next Action</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
-              <p className="text-[11px] font-mono font-bold text-primary mb-2">Review trading operations structure before enabling paper trading workflows.</p>
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                Verify that broker connection plan, TradingView integration, and paper trading requirements are properly documented and reviewed.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70 mb-2">Action Checklist</div>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Review broker connection plan</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Review TradingView chart plan</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Review paper trading requirements</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no broker connection exists</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no order execution exists</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no API key entry exists</span>
-              </button>
-              <div className="text-[8px] font-mono text-muted-foreground/50 mt-3">
-                Checklist is local and resets on page refresh.
-              </div>
-            </div>
-          </div>
-        </div>
+        <OperatorNextActionCard
+          title="Operator Next Action"
+          summaryTitle="Review trading operations structure before enabling paper trading workflows."
+          summaryText="Verify that broker connection plan, TradingView integration, and paper trading requirements are properly documented and reviewed."
+          checklist={[
+            'Review broker connection plan',
+            'Review TradingView chart plan',
+            'Review paper trading requirements',
+            'Confirm no broker connection exists',
+            'Confirm no order execution exists',
+            'Confirm no API key entry exists',
+          ]}
+          note="Checklist is local and resets on page refresh."
+        />
 
-        {/* Trading Operations Baseline Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Trading Operations Baseline</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Name</span>
-                <span className="text-[10px] font-mono font-bold text-slate-300">Trading Operations Planning Baseline</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Status</span>
-                <span className="text-[10px] font-mono font-bold text-primary">APPROVED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Mode</span>
-                <span className="text-[10px] font-mono font-bold text-amber-500">PLANNING_ONLY</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Broker Connection</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">NOT_CONNECTED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">TradingView Integration</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Market Data Feed</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Paper Trading</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Live Trading</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Order Execution</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">API Key Entry</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Money Movement</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-            </div>
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                This baseline confirms the Trading Operations module is approved for planning and structure review only.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const snapshot = {
-                  snapshotType: "TRADING_OPERATIONS_PLANNING_BASELINE",
-                  baselineName: "Trading Operations Planning Baseline",
-                  baselineStatus: "APPROVED",
-                  mode: "PLANNING_ONLY",
-                  brokerConnection: "NOT_CONNECTED",
-                  tradingViewIntegration: "DISABLED",
-                  marketDataFeed: "DISABLED",
-                  paperTrading: "DISABLED",
-                  liveTrading: "DISABLED",
-                  orderExecution: "DISABLED",
-                  apiKeyEntry: "DISABLED",
-                  moneyMovement: "DISABLED",
-                  generatedAt: new Date().toISOString(),
-                  safetyClaims: [
-                    "No broker connection",
-                    "No TradingView integration",
-                    "No market data feed",
-                    "No paper trading",
-                    "No live trading",
-                    "No order execution",
-                    "No API key entry",
-                    "No money movement",
-                    "Planning-only baseline mode",
-                  ],
-                };
-                const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `trading-operations-baseline-snapshot-${Date.now()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="px-4 py-2 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
-            >
-              Export Trading Operations Snapshot
-            </button>
-          </div>
-        </div>
+        <BaselineCard
+          title="Trading Operations Baseline"
+          rows={[
+            { label: 'Baseline Name', value: 'Trading Operations Planning Baseline' },
+            { label: 'Baseline Status', value: 'APPROVED', valueClassName: 'text-primary' },
+            { label: 'Mode', value: 'PLANNING_ONLY', valueClassName: 'text-amber-500' },
+            { label: 'Broker Connection', value: 'NOT_CONNECTED', valueClassName: 'text-destructive' },
+            { label: 'TradingView Integration', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Market Data Feed', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Paper Trading', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Live Trading', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Order Execution', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'API Key Entry', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Money Movement', value: 'DISABLED', valueClassName: 'text-destructive' },
+          ]}
+          disclaimer="This baseline confirms the Trading Operations module is approved for planning and structure review only."
+        >
+          <SnapshotExportButton
+            snapshot={{
+              snapshotType: 'TRADING_OPERATIONS_PLANNING_BASELINE',
+              baselineName: 'Trading Operations Planning Baseline',
+              baselineStatus: 'APPROVED',
+              mode: 'PLANNING_ONLY',
+              brokerConnection: 'NOT_CONNECTED',
+              tradingViewIntegration: 'DISABLED',
+              marketDataFeed: 'DISABLED',
+              paperTrading: 'DISABLED',
+              liveTrading: 'DISABLED',
+              orderExecution: 'DISABLED',
+              apiKeyEntry: 'DISABLED',
+              moneyMovement: 'DISABLED',
+              generatedAt: new Date().toISOString(),
+              safetyClaims: [
+                'No broker connection',
+                'No TradingView integration',
+                'No market data feed',
+                'No paper trading',
+                'No live trading',
+                'No order execution',
+                'No API key entry',
+                'No money movement',
+                'Planning-only baseline mode',
+              ],
+            }}
+            filenamePrefix="trading-operations-baseline-snapshot"
+            label="Export Trading Operations Snapshot"
+          />
+        </BaselineCard>
 
         {/* Grid of sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
