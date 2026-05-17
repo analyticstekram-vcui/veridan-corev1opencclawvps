@@ -13,6 +13,7 @@ import CommandQueue from './pages/CommandQueue';
 import BrowserSession from './pages/BrowserSession';
 import BrowserSessionRecords from './pages/BrowserSessionRecords';
 import ControlRoom from './pages/ControlRoom';
+import VeridanKnowledgeVaultDashboard from './components/knowledge/VeridanKnowledgeVaultDashboard';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -49,6 +50,7 @@ const AuthenticatedApp = () => {
       <Route path="/browser-session" element={<BrowserSession />} />
       <Route path="/browser-session-records" element={<BrowserSessionRecords />} />
       <Route path="/control-room" element={<ControlRoom />} />
+      <Route path="/knowledge-vault" element={<VeridanKnowledgeVaultDashboard />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
