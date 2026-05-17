@@ -159,6 +159,105 @@ export default function CreditPublicSideDashboard() {
           </div>
         </div>
 
+        {/* Public Credit Baseline Card */}
+        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Public Credit Baseline</h2>
+          </div>
+          <div className="p-4 space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Name</span>
+                <span className="text-[10px] font-mono font-bold text-slate-300">Public Credit Planning Baseline</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Status</span>
+                <span className="text-[10px] font-mono font-bold text-primary">APPROVED</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Mode</span>
+                <span className="text-[10px] font-mono font-bold text-amber-500">PLANNING_ONLY</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Intake Blueprint</span>
+                <span className="text-[10px] font-mono font-bold text-slate-300">READ_ONLY</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Dispute Tracker Blueprint</span>
+                <span className="text-[10px] font-mono font-bold text-slate-300">READ_ONLY</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Bureau Login</span>
+                <span className="text-[10px] font-mono font-bold text-destructive">NOT_CONNECTED</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Credit Pull</span>
+                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Dispute Automation</span>
+                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Credential Entry</span>
+                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Client Data Entry</span>
+                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Document Upload</span>
+                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
+              </div>
+            </div>
+            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
+              <p className="text-[10px] text-slate-300 leading-relaxed">
+                This baseline confirms the Public Credit module is approved for planning and structure review only.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const snapshot = {
+                  snapshotType: "PUBLIC_CREDIT_PLANNING_BASELINE",
+                  baselineName: "Public Credit Planning Baseline",
+                  baselineStatus: "APPROVED",
+                  mode: "PLANNING_ONLY",
+                  intakeBlueprint: "READ_ONLY",
+                  disputeTrackerBlueprint: "READ_ONLY",
+                  bureauLogin: "NOT_CONNECTED",
+                  creditPull: "DISABLED",
+                  disputeAutomation: "DISABLED",
+                  credentialEntry: "DISABLED",
+                  clientDataEntry: "DISABLED",
+                  documentUpload: "DISABLED",
+                  generatedAt: new Date().toISOString(),
+                  safetyClaims: [
+                    "No bureau login",
+                    "No credit pull",
+                    "No dispute submission",
+                    "No credential entry",
+                    "No client data collection",
+                    "No document upload",
+                    "Planning-only blueprint mode",
+                  ],
+                };
+                const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `public-credit-baseline-snapshot-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="px-4 py-2 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
+            >
+              Export Credit Module Snapshot
+            </button>
+          </div>
+        </div>
+
         {/* Grid of sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* 1. Public Credit Status */}
