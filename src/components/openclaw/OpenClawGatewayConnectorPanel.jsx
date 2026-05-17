@@ -73,6 +73,7 @@ import OpenClawStatusVersionCapabilitiesActivationLock from './OpenClawStatusVer
 import OpenClawStatusVersionCapabilitiesReadOnlyRoute from './OpenClawStatusVersionCapabilitiesReadOnlyRoute.jsx';
 import OpenClawStatusVersionCapabilitiesEvidenceRecord from './OpenClawStatusVersionCapabilitiesEvidenceRecord.jsx';
 import OpenClawReadOnlyCapabilityPolicyMap from './OpenClawReadOnlyCapabilityPolicyMap.jsx';
+import OpenClawReadOnlyObservabilityDashboard from './OpenClawReadOnlyObservabilityDashboard.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -534,6 +535,16 @@ export default function OpenClawGatewayConnectorPanel() {
         {/* Tab Content - Evidence Archive */}
          {activeTab === 'archive' && (
            <div className="space-y-5 border-t border-border/40 pt-5">
+
+             {/* ── OBSERVABILITY DASHBOARD — always at top ── */}
+             <div className="border-2 border-primary rounded-lg overflow-hidden bg-primary/2">
+               <div className="px-4 py-2 bg-primary/10 border-b border-primary/30">
+                 <div className="text-[10px] uppercase tracking-widest font-bold text-primary">Read-Only Observability Dashboard</div>
+               </div>
+               <div className="p-4">
+                 <OpenClawReadOnlyObservabilityDashboard />
+               </div>
+             </div>
 
              {/* Summary Panel - Always Visible */}
              <div className="bg-card border border-primary/20 rounded-lg p-4 space-y-3">
