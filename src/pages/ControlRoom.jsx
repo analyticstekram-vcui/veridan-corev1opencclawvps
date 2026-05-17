@@ -1028,14 +1028,124 @@ export default function ControlRoom() {
                     </div>
                   )}
 
+                  {/* AI Request Review Gate */}
+                  {draft.draftType === 'AI_ACTION_REQUEST_DRAFT' && !draft.reviewDecision && (
+                    <div className="bg-slate-700/20 border border-border/30 rounded-sm overflow-hidden">
+                      <div className="px-3 py-2 bg-slate-700/40 border-b border-border/30">
+                        <h4 className="text-[9px] font-mono font-bold uppercase text-slate-300">AI Request Review Gate</h4>
+                        <p className="text-[8px] font-mono text-slate-400 mt-0.5">Classify this AI action request for planning review.</p>
+                      </div>
+                      <div className="p-3 space-y-2">
+                        <p className="text-[8px] font-mono text-slate-300 leading-relaxed">
+                          Review decisions classify planning requests only. They do not approve execution, connect external systems, or trigger automation.
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDrafts(drafts.map(d => d.id === draft.id ? {
+                                ...d,
+                                reviewDecision: 'APPROVED_FOR_PLANNING',
+                                reviewedAt: new Date().toISOString(),
+                                reviewedBy: 'OPERATOR',
+                                executionApproval: 'NOT_GRANTED'
+                              } : d));
+                            }}
+                            className="px-2 py-1 text-[8px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
+                          >
+                            Approve For Planning
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDrafts(drafts.map(d => d.id === draft.id ? {
+                                ...d,
+                                reviewDecision: 'NEEDS_MORE_INFO',
+                                reviewedAt: new Date().toISOString(),
+                                reviewedBy: 'OPERATOR',
+                                executionApproval: 'NOT_GRANTED'
+                              } : d));
+                            }}
+                            className="px-2 py-1 text-[8px] font-mono font-bold border border-amber-500/40 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors rounded-sm"
+                          >
+                            Needs More Info
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDrafts(drafts.map(d => d.id === draft.id ? {
+                                ...d,
+                                reviewDecision: 'REJECTED',
+                                reviewedAt: new Date().toISOString(),
+                                reviewedBy: 'OPERATOR',
+                                executionApproval: 'NOT_GRANTED'
+                              } : d));
+                            }}
+                            className="px-2 py-1 text-[8px] font-mono font-bold border border-destructive/40 text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors rounded-sm"
+                          >
+                            Reject Request
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDrafts(drafts.map(d => d.id === draft.id ? {
+                                ...d,
+                                reviewDecision: 'BLOCKED_UNSAFE',
+                                reviewedAt: new Date().toISOString(),
+                                reviewedBy: 'OPERATOR',
+                                executionApproval: 'NOT_GRANTED'
+                              } : d));
+                            }}
+                            className="px-2 py-1 text-[8px] font-mono font-bold border border-destructive/60 text-destructive bg-destructive/20 hover:bg-destructive/30 transition-colors rounded-sm"
+                          >
+                            Block As Unsafe
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Request Review Result */}
+                  {draft.draftType === 'AI_ACTION_REQUEST_DRAFT' && draft.reviewDecision && (
+                    <div className="bg-slate-700/20 border border-border/30 rounded-sm overflow-hidden">
+                      <div className="px-3 py-2 bg-slate-700/40 border-b border-border/30">
+                        <h4 className="text-[9px] font-mono font-bold uppercase text-slate-300">Review Decision</h4>
+                      </div>
+                      <div className="p-3 space-y-1">
+                        <div className="flex items-center justify-between text-[8px] font-mono">
+                          <span className="text-muted-foreground/70">Decision</span>
+                          <span className={`font-bold ${
+                            draft.reviewDecision === 'APPROVED_FOR_PLANNING' ? 'text-primary' :
+                            draft.reviewDecision === 'NEEDS_MORE_INFO' ? 'text-amber-400' :
+                            draft.reviewDecision === 'REJECTED' ? 'text-destructive' :
+                            'text-destructive'
+                          }`}>
+                            {draft.reviewDecision}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[8px] font-mono">
+                          <span className="text-muted-foreground/70">Reviewed By</span>
+                          <span className="text-slate-300">{draft.reviewedBy}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[8px] font-mono">
+                          <span className="text-muted-foreground/70">Reviewed At</span>
+                          <span className="text-slate-400">{new Date(draft.reviewedAt).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[8px] font-mono pt-1 border-t border-border/30">
+                          <span className="text-muted-foreground/70">Execution Approval</span>
+                          <span className="text-destructive font-bold">{draft.executionApproval}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Safety Chips for AI Action Request */}
                   {draft.draftType === 'AI_ACTION_REQUEST_DRAFT' && (
                     <div className="flex flex-wrap gap-1">
-                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-primary/10 text-primary border border-primary/30 rounded-sm">AI_REQUEST_ONLY</span>
-                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-secondary/30 text-slate-300 border border-border/40 rounded-sm">HUMAN_REVIEW_REQUIRED</span>
-                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXECUTION</span>
-                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXTERNAL_CONNECTIONS</span>
+                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-slate-700/30 text-slate-300 border border-slate-600/30 rounded-sm">PLANNING_REVIEW_ONLY</span>
+                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">EXECUTION_NOT_GRANTED</span>
                       <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-slate-700/30 text-slate-300 border border-slate-600/30 rounded-sm">LOCAL_STATE_ONLY</span>
+                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXTERNAL_ACTIONS</span>
                     </div>
                   )}
 
