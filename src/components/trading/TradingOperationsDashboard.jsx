@@ -357,6 +357,152 @@ export default function TradingOperationsDashboard() {
           </div>
         </div>
 
+        {/* MCP + TradingView Planning Blueprint Section */}
+        <div className="mt-8 bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">MCP + TradingView Planning Blueprint</h2>
+            <p className="text-[9px] font-mono text-slate-400 mt-1">This blueprint defines future MCP and TradingView integration paths. No MCP server, TradingView widget, webhook, broker connection, market data feed, paper trading, or live trading is enabled.</p>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* MCP Planning Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">MCP Planning</h3>
+              </div>
+              <div className="p-3 space-y-1.5">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">MCP Status</span>
+                  <span className="text-[8px] font-mono font-bold text-amber-500">PLANNED / DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">OpenClaw Tool Bridge</span>
+                  <span className="text-[8px] font-mono font-bold text-amber-500">PLANNED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Approved Tool Registry</span>
+                  <span className="text-[8px] font-mono font-bold text-amber-500">REQUIRED_BEFORE_USE</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">External Tool Calls</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/30 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Human Review</span>
+                  <span className="text-[8px] font-mono font-bold text-slate-300">REQUIRED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* TradingView Planning Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">TradingView Planning</h3>
+              </div>
+              <div className="p-3 space-y-1.5">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">TradingView Widget</span>
+                  <span className="text-[8px] font-mono font-bold text-amber-500">PLANNED / DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Webhook Intake</span>
+                  <span className="text-[8px] font-mono font-bold text-amber-500">PLANNED / DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Alert Signal Schema</span>
+                  <span className="text-[8px] font-mono font-bold text-amber-500">REQUIRED_BEFORE_USE</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Chart Context</span>
+                  <span className="text-[8px] font-mono font-bold text-amber-500">READ_ONLY_FUTURE</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Strategy Alerts</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Trading Safety Gate Card */}
+            <div className="bg-destructive/5 border border-destructive/20 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-destructive/80">Trading Safety Gate</h3>
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-1.5">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Broker Connection</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Market Data</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Paper Trading</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Live Trading</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Order Execution</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">API Key Entry</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm col-span-2">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Money Movement</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Future Integration Flow */}
+            <div className="bg-slate-700/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-slate-700/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-300">Future Integration Flow</h3>
+              </div>
+              <div className="p-3">
+                <div className="text-[8px] font-mono text-slate-300 space-y-1 leading-relaxed">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>TradingView Alert</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Signal Validation</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Local Draft Proposal</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Operator Review</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Paper Trading Gate</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">→</span>
+                    <span>Live Trading Gate</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Planning-Only Notice */}
+            <div className="bg-primary/5 border border-primary/20 rounded-sm px-3 py-2">
+              <p className="text-[9px] font-mono text-slate-300 leading-relaxed">
+                This blueprint is planning and documentation only. No MCP server, TradingView integration, broker connection, market data, trading logic, or money movement is implemented or executed.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Info footer */}
         <div className="mt-8 p-4 bg-secondary/20 border border-border/30 rounded-sm flex items-start gap-3">
           <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
