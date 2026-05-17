@@ -58,18 +58,28 @@ const PHASES = [
     safetyColor: 'text-primary',
   },
   {
-    phase: 'FUTURE',
-    title: 'Approval Queue',
-    plainEnglish: 'Future phase: Operators will queue validated contracts for multi-sig approval. Still no execution.',
-    built: false,
+    phase: 31,
+    title: 'Runtime Bridge Approval Queue',
+    plainEnglish: 'Converts Phase 30 PASS validation results into local-only approval queue items. Operators can approve or deny each contract (approval is local-only, no execution).',
+    built: true,
     required: false,
-    storageKey: null,
-    safetyStatus: 'FUTURE',
-    safetyColor: 'text-slate-500',
+    storageKey: 'openclawPhase31RuntimeBridgeApprovalQueuePreview',
+    safetyStatus: 'LOCKED',
+    safetyColor: 'text-primary',
+  },
+  {
+    phase: 32,
+    title: 'Runtime Bridge Approval Decision Audit Trail',
+    plainEnglish: 'Records APPROVED/DENIED decisions from Phase 31 into a local-only immutable audit trail. All decisions marked NOT_EXECUTED with executionAllowed=false.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase32RuntimeBridgeApprovalDecisionAuditTrail',
+    safetyStatus: 'LOCKED',
+    safetyColor: 'text-primary',
   },
   {
     phase: 'FUTURE',
-    title: 'Dry-Run Execution',
+    title: 'Dry-Run Execution Gate',
     plainEnglish: 'Future phase: Test-mode execution of approved contracts. Results logged but no live trades, credentials, or money movement.',
     built: false,
     required: false,
@@ -111,7 +121,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <div className="text-[13px] font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" /> Runtime Bridge Flow Map
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–30 and future gates. How it all connects.</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–32 and future gates. How it all connects.</div>
       </div>
 
       {/* Current position badge */}
@@ -119,7 +129,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
         <div>
           <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">Current Build Position</div>
-          <div className="text-[10px] text-primary mt-0.5">Phase 30 Complete — Validator Installed and Operational</div>
+          <div className="text-[10px] text-primary mt-0.5">Phase 32 Complete — Approval Audit Trail Installed and Operational</div>
         </div>
       </div>
 
