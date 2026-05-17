@@ -16,6 +16,7 @@
  */
 import React from 'react';
 import { CreditCard, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import CreditProfileIntakeStructure from './CreditProfileIntakeStructure';
 
 function StatusBadge({ label, value, type = 'neutral' }) {
   const colors = {
@@ -205,6 +206,9 @@ export default function CreditPublicSideDashboard() {
             <p>This dashboard provides read-only visibility into the planning and readiness of Veridan Core's personal and business credit systems. It is for planning and visibility only. No credit bureaus are connected, no credentials are collected, and no applications or disputes are submitted. Manual review is required for all actions.</p>
           </div>
         </div>
+
+        {/* Credit Profile Intake Structure */}
+        <CreditProfileIntakeStructure />
       </div>
     </div>
   );
