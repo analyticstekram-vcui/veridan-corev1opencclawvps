@@ -138,6 +138,16 @@ const PHASES = [
     safetyColor: 'text-primary',
   },
   {
+    phase: 39,
+    title: 'Backend Environment & Secret Boundary Contract',
+    plainEnglish: 'Defines backend environment and secret boundary for future controlled read-only checks. Specifies required environment keys and prohibits secret value exposure.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase39BackendEnvironmentSecretBoundaryContracts',
+    safetyStatus: 'LOCKED',
+    safetyColor: 'text-primary',
+  },
+  {
     phase: 'FUTURE',
     title: 'Live Execution Gate',
     plainEnglish: 'Future phase: Final authorization gate for live execution. Operator confirms intent. Still subject to all safety constraints.',
@@ -171,7 +181,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <div className="text-[13px] font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" /> Runtime Bridge Flow Map
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–38 and future gates. How it all connects.</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–39 and future gates. How it all connects.</div>
       </div>
 
       {/* Current position badge */}
@@ -179,7 +189,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
         <div>
           <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">Current Build Position</div>
-          <div className="text-[10px] text-primary mt-0.5">Phase 38 Complete — Read-Only Backend Route Contract Installed</div>
+          <div className="text-[10px] text-primary mt-0.5">Phase 39 Complete — Backend Environment Secret Boundary Installed</div>
         </div>
       </div>
 
