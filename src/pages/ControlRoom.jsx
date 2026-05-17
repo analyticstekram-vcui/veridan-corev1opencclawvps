@@ -443,6 +443,74 @@ export default function ControlRoom() {
         </div>
       </div>
 
+      {/* Master System Snapshot Export Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <div className="space-y-3">
+          <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide">Master System Snapshot Export</h2>
+          <p className="text-[10px] text-slate-300 leading-relaxed">
+            Export a local proof record of all approved safe module baselines.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              const snapshot = {
+                snapshotType: "VERIDAN_CORE_MASTER_SAFE_BASELINE",
+                baselineStatus: "APPROVED",
+                generatedAt: new Date().toISOString(),
+                modules: {
+                  controlRoom: "Safe Read-Only Control Room",
+                  publicCredit: "Public Credit Planning Baseline",
+                  businessOperations: "Business Operations Planning Baseline",
+                  knowledgeVault: "Knowledge Vault Planning Baseline",
+                  openClawGatewayHealth: "Manual Read-Only Gateway Check",
+                  tradingOperations: "Trading Operations Planning Baseline",
+                },
+                moduleStatuses: {
+                  controlRoom: "APPROVED",
+                  publicCredit: "APPROVED",
+                  businessOperations: "APPROVED",
+                  knowledgeVault: "APPROVED",
+                  openClawGatewayHealth: "VERIFIED",
+                  tradingOperations: "APPROVED",
+                },
+                globalSafetyState: {
+                  execution: "DISABLED",
+                  trading: "DISABLED",
+                  moneyMovement: "DISABLED",
+                  credentialValues: "NEVER_DISPLAYED",
+                  backendExpansion: "NOT_ADDED",
+                  externalConnectors: "DISABLED",
+                },
+                safetyClaims: [
+                  "No command execution",
+                  "No broker connection",
+                  "No TradingView integration",
+                  "No market data feed",
+                  "No credit bureau connection",
+                  "No registered agent API connection",
+                  "No bank integration",
+                  "No payment processing",
+                  "No document upload",
+                  "No AI indexing",
+                  "No credential values displayed",
+                  "Planning/read-only baseline mode",
+                ],
+              };
+              const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `veridan-core-master-baseline-snapshot-${Date.now()}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="px-4 py-2 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
+          >
+            Export Master Baseline Snapshot
+          </button>
+        </div>
+      </div>
+
       {/* Tab Bar */}
       <div className="shrink-0 border-b border-border bg-card px-2 flex items-end gap-0 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
