@@ -90,12 +90,15 @@ export default function OpenClawGatewayHealthPanel() {
     : (healthOk || svcOk) ? 'text-amber-400'
     : 'text-destructive';
 
-  // Env presence from healthResult (bool only — no values)
+  // Env presence: backend returns routeStatus='MISSING_REQUIRED_ENV' if any key is absent.
+  // If we got a real HTTP response (httpStatus present), all 4 keys were present and used.
+  const allEnvPresent = healthResult?.httpStatus != null;
+  const envMissing    = healthResult?.routeStatus === 'MISSING_REQUIRED_ENV';
   const envFlags = healthResult ? [
-    { k: 'GATEWAY_URL',     ok: healthResult.hasGatewayUrl },
-    { k: 'SERVICE_TOKEN',   ok: healthResult.hasOpenClawToken },
-    { k: 'CF_CLIENT_ID',    ok: healthResult.hasCfClientId },
-    { k: 'CF_CLIENT_SECRET',ok: healthResult.hasCfClientSecret },
+    { k: 'GATEWAY_URL',      ok: allEnvPresent && !envMissing },
+    { k: 'SERVICE_TOKEN',    ok: allEnvPresent && !envMissing },
+    { k: 'CF_CLIENT_ID',     ok: allEnvPresent && !envMissing },
+    { k: 'CF_CLIENT_SECRET', ok: allEnvPresent && !envMissing },
   ] : [];
 
   return (
