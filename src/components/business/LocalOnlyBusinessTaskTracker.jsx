@@ -34,6 +34,69 @@ const BUSINESS_UNITS = [
 const PRIORITIES = ['Low', 'Medium', 'High'];
 const STATUSES = ['Planning', 'In Progress', 'Waiting', 'Complete', 'Hold'];
 
+const SEED_TASKS = [
+  {
+    id: 'seed-5',
+    title: 'Build Veridan Core weekly operating review',
+    businessUnit: 'General Veridan Core',
+    priority: 'High',
+    status: 'Planning',
+    dueWindow: 'This week',
+    revenueImpact: 'Medium',
+    complianceImpact: 'Low',
+    aiOperatorNote: 'Create weekly review habit for all branches.',
+    createdAt: new Date(Date.now() - 0).toISOString(),
+  },
+  {
+    id: 'seed-4',
+    title: 'Map Wyoming agent affiliate funnel',
+    businessUnit: 'Wyoming Agent Affiliate Operation',
+    priority: 'Medium',
+    status: 'Planning',
+    dueWindow: 'Next week',
+    revenueImpact: 'Medium',
+    complianceImpact: 'Low',
+    aiOperatorNote: 'Outline landing page and affiliate flow.',
+    createdAt: new Date(Date.now() - 1000).toISOString(),
+  },
+  {
+    id: 'seed-3',
+    title: 'Define tradeline vendor offer',
+    businessUnit: 'Tradeline Vendor Operation',
+    priority: 'Medium',
+    status: 'Planning',
+    dueWindow: 'Next week',
+    revenueImpact: 'High',
+    complianceImpact: 'Medium',
+    aiOperatorNote: 'No client intake yet. Define package structure only.',
+    createdAt: new Date(Date.now() - 2000).toISOString(),
+  },
+  {
+    id: 'seed-2',
+    title: 'Map credit repair service workflow',
+    businessUnit: 'Credit Repair Operation',
+    priority: 'High',
+    status: 'Planning',
+    dueWindow: 'This week',
+    revenueImpact: 'Medium',
+    complianceImpact: 'Medium',
+    aiOperatorNote: 'Keep all disputes manual review only.',
+    createdAt: new Date(Date.now() - 3000).toISOString(),
+  },
+  {
+    id: 'seed-1',
+    title: 'Build Tekram Analytics offer page',
+    businessUnit: 'Tekram Analytics',
+    priority: 'High',
+    status: 'Planning',
+    dueWindow: 'This week',
+    revenueImpact: 'Medium',
+    complianceImpact: 'Low',
+    aiOperatorNote: 'Define offer, pricing, and delivery steps.',
+    createdAt: new Date(Date.now() - 4000).toISOString(),
+  },
+];
+
 const EMPTY_FORM = {
   title: '',
   businessUnit: 'General Veridan Core',
@@ -106,9 +169,15 @@ export default function LocalOnlyBusinessTaskTracker() {
   const [showForm, setShowForm] = useState(false);
   const [expandedTask, setExpandedTask] = useState(null);
 
-  // Load on mount
+  // Load on mount; seed default tasks if localStorage is empty
   useEffect(() => {
-    setTasks(loadTasks());
+    const existing = loadTasks();
+    if (existing.length === 0) {
+      saveTasks(SEED_TASKS);
+      setTasks(SEED_TASKS);
+    } else {
+      setTasks(existing);
+    }
   }, []);
 
   const persistTasks = (updated) => {
