@@ -32,6 +32,9 @@ export default function ControlRoom() {
   const [draftType, setDraftType] = useState('');
   const [draftTitle, setDraftTitle] = useState('');
   const [draftNotes, setDraftNotes] = useState('');
+  const [targetModule, setTargetModule] = useState('');
+  const [riskLevel, setRiskLevel] = useState('');
+  const [requestedAction, setRequestedAction] = useState('');
   const [checklistCompleted, setChecklistCompleted] = useState({
     openGatewayHealth: false,
     clickRunCheck: false,
@@ -766,8 +769,92 @@ export default function ControlRoom() {
                 <option value="BUSINESS_OPERATIONS_DRAFT">BUSINESS_OPERATIONS_DRAFT</option>
                 <option value="KNOWLEDGE_VAULT_DRAFT">KNOWLEDGE_VAULT_DRAFT</option>
                 <option value="TRADING_OPERATIONS_DRAFT">TRADING_OPERATIONS_DRAFT</option>
+                <option value="AI_ACTION_REQUEST_DRAFT">AI_ACTION_REQUEST_DRAFT</option>
               </select>
             </div>
+
+            {draftType === 'AI_ACTION_REQUEST_DRAFT' && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-mono font-semibold uppercase text-muted-foreground/70">Target Module (Optional)</label>
+                  <select
+                    value={targetModule}
+                    onChange={(e) => setTargetModule(e.target.value)}
+                    className="w-full px-2 py-1 text-[10px] font-mono bg-secondary/40 border border-border/40 text-foreground rounded-sm focus:outline-none focus:border-primary/50"
+                  >
+                    <option value="">-- Select module --</option>
+                    <option value="Control Room">Control Room</option>
+                    <option value="Trading Operations">Trading Operations</option>
+                    <option value="Public Credit">Public Credit</option>
+                    <option value="Business Operations">Business Operations</option>
+                    <option value="Knowledge Vault">Knowledge Vault</option>
+                    <option value="OpenClaw Gateway">OpenClaw Gateway</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-mono font-semibold uppercase text-muted-foreground/70">Risk Level (Optional)</label>
+                  <select
+                    value={riskLevel}
+                    onChange={(e) => setRiskLevel(e.target.value)}
+                    className="w-full px-2 py-1 text-[10px] font-mono bg-secondary/40 border border-border/40 text-foreground rounded-sm focus:outline-none focus:border-primary/50"
+                  >
+                    <option value="">-- Select risk level --</option>
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-mono font-semibold uppercase text-muted-foreground/70">Requested Action (Optional)</label>
+                  <textarea
+                    placeholder="Describe the requested action..."
+                    value={requestedAction}
+                    onChange={(e) => setRequestedAction(e.target.value)}
+                    rows="2"
+                    className="w-full px-2 py-1 text-[10px] font-mono bg-secondary/40 border border-border/40 text-foreground rounded-sm focus:outline-none focus:border-primary/50 resize-none"
+                  />
+                </div>
+
+                {/* AI Action Request Template Preview */}
+                <div className="bg-slate-700/20 border border-border/30 rounded-sm overflow-hidden mt-2">
+                  <div className="px-3 py-2 bg-slate-700/40 border-b border-border/30">
+                    <h4 className="text-[9px] font-mono font-bold uppercase text-slate-300">AI Action Request Template</h4>
+                  </div>
+                  <div className="p-3 space-y-1.5 text-[8px] font-mono">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground/70">Objective</span>
+                      <span className="text-slate-300">{draftTitle || '(from title)'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground/70">Requested Action</span>
+                      <span className="text-slate-300">{requestedAction || '(optional)'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground/70">Target Module</span>
+                      <span className="text-slate-300">{targetModule || '(optional)'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground/70">Risk Level</span>
+                      <span className="text-slate-300">{riskLevel || '(optional)'}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-border/30">
+                      <span className="text-muted-foreground/70">Required Human Review</span>
+                      <span className="text-primary font-bold">REQUIRED</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground/70">Execution Status</span>
+                      <span className="text-destructive font-bold">DISABLED</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground/70">External Connections</span>
+                      <span className="text-destructive font-bold">DISABLED</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="space-y-1.5">
               <label className="text-[8px] font-mono font-semibold uppercase text-muted-foreground/70">Draft Title</label>
@@ -803,6 +890,12 @@ export default function ControlRoom() {
                     draftType,
                     title: draftTitle,
                     notes: draftNotes,
+                    ...(draftType === 'AI_ACTION_REQUEST_DRAFT' && {
+                      targetModule: targetModule || null,
+                      riskLevel: riskLevel || null,
+                      requestedAction: requestedAction || null,
+                      humanReview: 'REQUIRED',
+                    }),
                     status: "LOCAL_DRAFT_ONLY",
                     execution: "DISABLED",
                     externalConnections: "DISABLED",
@@ -812,6 +905,9 @@ export default function ControlRoom() {
                   setDraftType('');
                   setDraftTitle('');
                   setDraftNotes('');
+                  setTargetModule('');
+                  setRiskLevel('');
+                  setRequestedAction('');
                 }}
                 className="px-3 py-1.5 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm disabled:opacity-50"
                 disabled={!draftType || !draftTitle}
@@ -900,6 +996,46 @@ export default function ControlRoom() {
                   {draft.notes && (
                     <div className="text-[9px] font-mono text-slate-300 py-1.5 px-2 bg-secondary/40 border border-border/20 rounded-sm whitespace-pre-wrap">
                       {draft.notes}
+                    </div>
+                  )}
+
+                  {/* AI Action Request Fields */}
+                  {draft.draftType === 'AI_ACTION_REQUEST_DRAFT' && (
+                    <div className="bg-slate-700/10 border border-border/20 rounded-sm p-2 space-y-1">
+                      {draft.targetModule && (
+                        <div className="flex items-center justify-between text-[8px] font-mono">
+                          <span className="text-muted-foreground/70">Target Module</span>
+                          <span className="text-slate-300">{draft.targetModule}</span>
+                        </div>
+                      )}
+                      {draft.riskLevel && (
+                        <div className="flex items-center justify-between text-[8px] font-mono">
+                          <span className="text-muted-foreground/70">Risk Level</span>
+                          <span className={`font-bold ${draft.riskLevel === 'LOW' ? 'text-primary' : draft.riskLevel === 'MEDIUM' ? 'text-amber-400' : 'text-destructive'}`}>
+                            {draft.riskLevel}
+                          </span>
+                        </div>
+                      )}
+                      {draft.requestedAction && (
+                        <div className="text-[8px] font-mono text-slate-300">
+                          <span className="text-muted-foreground/70">Action: </span>{draft.requestedAction}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-[8px] font-mono pt-1 border-t border-border/20">
+                        <span className="text-muted-foreground/70">Human Review</span>
+                        <span className="text-primary font-bold">REQUIRED</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Safety Chips for AI Action Request */}
+                  {draft.draftType === 'AI_ACTION_REQUEST_DRAFT' && (
+                    <div className="flex flex-wrap gap-1">
+                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-primary/10 text-primary border border-primary/30 rounded-sm">AI_REQUEST_ONLY</span>
+                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-secondary/30 text-slate-300 border border-border/40 rounded-sm">HUMAN_REVIEW_REQUIRED</span>
+                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXECUTION</span>
+                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXTERNAL_CONNECTIONS</span>
+                      <span className="px-1.5 py-0.5 text-[7px] font-mono font-bold uppercase bg-slate-700/30 text-slate-300 border border-slate-600/30 rounded-sm">LOCAL_STATE_ONLY</span>
                     </div>
                   )}
 
