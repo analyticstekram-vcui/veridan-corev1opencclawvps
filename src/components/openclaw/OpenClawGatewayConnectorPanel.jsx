@@ -83,6 +83,7 @@ import OpenClawDryRunExecutionPlanningGate from './OpenClawDryRunExecutionPlanni
 import OpenClawDryRunActionContractDesigner from './OpenClawDryRunActionContractDesigner.jsx';
 import OpenClawDryRunActionContractValidator from './OpenClawDryRunActionContractValidator.jsx';
 import OpenClawDryRunActionDraftBuilder from './OpenClawDryRunActionDraftBuilder.jsx';
+import OpenClawDryRunActionDraftValidator from './OpenClawDryRunActionDraftValidator.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -642,6 +643,16 @@ export default function OpenClawGatewayConnectorPanel() {
                </div>
                <div className="p-4">
                  <OpenClawDryRunActionDraftBuilder />
+               </div>
+             </div>
+
+             {/* ── DRY-RUN ACTION DRAFT VALIDATOR ── */}
+             <div className="border border-border/60 rounded-lg overflow-hidden">
+               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
+                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Draft Validator</div>
+               </div>
+               <div className="p-4">
+                 <OpenClawDryRunActionDraftValidator />
                </div>
              </div>
 
