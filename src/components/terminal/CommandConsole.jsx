@@ -12,6 +12,7 @@ import ConnectorStorageApiKeyPolicy from '@/components/trading/ConnectorStorageA
 import ConnectorStorageApiKeyPolicyValidator from '@/components/trading/ConnectorStorageApiKeyPolicyValidator';
 import CredentialStorageContract from '@/components/trading/CredentialStorageContract';
 import CredentialStorageContractValidator from '@/components/trading/CredentialStorageContractValidator';
+import TradovatePaperSecretPresenceCheckPanel from '@/components/trading/TradovatePaperSecretPresenceCheckPanel';
 
 const riskColors = { low: 'text-primary', medium: 'text-amber-500', high: 'text-destructive' };
 
@@ -332,6 +333,7 @@ export default function CommandConsole({ onOpenClawStatus, onStatusUpdate }) {
           <ConnectorStorageApiKeyPolicyValidator />
           <CredentialStorageContract />
           <CredentialStorageContractValidator />
+          <TradovatePaperSecretPresenceCheckPanel />
         </div>
       )}
     </div>
