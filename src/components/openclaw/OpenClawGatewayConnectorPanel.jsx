@@ -75,6 +75,7 @@ import OpenClawStatusVersionCapabilitiesEvidenceRecord from './OpenClawStatusVer
 import OpenClawReadOnlyCapabilityPolicyMap from './OpenClawReadOnlyCapabilityPolicyMap.jsx';
 import OpenClawReadOnlyObservabilityDashboard from './OpenClawReadOnlyObservabilityDashboard.jsx';
 import OpenClawCommandProposalBox from './OpenClawCommandProposalBox.jsx';
+import OpenClawProposalReviewPanel from './OpenClawProposalReviewPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -554,6 +555,16 @@ export default function OpenClawGatewayConnectorPanel() {
                </div>
                <div className="p-4">
                  <OpenClawCommandProposalBox />
+               </div>
+             </div>
+
+             {/* ── PROPOSAL REVIEW PANEL ── */}
+             <div className="border border-border/60 rounded-lg overflow-hidden">
+               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
+                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Proposal Review Panel</div>
+               </div>
+               <div className="p-4">
+                 <OpenClawProposalReviewPanel />
                </div>
              </div>
 
