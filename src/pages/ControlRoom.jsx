@@ -135,6 +135,52 @@ export default function ControlRoom() {
         </div>
       </div>
 
+      {/* Control Room Baseline Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <div className="space-y-3">
+          <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide">Control Room Baseline</h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Name</span>
+              <span className="text-[10px] font-mono font-bold text-slate-300">Safe Read-Only Control Room</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Status</span>
+              <span className="text-[10px] font-mono font-bold text-primary">APPROVED</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Gateway Health</span>
+              <span className="text-[10px] font-mono font-bold text-slate-300">Manual read-only check only</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Status Tab</span>
+              <span className="text-[10px] font-mono font-bold text-slate-300">Static safety summary only</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Execution</span>
+              <span className="text-[10px] font-mono font-bold text-destructive">Disabled</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Trading</span>
+              <span className="text-[10px] font-mono font-bold text-destructive">Disabled</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Money Movement</span>
+              <span className="text-[10px] font-mono font-bold text-destructive">Disabled</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+              <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Credential Values</span>
+              <span className="text-[10px] font-mono font-bold text-destructive">Never displayed</span>
+            </div>
+          </div>
+          <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3 mt-2">
+            <p className="text-[10px] text-slate-300 leading-relaxed">
+              This baseline confirms the Control Room is approved for read-only monitoring and governance review only.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Tab Bar */}
       <div className="shrink-0 border-b border-border bg-card px-2 flex items-end gap-0 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
