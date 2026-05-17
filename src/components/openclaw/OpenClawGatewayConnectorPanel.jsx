@@ -207,6 +207,104 @@ export default function OpenClawGatewayConnectorPanel() {
     setExpandedGroup(expandedGroup === groupId ? null : groupId);
   };
 
+  // Generate local governance baseline packets for development/test
+  const generateLocalGovernanceBaseline = () => {
+    const keys = [
+      { key: 'openclawFinalLockPacket', phase: 'PHASE_14_MONITORING_EVIDENCE', status: 'LOCK_READY' },
+      { key: 'openclawBrowserObservationFinalLock', phase: 'PHASE_15_BROWSER_OBSERVATION', status: 'LOCK_READY' },
+      { key: 'openclawBrowserObservationProposalFinalLock', phase: 'PHASE_16_BROWSER_OBSERVATION_PROPOSAL', status: 'LOCK_READY' },
+      { key: 'openclawBrowserObservationExecutionContractFinalLock', phase: 'PHASE_17_EXECUTION_CONTRACT', status: 'LOCK_READY' },
+      { key: 'openclawBrowserObservationContractValidatorFinalLock', phase: 'PHASE_18_CONTRACT_VALIDATOR', status: 'LOCK_READY' },
+      { key: 'openclawBrowserObservationDryRunAuditLedger', phase: 'PHASE_19_DRY_RUN_AUDIT', status: 'AUDIT_READY', isArray: true },
+      { key: 'openclawReadOnlyOpenClawBridgeDesignFinalLock', phase: 'PHASE_20_BRIDGE_DESIGN', status: 'LOCK_READY' },
+      { key: 'openclawReadOnlyOpenClawBridgeValidatorFinalLock', phase: 'PHASE_21_BRIDGE_VALIDATOR', status: 'LOCK_READY' },
+      { key: 'openclawReadOnlyOpenClawBridgeDryRunAuditLedger', phase: 'PHASE_22_BRIDGE_AUDIT', status: 'AUDIT_READY', isArray: true },
+      { key: 'openclawReadOnlyOpenClawRuntimeBridgeReadinessFinalLock', phase: 'PHASE_23_RUNTIME_READINESS', status: 'LOCK_READY' },
+    ];
+
+    const safetyAssertions = {
+      localOnly: true,
+      previewOnly: true,
+      readOnly: true,
+      noOpenClawCalls: true,
+      noBrowserAutomation: true,
+      noExecution: true,
+      noDispatch: true,
+      noScheduler: true,
+      noPolling: true,
+      noCredentials: true,
+      noTrading: true,
+      noBrokerActions: true,
+      noWalletActions: true,
+      noMoneyMovement: true,
+    };
+
+    let count = 0;
+    keys.forEach(({ key, phase, status, isArray }) => {
+      if (localStorage.getItem(key)) return; // Skip if already exists
+
+      const now = new Date().toISOString();
+      
+      if (isArray) {
+        // Audit ledger: array with one safe record
+        const auditRecord = {
+          auditId: `baseline-${key}-001`,
+          auditStatus: 'AUDIT_READY',
+          phaseName: phase,
+          generatedAt: now,
+          baselineGeneratedBy: 'LOCAL_GOVERNANCE_BASELINE_GENERATOR',
+          safetyAssertions,
+          readOnly: true,
+          executionAllowed: false,
+          dispatchAllowed: false,
+          browserMutationAllowed: false,
+          credentialEntryAllowed: false,
+          openClawCalled: false,
+          backendForwarded: false,
+          runtimeBridgeActivated: false,
+        };
+        try {
+          localStorage.setItem(key, JSON.stringify([auditRecord]));
+          count++;
+        } catch {}
+      } else {
+        // Lock packet: object
+        const lockPacket = {
+          lockName: `${phase}_BASELINE_LOCK`,
+          phaseName: phase,
+          lockStatus: status,
+          generatedAt: now,
+          baselineGeneratedBy: 'LOCAL_GOVERNANCE_BASELINE_GENERATOR',
+          localOnly: true,
+          previewOnly: true,
+          readOnly: true,
+          executionAllowed: false,
+          dispatchAllowed: false,
+          browserMutationAllowed: false,
+          credentialEntryAllowed: false,
+          openClawCalled: false,
+          backendForwarded: false,
+          runtimeBridgeActivated: false,
+          safetyAssertions,
+        };
+        try {
+          localStorage.setItem(key, JSON.stringify(lockPacket));
+          count++;
+        } catch {}
+      }
+    });
+
+    // Trigger summary panel refresh by dispatching custom event
+    window.dispatchEvent(new CustomEvent('openclaw:baseline-generated', {
+      detail: { packetsGenerated: count, timestamp: new Date().toISOString() }
+    }));
+
+    // Force summary panel to update
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('openclaw:refresh-governance-summary'));
+    }, 100);
+  };
+
   const handleEvidenceChainRefresh = () => {
     let records = [];
     try {
@@ -404,8 +502,18 @@ export default function OpenClawGatewayConnectorPanel() {
           <div className="space-y-5 border-t border-border/40 pt-5">
             
             {/* Summary Panel - Always Visible */}
-            <div className="bg-card border border-primary/20 rounded-lg p-4">
+            <div className="bg-card border border-primary/20 rounded-lg p-4 space-y-3">
               <OpenClawGovernancePhaseSummaryPanel />
+              <button
+                type="button"
+                onClick={generateLocalGovernanceBaseline}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-bold hover:bg-amber-500/20 transition-colors rounded"
+              >
+                ✓ Generate Local Governance Baseline
+              </button>
+              <div className="text-[8px] text-slate-500">
+                Creates test baseline packets for Phases 14–23 in localStorage (development only). No backend calls, no execution.
+              </div>
             </div>
 
             {/* Group 1: Phase 14 — Monitoring Evidence */}
