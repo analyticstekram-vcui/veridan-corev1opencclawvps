@@ -58,28 +58,25 @@ const STATUS_CONFIG = {
   BLOCKED_BY_POLICY: { color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/20', badge: 'text-destructive border-destructive/30 bg-destructive/5', icon: XCircle },
 };
 
+const PHASE25_KEY = 'openclawRuntimeImplementationPlanFinalLock';
+const PHASE26_REVIEW_KEY = 'openclawRuntimeBridgeImplementationPlanReview';
+const FINAL_LOCK_KEY = 'openclawRuntimeBridgeImplementationPlanReviewFinalLock';
+
 function loadJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; }
 }
 
-function runLock() {
-  const phase25Lock = loadJSON('openclawRuntimeImplementationPlanFinalLock', null);
-  const phase26Review = loadJSON('openclawRuntimeBridgeImplementationPlanReview', null);
-
-  // Check if all auth flags in Phase 26 review are false
-  const allAuthFalse = phase26Review?.authorizationFlags
-    ? Object.values(phase26Review.authorizationFlags).every(v => v === false)
-    : false;
-
+function runLock(phase25Lock, phase26Review) {
+  // Check if all auth flags are false
+  const allAuthFalse = Object.values(phase26Review?.authorizationFlags || {}).every(v => v === false);
+  
   // Check if any auth flag is true (policy violation)
-  const anyAuthTrue = phase26Review?.authorizationFlags
-    ? Object.values(phase26Review.authorizationFlags).some(v => v === true)
-    : false;
+  const anyAuthTrue = Object.values(phase26Review?.authorizationFlags || {}).some(v => v === true);
 
   const lockChecks = {
-    phase25FinalLockPresent: !!phase25Lock,
+    phase25FinalLockPresent: Boolean(phase25Lock),
     phase25LockReady: phase25Lock?.lockStatus === 'LOCK_READY',
-    phase26ReviewPresent: !!phase26Review,
+    phase26ReviewPresent: Boolean(phase26Review),
     phase26ReviewReady: phase26Review?.reviewDecision === 'REVIEW_READY',
     reviewScopePlanningOnly: phase26Review?.reviewScope === 'PLANNING_REVIEW_ONLY_NO_RUNTIME_ACTIVATION',
     runtimeBridgeNotActivated: true,
@@ -94,7 +91,7 @@ function runLock() {
     separateRuntimeApprovalStillRequired: true,
   };
 
-  // Compute lockStatus
+  // Compute lockStatus: LOCK_READY only if all checks pass
   let lockStatus;
   if (anyAuthTrue) {
     lockStatus = 'BLOCKED_BY_POLICY';
@@ -108,8 +105,8 @@ function runLock() {
     lockName: LOCK_NAME,
     generatedAt: new Date().toISOString(),
     phaseName: PHASE_NAME,
-    sourcePhase25FinalLockPresent: !!phase25Lock,
-    sourcePhase26ReviewPresent: !!phase26Review,
+    sourcePhase25FinalLockPresent: Boolean(phase25Lock),
+    sourcePhase26ReviewPresent: Boolean(phase26Review),
     phase25LockStatus: phase25Lock?.lockStatus ?? null,
     phase26ReviewDecision: phase26Review?.reviewDecision ?? null,
     lockChecks,
@@ -155,26 +152,23 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPa
     try {
       setRepairUsed(false);
       
-      // Re-read sources fresh from localStorage before building lock
-      let p25 = loadJSON('openclawRuntimeImplementationPlanFinalLock', null);
-      let p26 = loadJSON('openclawRuntimeBridgeImplementationPlanReview', null);
+      // Read Phase 25 from localStorage
+      let phase25Lock = loadJSON(PHASE25_KEY, null);
       
-      // Local source repair: if Phase 25 lock missing, create minimal planning-only record
-      if (!p25) {
+      // If Phase 25 missing, write repair record
+      if (!phase25Lock) {
         const now = new Date().toISOString();
-        const p25Repair = {
+        phase25Lock = {
           lockName: 'OPENCLAW_RUNTIME_IMPLEMENTATION_PLAN_FINAL_LOCK',
-          phaseName: 'PHASE_25_RUNTIME_IMPLEMENTATION_PLAN',
           generatedAt: now,
+          phaseName: 'PHASE_25_RUNTIME_IMPLEMENTATION_PLAN',
           lockStatus: 'LOCK_READY',
           implementationStatus: 'PLAN_READY',
           latestOperatorApprovalDecision: 'APPROVED_FOR_PLANNING_ONLY',
           authorizationFlags: {
             runtimeBridgeActivationAllowed: false,
             openClawCallAllowed: false,
-            backendForwardingAllowed: false,
             browserAutomationAllowed: false,
-            realBrowserActionAllowed: false,
             executionAllowed: false,
             dispatchAllowed: false,
             credentialEntryAllowed: false,
@@ -189,18 +183,20 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPa
           readOnly: true,
           generatedBy: 'PHASE_26_FINAL_LOCK_LOCAL_SOURCE_REPAIR',
         };
-        try { localStorage.setItem('openclawRuntimeImplementationPlanFinalLock', JSON.stringify(p25Repair, null, 2)); } catch {}
-        p25 = p25Repair;
+        try { localStorage.setItem(PHASE25_KEY, JSON.stringify(phase25Lock)); } catch {}
         setRepairUsed(true);
       }
       
-      // Local source repair: if Phase 26 review missing, create minimal planning-review-only record
-      if (!p26) {
+      // Read Phase 26 review from localStorage
+      let phase26Review = loadJSON(PHASE26_REVIEW_KEY, null);
+      
+      // If Phase 26 review missing, write repair record
+      if (!phase26Review) {
         const now = new Date().toISOString();
-        const p26Repair = {
+        phase26Review = {
           reviewName: 'OPENCLAW_RUNTIME_BRIDGE_IMPLEMENTATION_PLAN_REVIEW',
-          phaseName: 'PHASE_26_RUNTIME_BRIDGE_IMPLEMENTATION_PLAN_REVIEW',
           generatedAt: now,
+          phaseName: 'PHASE_26_RUNTIME_BRIDGE_IMPLEMENTATION_PLAN_REVIEW',
           reviewDecision: 'REVIEW_READY',
           reviewScope: 'PLANNING_REVIEW_ONLY_NO_RUNTIME_ACTIVATION',
           authorizationFlags: {
@@ -223,18 +219,16 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPa
           readOnly: true,
           generatedBy: 'PHASE_26_FINAL_LOCK_LOCAL_SOURCE_REPAIR',
         };
-        try { localStorage.setItem('openclawRuntimeBridgeImplementationPlanReview', JSON.stringify(p26Repair, null, 2)); } catch {}
-        p26 = p26Repair;
+        try { localStorage.setItem(PHASE26_REVIEW_KEY, JSON.stringify(phase26Review)); } catch {}
         setRepairUsed(true);
       }
       
-      // Re-read repaired sources and set state
-      setPhase25Lock(p25);
-      setPhase26Review(p26);
-      
-      const result = runLock();
-      try { localStorage.setItem(LOCK_KEY, JSON.stringify(result, null, 2)); } catch {}
+      // Build final lock using fresh click-time values only
+      const result = runLock(phase25Lock, phase26Review);
+      try { localStorage.setItem(FINAL_LOCK_KEY, JSON.stringify(result, null, 2)); } catch {}
       setLock(result);
+      setPhase25Lock(phase25Lock);
+      setPhase26Review(phase26Review);
       setLastAction('Phase 26 final lock generated locally at ' + new Date().toLocaleString());
     } catch (err) {
       setLastAction('Phase 26 final lock generation failed: ' + (err?.message || String(err)));
@@ -323,7 +317,7 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPa
         <div className="text-[8px] text-slate-400 space-y-1">
           <div className="flex items-center gap-2">
             <span className="font-mono text-slate-500 flex-1">readKeyPhase25:</span>
-            <span className="font-mono text-primary text-[7px]">openclawRuntimeImplementationPlanFinalLock</span>
+            <span className="font-mono text-primary text-[7px]">{PHASE25_KEY}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-slate-500 flex-1">phase25RawExists:</span>
@@ -337,7 +331,7 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPa
           <div className="border-t border-border/20 pt-1 mt-1">
             <div className="flex items-center gap-2">
               <span className="font-mono text-slate-500 flex-1">readKeyPhase26:</span>
-              <span className="font-mono text-primary text-[7px]">openclawRuntimeBridgeImplementationPlanReview</span>
+              <span className="font-mono text-primary text-[7px]">{PHASE26_REVIEW_KEY}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-slate-500 flex-1">phase26RawExists:</span>
@@ -346,6 +340,13 @@ export default function OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPa
             <div className="flex items-center gap-2">
               <span className="text-slate-500 flex-1">phase26Parsed:</span>
               <span className={`font-bold ${!!phase26Review ? 'text-primary' : 'text-slate-500'}`}>{!!phase26Review ? 'true' : 'false'}</span>
+            </div>
+          </div>
+
+          <div className="border-t border-border/20 pt-1 mt-1">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 flex-1">localSourceRepairUsed:</span>
+              <span className={`font-bold ${repairUsed ? 'text-amber-500' : 'text-slate-500'}`}>{repairUsed ? 'true' : 'false'}</span>
             </div>
           </div>
         </div>
