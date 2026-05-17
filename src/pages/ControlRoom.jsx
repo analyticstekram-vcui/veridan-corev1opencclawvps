@@ -521,18 +521,24 @@ export default function ControlRoom() {
           <div>
             <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100 tracking-wide mb-2">Controlled Local Drafts</h2>
             <p className="text-[10px] text-slate-300 leading-relaxed mb-2">
-              Create temporary browser-session draft notes for future review only.
+              Create temporary browser-session draft notes with local-only status workflow.
             </p>
             <p className="text-[9px] font-mono text-slate-400 mb-3">
               Drafts exist only in the current page session and reset on refresh.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-slate-700/30 text-slate-300 border border-slate-600/30 rounded-sm">LOCAL_STATE_ONLY</span>
-              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_BACKEND_SAVE</span>
-              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXECUTION</span>
-              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXTERNAL_CONNECTIONS</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-slate-700/30 text-slate-300 border border-slate-600/30 rounded-sm">LOCAL_WORKFLOW_ONLY</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_APPROVAL_EXECUTION</span>
+              <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_BACKEND_STATUS</span>
               <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-sm">RESETS_ON_REFRESH</span>
             </div>
+          </div>
+
+          {/* Workflow Safety Note */}
+          <div className="bg-primary/5 border border-primary/20 rounded-sm px-3 py-2">
+            <p className="text-[9px] font-mono text-slate-300 leading-relaxed">
+              Status changes are local to this page session only. They do not approve execution, trigger automation, submit data, or persist after refresh.
+            </p>
           </div>
 
           {/* Draft Creation Form */}
@@ -614,7 +620,7 @@ export default function ControlRoom() {
             </div>
           </div>
 
-          {/* Drafts List */}
+          {/* Drafts List with Status Workflow */}
           {drafts.length > 0 && (
             <div className="space-y-2">
               <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70">
@@ -627,9 +633,16 @@ export default function ControlRoom() {
                       <div className="text-[9px] font-mono font-bold text-foreground">{draft.title}</div>
                       <div className="text-[8px] font-mono text-muted-foreground/70 mt-0.5">{draft.draftType}</div>
                     </div>
-                    <span className="text-[8px] font-mono px-1.5 py-0.5 bg-slate-700/30 text-slate-300 border border-slate-600/30 rounded-sm shrink-0">
-                      {draft.status}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[8px] font-mono px-2 py-0.5 border rounded-sm shrink-0 ${
+                        draft.status === 'LOCAL_DRAFT_ONLY' ? 'bg-slate-700/30 text-slate-300 border-slate-600/30' :
+                        draft.status === 'READY_FOR_REVIEW' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                        draft.status === 'REVIEWED' ? 'bg-primary/10 text-primary border-primary/30' :
+                        'bg-destructive/10 text-destructive border-destructive/30'
+                      }`}>
+                        {draft.status}
+                      </span>
+                    </div>
                   </div>
 
                   {draft.notes && (
@@ -637,6 +650,56 @@ export default function ControlRoom() {
                       {draft.notes}
                     </div>
                   )}
+
+                  {/* Status Workflow Controls */}
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    {draft.status === 'LOCAL_DRAFT_ONLY' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDrafts(drafts.map(d => d.id === draft.id ? { ...d, status: 'READY_FOR_REVIEW' } : d));
+                        }}
+                        className="px-2.5 py-1 text-[8px] font-mono font-bold border border-amber-500/40 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors rounded-sm"
+                      >
+                        Mark Ready For Review
+                      </button>
+                    )}
+                    
+                    {draft.status === 'READY_FOR_REVIEW' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDrafts(drafts.map(d => d.id === draft.id ? { ...d, status: 'REVIEWED' } : d));
+                          }}
+                          className="px-2.5 py-1 text-[8px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
+                        >
+                          Mark Reviewed
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDrafts(drafts.map(d => d.id === draft.id ? { ...d, status: 'REJECTED' } : d));
+                          }}
+                          className="px-2.5 py-1 text-[8px] font-mono font-bold border border-destructive/40 text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors rounded-sm"
+                        >
+                          Reject Draft
+                        </button>
+                      </>
+                    )}
+
+                    {(draft.status === 'REVIEWED' || draft.status === 'REJECTED') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDrafts(drafts.map(d => d.id === draft.id ? { ...d, status: 'LOCAL_DRAFT_ONLY' } : d));
+                        }}
+                        className="px-2.5 py-1 text-[8px] font-mono font-bold border border-slate-600/40 text-slate-300 bg-slate-700/20 hover:bg-slate-700/30 transition-colors rounded-sm"
+                      >
+                        Reset To Local Draft
+                      </button>
+                    )}
+                  </div>
 
                   <div className="flex items-center justify-between text-[8px] font-mono text-muted-foreground/60 pt-1">
                     <div>{new Date(draft.generatedAt).toLocaleString()}</div>
