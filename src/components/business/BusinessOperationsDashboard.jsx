@@ -16,6 +16,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Lock, AlertCircle, Briefcase, TrendingUp, Users, Settings, Home } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
+import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
 import BusinessOperationsIntakeStructure from './BusinessOperationsIntakeStructure';
 import LocalOnlyBusinessTaskTrackerPreview from './LocalOnlyBusinessTaskTrackerPreview';
 import LocalOnlyBusinessTaskTracker from './LocalOnlyBusinessTaskTracker';
@@ -97,163 +98,80 @@ export default function BusinessOperationsDashboard() {
           </Link>
         </div>
 
-        {/* Business Operations Safety Summary Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Business Operations Safety Summary</h2>
-          </div>
-          <div className="p-4 space-y-2">
-            <StatusBadge label="Mode" value="PLANNING_ONLY" type="preview" />
-            <StatusBadge label="Entity Formation" value="NOT_CONNECTED" type="neutral" />
-            <StatusBadge label="Registered Agent Integration" value="DISABLED" type="disabled" />
-            <StatusBadge label="Business Bank Integration" value="DISABLED" type="disabled" />
-            <StatusBadge label="Payment Processing" value="DISABLED" type="disabled" />
-            <StatusBadge label="Client Data Entry" value="DISABLED" type="disabled" />
-            <StatusBadge label="Credential Entry" value="DISABLED" type="disabled" />
-            <StatusBadge label="Document Upload" value="DISABLED" type="disabled" />
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3 mt-3">
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                This module is for planning and structure only. It does not form companies, connect to registered agents, open bank accounts, process payments, collect client data, store credentials, or upload documents.
-              </p>
-            </div>
-          </div>
-        </div>
+        <SafetyStatusCard
+          title="Business Operations Safety Summary"
+          statuses={[
+            { label: 'Mode', value: 'PLANNING_ONLY', type: 'preview' },
+            { label: 'Entity Formation', value: 'NOT_CONNECTED', type: 'neutral' },
+            { label: 'Registered Agent Integration', value: 'DISABLED', type: 'disabled' },
+            { label: 'Business Bank Integration', value: 'DISABLED', type: 'disabled' },
+            { label: 'Payment Processing', value: 'DISABLED', type: 'disabled' },
+            { label: 'Client Data Entry', value: 'DISABLED', type: 'disabled' },
+            { label: 'Credential Entry', value: 'DISABLED', type: 'disabled' },
+            { label: 'Document Upload', value: 'DISABLED', type: 'disabled' },
+          ]}
+          disclaimer="This module is for planning and structure only. It does not form companies, connect to registered agents, open bank accounts, process payments, collect client data, store credentials, or upload documents."
+        />
 
-        {/* Operator Next Action Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Operator Next Action</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
-              <p className="text-[11px] font-mono font-bold text-primary mb-2">Review business operations structure before adding workflows.</p>
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                Verify that all planned business entities, revenue streams, and operational safeguards are properly documented and reviewed.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70 mb-2">Action Checklist</div>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Review entity formation sections</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Review registered agent integration plan</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no company formation submission exists</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no payment processing exists</span>
-              </button>
-              <button type="button" className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no credential entry exists</span>
-              </button>
-              <div className="text-[8px] font-mono text-muted-foreground/50 mt-3">
-                Checklist is local and resets on page refresh.
-              </div>
-            </div>
-          </div>
-        </div>
+        <OperatorNextActionCard
+          title="Operator Next Action"
+          summaryTitle="Review business operations structure before adding workflows."
+          summaryText="Verify that all planned business entities, revenue streams, and operational safeguards are properly documented and reviewed."
+          checklist={[
+            'Review entity formation sections',
+            'Review registered agent integration plan',
+            'Confirm no company formation submission exists',
+            'Confirm no payment processing exists',
+            'Confirm no credential entry exists',
+          ]}
+          note="Checklist is local and resets on page refresh."
+        />
 
-        {/* Business Operations Baseline Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Business Operations Baseline</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Name</span>
-                <span className="text-[10px] font-mono font-bold text-slate-300">Business Operations Planning Baseline</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Status</span>
-                <span className="text-[10px] font-mono font-bold text-primary">APPROVED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Mode</span>
-                <span className="text-[10px] font-mono font-bold text-amber-500">PLANNING_ONLY</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Entity Formation</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">NOT_CONNECTED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Registered Agent Integration</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Business Bank Integration</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Payment Processing</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Client Data Entry</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Credential Entry</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Document Upload</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-            </div>
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                This baseline confirms the Business Operations module is approved for planning and structure review only.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const snapshot = {
-                  snapshotType: "BUSINESS_OPERATIONS_PLANNING_BASELINE",
-                  baselineName: "Business Operations Planning Baseline",
-                  baselineStatus: "APPROVED",
-                  mode: "PLANNING_ONLY",
-                  entityFormation: "NOT_CONNECTED",
-                  registeredAgentIntegration: "DISABLED",
-                  businessBankIntegration: "DISABLED",
-                  paymentProcessing: "DISABLED",
-                  clientDataEntry: "DISABLED",
-                  credentialEntry: "DISABLED",
-                  documentUpload: "DISABLED",
-                  generatedAt: new Date().toISOString(),
-                  safetyClaims: [
-                    "No company formation submission",
-                    "No registered agent API connection",
-                    "No bank integration",
-                    "No payment processing",
-                    "No client data collection",
-                    "No credential entry",
-                    "No document upload",
-                    "Planning-only baseline mode",
-                  ],
-                };
-                const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `business-operations-baseline-snapshot-${Date.now()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="px-4 py-2 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
-            >
-              Export Business Operations Snapshot
-            </button>
-          </div>
-        </div>
+        <BaselineCard
+          title="Business Operations Baseline"
+          rows={[
+            { label: 'Baseline Name', value: 'Business Operations Planning Baseline' },
+            { label: 'Baseline Status', value: 'APPROVED', valueClassName: 'text-primary' },
+            { label: 'Mode', value: 'PLANNING_ONLY', valueClassName: 'text-amber-500' },
+            { label: 'Entity Formation', value: 'NOT_CONNECTED', valueClassName: 'text-destructive' },
+            { label: 'Registered Agent Integration', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Business Bank Integration', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Payment Processing', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Client Data Entry', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Credential Entry', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Document Upload', value: 'DISABLED', valueClassName: 'text-destructive' },
+          ]}
+          disclaimer="This baseline confirms the Business Operations module is approved for planning and structure review only."
+        >
+          <SnapshotExportButton
+            snapshot={{
+              snapshotType: 'BUSINESS_OPERATIONS_PLANNING_BASELINE',
+              baselineName: 'Business Operations Planning Baseline',
+              baselineStatus: 'APPROVED',
+              mode: 'PLANNING_ONLY',
+              entityFormation: 'NOT_CONNECTED',
+              registeredAgentIntegration: 'DISABLED',
+              businessBankIntegration: 'DISABLED',
+              paymentProcessing: 'DISABLED',
+              clientDataEntry: 'DISABLED',
+              credentialEntry: 'DISABLED',
+              documentUpload: 'DISABLED',
+              generatedAt: new Date().toISOString(),
+              safetyClaims: [
+                'No company formation submission',
+                'No registered agent API connection',
+                'No bank integration',
+                'No payment processing',
+                'No client data collection',
+                'No credential entry',
+                'No document upload',
+                'Planning-only baseline mode',
+              ],
+            }}
+            filenamePrefix="business-operations-baseline-snapshot"
+            label="Export Business Operations Snapshot"
+          />
+        </BaselineCard>
 
         <div className="grid grid-cols-1 gap-4">
           {/* 1. Operations Mode */}
