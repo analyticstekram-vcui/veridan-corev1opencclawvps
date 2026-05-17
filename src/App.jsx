@@ -15,6 +15,7 @@ import BrowserSessionRecords from './pages/BrowserSessionRecords';
 import ControlRoom from './pages/ControlRoom';
 import VeridanKnowledgeVaultDashboard from './components/knowledge/VeridanKnowledgeVaultDashboard';
 import CreditPublicSideDashboard from './components/credit/CreditPublicSideDashboard';
+import BusinessOperationsDashboard from './components/business/BusinessOperationsDashboard';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -53,6 +54,7 @@ const AuthenticatedApp = () => {
       <Route path="/control-room" element={<ControlRoom />} />
       <Route path="/knowledge-vault" element={<VeridanKnowledgeVaultDashboard />} />
       <Route path="/credit-public-side" element={<CreditPublicSideDashboard />} />
+      <Route path="/business-operations" element={<BusinessOperationsDashboard />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
