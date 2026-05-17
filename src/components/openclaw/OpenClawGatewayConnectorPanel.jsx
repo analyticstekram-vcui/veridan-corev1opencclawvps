@@ -42,6 +42,7 @@ import OpenClawRuntimeImplementationPlanFinalLockPanel from './OpenClawRuntimeIm
 import OpenClawRuntimeBridgeImplementationPlanReviewPanel from './OpenClawRuntimeBridgeImplementationPlanReviewPanel.jsx';
 import OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel from './OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
+import OpenClawReadOnlyRuntimeBridgeBoundaryPanel from './OpenClawReadOnlyRuntimeBridgeBoundaryPanel.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -535,6 +536,26 @@ export default function OpenClawGatewayConnectorPanel() {
                {expandedGroup === 'phase27' === false ? null : (
                  <div className="space-y-5 p-5">
                    <div className="border-t border-primary/20 pt-5"><OpenClawGovernanceCheckpointIndexPanel /></div>
+                 </div>
+               )}
+             </div>
+
+             {/* BOUNDARY DEFINITION: Phase 28 — Read-Only Runtime Bridge Boundary */}
+             <div className="border-2 border-primary/30 rounded-lg overflow-hidden bg-primary/1">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase28')}
+                 className="w-full px-4 py-3 bg-primary/5 border-b-2 border-primary/30 hover:bg-primary/10 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-primary">BOUNDARY DEFINITION: Phase 28 Read-Only Runtime Bridge</div>
+                   <div className="text-[9px] text-primary/70 mt-0.5">First permitted read-only observation boundary. Preparation only, no bridge activation.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-primary/60 transition-transform ${expandedGroup === 'phase28' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase28' === false ? null : (
+                 <div className="space-y-5 p-5">
+                   <div className="border-t border-primary/10 pt-5"><OpenClawReadOnlyRuntimeBridgeBoundaryPanel /></div>
                  </div>
                )}
              </div>
