@@ -87,6 +87,7 @@ import OpenClawDryRunActionDraftValidator from './OpenClawDryRunActionDraftValid
 import OpenClawDryRunSimulationPreview from './OpenClawDryRunSimulationPreview.jsx';
 import OpenClawDryRunSimulationPreviewValidator from './OpenClawDryRunSimulationPreviewValidator.jsx';
 import OpenClawDryRunResultPackager from './OpenClawDryRunResultPackager.jsx';
+import OpenClawOperatorFlowDashboard from './OpenClawOperatorFlowDashboard.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -556,6 +557,16 @@ export default function OpenClawGatewayConnectorPanel() {
                </div>
                <div className="p-4">
                  <OpenClawReadOnlyObservabilityDashboard />
+               </div>
+             </div>
+
+             {/* ── OPERATOR FLOW DASHBOARD ── */}
+             <div className="border-2 border-primary/30 rounded-lg overflow-hidden">
+               <div className="px-4 py-2 bg-primary/10 border-b border-primary/20">
+                 <div className="text-[10px] uppercase tracking-widest font-bold text-primary">Operator Flow Dashboard</div>
+               </div>
+               <div className="p-4">
+                 <OpenClawOperatorFlowDashboard />
                </div>
              </div>
 
