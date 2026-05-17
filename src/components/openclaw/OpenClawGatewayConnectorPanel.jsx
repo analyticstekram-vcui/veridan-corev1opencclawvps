@@ -43,6 +43,7 @@ import OpenClawRuntimeBridgeImplementationPlanReviewPanel from './OpenClawRuntim
 import OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel from './OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawReadOnlyRuntimeBridgeBoundaryPanel from './OpenClawReadOnlyRuntimeBridgeBoundaryPanel.jsx';
+import OpenClawRuntimeBridgeRequestContractPreview from './OpenClawRuntimeBridgeRequestContractPreview.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -556,6 +557,26 @@ export default function OpenClawGatewayConnectorPanel() {
                {expandedGroup === 'phase28' === false ? null : (
                  <div className="space-y-5 p-5">
                    <div className="border-t border-primary/10 pt-5"><OpenClawReadOnlyRuntimeBridgeBoundaryPanel /></div>
+                 </div>
+               )}
+             </div>
+
+             {/* CONTRACT PREVIEW: Phase 29 — Runtime Bridge Request Contract */}
+             <div className="border-2 border-primary/40 rounded-lg overflow-hidden bg-primary/1">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase29')}
+                 className="w-full px-4 py-3 bg-primary/5 border-b-2 border-primary/40 hover:bg-primary/10 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-foreground">CONTRACT PREVIEW: Phase 29 Runtime Bridge Request</div>
+                   <div className="text-[9px] text-slate-400 mt-0.5">Future runtime bridge request contract structure. Preview-only, no execution.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase29' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase29' === false ? null : (
+                 <div className="space-y-5 p-5">
+                   <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeRequestContractPreview /></div>
                  </div>
                )}
              </div>
