@@ -584,6 +584,217 @@ export default function TradingOperationsDashboard() {
           </div>
         </div>
 
+        {/* Signal Validation Requirements Draft */}
+        <div className="mt-8 bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Signal Validation Requirements Draft</h2>
+            <p className="text-[9px] font-mono text-slate-400 mt-1">This draft defines how future TradingView signals should be validated before becoming local AI request drafts. It does not validate live signals, receive webhooks, connect to TradingView, or execute trades.</p>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* Required Signal Fields Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Required Signal Fields</h3>
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="text-[8px] font-mono text-slate-300 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">signalId</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">source</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">symbol</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">timeframe</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">strategyName</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">signalType</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">direction</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">generatedAt</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">riskLabel</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">entryReference</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">stopLossReference</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">takeProfitReference</span>
+                    <span className="text-primary">REQUIRED</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Allowed Values Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Allowed Values</h3>
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="text-[8px] font-mono text-slate-300 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">source</span>
+                    <span className="text-slate-300">TRADINGVIEW</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">direction</span>
+                    <span className="text-slate-300">LONG, SHORT, FLAT</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">signalType</span>
+                    <span className="text-slate-300">ENTRY, EXIT, ALERT, WARNING</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">riskLabel</span>
+                    <span className="text-slate-300">LOW, MEDIUM, HIGH</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground/70">status</span>
+                    <span className="text-slate-300">DRAFT_ONLY</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Rejection Rules Card */}
+            <div className="bg-secondary/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-secondary/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-100">Rejection Rules</h3>
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="text-[8px] font-mono text-slate-300 space-y-0.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Missing signalId</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Duplicate signalId</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Unsupported source</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Unsupported symbol</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Unsupported timeframe</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Missing risk label</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Missing strategy name</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Invalid direction</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Invalid signal type</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Any execution request included</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Safety Output Card */}
+            <div className="bg-destructive/5 border border-destructive/20 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-destructive/80">Safety Output</h3>
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-1.5">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Validated Signal Output</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">LOCAL_DRAFT_ONLY</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Execution Approval</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">NOT_GRANTED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Broker Routing</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Market Data Lookup</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm col-span-2">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">External Connections</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Card */}
+            <div className="bg-slate-700/20 border border-border/30 rounded-sm overflow-hidden">
+              <div className="px-3 py-2 bg-slate-700/40 border-b border-border/30">
+                <h3 className="text-[10px] font-mono font-bold uppercase text-slate-300">Validation Requirements Status</h3>
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="flex items-center justify-between px-2.5 py-1 bg-slate-700/10 border border-border/20 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Requirements Draft</span>
+                  <span className="text-[8px] font-mono font-bold text-primary">APPROVED_FOR_PLANNING</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Live Validation</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">Backend Route</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">NOT_CREATED</span>
+                </div>
+                <div className="flex items-center justify-between px-2.5 py-1 bg-destructive/5 border border-destructive/30 rounded-sm">
+                  <span className="text-[8px] font-mono text-muted-foreground/70">External Calls</span>
+                  <span className="text-[8px] font-mono font-bold text-destructive">DISABLED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Planning-Only Notice */}
+            <div className="bg-primary/5 border border-primary/20 rounded-sm px-3 py-2">
+              <p className="text-[9px] font-mono text-slate-300 leading-relaxed">
+                This signal validation requirements draft is planning and documentation only. No validation functions are created, no webhooks are processed, no TradingView integration is active, no broker or market data lookups occur, and no execution is triggered.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* MCP + TradingView Planning Blueprint Section */}
         <div className="mt-8 bg-card border border-border/50 rounded-sm overflow-hidden">
           <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
