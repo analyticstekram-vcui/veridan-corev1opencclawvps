@@ -45,6 +45,7 @@ import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpoi
 import OpenClawReadOnlyRuntimeBridgeBoundaryPanel from './OpenClawReadOnlyRuntimeBridgeBoundaryPanel.jsx';
 import OpenClawRuntimeBridgeRequestContractPreview from './OpenClawRuntimeBridgeRequestContractPreview.jsx';
 import OpenClawRuntimeBridgeContractValidator from './OpenClawRuntimeBridgeContractValidator.jsx';
+import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -538,6 +539,26 @@ export default function OpenClawGatewayConnectorPanel() {
                {expandedGroup === 'phase27' === false ? null : (
                  <div className="space-y-5 p-5">
                    <div className="border-t border-primary/20 pt-5"><OpenClawGovernanceCheckpointIndexPanel /></div>
+                 </div>
+               )}
+             </div>
+
+             {/* FLOW MAP: Operator Orientation — Plain English */}
+             <div className="border-2 border-slate-600 rounded-lg overflow-hidden opacity-95 bg-slate-900/20 mb-4">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('flowmap')}
+                 className="w-full px-4 py-3 bg-slate-800/40 border-b-2 border-slate-600 hover:bg-slate-800/50 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-slate-300">OPERATOR ORIENTATION: Runtime Bridge Flow Map</div>
+                   <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–30 and future gates. Start here if you're new.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'flowmap' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'flowmap' === false ? null : (
+                 <div className="space-y-5 p-5">
+                   <div className="border-t border-slate-600/40 pt-5"><OpenClawRuntimeBridgeFlowMap /></div>
                  </div>
                )}
              </div>
