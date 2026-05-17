@@ -75,19 +75,6 @@ function generateSummary() {
 }
 
 function generateLocalBaseline() {
-  const baselineKeys = [
-    { key: 'openclawFinalLockPacket', phase: 'PHASE_14_MONITORING_EVIDENCE', status: 'LOCK_READY' },
-    { key: 'openclawBrowserObservationFinalLock', phase: 'PHASE_15_BROWSER_OBSERVATION', status: 'LOCK_READY' },
-    { key: 'openclawBrowserObservationProposalFinalLock', phase: 'PHASE_16_BROWSER_OBSERVATION_PROPOSAL', status: 'LOCK_READY' },
-    { key: 'openclawBrowserObservationExecutionContractFinalLock', phase: 'PHASE_17_EXECUTION_CONTRACT', status: 'LOCK_READY' },
-    { key: 'openclawBrowserObservationContractValidatorFinalLock', phase: 'PHASE_18_CONTRACT_VALIDATOR', status: 'LOCK_READY' },
-    { key: 'openclawBrowserObservationDryRunAuditLedger', phase: 'PHASE_19_DRY_RUN_AUDIT', status: 'AUDIT_READY', isArray: true },
-    { key: 'openclawReadOnlyOpenClawBridgeDesignFinalLock', phase: 'PHASE_20_BRIDGE_DESIGN', status: 'LOCK_READY' },
-    { key: 'openclawReadOnlyOpenClawBridgeValidatorFinalLock', phase: 'PHASE_21_BRIDGE_VALIDATOR', status: 'LOCK_READY' },
-    { key: 'openclawReadOnlyOpenClawBridgeDryRunAuditLedger', phase: 'PHASE_22_BRIDGE_AUDIT', status: 'AUDIT_READY', isArray: true },
-    { key: 'openclawReadOnlyOpenClawRuntimeBridgeReadinessFinalLock', phase: 'PHASE_23_RUNTIME_READINESS', status: 'LOCK_READY' },
-  ];
-
   const safetyAssertions = {
     localOnly: true,
     previewOnly: true,
@@ -105,15 +92,19 @@ function generateLocalBaseline() {
     noMoneyMovement: true,
   };
 
-  baselineKeys.forEach(({ key, phase, status, isArray }) => {
-    if (localStorage.getItem(key)) return;
+  // Write baseline packets to EXACT same keys that PHASES list reads
+  PHASES.forEach((phase) => {
+    if (localStorage.getItem(phase.key)) return;
 
     const now = new Date().toISOString();
+    // Phases 19 and 22 are audit ledgers (arrays), rest are locks (objects)
+    const isArray = phase.num === 19 || phase.num === 22;
+
     if (isArray) {
       const auditRecord = {
-        auditId: `baseline-${key}-001`,
+        auditId: `baseline-${phase.key}-001`,
         auditStatus: 'AUDIT_READY',
-        phaseName: phase,
+        phaseName: `PHASE_${phase.num}_BASELINE`,
         generatedAt: now,
         baselineGeneratedBy: 'LOCAL_GOVERNANCE_BASELINE_GENERATOR',
         safetyAssertions,
@@ -126,12 +117,12 @@ function generateLocalBaseline() {
         backendForwarded: false,
         runtimeBridgeActivated: false,
       };
-      try { localStorage.setItem(key, JSON.stringify([auditRecord])); } catch {}
+      try { localStorage.setItem(phase.key, JSON.stringify([auditRecord])); } catch {}
     } else {
       const lockPacket = {
-        lockName: `${phase}_BASELINE_LOCK`,
-        phaseName: phase,
-        lockStatus: status,
+        lockName: `PHASE_${phase.num}_BASELINE_LOCK`,
+        phaseName: `PHASE_${phase.num}_BASELINE`,
+        lockStatus: 'LOCK_READY',
         generatedAt: now,
         baselineGeneratedBy: 'LOCAL_GOVERNANCE_BASELINE_GENERATOR',
         localOnly: true,
@@ -146,7 +137,7 @@ function generateLocalBaseline() {
         runtimeBridgeActivated: false,
         safetyAssertions,
       };
-      try { localStorage.setItem(key, JSON.stringify(lockPacket)); } catch {}
+      try { localStorage.setItem(phase.key, JSON.stringify(lockPacket)); } catch {}
     }
   });
 }
@@ -157,11 +148,16 @@ export default function OpenClawGovernancePhaseSummaryPanel() {
   const [lastAction, setLastAction] = useState(null);
 
   const handleGenerateBaseline = () => {
-    generateLocalBaseline();
-    // Refresh summary to show newly generated phases
-    const result = generateSummary();
-    try { localStorage.setItem(SUMMARY_KEY, JSON.stringify(result, null, 2)); } catch {}
-    setSummary(result);
+    try {
+      generateLocalBaseline();
+      // Refresh summary to show newly generated phases
+      const result = generateSummary();
+      try { localStorage.setItem(SUMMARY_KEY, JSON.stringify(result, null, 2)); } catch {}
+      setSummary(result);
+      setLastAction('Local governance baseline generated and summary refreshed at ' + new Date().toLocaleString());
+    } catch (err) {
+      setLastAction('Baseline generation failed: ' + (err?.message || String(err)));
+    }
   };
 
   const handleGenerate = () => {
