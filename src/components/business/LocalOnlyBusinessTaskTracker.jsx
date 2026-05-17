@@ -118,7 +118,11 @@ function loadTasks() {
 }
 
 function saveTasks(tasks) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks.slice(0, MAX_TASKS)));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks.slice(0, MAX_TASKS)));
+  } catch {
+    // localStorage quota exceeded — skip persist, in-memory state still intact
+  }
 }
 
 function StatusBadge({ status }) {
