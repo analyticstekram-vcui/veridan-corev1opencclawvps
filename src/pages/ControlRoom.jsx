@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Home, Radio, Eye, Terminal, Layers, Shield, Wrench, FileText, Activity } from 'lucide-react';
 import SafetyBoundaryBanner from '@/components/controlroom/SafetyBoundaryBanner';
+import OpenClawGatewayHealthPanel from '@/components/terminal/OpenClawGatewayHealthPanel';
 import CRStatusTab from '@/components/controlroom/CRStatusTab';
 import CRMonitoringTab from '@/components/controlroom/CRMonitoringTab';
 import CRSafeCommandTab from '@/components/controlroom/CRSafeCommandTab';
@@ -10,20 +11,7 @@ import CRGovernanceTab from '@/components/controlroom/CRGovernanceTab';
 import CRToolRegistryTab from '@/components/controlroom/CRToolRegistryTab';
 import CRAuditLogTab from '@/components/controlroom/CRAuditLogTab';
 
-// Gateway Health stub component (placeholder for future OpenClawGatewayHealthPanel)
-function GatewayHealthStub() {
-  return (
-    <div className="max-w-3xl space-y-4">
-      <div className="bg-card border border-border rounded p-4">
-        <h2 className="text-[12px] font-semibold text-slate-100 uppercase tracking-widest mb-3">OpenClaw Gateway Health</h2>
-        <p className="text-[10px] text-slate-300">Monitor gateway connectivity, latency, and system diagnostics.</p>
-      </div>
-      <div className="bg-secondary/30 border border-border rounded p-4 text-[10px] text-slate-300">
-        Gateway health monitoring coming soon. This tab will display real-time health status, node status, error rates, and diagnostic information.
-      </div>
-    </div>
-  );
-}
+
 
 const TABS = [
   { id: 'status',     label: 'Status',            icon: Radio },
@@ -97,7 +85,11 @@ export default function ControlRoom() {
         {activeTab === 'proposed'   && <CRProposedActionsTab />}
         {activeTab === 'governance' && <CRGovernanceTab />}
         {activeTab === 'tools'      && <CRToolRegistryTab />}
-        {activeTab === 'gateway'    && <GatewayHealthStub />}
+        {activeTab === 'gateway'    && (
+          <div className="h-full -m-6">
+            <OpenClawGatewayHealthPanel />
+          </div>
+        )}
         {activeTab === 'audit'      && <CRAuditLogTab />}
       </div>
     </div>
