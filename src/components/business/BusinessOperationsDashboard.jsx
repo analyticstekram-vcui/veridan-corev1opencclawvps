@@ -13,7 +13,8 @@
  *   - Use timers
  */
 import React from 'react';
-import { CheckCircle2, Lock, AlertCircle, Briefcase, TrendingUp, Users, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckCircle2, Lock, AlertCircle, Briefcase, TrendingUp, Users, Settings, Home } from 'lucide-react';
 import BusinessOperationsIntakeStructure from './BusinessOperationsIntakeStructure';
 import LocalOnlyBusinessTaskTrackerPreview from './LocalOnlyBusinessTaskTrackerPreview';
 import LocalOnlyBusinessTaskTracker from './LocalOnlyBusinessTaskTracker';
@@ -36,8 +37,8 @@ function DashboardSection({ title, description, children }) {
   return (
     <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
       <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-        <h3 className="text-[11px] font-mono font-bold uppercase text-foreground">{title}</h3>
-        <p className="text-[9px] font-mono text-muted-foreground/70 mt-1">{description}</p>
+        <h3 className="text-[11px] font-mono font-bold uppercase text-slate-100">{title}</h3>
+        <p className="text-[9px] font-mono text-slate-400 mt-1">{description}</p>
       </div>
       <div className="p-4">
         {children}
@@ -77,14 +78,20 @@ export default function BusinessOperationsDashboard() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-3">
-            <Briefcase className="w-6 h-6 text-primary" />
-            <h1 className="text-3xl font-mono font-bold text-foreground">Business Operations Dashboard</h1>
+        <div className="mb-8 flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-3">
+              <Briefcase className="w-6 h-6 text-primary" />
+              <h1 className="text-3xl font-mono font-bold text-slate-100">Business Operations Dashboard</h1>
+            </div>
+            <p className="text-[13px] font-mono text-slate-300">
+              Read-only planning and visibility for Veridan Core income-producing operations
+            </p>
           </div>
-          <p className="text-[13px] font-mono text-muted-foreground/70">
-            Read-only planning and visibility for Veridan Core income-producing operations
-          </p>
+          <Link to="/" className="px-3 py-1.5 text-[10px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded font-semibold whitespace-nowrap flex items-center gap-1.5 h-fit">
+            <Home className="w-3 h-3" />
+            Home
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-4">

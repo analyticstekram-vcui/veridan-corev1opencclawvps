@@ -15,7 +15,8 @@
  *   - Use timers
  */
 import React from 'react';
-import { CreditCard, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CreditCard, Lock, AlertCircle, CheckCircle2, Home } from 'lucide-react';
 import CreditProfileIntakeStructure from './CreditProfileIntakeStructure';
 import LocalOnlyDisputeTrackerPreview from './LocalOnlyDisputeTrackerPreview';
 
@@ -37,8 +38,8 @@ function DashboardSection({ title, description, children }) {
   return (
     <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
       <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-        <h3 className="text-[11px] font-mono font-bold uppercase text-foreground">{title}</h3>
-        <p className="text-[9px] font-mono text-muted-foreground/70 mt-1">{description}</p>
+        <h3 className="text-[11px] font-mono font-bold uppercase text-slate-100">{title}</h3>
+        <p className="text-[9px] font-mono text-slate-400 mt-1">{description}</p>
       </div>
       <div className="p-4 space-y-2">
         {children}
@@ -61,18 +62,24 @@ export default function CreditPublicSideDashboard() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-[1200px] mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <CreditCard className="w-6 h-6 text-primary" />
-            <h1 className="text-3xl font-mono font-bold text-foreground">Credit / Public Side</h1>
+        <div className="mb-8 flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <CreditCard className="w-6 h-6 text-primary" />
+              <h1 className="text-3xl font-mono font-bold text-slate-100">Credit / Public Side</h1>
+            </div>
+            <p className="text-[13px] font-mono text-slate-300">
+              Read-only visibility and planning for personal and business credit systems
+            </p>
+            <div className="flex items-center gap-2 mt-3 text-[10px] font-mono text-slate-400">
+              <Lock className="w-3 h-3" />
+              Planning mode · No bureau connection yet · No execution
+            </div>
           </div>
-          <p className="text-[13px] font-mono text-muted-foreground/70">
-            Read-only visibility and planning for personal and business credit systems
-          </p>
-          <div className="flex items-center gap-2 mt-3 text-[10px] font-mono text-muted-foreground/50">
-            <Lock className="w-3 h-3" />
-            Planning mode · No bureau connection yet · No execution
-          </div>
+          <Link to="/" className="px-3 py-1.5 text-[10px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded font-semibold whitespace-nowrap flex items-center gap-1.5 h-fit">
+            <Home className="w-3 h-3" />
+            Home
+          </Link>
         </div>
 
         {/* Grid of sections */}

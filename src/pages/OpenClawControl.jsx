@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor, ChevronDown, ChevronRight, Settings, AlertTriangle } from 'lucide-react';
+import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor, ChevronDown, ChevronRight, Settings, AlertTriangle, Home } from 'lucide-react';
 import SafeCommandBridge from '@/components/openclaw/SafeCommandBridge';
 import CommandQueuePanel from '@/components/openclaw/CommandQueuePanel';
 import ExecutionReadinessPanel from '@/components/openclaw/ExecutionReadinessPanel';
@@ -227,10 +227,14 @@ export default function OpenClawControl() {
             <Terminal className="w-3.5 h-3.5 text-primary" />
           </div>
           <div className="flex-1">
-            <h1 className="text-[14px] font-bold tracking-wide text-foreground">VeridanCore AI Operator Portal</h1>
-            <p className="text-[9px] text-slate-400">OpenClaw Governed Control Panel · PREVIEW_ONLY · Execution locked until explicitly authorized by policy</p>
+            <h1 className="text-[14px] font-bold tracking-wide text-slate-100">VeridanCore AI Operator Portal</h1>
+            <p className="text-[9px] text-slate-300">OpenClaw Governed Control Panel · PREVIEW_ONLY · Execution locked until explicitly authorized by policy</p>
           </div>
-          <Link to="/control-room" className="px-3 py-1.5 text-[9px] border border-border text-slate-400 hover:bg-secondary/50 transition-colors rounded font-semibold whitespace-nowrap">
+          <Link to="/" className="px-3 py-1.5 text-[9px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded font-semibold whitespace-nowrap flex items-center gap-1.5">
+            <Home className="w-3 h-3" />
+            Home
+          </Link>
+          <Link to="/control-room" className="px-3 py-1.5 text-[9px] border border-border text-slate-300 hover:text-slate-100 hover:bg-secondary/50 transition-colors rounded font-semibold whitespace-nowrap">
             Control Room →
           </Link>
         </div>
