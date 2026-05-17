@@ -154,6 +154,7 @@ function generateLocalBaseline() {
 export default function OpenClawGovernancePhaseSummaryPanel() {
   const [summary, setSummary] = useState(() => loadJSON(SUMMARY_KEY, null));
   const [copied, setCopied]   = useState(false);
+  const [lastAction, setLastAction] = useState(null);
 
   const handleGenerateBaseline = () => {
     generateLocalBaseline();
@@ -164,9 +165,14 @@ export default function OpenClawGovernancePhaseSummaryPanel() {
   };
 
   const handleGenerate = () => {
-    const result = generateSummary();
-    try { localStorage.setItem(SUMMARY_KEY, JSON.stringify(result, null, 2)); } catch {}
-    setSummary(result);
+    try {
+      const result = generateSummary();
+      try { localStorage.setItem(SUMMARY_KEY, JSON.stringify(result, null, 2)); } catch {}
+      setSummary(result);
+      setLastAction('Governance summary generated locally at ' + new Date().toLocaleString());
+    } catch (err) {
+      setLastAction('Governance summary generation failed locally: ' + (err?.message || String(err)));
+    }
   };
 
   const handleCopy = () => {
@@ -320,6 +326,13 @@ export default function OpenClawGovernancePhaseSummaryPanel() {
           <span className="font-bold">Final Warning: </span>{FINAL_WARNING}
         </p>
       </div>
+
+      {/* Last action feedback */}
+      {lastAction && (
+        <div className="text-[9px] text-primary bg-primary/5 border border-primary/20 px-3 py-2 rounded">
+          {lastAction}
+        </div>
+      )}
 
       {/* Buttons */}
       <div className="flex flex-wrap gap-2">
