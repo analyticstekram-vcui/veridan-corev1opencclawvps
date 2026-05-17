@@ -117,16 +117,6 @@ const PHASES = [
     safetyStatus: 'FUTURE',
     safetyColor: 'text-slate-500',
   },
-  {
-    phase: 'FUTURE',
-    title: 'Live Execution Gate',
-    plainEnglish: 'Future phase: Final authorization gate for live execution. Operator confirms intent. Still subject to all safety constraints.',
-    built: false,
-    required: false,
-    storageKey: null,
-    safetyStatus: 'FUTURE',
-    safetyColor: 'text-slate-500',
-  },
 ];
 
 function getIcon(phase) {
