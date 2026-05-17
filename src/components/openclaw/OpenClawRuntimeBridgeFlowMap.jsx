@@ -208,6 +208,16 @@ const PHASES = [
     safetyColor: 'text-primary',
   },
   {
+    phase: 46,
+    title: 'Backend Env Presence Boolean Route',
+    plainEnglish: 'First controlled backend presence check. The backend route checks whether required OpenClaw env keys exist and returns only boolean presence. Secret values are never returned, logged, displayed, or stored.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase46BackendEnvPresenceBooleanResults',
+    safetyStatus: 'BACKEND_BOOLEAN_ONLY',
+    safetyColor: 'text-primary',
+  },
+  {
     phase: 'FUTURE',
     title: 'Live Execution Gate',
     plainEnglish: 'Future phase: Final authorization gate for live execution. Operator confirms intent. Still subject to all safety constraints.',
@@ -241,7 +251,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <div className="text-[13px] font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" /> Runtime Bridge Flow Map
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–45 and future gates. How it all connects.</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–46 and future gates. How it all connects.</div>
       </div>
 
       {/* Current position badge */}
@@ -249,7 +259,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
         <div>
           <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">Current Build Position</div>
-          <div className="text-[10px] text-primary mt-0.5">Phase 45 Complete — Backend Presence Check Activation Lock Installed</div>
+          <div className="text-[10px] text-primary mt-0.5">Phase 46 Complete — Backend Env Presence Boolean Route Installed</div>
         </div>
       </div>
 

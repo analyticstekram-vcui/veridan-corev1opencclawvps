@@ -62,6 +62,7 @@ import OpenClawBackendPresenceCheckRouteValidator from './OpenClawBackendPresenc
 import OpenClawBackendPresenceCheckImplementationPlan from './OpenClawBackendPresenceCheckImplementationPlan.jsx';
 import OpenClawBackendPresenceCheckRouteStub from './OpenClawBackendPresenceCheckRouteStub.jsx';
 import OpenClawBackendPresenceCheckActivationLock from './OpenClawBackendPresenceCheckActivationLock.jsx';
+import OpenClawBackendEnvPresenceBooleanRoute from './OpenClawBackendEnvPresenceBooleanRoute.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -589,6 +590,7 @@ export default function OpenClawGatewayConnectorPanel() {
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawBackendPresenceCheckImplementationPlan /></div>
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawBackendPresenceCheckRouteStub /></div>
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawBackendPresenceCheckActivationLock /></div>
+                   <div className="border-t border-slate-600/40 pt-5"><OpenClawBackendEnvPresenceBooleanRoute /></div>
                  </div>
                )}
              </div>
