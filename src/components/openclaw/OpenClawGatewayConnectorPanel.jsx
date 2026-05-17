@@ -85,6 +85,7 @@ import OpenClawDryRunActionContractValidator from './OpenClawDryRunActionContrac
 import OpenClawDryRunActionDraftBuilder from './OpenClawDryRunActionDraftBuilder.jsx';
 import OpenClawDryRunActionDraftValidator from './OpenClawDryRunActionDraftValidator.jsx';
 import OpenClawDryRunSimulationPreview from './OpenClawDryRunSimulationPreview.jsx';
+import OpenClawDryRunSimulationPreviewValidator from './OpenClawDryRunSimulationPreviewValidator.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -664,6 +665,16 @@ export default function OpenClawGatewayConnectorPanel() {
                </div>
                <div className="p-4">
                  <OpenClawDryRunSimulationPreview />
+               </div>
+             </div>
+
+             {/* ── DRY-RUN SIMULATION PREVIEW VALIDATOR ── */}
+             <div className="border border-border/60 rounded-lg overflow-hidden">
+               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
+                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Simulation Preview Validator</div>
+               </div>
+               <div className="p-4">
+                 <OpenClawDryRunSimulationPreviewValidator />
                </div>
              </div>
 
