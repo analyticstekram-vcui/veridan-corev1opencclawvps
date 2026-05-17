@@ -74,9 +74,94 @@ function generateSummary() {
   };
 }
 
+function generateLocalBaseline() {
+  const baselineKeys = [
+    { key: 'openclawFinalLockPacket', phase: 'PHASE_14_MONITORING_EVIDENCE', status: 'LOCK_READY' },
+    { key: 'openclawBrowserObservationFinalLock', phase: 'PHASE_15_BROWSER_OBSERVATION', status: 'LOCK_READY' },
+    { key: 'openclawBrowserObservationProposalFinalLock', phase: 'PHASE_16_BROWSER_OBSERVATION_PROPOSAL', status: 'LOCK_READY' },
+    { key: 'openclawBrowserObservationExecutionContractFinalLock', phase: 'PHASE_17_EXECUTION_CONTRACT', status: 'LOCK_READY' },
+    { key: 'openclawBrowserObservationContractValidatorFinalLock', phase: 'PHASE_18_CONTRACT_VALIDATOR', status: 'LOCK_READY' },
+    { key: 'openclawBrowserObservationDryRunAuditLedger', phase: 'PHASE_19_DRY_RUN_AUDIT', status: 'AUDIT_READY', isArray: true },
+    { key: 'openclawReadOnlyOpenClawBridgeDesignFinalLock', phase: 'PHASE_20_BRIDGE_DESIGN', status: 'LOCK_READY' },
+    { key: 'openclawReadOnlyOpenClawBridgeValidatorFinalLock', phase: 'PHASE_21_BRIDGE_VALIDATOR', status: 'LOCK_READY' },
+    { key: 'openclawReadOnlyOpenClawBridgeDryRunAuditLedger', phase: 'PHASE_22_BRIDGE_AUDIT', status: 'AUDIT_READY', isArray: true },
+    { key: 'openclawReadOnlyOpenClawRuntimeBridgeReadinessFinalLock', phase: 'PHASE_23_RUNTIME_READINESS', status: 'LOCK_READY' },
+  ];
+
+  const safetyAssertions = {
+    localOnly: true,
+    previewOnly: true,
+    readOnly: true,
+    noOpenClawCalls: true,
+    noBrowserAutomation: true,
+    noExecution: true,
+    noDispatch: true,
+    noScheduler: true,
+    noPolling: true,
+    noCredentials: true,
+    noTrading: true,
+    noBrokerActions: true,
+    noWalletActions: true,
+    noMoneyMovement: true,
+  };
+
+  baselineKeys.forEach(({ key, phase, status, isArray }) => {
+    if (localStorage.getItem(key)) return;
+
+    const now = new Date().toISOString();
+    if (isArray) {
+      const auditRecord = {
+        auditId: `baseline-${key}-001`,
+        auditStatus: 'AUDIT_READY',
+        phaseName: phase,
+        generatedAt: now,
+        baselineGeneratedBy: 'LOCAL_GOVERNANCE_BASELINE_GENERATOR',
+        safetyAssertions,
+        readOnly: true,
+        executionAllowed: false,
+        dispatchAllowed: false,
+        browserMutationAllowed: false,
+        credentialEntryAllowed: false,
+        openClawCalled: false,
+        backendForwarded: false,
+        runtimeBridgeActivated: false,
+      };
+      try { localStorage.setItem(key, JSON.stringify([auditRecord])); } catch {}
+    } else {
+      const lockPacket = {
+        lockName: `${phase}_BASELINE_LOCK`,
+        phaseName: phase,
+        lockStatus: status,
+        generatedAt: now,
+        baselineGeneratedBy: 'LOCAL_GOVERNANCE_BASELINE_GENERATOR',
+        localOnly: true,
+        previewOnly: true,
+        readOnly: true,
+        executionAllowed: false,
+        dispatchAllowed: false,
+        browserMutationAllowed: false,
+        credentialEntryAllowed: false,
+        openClawCalled: false,
+        backendForwarded: false,
+        runtimeBridgeActivated: false,
+        safetyAssertions,
+      };
+      try { localStorage.setItem(key, JSON.stringify(lockPacket)); } catch {}
+    }
+  });
+}
+
 export default function OpenClawGovernancePhaseSummaryPanel() {
   const [summary, setSummary] = useState(() => loadJSON(SUMMARY_KEY, null));
   const [copied, setCopied]   = useState(false);
+
+  const handleGenerateBaseline = () => {
+    generateLocalBaseline();
+    // Refresh summary to show newly generated phases
+    const result = generateSummary();
+    try { localStorage.setItem(SUMMARY_KEY, JSON.stringify(result, null, 2)); } catch {}
+    setSummary(result);
+  };
 
   const handleGenerate = () => {
     const result = generateSummary();
@@ -112,6 +197,20 @@ export default function OpenClawGovernancePhaseSummaryPanel() {
           <BarChart3 className="w-4 h-4 text-primary" /> OpenClaw Governance Phases 14-23 Summary
         </div>
         <div className="text-[9px] text-slate-500 mt-0.5">Local-only summary of completed governance phases. No OpenClaw calls, no browser automation, no execution.</div>
+      </div>
+
+      {/* Generate Local Baseline Button - Visible Action Row */}
+      <div className="bg-card border border-amber-500/30 rounded-lg p-4 space-y-2">
+        <button
+          type="button"
+          onClick={handleGenerateBaseline}
+          className="w-full px-4 py-2.5 bg-amber-500/10 border border-amber-500/40 text-amber-500 text-[10px] font-bold hover:bg-amber-500/20 hover:border-amber-500/60 transition-colors rounded cursor-pointer"
+        >
+          ✓ Generate Local Governance Baseline
+        </button>
+        <div className="text-[8px] text-amber-500/70 leading-relaxed">
+          <span className="font-bold">LOCAL TEST BASELINE ONLY — NOT RUNTIME AUTHORIZATION</span>. Creates missing Phase 14–23 packets in localStorage for development. No backend, no execution.
+        </div>
       </div>
 
       {/* Summary status */}
