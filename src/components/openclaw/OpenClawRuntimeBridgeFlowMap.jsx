@@ -98,9 +98,19 @@ const PHASES = [
     safetyColor: 'text-primary',
   },
   {
+    phase: 35,
+    title: 'OpenClaw Read-Only Connector Dry-Run Contract',
+    plainEnglish: 'Defines local-only dry-run contracts for future OpenClaw read-only connector requests. Specifies allowed (read-only) and blocked (execution) actions.',
+    built: true,
+    required: false,
+    storageKey: 'openclawPhase35ReadOnlyConnectorDryRunContracts',
+    safetyStatus: 'LOCKED',
+    safetyColor: 'text-primary',
+  },
+  {
     phase: 'FUTURE',
-    title: 'OpenClaw Read-Only Connector Dry-Run',
-    plainEnglish: 'Future phase: Connect to OpenClaw read-only connector for test-mode simulation. Results logged but no live trades, credentials, or money movement.',
+    title: 'Live Execution Gate',
+    plainEnglish: 'Future phase: Final authorization gate for live execution. Operator confirms intent. Still subject to all safety constraints.',
     built: false,
     required: false,
     storageKey: null,
@@ -141,7 +151,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <div className="text-[13px] font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" /> Runtime Bridge Flow Map
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–34 and future gates. How it all connects.</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">Plain English view of phases 26–35 and future gates. How it all connects.</div>
       </div>
 
       {/* Current position badge */}
@@ -149,7 +159,7 @@ export default function OpenClawRuntimeBridgeFlowMap() {
         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
         <div>
           <div className="text-[8px] uppercase tracking-widest text-primary font-semibold">Current Build Position</div>
-          <div className="text-[10px] text-primary mt-0.5">Phase 34 Complete — Dry-Run Simulation Installed and Operational</div>
+          <div className="text-[10px] text-primary mt-0.5">Phase 35 Complete — Read-Only Connector Contract Installed</div>
         </div>
       </div>
 

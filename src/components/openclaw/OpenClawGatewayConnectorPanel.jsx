@@ -51,6 +51,7 @@ import OpenClawRuntimeBridgeApprovalDecisionAuditTrail from './OpenClawRuntimeBr
 import OpenClawPhase32FinalGovernanceSnapshot from './OpenClawPhase32FinalGovernanceSnapshot.jsx';
 import OpenClawDryRunExecutionGatePreview from './OpenClawDryRunExecutionGatePreview.jsx';
 import OpenClawDryRunExecutionResultSimulator from './OpenClawDryRunExecutionResultSimulator.jsx';
+import OpenClawReadOnlyConnectorDryRunContract from './OpenClawReadOnlyConnectorDryRunContract.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -567,6 +568,7 @@ export default function OpenClawGatewayConnectorPanel() {
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawPhase32FinalGovernanceSnapshot /></div>
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawDryRunExecutionGatePreview /></div>
                    <div className="border-t border-slate-600/40 pt-5"><OpenClawDryRunExecutionResultSimulator /></div>
+                   <div className="border-t border-slate-600/40 pt-5"><OpenClawReadOnlyConnectorDryRunContract /></div>
                  </div>
                )}
              </div>
