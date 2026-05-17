@@ -251,7 +251,7 @@ export default function OpenClawGatewayConnectorPanel() {
   const [ecRefreshConfirmed, setEcRefreshConfirmed] = useState(false);
 
   // Archive groups toggle state
-  const [expandedGroup, setExpandedGroup] = useState(null);
+  const [expandedGroup, setExpandedGroup] = useState('proposal_review');
   const toggleGroup = (groupId) => {
     setExpandedGroup(expandedGroup === groupId ? null : groupId);
   };
@@ -560,7 +560,7 @@ export default function OpenClawGatewayConnectorPanel() {
                </div>
              </div>
 
-             {/* ── OPERATOR FLOW DASHBOARD ── */}
+             {/* ── OPERATOR FLOW DASHBOARD — always visible ── */}
              <div className="border-2 border-primary/30 rounded-lg overflow-hidden">
                <div className="px-4 py-2 bg-primary/10 border-b border-primary/20">
                  <div className="text-[10px] uppercase tracking-widest font-bold text-primary">Operator Flow Dashboard</div>
@@ -570,134 +570,203 @@ export default function OpenClawGatewayConnectorPanel() {
                </div>
              </div>
 
-             {/* ── COMMAND PROPOSAL BOX ── */}
+             {/* ── COLLAPSIBLE SECTION: Proposal + Review ── */}
              <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Command Proposal Box</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawCommandProposalBox />
-               </div>
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('proposal_review')}
+                 className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Proposal + Review</div>
+                   <div className="text-[8px] text-slate-500 mt-0.5">Command Proposal Box / Review Panel / Summary (3 panels)</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'proposal_review' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'proposal_review' && (
+                 <div className="space-y-3 p-4">
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Command Proposal Box</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawCommandProposalBox />
+                     </div>
+                   </div>
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Proposal Review Panel</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawProposalReviewPanel />
+                     </div>
+                   </div>
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Proposal Review Summary Dashboard</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawProposalReviewSummaryDashboard />
+                     </div>
+                   </div>
+                 </div>
+               )}
              </div>
 
-             {/* ── PROPOSAL REVIEW PANEL ── */}
+             {/* ── COLLAPSIBLE SECTION: Evidence + Baseline ── */}
              <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Proposal Review Panel</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawProposalReviewPanel />
-               </div>
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('evidence_baseline')}
+                 className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Evidence + Baseline</div>
+                   <div className="text-[8px] text-slate-500 mt-0.5">Evidence Export / Baseline Lock (2 panels)</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'evidence_baseline' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'evidence_baseline' && (
+                 <div className="space-y-3 p-4">
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Proposal Review Evidence Chain Export</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawProposalReviewEvidenceExport />
+                     </div>
+                   </div>
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Read-Only Governance Baseline Lock</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawReadOnlyGovernanceBaselineLock />
+                     </div>
+                   </div>
+                 </div>
+               )}
              </div>
 
-             {/* ── PROPOSAL REVIEW SUMMARY DASHBOARD ── */}
+             {/* ── COLLAPSIBLE SECTION: Dry-Run Planning ── */}
              <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Proposal Review Summary Dashboard</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawProposalReviewSummaryDashboard />
-               </div>
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('dryrun_planning')}
+                 className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Planning</div>
+                   <div className="text-[8px] text-slate-500 mt-0.5">Planning Gate / Contract Designer / Contract Validator (3 panels)</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'dryrun_planning' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'dryrun_planning' && (
+                 <div className="space-y-3 p-4">
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Controlled Dry-Run Execution Planning Gate</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawDryRunExecutionPlanningGate />
+                     </div>
+                   </div>
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Contract Designer</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawDryRunActionContractDesigner />
+                     </div>
+                   </div>
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Contract Validator</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawDryRunActionContractValidator />
+                     </div>
+                   </div>
+                 </div>
+               )}
              </div>
 
-             {/* ── PROPOSAL REVIEW EVIDENCE CHAIN EXPORT ── */}
+             {/* ── COLLAPSIBLE SECTION: Draft + Simulation ── */}
              <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Proposal Review Evidence Chain Export</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawProposalReviewEvidenceExport />
-               </div>
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('draft_simulation')}
+                 className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Draft + Simulation</div>
+                   <div className="text-[8px] text-slate-500 mt-0.5">Draft Builder / Draft Validator / Preview / Preview Validator (4 panels)</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'draft_simulation' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'draft_simulation' && (
+                 <div className="space-y-3 p-4">
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Draft Builder</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawDryRunActionDraftBuilder />
+                     </div>
+                   </div>
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Draft Validator</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawDryRunActionDraftValidator />
+                     </div>
+                   </div>
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Simulation Preview</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawDryRunSimulationPreview />
+                     </div>
+                   </div>
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Simulation Preview Validator</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawDryRunSimulationPreviewValidator />
+                     </div>
+                   </div>
+                 </div>
+               )}
              </div>
 
-             {/* ── READ-ONLY GOVERNANCE BASELINE LOCK ── */}
+             {/* ── COLLAPSIBLE SECTION: Result Package ── */}
              <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Read-Only Governance Baseline Lock</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawReadOnlyGovernanceBaselineLock />
-               </div>
-             </div>
-
-             {/* ── DRY-RUN EXECUTION PLANNING GATE ── */}
-             <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Controlled Dry-Run Execution Planning Gate</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawDryRunExecutionPlanningGate />
-               </div>
-             </div>
-
-             {/* ── DRY-RUN ACTION CONTRACT DESIGNER ── */}
-             <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Contract Designer</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawDryRunActionContractDesigner />
-               </div>
-             </div>
-
-             {/* ── DRY-RUN ACTION CONTRACT VALIDATOR ── */}
-             <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Contract Validator</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawDryRunActionContractValidator />
-               </div>
-             </div>
-
-             {/* ── DRY-RUN ACTION DRAFT BUILDER ── */}
-             <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Draft Builder</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawDryRunActionDraftBuilder />
-               </div>
-             </div>
-
-             {/* ── DRY-RUN ACTION DRAFT VALIDATOR ── */}
-             <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Action Draft Validator</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawDryRunActionDraftValidator />
-               </div>
-             </div>
-
-             {/* ── DRY-RUN SIMULATION PREVIEW ── */}
-             <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Simulation Preview</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawDryRunSimulationPreview />
-               </div>
-             </div>
-
-             {/* ── DRY-RUN SIMULATION PREVIEW VALIDATOR ── */}
-             <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Simulation Preview Validator</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawDryRunSimulationPreviewValidator />
-               </div>
-             </div>
-
-             {/* ── DRY-RUN RESULT PACKAGER ── */}
-             <div className="border border-border/60 rounded-lg overflow-hidden">
-               <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
-                 <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Result Packager</div>
-               </div>
-               <div className="p-4">
-                 <OpenClawDryRunResultPackager />
-               </div>
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('result_package')}
+                 className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Result Package</div>
+                   <div className="text-[8px] text-slate-500 mt-0.5">Dry-Run Result Packager (1 panel)</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'result_package' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'result_package' && (
+                 <div className="space-y-3 p-4">
+                   <div className="border border-border/60 rounded-lg overflow-hidden">
+                     <div className="px-3 py-2 bg-secondary/10 border-b border-border/40">
+                       <div className="text-[9px] uppercase tracking-widest font-bold text-slate-300">Dry-Run Result Packager</div>
+                     </div>
+                     <div className="p-3">
+                       <OpenClawDryRunResultPackager />
+                     </div>
+                   </div>
+                 </div>
+               )}
              </div>
 
              {/* Summary Panel - Always Visible */}
