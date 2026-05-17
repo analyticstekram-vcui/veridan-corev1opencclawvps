@@ -44,6 +44,7 @@ import OpenClawRuntimeBridgeImplementationPlanReviewFinalLockPanel from './OpenC
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawReadOnlyRuntimeBridgeBoundaryPanel from './OpenClawReadOnlyRuntimeBridgeBoundaryPanel.jsx';
 import OpenClawRuntimeBridgeRequestContractPreview from './OpenClawRuntimeBridgeRequestContractPreview.jsx';
+import OpenClawRuntimeBridgeContractValidator from './OpenClawRuntimeBridgeContractValidator.jsx';
 import GatewayConnectorQAReport from './GatewayConnectorQAReport.jsx';
 import ControlledSchedulerDesignPacket from './ControlledSchedulerDesignPacket.jsx';
 import OpenClawManualMonitoringPhaseCompletionReport from './OpenClawManualMonitoringPhaseCompletionReport.jsx';
@@ -577,6 +578,26 @@ export default function OpenClawGatewayConnectorPanel() {
                {expandedGroup === 'phase29' === false ? null : (
                  <div className="space-y-5 p-5">
                    <div className="border-t border-border/40 pt-5"><OpenClawRuntimeBridgeRequestContractPreview /></div>
+                 </div>
+               )}
+             </div>
+
+             {/* CONTRACT VALIDATOR: Phase 30 — Runtime Bridge Contract Validator */}
+             <div className="border-2 border-slate-600 rounded-lg overflow-hidden opacity-90">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase30')}
+                 className="w-full px-4 py-3 bg-slate-900/30 border-b-2 border-slate-600 hover:bg-slate-900/40 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-slate-300">CONTRACT VALIDATOR: Phase 30 Runtime Bridge Validator</div>
+                   <div className="text-[9px] text-slate-500 mt-0.5">Validates Phase 29 contracts locally. Preview-only, no execution.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-slate-400 transition-transform ${expandedGroup === 'phase30' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase30' === false ? null : (
+                 <div className="space-y-5 p-5">
+                   <div className="border-t border-slate-600 pt-5"><OpenClawRuntimeBridgeContractValidator /></div>
                  </div>
                )}
              </div>
