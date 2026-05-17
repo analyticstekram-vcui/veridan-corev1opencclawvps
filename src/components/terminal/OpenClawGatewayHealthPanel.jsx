@@ -167,7 +167,9 @@ export default function OpenClawGatewayHealthPanel() {
             }} />
             {healthResult.responseSummary && (
               <div className="px-3 py-1.5 text-[9px] font-mono text-muted-foreground/70">
-                {healthResult.responseSummary}
+                {typeof healthResult.responseSummary === 'object'
+                  ? JSON.stringify(healthResult.responseSummary)
+                  : healthResult.responseSummary}
               </div>
             )}
           </div>
