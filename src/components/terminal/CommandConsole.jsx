@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Trash2, ShieldAlert, ChevronRight, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Trash2, ShieldAlert, ChevronRight, Bot, User, Loader2, Activity } from 'lucide-react';
 import { postCommand, postApprove, getStatus } from '@/lib/veridanApi';
+import OpenClawGatewayHealthPanel from './OpenClawGatewayHealthPanel';
 
 const riskColors = { low: 'text-primary', medium: 'text-amber-500', high: 'text-destructive' };
 
@@ -230,54 +231,76 @@ export default function CommandConsole({ onOpenClawStatus, onStatusUpdate }) {
     setMessages([{ id: Date.now(), role: 'system', time: nowTime(), content: 'Console cleared. Ready for commands.' }]);
   };
 
+  const [activeTab, setActiveTab] = useState('console');
+
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="h-8 bg-card border-b border-border flex items-center px-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <Bot className="w-3.5 h-3.5 text-primary" />
-          <span className="text-[11px] font-mono text-muted-foreground">AI COMMAND CONSOLE</span>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          {loading && <Loader2 className="w-3 h-3 text-primary animate-spin" />}
-          <span className="text-[10px] font-mono text-muted-foreground/50">{messages.length} entries</span>
-        </div>
+      {/* Tab bar */}
+      <div className="h-8 bg-card border-b border-border flex items-center px-1 shrink-0 gap-0">
+        <button
+          onClick={() => setActiveTab('console')}
+          className={`flex items-center gap-1.5 px-3 h-full text-[10px] font-mono border-b-2 transition-colors ${activeTab === 'console' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+        >
+          <Bot className="w-3 h-3" />
+          CONSOLE
+        </button>
+        <button
+          onClick={() => setActiveTab('gateway')}
+          className={`flex items-center gap-1.5 px-3 h-full text-[10px] font-mono border-b-2 transition-colors ${activeTab === 'gateway' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+        >
+          <Activity className="w-3 h-3" />
+          GATEWAY HEALTH
+        </button>
+        {activeTab === 'console' && (
+          <div className="ml-auto flex items-center gap-2 pr-2">
+            {loading && <Loader2 className="w-3 h-3 text-primary animate-spin" />}
+            <span className="text-[10px] font-mono text-muted-foreground/50">{messages.length} entries</span>
+          </div>
+        )}
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto py-1">
-        {messages.map((msg) => (
-          <MessageRow key={msg.id} msg={msg} onApprove={handleApprove} />
-        ))}
-      </div>
+      {/* Console tab */}
+      {activeTab === 'console' && (
+        <>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto py-1">
+            {messages.map((msg) => (
+              <MessageRow key={msg.id} msg={msg} onApprove={handleApprove} />
+            ))}
+          </div>
+          <div className="border-t border-border bg-card p-2 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-primary text-xs font-mono pl-1">›</span>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder={loading ? 'Processing...' : 'Enter command...'}
+                disabled={loading}
+                className="flex-1 bg-transparent text-xs font-mono text-foreground placeholder:text-muted-foreground/40 outline-none disabled:opacity-50"
+              />
+              <button
+                onClick={handleClear}
+                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Clear console"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={loading || !input.trim()}
+                className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
+                title="Send command"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
-      <div className="border-t border-border bg-card p-2 shrink-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-primary text-xs font-mono pl-1">›</span>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={loading ? 'Processing...' : 'Enter command...'}
-            disabled={loading}
-            className="flex-1 bg-transparent text-xs font-mono text-foreground placeholder:text-muted-foreground/40 outline-none disabled:opacity-50"
-          />
-          <button
-            onClick={handleClear}
-            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            title="Clear console"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={loading || !input.trim()}
-            className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
-            title="Send command"
-          >
-            <Send className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
+      {/* Gateway Health tab */}
+      {activeTab === 'gateway' && <OpenClawGatewayHealthPanel />}
     </div>
   );
 }
