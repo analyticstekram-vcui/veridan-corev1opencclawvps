@@ -86,8 +86,47 @@ export default function ControlRoom() {
         {activeTab === 'governance' && <CRGovernanceTab />}
         {activeTab === 'tools'      && <CRToolRegistryTab />}
         {activeTab === 'gateway'    && (
-          <div className="h-full -m-6">
-            <OpenClawGatewayHealthPanel />
+          <div className="space-y-4">
+            {/* Safety Explanation Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+                <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Gateway Health — Read-Only Status Check</h2>
+              </div>
+              <div className="p-4 space-y-3">
+                <p className="text-[10px] text-slate-300 leading-relaxed">
+                  This tab checks whether the OpenClaw gateway is reachable and responsive. It only runs when you click the button and provides read-only diagnostic information about gateway connectivity and health status.
+                </p>
+                <div className="space-y-2 text-[9px] text-slate-300">
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">✓</span>
+                    <span>Runs only when you click the button — no automatic polling</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">✓</span>
+                    <span>Does not execute commands or control the browser</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">✓</span>
+                    <span>Does not place trades or move money</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">✓</span>
+                    <span>Does not reveal credential values — only shows presence flags</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <span className="px-2.5 py-1 text-[8px] font-mono font-bold uppercase bg-primary/10 text-primary border border-primary/30 rounded-sm">READ_ONLY</span>
+                  <span className="px-2.5 py-1 text-[8px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-sm">MANUAL_CHECK_ONLY</span>
+                  <span className="px-2.5 py-1 text-[8px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">NO_EXECUTION</span>
+                  <span className="px-2.5 py-1 text-[8px] font-mono font-bold uppercase bg-slate-500/10 text-slate-300 border border-slate-500/30 rounded-sm">NO_CREDENTIAL_VALUES</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Gateway Health Panel */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden flex-1">
+              <OpenClawGatewayHealthPanel />
+            </div>
           </div>
         )}
         {activeTab === 'audit'      && <CRAuditLogTab />}
