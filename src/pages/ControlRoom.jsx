@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Radio, Eye, Terminal, Layers, Shield, Wrench, FileText, Activity } from 'lucide-react';
+import { Home, Radio, Eye, Terminal, Layers, Shield, Wrench, FileText, Activity, Cpu } from 'lucide-react';
 import SafetyBoundaryBanner from '@/components/controlroom/SafetyBoundaryBanner';
+import AIOperatorGuide from '@/components/controlroom/AIOperatorGuide';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import OpenClawGatewayHealthPanel from '@/components/terminal/OpenClawGatewayHealthPanel';
 import CRStatusTab from '@/components/controlroom/CRStatusTab';
@@ -45,6 +46,21 @@ export default function ControlRoom() {
       {/* Module Navigation */}
       <ModuleNav />
 
+      {/* AI Operator Console Banner */}
+      <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/5 px-6 py-3">
+        <div className="flex items-center gap-3">
+          <Cpu className="w-4 h-4 text-amber-500 shrink-0" />
+          <div className="flex-1">
+            <h1 className="text-[12px] font-mono font-bold uppercase text-amber-500 tracking-wide">AI Operator Console — Internal Use Only</h1>
+            <p className="text-[10px] font-mono text-amber-400/70 mt-1">This system is designed for AI-assisted operator workflows. It is not a public client portal.</p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="px-2 py-1 text-[7px] font-mono font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/30 rounded-sm">AI_OPERATOR_ONLY</span>
+            <span className="px-2 py-1 text-[7px] font-mono font-bold uppercase bg-secondary/30 text-slate-300 border border-border/40 rounded-sm">HUMAN_REVIEW_REQUIRED</span>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center gap-4">
         <Link to="/" className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded font-semibold">
@@ -69,6 +85,11 @@ export default function ControlRoom() {
             OpenClaw Full Panel →
           </Link>
         </div>
+      </div>
+
+      {/* AI Operator Guide Card */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
+        <AIOperatorGuide />
       </div>
 
       {/* Safety Banner */}

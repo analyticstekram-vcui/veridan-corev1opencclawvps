@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen } from 'lucide-react';
+import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu } from 'lucide-react';
 import VeridanCoreBranchDashboard from '../components/dashboard/VeridanCoreBranchDashboard';
 
 export default function Dashboard() {
@@ -15,6 +15,21 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen w-full bg-background">
+      {/* AI Operator Console Banner */}
+      <div className="border-b border-amber-500/30 bg-amber-500/5 px-6 py-3">
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
+          <Cpu className="w-4 h-4 text-amber-500 shrink-0" />
+          <div className="flex-1">
+            <h1 className="text-[12px] font-mono font-bold uppercase text-amber-500 tracking-wide">AI Operator Console — Internal Use Only</h1>
+            <p className="text-[10px] font-mono text-amber-400/70 mt-1">This system is designed for AI-assisted operator workflows. It is not a public client portal.</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="px-2 py-1 text-[7px] font-mono font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/30 rounded-sm">AI_OPERATOR_ONLY</span>
+            <span className="px-2 py-1 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">HUMAN_REVIEW_REQUIRED</span>
+          </div>
+        </div>
+      </div>
+
       {/* Quick Navigation Section */}
       <div className="border-b border-border bg-card px-6 py-6">
         <div className="max-w-7xl mx-auto">
