@@ -55,6 +55,7 @@ export default function DryRunBackendValidatorTestPanel() {
   const [error, setError] = useState(null);
   const [lastRequest, setLastRequest] = useState(null);
   const [lastResponse, setLastResponse] = useState(null);
+  const [testHistory, setTestHistory] = useState([]);
 
   const handleTestRequest = async (payload) => {
     setLoading(true);
@@ -71,11 +72,36 @@ export default function DryRunBackendValidatorTestPanel() {
 
       const data = await response.json();
       setLastResponse(data);
+
+      // Add to local history (memory only, last 5 only)
+      const executionOk = data.executionStatus === 'NOT_EXECUTED';
+      const outboundOk = data.outboundCallsMade === false;
+      const persistenceOk = data.persistenceWritten === false;
+      const safetyPassed = executionOk && outboundOk && persistenceOk;
+
+      const historyItem = {
+        testedAt: new Date().toISOString(),
+        requestId: payload.requestId,
+        commandType: payload.commandType,
+        accepted: data.accepted,
+        validationStatus: data.validationStatus,
+        decision: data.decision,
+        executionStatus: data.executionStatus,
+        outboundCallsMade: data.outboundCallsMade,
+        persistenceWritten: data.persistenceWritten,
+        safetyAssertionStatus: safetyPassed ? 'PASSED' : 'FAILED',
+      };
+
+      setTestHistory((prev) => [historyItem, ...prev].slice(0, 5));
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClearHistory = () => {
+    setTestHistory([]);
   };
 
   return (
@@ -276,6 +302,72 @@ export default function DryRunBackendValidatorTestPanel() {
             Allowed endpoint: /api/dry-run/bridge/preview only. No other URLs, no database writes, no persistence.
           </p>
         </div>
+
+        {/* Test History */}
+        {testHistory.length > 0 && (
+          <div className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[9px] font-mono font-semibold text-slate-300">Local Test History</div>
+              <button
+                type="button"
+                onClick={handleClearHistory}
+                className="px-2 py-0.5 bg-secondary/50 border border-border/30 text-slate-400 hover:text-slate-300 hover:border-border/50 transition-colors rounded text-[8px] font-mono uppercase"
+              >
+                Clear
+              </button>
+            </div>
+
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {testHistory.map((item, idx) => (
+                <div key={idx} className="px-2 py-1.5 bg-secondary/50 border border-border/30 rounded-sm">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="text-[8px] text-slate-400">{new Date(item.testedAt).toLocaleTimeString()}</div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-1.5 py-0.5 text-[7px] font-mono font-bold rounded ${
+                          item.accepted
+                            ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                            : 'bg-destructive/10 border border-destructive/20 text-destructive/80'
+                        }`}
+                      >
+                        {item.decision}
+                      </span>
+                      <span
+                        className={`px-1.5 py-0.5 text-[7px] font-mono font-bold rounded ${
+                          item.safetyAssertionStatus === 'PASSED'
+                            ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                            : 'bg-destructive/10 border border-destructive/20 text-destructive/80'
+                        }`}
+                      >
+                        {item.safetyAssertionStatus}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[7px]">
+                    <div className="text-slate-400">
+                      <span className="text-slate-500">req:</span> {item.requestId}
+                    </div>
+                    <div className="text-slate-400">
+                      <span className="text-slate-500">cmd:</span> {item.commandType}
+                    </div>
+                    <div className="text-slate-400">
+                      <span className="text-slate-500">val:</span> {item.validationStatus}
+                    </div>
+                    <div className="text-slate-400">
+                      <span className="text-slate-500">exec:</span> {item.executionStatus}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-2 px-2 py-1 bg-slate-500/5 border border-slate-500/15 rounded-sm">
+              <div className="text-[8px] font-mono text-slate-400 italic">
+                History is memory-only and clears on page refresh.
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
