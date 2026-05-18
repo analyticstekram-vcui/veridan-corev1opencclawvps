@@ -31,6 +31,7 @@ import OpenClawApprovedReviewDryRunResultPackageBuilder from './OpenClawApproved
 import OpenClawFullGovernanceDryRunChainEvidenceExport from './OpenClawFullGovernanceDryRunChainEvidenceExport.jsx';
 import OpenClawGovernanceDryRunChainCheckpointLock from './OpenClawGovernanceDryRunChainCheckpointLock.jsx';
 import OpenClawExecutionReadinessBoundaryMap from './OpenClawExecutionReadinessBoundaryMap.jsx';
+import OpenClawSecurityBoundaryPolicyBuilder from './OpenClawSecurityBoundaryPolicyBuilder.jsx';
 import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummaryPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
@@ -431,9 +432,34 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
         </div>
       </div>
 
+      {/* ── SECURITY BOUNDARY — POLICY DESIGN ── */}
+      <div className="mt-6 pt-5 border-t-2 border-rose-500/20">
+        <div className="px-4 py-2 mb-3 bg-rose-500/5 border border-rose-500/20 rounded-sm">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-rose-400">
+            Security Boundary — Policy Design
+          </div>
+          <div className="text-[8px] text-rose-400/70 mt-0.5">
+            Phase 51 · Policy definition only · No credentials · Execution gate remains CLOSED
+          </div>
+        </div>
+        <div className="border-2 border-rose-500/30 rounded-lg overflow-hidden">
+          <button type="button" onClick={() => toggleGroup('phase51_security_policy')}
+            className="w-full px-4 py-3 bg-rose-500/5 border-b-2 border-rose-500/30 hover:bg-rose-500/10 transition-colors text-left flex items-center justify-between">
+            <div>
+              <div className="text-[11px] uppercase tracking-widest font-bold text-rose-400">PHASE 51: Security Boundary Policy Builder</div>
+              <div className="text-[9px] text-rose-400/70 mt-0.5">Defines security boundary requirements before any execution integration. Gate: CLOSED · No credentials.</div>
+            </div>
+            <span className={`text-[10px] font-bold text-rose-400/60 transition-transform ${expandedGroup === 'phase51_security_policy' ? 'rotate-90' : ''}`}>▶</span>
+          </button>
+          {expandedGroup === 'phase51_security_policy' && (
+            <div className="p-4"><OpenClawSecurityBoundaryPolicyBuilder /></div>
+          )}
+        </div>
+      </div>
+
       {/* ── Result Package ── */}
       <div className="border border-border/60 rounded-lg overflow-hidden">
-        <button type="button" onClick={() => toggleGroup('result_package')}
+       <button type="button" onClick={() => toggleGroup('result_package')}
           className="w-full px-4 py-3 bg-secondary/20 border-b border-border/40 hover:bg-secondary/30 transition-colors text-left flex items-center justify-between">
           <div className="flex-1">
             <div className="text-[10px] uppercase tracking-widest font-bold text-slate-300">Result Package</div>
