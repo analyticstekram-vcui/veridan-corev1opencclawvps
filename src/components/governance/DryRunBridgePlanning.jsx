@@ -245,6 +245,162 @@ const BUILDER_APPROVAL_STATUSES = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DEN
 const generateRequestId = () => `req-dry-run-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 const getCurrentTimestamp = () => new Date().toISOString();
 
+const performLocalValidation = (requestObj) => {
+  const results = [];
+
+  // 1. Required fields present
+  const requiredFields = [
+    'requestId',
+    'createdAt',
+    'operatorId',
+    'commandType',
+    'targetSystem',
+    'requestedAction',
+    'requestedTarget',
+    'riskTier',
+    'approvalStatus',
+    'executionMode',
+    'executionStatus',
+    'validationStatus',
+    'auditRequired',
+  ];
+  const missingFields = requiredFields.filter((f) => requestObj[f] === undefined || requestObj[f] === null);
+  results.push({
+    name: 'Required fields present',
+    result: missingFields.length === 0 ? 'PASS' : 'FAIL',
+    reason: missingFields.length === 0 ? 'All 14 required fields present' : `Missing: ${missingFields.join(', ')}`,
+    failCode: missingFields.length === 0 ? null : 'REJECTED_MISSING_FIELD',
+  });
+
+  // 2. commandType is allowlisted
+  const isCommandTypeAllowed = ALLOWED_COMMAND_TYPES.includes(requestObj.commandType);
+  results.push({
+    name: 'commandType is allowlisted',
+    result: isCommandTypeAllowed ? 'PASS' : 'FAIL',
+    reason: isCommandTypeAllowed
+      ? `commandType "${requestObj.commandType}" is in allowlist`
+      : `commandType "${requestObj.commandType}" is NOT in allowlist`,
+    failCode: isCommandTypeAllowed ? null : 'REJECTED_FORBIDDEN_COMMAND',
+  });
+
+  // 3. commandType is not forbidden
+  const isCommandTypeForbidden = FORBIDDEN_COMMAND_TYPES.includes(requestObj.commandType);
+  results.push({
+    name: 'commandType is not forbidden',
+    result: !isCommandTypeForbidden ? 'PASS' : 'FAIL',
+    reason: !isCommandTypeForbidden ? 'commandType is not in forbidden list' : 'commandType is in forbidden list',
+    failCode: isCommandTypeForbidden ? 'REJECTED_FORBIDDEN_COMMAND' : null,
+  });
+
+  // 4. riskTier is LOW or MEDIUM only
+  const riskTierValid = ['LOW', 'MEDIUM'].includes(requestObj.riskTier);
+  results.push({
+    name: 'riskTier is LOW or MEDIUM only',
+    result: riskTierValid ? 'PASS' : 'FAIL',
+    reason: riskTierValid ? `riskTier is "${requestObj.riskTier}"` : `riskTier "${requestObj.riskTier}" is not LOW or MEDIUM`,
+    failCode: riskTierValid ? null : 'REJECTED_HIGH_RISK',
+  });
+
+  // 5. approvalStatus is valid
+  const validApprovalStatuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DENIED'];
+  const approvalStatusValid = validApprovalStatuses.includes(requestObj.approvalStatus);
+  results.push({
+    name: 'approvalStatus is valid',
+    result: approvalStatusValid ? 'PASS' : 'FAIL',
+    reason: approvalStatusValid
+      ? `approvalStatus is "${requestObj.approvalStatus}"`
+      : `approvalStatus "${requestObj.approvalStatus}" is invalid`,
+    failCode: approvalStatusValid ? null : 'REJECTED_INVALID_STATUS',
+  });
+
+  // 6. executionMode equals DRY_RUN_ONLY
+  const executionModeCorrect = requestObj.executionMode === 'DRY_RUN_ONLY';
+  results.push({
+    name: 'executionMode equals DRY_RUN_ONLY',
+    result: executionModeCorrect ? 'PASS' : 'FAIL',
+    reason: executionModeCorrect ? 'executionMode is DRY_RUN_ONLY' : `executionMode is "${requestObj.executionMode}", must be DRY_RUN_ONLY`,
+    failCode: executionModeCorrect ? null : 'REJECTED_EXECUTION_MODE',
+  });
+
+  // 7. executionStatus equals NOT_EXECUTED
+  const executionStatusCorrect = requestObj.executionStatus === 'NOT_EXECUTED';
+  results.push({
+    name: 'executionStatus equals NOT_EXECUTED',
+    result: executionStatusCorrect ? 'PASS' : 'FAIL',
+    reason: executionStatusCorrect ? 'executionStatus is NOT_EXECUTED' : `executionStatus is "${requestObj.executionStatus}", must be NOT_EXECUTED`,
+    failCode: executionStatusCorrect ? null : 'REJECTED_ALREADY_EXECUTED',
+  });
+
+  // 8. validationStatus is valid
+  const validValidationStatuses = ['NOT_VALIDATED', 'PASSED', 'FAILED'];
+  const validationStatusValid = validValidationStatuses.includes(requestObj.validationStatus);
+  results.push({
+    name: 'validationStatus is valid',
+    result: validationStatusValid ? 'PASS' : 'FAIL',
+    reason: validationStatusValid
+      ? `validationStatus is "${requestObj.validationStatus}"`
+      : `validationStatus "${requestObj.validationStatus}" is invalid`,
+    failCode: validationStatusValid ? null : 'REJECTED_INVALID_STATUS',
+  });
+
+  // 9. auditRequired is true
+  const auditRequired = requestObj.auditRequired === true;
+  results.push({
+    name: 'auditRequired is true',
+    result: auditRequired ? 'PASS' : 'FAIL',
+    reason: auditRequired ? 'auditRequired is true' : 'auditRequired is not true',
+    failCode: auditRequired ? null : 'REJECTED_AUDIT_DISABLED',
+  });
+
+  // 10. targetSystem is declared
+  const targetSystemDeclared = !!requestObj.targetSystem && requestObj.targetSystem.trim().length > 0;
+  results.push({
+    name: 'targetSystem is declared',
+    result: targetSystemDeclared ? 'PASS' : 'FAIL',
+    reason: targetSystemDeclared ? `targetSystem is "${requestObj.targetSystem}"` : 'targetSystem is empty or not declared',
+    failCode: targetSystemDeclared ? null : 'REJECTED_MISSING_FIELD',
+  });
+
+  // 11. requestedAction is plain-language only
+  const isPlainLanguage = /^[a-zA-Z0-9\s\-.,!?'()]+$/.test(requestObj.requestedAction);
+  results.push({
+    name: 'requestedAction is plain-language only',
+    result: isPlainLanguage ? 'PASS' : 'FAIL',
+    reason: isPlainLanguage ? 'requestedAction contains only plain text' : 'requestedAction contains code or special characters',
+    failCode: isPlainLanguage ? null : 'REJECTED_INVALID_ACTION',
+  });
+
+  // 12. requestedTarget is non-sensitive
+  const sensitiveKeywords = ['/login', '/admin', '/secret', '/password', '/token', '/api-key', '/credential'];
+  const isSensitive = sensitiveKeywords.some((kw) => requestObj.requestedTarget.toLowerCase().includes(kw));
+  results.push({
+    name: 'requestedTarget is non-sensitive',
+    result: !isSensitive ? 'PASS' : 'FAIL',
+    reason: !isSensitive
+      ? `requestedTarget "${requestObj.requestedTarget}" does not contain sensitive keywords`
+      : `requestedTarget contains sensitive keywords`,
+    failCode: isSensitive ? 'REJECTED_SENSITIVE_TARGET' : null,
+  });
+
+  // 13. duplicate requestId check is preview-only
+  results.push({
+    name: 'duplicate requestId check',
+    result: 'PREVIEW_ONLY',
+    reason: 'Duplicate detection requires backend storage; preview mode cannot check',
+    failCode: 'REJECTED_DUPLICATE_REQUEST',
+  });
+
+  // 14. forbidden keyword check is preview-only
+  results.push({
+    name: 'forbidden keyword check',
+    result: 'PREVIEW_ONLY',
+    reason: 'Real-time forbidden keyword detection requires backend; preview mode shows static checks only',
+    failCode: 'REJECTED_FORBIDDEN_KEYWORD',
+  });
+
+  return results;
+};
+
 export default function DryRunBridgePlanning() {
   const [builderForm, setBuilderForm] = useState(BUILDER_PREVIEW_DEFAULTS);
 
@@ -269,6 +425,11 @@ export default function DryRunBridgePlanning() {
     auditRequired: true,
   };
 
+  const localValidationResults = performLocalValidation(builderPreviewObject);
+  const passCount = localValidationResults.filter((r) => r.result === 'PASS').length;
+  const failCount = localValidationResults.filter((r) => r.result === 'FAIL').length;
+  const previewOnlyCount = localValidationResults.filter((r) => r.result === 'PREVIEW_ONLY').length;
+
   const handleExport = () => {
     const snapshot = {
       snapshotType: 'DRY_RUN_BRIDGE_PLANNING_SNAPSHOT',
@@ -286,6 +447,23 @@ export default function DryRunBridgePlanning() {
       failResultCodes: FAIL_RESULT_CODES,
       builderPreviewDefaults: BUILDER_PREVIEW_DEFAULTS,
       builderPreviewObjectShape: builderPreviewObject,
+      localValidationPreviewRules: localValidationResults,
+      localValidationPreviewBoundary: {
+        description: 'Local browser-only validation preview',
+        executesBackend: false,
+        callsAPIs: false,
+        callsOpenClaw: false,
+        callsSafeBridge: false,
+        callsMCP: false,
+        usesBrowserAutomation: false,
+        accessesBrokersBanksBureaus: false,
+        processesPayments: false,
+        accessesCredentials: false,
+        uploadsFiles: false,
+        parsesFiles: false,
+        usesAIIndexing: false,
+        writesDatabase: false,
+      },
       executionStatus: 'NOT_EXECUTED',
       purpose: 'Dry-run bridge validates proposed actions without executing them.',
     };
@@ -659,6 +837,66 @@ export default function DryRunBridgePlanning() {
                     <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Local Preview Only</div>
                     <p className="text-[9px] text-slate-300">
                       This builder creates a local preview object only. It does not save, validate, approve, send, or execute bridge requests.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section J: Local Validation Preview */}
+              <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+                <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+                  <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">J. Local Validation Preview</h2>
+                </div>
+                <div className="p-4 space-y-4">
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-sm text-center">
+                      <div className="text-[10px] font-mono font-bold text-emerald-400">{passCount}</div>
+                      <div className="text-[7px] font-mono text-emerald-400/60 uppercase">PASS</div>
+                    </div>
+                    <div className="px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-sm text-center">
+                      <div className="text-[10px] font-mono font-bold text-destructive/80">{failCount}</div>
+                      <div className="text-[7px] font-mono text-destructive/60 uppercase">FAIL</div>
+                    </div>
+                    <div className="px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-sm text-center">
+                      <div className="text-[10px] font-mono font-bold text-amber-400">{previewOnlyCount}</div>
+                      <div className="text-[7px] font-mono text-amber-400/60 uppercase">Preview Only</div>
+                    </div>
+                  </div>
+
+                  {/* Validation Results */}
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {localValidationResults.map((result, idx) => (
+                      <div key={idx} className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="text-[9px] font-mono font-semibold text-slate-100">{idx + 1}. {result.name}</div>
+                          <span
+                            className={`px-1.5 py-0.5 text-[7px] font-mono font-bold rounded uppercase ${
+                              result.result === 'PASS'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : result.result === 'FAIL'
+                                  ? 'bg-destructive/20 text-destructive/80'
+                                  : 'bg-amber-500/20 text-amber-400'
+                            }`}
+                          >
+                            {result.result}
+                          </span>
+                        </div>
+                        <p className="text-[8px] text-slate-400 mb-1">{result.reason}</p>
+                        {result.failCode && (
+                          <div className="text-[8px] font-mono text-slate-300 bg-secondary/50 px-2 py-1 rounded border border-border/30 w-fit">
+                            {result.failCode}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Warning Note */}
+                  <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
+                    <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Local Browser-Only</div>
+                    <p className="text-[9px] text-slate-300">
+                      This is local browser-only validation preview. It does not save, approve, send, or execute bridge requests.
                     </p>
                   </div>
                 </div>
