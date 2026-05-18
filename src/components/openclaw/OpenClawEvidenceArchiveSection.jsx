@@ -32,6 +32,7 @@ import OpenClawFullGovernanceDryRunChainEvidenceExport from './OpenClawFullGover
 import OpenClawGovernanceDryRunChainCheckpointLock from './OpenClawGovernanceDryRunChainCheckpointLock.jsx';
 import OpenClawExecutionReadinessBoundaryMap from './OpenClawExecutionReadinessBoundaryMap.jsx';
 import OpenClawSecurityBoundaryPolicyBuilder from './OpenClawSecurityBoundaryPolicyBuilder.jsx';
+import OpenClawExecutionPolicyBoundaryBuilder from './OpenClawExecutionPolicyBoundaryBuilder.jsx';
 import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummaryPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
@@ -453,6 +454,31 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
           </button>
           {expandedGroup === 'phase51_security_policy' && (
             <div className="p-4"><OpenClawSecurityBoundaryPolicyBuilder /></div>
+          )}
+        </div>
+      </div>
+
+      {/* ── EXECUTION BOUNDARY — POLICY DESIGN ── */}
+      <div className="mt-6 pt-5 border-t-2 border-orange-500/20">
+        <div className="px-4 py-2 mb-3 bg-orange-500/5 border border-orange-500/20 rounded-sm">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-orange-400">
+            Execution Boundary — Policy Design
+          </div>
+          <div className="text-[8px] text-orange-400/70 mt-0.5">
+            Phase 52 · Policy definition only · No execution · Execution gate remains CLOSED
+          </div>
+        </div>
+        <div className="border-2 border-orange-500/30 rounded-lg overflow-hidden">
+          <button type="button" onClick={() => toggleGroup('phase52_execution_policy')}
+            className="w-full px-4 py-3 bg-orange-500/5 border-b-2 border-orange-500/30 hover:bg-orange-500/10 transition-colors text-left flex items-center justify-between">
+            <div>
+              <div className="text-[11px] uppercase tracking-widest font-bold text-orange-400">PHASE 52: Execution Policy Boundary Builder</div>
+              <div className="text-[9px] text-orange-400/70 mt-0.5">Defines execution policy requirements before any sandbox/dispatch/mutation work. Gate: CLOSED · No execution.</div>
+            </div>
+            <span className={`text-[10px] font-bold text-orange-400/60 transition-transform ${expandedGroup === 'phase52_execution_policy' ? 'rotate-90' : ''}`}>▶</span>
+          </button>
+          {expandedGroup === 'phase52_execution_policy' && (
+            <div className="p-4"><OpenClawExecutionPolicyBoundaryBuilder /></div>
           )}
         </div>
       </div>
