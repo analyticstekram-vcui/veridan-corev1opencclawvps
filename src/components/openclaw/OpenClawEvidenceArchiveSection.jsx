@@ -104,6 +104,54 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
   return (
     <div className="space-y-5 border-t border-border/40 pt-5">
 
+      {/* ── VERIDAN CORE CURRENT BUILD STATUS ── */}
+      <div className="border-2 border-primary rounded-lg overflow-hidden bg-primary/2">
+        <div className="px-4 py-3 bg-primary/10 border-b-2 border-primary">
+          <div className="text-[12px] font-bold uppercase tracking-wide text-primary">Veridan Core Current Build Status</div>
+        </div>
+        <div className="p-4 space-y-3">
+          {/* Status Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {[
+              { label: 'Current Mode', value: 'GOVERNANCE_DRY_RUN_LOCKED', color: 'text-primary' },
+              { label: 'Governance Chain', value: 'PHASES_43_49_LOCKED', color: 'text-primary' },
+              { label: 'Execution Readiness', value: 'NOT_READY_FOR_EXECUTION', color: 'text-destructive' },
+              { label: 'Security Policy', value: 'DEFINED_FOR_PLANNING_ONLY', color: 'text-amber-400' },
+              { label: 'Execution Policy', value: 'DEFINED_FOR_PLANNING_ONLY', color: 'text-amber-400' },
+              { label: 'Backend Policy', value: 'DEFINED_FOR_PLANNING_ONLY', color: 'text-amber-400' },
+              { label: 'Live Execution', value: 'DISABLED', color: 'text-destructive' },
+              { label: 'Dispatch', value: 'DISABLED', color: 'text-destructive' },
+              { label: 'Backend Mutation', value: 'DISABLED', color: 'text-destructive' },
+              { label: 'Browser Automation Execution', value: 'DISABLED', color: 'text-destructive' },
+              { label: 'Trading Automation', value: 'DISABLED', color: 'text-destructive' },
+              { label: 'Money Movement', value: 'DISABLED', color: 'text-destructive' },
+              { label: 'Credential Handling', value: 'DISABLED', color: 'text-destructive' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center justify-between gap-3 px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
+                <span className="text-[8px] text-slate-400">{row.label}:</span>
+                <span className={`text-[8px] font-bold font-mono whitespace-nowrap ${row.color}`}>{row.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* What This Means */}
+          <div className="mt-4 pt-3 border-t border-primary/20">
+            <div className="text-[10px] font-bold uppercase text-primary mb-2">What This Means</div>
+            <p className="text-[9px] text-slate-300 leading-relaxed bg-secondary/20 px-3 py-2.5 rounded-sm border border-border/20">
+              Veridan Core can define, validate, review, package, lock, and export dry-run governance records. It cannot execute live actions, dispatch commands, move money, place trades, enter credentials, or mutate external systems.
+            </p>
+          </div>
+
+          {/* Next Recommended Work */}
+          <div className="pt-3 border-t border-primary/20">
+            <div className="text-[10px] font-bold uppercase text-primary mb-2">Next Recommended Work</div>
+            <p className="text-[9px] text-slate-300 leading-relaxed bg-secondary/20 px-3 py-2.5 rounded-sm border border-border/20">
+              Stop expanding governance. Return to product modules: Trading, Public Credit, Business Formation, Client Operations, and AI Command Center.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ── OBSERVABILITY DASHBOARD — always at top ── */}
       <div className="border-2 border-primary rounded-lg overflow-hidden bg-primary/2">
         <div className="px-4 py-2 bg-primary/10 border-b border-primary/30">
