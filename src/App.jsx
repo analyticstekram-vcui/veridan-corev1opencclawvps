@@ -21,6 +21,7 @@ import VeridanCoreSystemMap from './components/ui/veridan-core-system-map';
 import AuditEvidenceDashboard from './components/audit/AuditEvidenceDashboard';
 import OpenClawGovernanceDashboard from './components/openclaw/OpenClawGovernanceDashboard';
 import BaselineEvidenceConsolidation from './components/governance/BaselineEvidenceConsolidation';
+import DryRunBridgePlanning from './components/governance/DryRunBridgePlanning';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -65,6 +66,7 @@ const AuthenticatedApp = () => {
       <Route path="/audit-evidence" element={<AuditEvidenceDashboard />} />
       <Route path="/openclaw-governance" element={<OpenClawGovernanceDashboard />} />
       <Route path="/baseline-evidence" element={<BaselineEvidenceConsolidation />} />
+      <Route path="/dry-run-bridge-planning" element={<DryRunBridgePlanning />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

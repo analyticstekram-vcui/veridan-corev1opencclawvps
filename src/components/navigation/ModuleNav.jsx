@@ -7,6 +7,7 @@ export default function ModuleNav() {
     { label: 'Home', path: '/', icon: Home },
     { label: 'Control Room', path: '/control-room', icon: Radio },
     { label: 'OpenClaw', path: '/openclaw-governance', icon: Cpu },
+    { label: 'Dry-Run Bridge', path: '/dry-run-bridge-planning', icon: Layers },
     { label: 'Trading', path: '/trading-operations', icon: TrendingUp },
     { label: 'Credit', path: '/credit-public-side', icon: CreditCard },
     { label: 'Business', path: '/business-operations', icon: Briefcase },
