@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import ModuleNav from '../components/navigation/ModuleNav';
+import BusinessFormationModuleStatusSummary from '../components/business-formation/BusinessFormationModuleStatusSummary';
 import BusinessEntityRegistry from '../components/business-formation/BusinessEntityRegistry';
 import TrustLlcStructurePlanner from '../components/business-formation/TrustLlcStructurePlanner';
 import RegisteredAgentWorkflow from '../components/business-formation/RegisteredAgentWorkflow';
@@ -20,19 +21,7 @@ const TABS = [
   { id: 'affiliate',  label: 'Affiliate Revenue Planner' },
 ];
 
-const SAFETY_ROWS = [
-  { label: 'Module Mode',                        value: 'PLANNING_ONLY',  color: 'text-amber-400' },
-  { label: 'Legal Filing',                        value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'Payment Processing',                  value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'Registered Agent API Calls',          value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'Bank Account Opening',                value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'EIN Submission',                      value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'Credential Storage in Frontend',      value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'Backend Mutation',                    value: 'DISABLED',       color: 'text-destructive' },
-];
 
-const WHAT_THIS_MEANS =
-  'The Business Formation Command Center can track entity planning, trust/LLC structure ideas, registered agent workflow steps, EIN/bank/credit readiness, and affiliate revenue planning. It cannot file legal documents, submit EIN applications, open bank accounts, process payments, store credentials, or mutate backend systems.';
 
 export default function BusinessFormationCommandCenter() {
   const [activeTab, setActiveTab] = useState('entity');
@@ -64,31 +53,9 @@ export default function BusinessFormationCommandCenter() {
         </div>
       </div>
 
-      {/* Business Formation Module Current Status */}
-      <div className="border-b border-border bg-card px-6 py-4 space-y-4">
-        <div>
-          <div className="text-[11px] font-bold uppercase text-primary">Business Formation Module Current Status</div>
-          <div className="text-[8px] text-slate-500 mt-0.5">Planning-only status · No legal filing · No API calls · No credential storage</div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {SAFETY_ROWS.map(item => (
-            <div key={item.label}
-              className="flex items-center justify-between px-4 py-2.5 bg-secondary/20 border border-border/30 rounded-sm">
-              <span className="text-[9px] text-slate-400">{item.label}:</span>
-              <span className={`text-[8px] font-bold font-mono ${item.color}`}>{item.value}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="px-4 py-3 bg-primary/5 border border-primary/20 rounded-sm">
-          <div className="text-[9px] font-bold uppercase text-primary mb-2">What This Means</div>
-          <p className="text-[8px] text-slate-300 leading-relaxed">{WHAT_THIS_MEANS}</p>
-        </div>
-
-        <div className="px-3 py-2 bg-amber-500/5 border border-amber-500/20 rounded-sm text-[8px] text-amber-400/80">
-          Planning only · No legal filing · No EIN submission · No bank API calls · No credential storage · No backend mutation
-        </div>
+      {/* Business Formation Module Status Summary */}
+      <div className="border-b border-border bg-card px-6 py-4">
+        <BusinessFormationModuleStatusSummary />
       </div>
 
       {/* Tabs */}
