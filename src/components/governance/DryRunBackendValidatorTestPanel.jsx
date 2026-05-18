@@ -1,23 +1,83 @@
 /**
  * DryRunBackendValidatorTestPanel
- * Tests the dry-run validator in isolation.
- * UI-only staging component with no API wiring.
+ * Tests the dry-run validator by calling /api/dry-run/bridge/preview.
+ * Wired to validator endpoint only. No persistence, no external calls.
  *
  * Does NOT:
- *   - Call fetch or axios
- *   - Make API calls
- *   - Call backends
+ *   - Call any endpoint other than /api/dry-run/bridge/preview
+ *   - Use axios
  *   - Write to database
  *   - Execute any commands
- *   - Persist requests
+ *   - Persist requests or results
  *   - Make outbound network calls
  *   - Use OpenClaw, SafeBridge, MCP, browsers, brokers, banks, bureaus, payments, credentials, uploads, parsers, AI indexing, or persistence systems
  */
 
-import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, Loader2 } from 'lucide-react';
+
+const VALID_REQUEST_PAYLOAD = {
+  requestId: 'dry-run-valid-preview-001',
+  createdAt: new Date().toISOString(),
+  operatorId: 'operator-local-preview',
+  commandType: 'READ',
+  targetSystem: 'OpenClaw',
+  requestedAction: 'Check read-only gateway status',
+  requestedTarget: '/status',
+  riskTier: 'LOW',
+  approvalStatus: 'DRAFT',
+  executionMode: 'DRY_RUN_ONLY',
+  executionStatus: 'NOT_EXECUTED',
+  validationStatus: 'NOT_VALIDATED',
+  denialReason: null,
+  auditRequired: true,
+};
+
+const REJECTED_REQUEST_PAYLOAD = {
+  requestId: 'dry-run-rejected-preview-001',
+  createdAt: new Date().toISOString(),
+  operatorId: 'operator-local-preview',
+  commandType: 'TRADE',
+  targetSystem: 'Broker',
+  requestedAction: 'Execute buy trade',
+  requestedTarget: 'broker/order/submit',
+  riskTier: 'HIGH',
+  approvalStatus: 'APPROVED',
+  executionMode: 'LIVE',
+  executionStatus: 'EXECUTED',
+  validationStatus: 'NOT_VALIDATED',
+  denialReason: null,
+  auditRequired: true,
+};
 
 export default function DryRunBackendValidatorTestPanel() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastRequest, setLastRequest] = useState(null);
+  const [lastResponse, setLastResponse] = useState(null);
+
+  const handleTestRequest = async (payload) => {
+    setLoading(true);
+    setError(null);
+    setLastRequest(payload);
+    setLastResponse(null);
+
+    try {
+      const response = await fetch('/api/dry-run/bridge/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      setLastResponse(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
       <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
@@ -40,33 +100,116 @@ export default function DryRunBackendValidatorTestPanel() {
       <div className="p-4 space-y-4">
         {/* Endpoint Reference */}
         <div className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
-          <div className="text-[9px] font-mono font-semibold text-slate-300 mb-1">Intended Endpoint</div>
-          <div className="text-[10px] font-mono text-blue-400">POST /api/dry-run/bridge/preview</div>
+          <div className="text-[9px] font-mono font-semibold text-slate-300 mb-1">Allowed Endpoint</div>
+          <div className="text-[10px] font-mono text-blue-400">/api/dry-run/bridge/preview only</div>
         </div>
 
         {/* Test Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <button
             type="button"
-            disabled
-            className="px-4 py-2.5 bg-secondary/30 border border-border/40 text-slate-400 rounded-sm font-semibold text-[10px] font-mono uppercase cursor-not-allowed opacity-50"
+            onClick={() => handleTestRequest(VALID_REQUEST_PAYLOAD)}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-sm font-semibold text-[10px] font-mono uppercase hover:bg-emerald-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
             Test Valid Dry-Run Request
           </button>
           <button
             type="button"
-            disabled
-            className="px-4 py-2.5 bg-secondary/30 border border-border/40 text-slate-400 rounded-sm font-semibold text-[10px] font-mono uppercase cursor-not-allowed opacity-50"
+            onClick={() => handleTestRequest(REJECTED_REQUEST_PAYLOAD)}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 border border-destructive/20 text-destructive/80 rounded-sm font-semibold text-[10px] font-mono uppercase hover:bg-destructive/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
             Test Rejected Dry-Run Request
           </button>
         </div>
 
-        {/* Staging Note */}
+        {/* Error Display */}
+        {error && (
+          <div className="px-3 py-2.5 bg-destructive/5 border border-destructive/20 rounded-sm">
+            <div className="text-[9px] font-mono font-semibold text-destructive/80 mb-1">Error</div>
+            <div className="text-[8px] font-mono text-slate-300 break-all">{error}</div>
+          </div>
+        )}
+
+        {/* Last Request Display */}
+        {lastRequest && (
+          <div className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
+            <div className="text-[9px] font-mono font-semibold text-slate-300 mb-2">Last Request</div>
+            <pre className="bg-secondary/50 px-2 py-1.5 rounded-sm text-[7px] text-blue-400 font-mono overflow-x-auto">
+              {JSON.stringify(lastRequest, null, 2)}
+            </pre>
+          </div>
+        )}
+
+        {/* Last Response Display */}
+        {lastResponse && (
+          <div className="space-y-2">
+            <div className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
+              <div className="text-[9px] font-mono font-semibold text-slate-300 mb-2">Response Summary</div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between px-2 py-1.5 bg-secondary/50 rounded-sm border border-border/30">
+                  <span className="text-[8px] text-slate-400">accepted:</span>
+                  <span className="text-[8px] font-mono text-slate-200">{lastResponse.accepted ? 'true' : 'false'}</span>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1.5 bg-secondary/50 rounded-sm border border-border/30">
+                  <span className="text-[8px] text-slate-400">validationStatus:</span>
+                  <span className="text-[8px] font-mono text-slate-200">{lastResponse.validationStatus}</span>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1.5 bg-secondary/50 rounded-sm border border-border/30">
+                  <span className="text-[8px] text-slate-400">decision:</span>
+                  <span className="text-[8px] font-mono text-slate-200">{lastResponse.decision}</span>
+                </div>
+                {lastResponse.denialReason && (
+                  <div className="flex items-center justify-between px-2 py-1.5 bg-secondary/50 rounded-sm border border-border/30">
+                    <span className="text-[8px] text-slate-400">denialReason:</span>
+                    <span className="text-[8px] font-mono text-destructive/80">{lastResponse.denialReason}</span>
+                  </div>
+                )}
+                {lastResponse.failCodes && lastResponse.failCodes.length > 0 && (
+                  <div className="px-2 py-1.5 bg-secondary/50 rounded-sm border border-border/30">
+                    <span className="text-[8px] text-slate-400">failCodes:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {lastResponse.failCodes.map((code) => (
+                        <span key={code} className="px-1.5 py-0.5 bg-destructive/10 border border-destructive/20 rounded text-[7px] font-mono text-destructive/80">
+                          {code}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-2 py-1.5 bg-secondary/50 rounded-sm border border-border/30">
+                  <span className="text-[8px] text-slate-400">executionStatus:</span>
+                  <span className="text-[8px] font-mono text-slate-200">{lastResponse.executionStatus}</span>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1.5 bg-secondary/50 rounded-sm border border-border/30">
+                  <span className="text-[8px] text-slate-400">outboundCallsMade:</span>
+                  <span className="text-[8px] font-mono text-slate-200">{lastResponse.outboundCallsMade ? 'true' : 'false'}</span>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1.5 bg-secondary/50 rounded-sm border border-border/30">
+                  <span className="text-[8px] text-slate-400">persistenceWritten:</span>
+                  <span className="text-[8px] font-mono text-slate-200">{lastResponse.persistenceWritten ? 'true' : 'false'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Full Response JSON */}
+            <div className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
+              <div className="text-[9px] font-mono font-semibold text-slate-300 mb-2">Full Response</div>
+              <pre className="bg-secondary/50 px-2 py-1.5 rounded-sm text-[7px] text-blue-400 font-mono overflow-x-auto">
+                {JSON.stringify(lastResponse, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
+
+        {/* Boundary Note */}
         <div className="px-3 py-2.5 bg-slate-500/5 border border-slate-500/20 rounded-sm">
-          <div className="text-[9px] font-mono font-semibold text-slate-400 mb-1 uppercase">Staging Status</div>
+          <div className="text-[9px] font-mono font-semibold text-slate-400 mb-1 uppercase">Endpoint Boundary</div>
           <p className="text-[10px] text-slate-400">
-            Endpoint wiring is not active yet. This component is staged for review before API connection.
+            Allowed endpoint: /api/dry-run/bridge/preview only. No other URLs, no database writes, no persistence.
           </p>
         </div>
       </div>
