@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Terminal, RefreshCw, ExternalLink, Copy, ShieldCheck, Clock, Wifi, WifiOff, List, Monitor, ChevronDown, ChevronRight, Settings, AlertTriangle, Home } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import SafeCommandBridge from '@/components/openclaw/SafeCommandBridge';
@@ -141,6 +141,7 @@ const TAB_GROUPS = {
 };
 
 export default function OpenClawControl() {
+  const [searchParams] = useSearchParams();
   const [activeView, setActiveView] = useState('control_tower');
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -149,6 +150,20 @@ export default function OpenClawControl() {
   const [showAdvancedAudit, setShowAdvancedAudit] = useState(false);
   const [operatorMode, setOperatorMode] = useState('SIMPLE');
   const intervalRef = useRef(null);
+
+  // Support query params for section targeting (e.g., ?section=governance-queue)
+  useEffect(() => {
+    const sectionParam = searchParams.get('section');
+    if (sectionParam) {
+      const sectionMap = {
+        'governance-queue': 'approval_workflow',
+        'system-verify': 'system_verify',
+        'monitoring': 'openclaw_health',
+      };
+      const targetTab = sectionMap[sectionParam] || sectionParam;
+      setActiveView(targetTab);
+    }
+  }, [searchParams]);
 
   // Listen for navigation events dispatched by child panels (e.g. quick links in Overview)
   useEffect(() => {

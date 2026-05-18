@@ -28,8 +28,8 @@ const GOVERNANCE_PAGES = [
     mode: 'Governed',
     modeColor: 'text-amber-400 border-amber-400/30 bg-amber-400/5',
     icon: CheckCircle2,
-    path: '/openclaw-control',
-    note: 'From OpenClaw Control → Governance tab',
+    path: '/openclaw-control?section=governance-queue',
+    note: 'OpenClaw Control → Approval Workflow tab (auto-selected)',
   },
   {
     id: 'audit_evidence',
@@ -58,8 +58,8 @@ const GOVERNANCE_PAGES = [
     mode: 'Preview',
     modeColor: 'text-slate-300 border-slate-300/30 bg-slate-300/5',
     icon: BarChart3,
-    path: '/openclaw-control',
-    note: 'From OpenClaw Control → System Verify tab',
+    path: '/openclaw-control?section=system-verify',
+    note: 'OpenClaw Control → System Verify tab (auto-selected)',
   },
   {
     id: 'system_map',
@@ -78,8 +78,8 @@ const GOVERNANCE_PAGES = [
     mode: 'Read-Only',
     modeColor: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/5',
     icon: Eye,
-    path: '/openclaw-control',
-    note: 'From OpenClaw Control → Monitoring tab or Status tab',
+    path: '/openclaw-control?section=monitoring',
+    note: 'OpenClaw Control → OpenClaw Health tab (auto-selected)',
   },
 ];
 
