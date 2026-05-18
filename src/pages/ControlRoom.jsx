@@ -12,6 +12,7 @@ import CRProposedActionsTab from '@/components/controlroom/CRProposedActionsTab'
 import CRGovernanceTab from '@/components/controlroom/CRGovernanceTab';
 import CRToolRegistryTab from '@/components/controlroom/CRToolRegistryTab';
 import CRAuditLogTab from '@/components/controlroom/CRAuditLogTab';
+import VeridanCoreSystemMap from '@/components/ui/veridan-core-system-map';
 
 
 
@@ -21,6 +22,7 @@ const TABS = [
   { id: 'safe_cmd',   label: 'Safe Command Test',  icon: Terminal },
   { id: 'proposed',   label: 'Proposed Actions',   icon: Layers },
   { id: 'governance', label: 'Governance Queue',   icon: Shield },
+  { id: 'system_map', label: 'System Map',         icon: Layers },
   { id: 'tools',      label: 'Tool Registry',      icon: Wrench },
   { id: 'gateway',    label: 'Gateway Health',    icon: Activity },
   { id: 'audit',      label: 'Audit Log',          icon: FileText },
@@ -1249,6 +1251,7 @@ export default function ControlRoom() {
         {activeTab === 'safe_cmd'   && <CRSafeCommandTab />}
         {activeTab === 'proposed'   && <CRProposedActionsTab />}
         {activeTab === 'governance' && <CRGovernanceTab />}
+        {activeTab === 'system_map' && <VeridanCoreSystemMap />}
         {activeTab === 'tools'      && <CRToolRegistryTab />}
         {activeTab === 'gateway'    && (
           <div className="space-y-4">
