@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu } from 'lucide-react';
 import VeridanCoreBranchDashboard from '../components/dashboard/VeridanCoreBranchDashboard';
 import CurrentBuildStateCard from '../components/governance/CurrentBuildStateCard';
+import CurrentCapabilitiesBoundary from '../components/governance/CurrentCapabilitiesBoundary';
 import GovernanceControlIndex from '../components/governance/GovernanceControlIndex';
 
 export default function Dashboard() {
@@ -53,6 +54,9 @@ export default function Dashboard() {
 
       {/* Current Build State */}
       <CurrentBuildStateCard />
+
+      {/* Current Capabilities Boundary */}
+      <CurrentCapabilitiesBoundary />
 
       {/* Governance Control Index */}
       <GovernanceControlIndex />
