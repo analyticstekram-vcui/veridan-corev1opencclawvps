@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Radio, TrendingUp, CreditCard, Briefcase, BookOpen, Layers } from 'lucide-react';
+import { Home, Radio, TrendingUp, CreditCard, Briefcase, BookOpen, Layers, FileText } from 'lucide-react';
 
 export default function ModuleNav() {
   const navItems = [
@@ -10,6 +10,7 @@ export default function ModuleNav() {
     { label: 'Credit', path: '/credit-public-side', icon: CreditCard },
     { label: 'Business', path: '/business-operations', icon: Briefcase },
     { label: 'Knowledge', path: '/knowledge-vault', icon: BookOpen },
+    { label: 'Audit / Evidence', path: '/audit-evidence', icon: FileText },
     { label: 'System Map', path: '/system-map', icon: Layers },
   ];
 
