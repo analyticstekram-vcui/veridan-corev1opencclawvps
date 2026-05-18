@@ -26,6 +26,7 @@ import OpenClawUnifiedCommandContractRegistry from './OpenClawUnifiedCommandCont
 import OpenClawProposalRegistryValidationBinding from './OpenClawProposalRegistryValidationBinding.jsx';
 import OpenClawDryRunValidatorIntakeBinding from './OpenClawDryRunValidatorIntakeBinding.jsx';
 import OpenClawDryRunIntakeValidatorRecordBinding from './OpenClawDryRunIntakeValidatorRecordBinding.jsx';
+import OpenClawValidatorRecordReviewDecisionGate from './OpenClawValidatorRecordReviewDecisionGate.jsx';
 import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummaryPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
@@ -295,6 +296,21 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
         </button>
         {expandedGroup === 'phase46_validator_binding' && (
           <div className="p-4"><OpenClawDryRunIntakeValidatorRecordBinding /></div>
+        )}
+      </div>
+
+      {/* ── PHASE 47: Validator Record Review and Decision Gate ── */}
+      <div className="border-2 border-rose-500/30 rounded-lg overflow-hidden">
+        <button type="button" onClick={() => toggleGroup('phase47_review_gate')}
+          className="w-full px-4 py-3 bg-rose-500/5 border-b-2 border-rose-500/30 hover:bg-rose-500/10 transition-colors text-left flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-widest font-bold text-rose-400">PHASE 47: Validator Record Review and Decision Gate</div>
+            <div className="text-[9px] text-rose-400/70 mt-0.5">Operator review gate for Phase 46 validator records. No execution · No dispatch.</div>
+          </div>
+          <span className={`text-[10px] font-bold text-rose-400/60 transition-transform ${expandedGroup === 'phase47_review_gate' ? 'rotate-90' : ''}`}>▶</span>
+        </button>
+        {expandedGroup === 'phase47_review_gate' && (
+          <div className="p-4"><OpenClawValidatorRecordReviewDecisionGate /></div>
         )}
       </div>
 
