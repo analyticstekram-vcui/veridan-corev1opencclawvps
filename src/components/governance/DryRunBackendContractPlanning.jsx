@@ -152,6 +152,32 @@ const BACKEND_IMPLEMENTATION_BLOCKED_ACTIONS = [
 
 export default function DryRunBackendContractPlanning() {
   const handleExportContract = () => {
+    const BACKEND_VALIDATOR_COMPLETED_ROWS = [
+      'Backend contract planning page created',
+      'Dry-run validator endpoint created',
+      'Frontend validator test panel created',
+      'Valid request test supported',
+      'Rejected request test supported',
+      'Safety assertion block added',
+      'Memory-only test history added',
+      'Validator test lock snapshot export added',
+      'Execution boundary preserved',
+      'Persistence boundary preserved',
+      'Outbound call boundary preserved',
+    ];
+
+    const BACKEND_VALIDATOR_BLOCKED_NEXT_ACTIONS = [
+      'Do not add OpenClaw dispatch',
+      'Do not add SafeBridge dispatch',
+      'Do not add MCP tool calls',
+      'Do not add browser automation',
+      'Do not add broker/trading execution',
+      'Do not add bank/payment execution',
+      'Do not add credential storage',
+      'Do not add persistent audit writes without separate approval',
+      'Do not add live execution connectors',
+    ];
+
     const contractSnapshot = {
       snapshotType: 'DRY_RUN_BACKEND_CONTRACT_PLANNING_SNAPSHOT',
       generatedAt: new Date().toISOString(),
@@ -170,6 +196,10 @@ export default function DryRunBackendContractPlanning() {
       backendImplementationReadinessStatus: 'READY_FOR_BACKEND_ROUTE_DRAFT_ONLY',
       backendImplementationNextPhaseNote: 'The next phase may draft the backend dry-run route, but it must remain non-executing, non-persistent, and outbound-call disabled.',
       backendImplementationBlockedActions: BACKEND_IMPLEMENTATION_BLOCKED_ACTIONS,
+      backendValidatorFinalLockStatus: 'DRY_RUN_VALIDATOR_LOCKED',
+      backendValidatorCompletedRows: BACKEND_VALIDATOR_COMPLETED_ROWS,
+      backendValidatorNextPhaseReadiness: 'Ready for approval workflow planning only — not execution.',
+      backendValidatorBlockedNextActions: BACKEND_VALIDATOR_BLOCKED_NEXT_ACTIONS,
       implementationStatus: 'NOT_IMPLEMENTED',
       note: 'This is a planning snapshot only. No backend route, logic, or execution exists yet.',
     };
@@ -370,6 +400,84 @@ export default function DryRunBackendContractPlanning() {
 
           {/* Section I: Dry-Run Backend Validator Test Panel */}
           <DryRunBackendValidatorTestPanel />
+
+          {/* Section J: Backend Validator Final Lock Summary */}
+          <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+            <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+              <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">J. Backend Validator Final Lock Summary</h2>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Final Validator Status */}
+              <div className="px-4 py-3 bg-primary/10 border border-primary/20 rounded-sm">
+                <div className="text-[9px] font-mono font-bold text-primary mb-1 uppercase">Final Validator Status</div>
+                <div className="text-[13px] font-mono font-bold text-slate-100">DRY_RUN_VALIDATOR_LOCKED</div>
+              </div>
+
+              {/* Completed Status Rows */}
+              <div>
+                <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Completed Validator Components</h3>
+                <div className="space-y-1.5">
+                  {[
+                    'Backend contract planning page created',
+                    'Dry-run validator endpoint created',
+                    'Frontend validator test panel created',
+                    'Valid request test supported',
+                    'Rejected request test supported',
+                    'Safety assertion block added',
+                    'Memory-only test history added',
+                    'Validator test lock snapshot export added',
+                    'Execution boundary preserved',
+                    'Persistence boundary preserved',
+                    'Outbound call boundary preserved',
+                  ].map((item) => (
+                    <div key={item} className="flex items-start gap-2 px-3 py-1.5 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+                      <span className="text-emerald-400 shrink-0 mt-0.5 font-bold">✓</span>
+                      <span className="text-[9px] text-slate-300">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Next Phase Readiness */}
+              <div className="px-4 py-3 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+                <div className="text-[9px] font-mono font-bold text-emerald-400 mb-1 uppercase">Next Phase Readiness</div>
+                <p className="text-[10px] text-emerald-300">
+                  Ready for approval workflow planning only — not execution.
+                </p>
+              </div>
+
+              {/* Blocked Next Actions */}
+              <div>
+                <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Blocked Next Actions</h3>
+                <div className="space-y-1.5">
+                  {[
+                    'Do not add OpenClaw dispatch',
+                    'Do not add SafeBridge dispatch',
+                    'Do not add MCP tool calls',
+                    'Do not add browser automation',
+                    'Do not add broker/trading execution',
+                    'Do not add bank/payment execution',
+                    'Do not add credential storage',
+                    'Do not add persistent audit writes without separate approval',
+                    'Do not add live execution connectors',
+                  ].map((action) => (
+                    <div key={action} className="flex items-start gap-2 px-3 py-1.5 bg-destructive/5 border border-destructive/20 rounded-sm">
+                      <span className="text-destructive/70 shrink-0 mt-0.5 font-bold">✕</span>
+                      <span className="text-[9px] text-slate-300">{action}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lock Note */}
+              <div className="bg-primary/5 border border-primary/15 rounded-sm overflow-hidden px-3 py-2.5">
+                <div className="text-[8px] font-mono font-bold text-primary/70 mb-1 uppercase">Validator Lock</div>
+                <p className="text-[9px] text-slate-300">
+                  Validator contract is locked. No execution, persistence, or external system calls are permitted.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Section G: Export */}
           <div className="bg-primary/5 border border-primary/20 rounded-sm overflow-hidden">
