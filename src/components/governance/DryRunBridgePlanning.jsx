@@ -434,6 +434,32 @@ const deriveDecisionOutcome = (validationResults) => {
   };
 };
 
+const COMPLETED_PLANNING_LAYERS = [
+  'Command allowlist defined',
+  'Forbidden command list defined',
+  'Request contract defined',
+  'Validation rules matrix defined',
+  'Request builder preview defined',
+  'Local validation preview defined',
+  'Decision outcome preview defined',
+  'Export snapshot defined',
+  'Execution boundary preserved',
+  'Backend boundary preserved',
+];
+
+const BLOCKED_CAPABILITIES = [
+  'Live OpenClaw execution',
+  'SafeBridge execution',
+  'MCP tool calls',
+  'Browser automation',
+  'Broker/trading execution',
+  'Bank/payment movement',
+  'Credit bureau pulls',
+  'Credential storage',
+  'Upload/parsing workflows',
+  'Database persistence',
+];
+
 export default function DryRunBridgePlanning() {
   const [builderForm, setBuilderForm] = useState(BUILDER_PREVIEW_DEFAULTS);
 
@@ -463,6 +489,27 @@ export default function DryRunBridgePlanning() {
   const failCount = localValidationResults.filter((r) => r.result === 'FAIL').length;
   const previewOnlyCount = localValidationResults.filter((r) => r.result === 'PREVIEW_ONLY').length;
   const decisionOutcome = deriveDecisionOutcome(localValidationResults);
+
+  const handleExportLockSnapshot = () => {
+    const lockSnapshot = {
+      snapshotType: 'DRY_RUN_PLANNING_LOCK_SNAPSHOT',
+      generatedAt: new Date().toISOString(),
+      finalPlanningStatus: 'DRY_RUN_PLANNING_LOCKED',
+      completedPlanningLayers: COMPLETED_PLANNING_LAYERS,
+      nextPhaseReadiness: 'Ready for dry-run backend contract planning only — not execution.',
+      blockedCapabilities: BLOCKED_CAPABILITIES,
+      executionBoundary: 'NOT_EXECUTED',
+      backendBoundary: 'NOT_CONNECTED',
+    };
+
+    const blob = new Blob([JSON.stringify(lockSnapshot, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dry-run-planning-lock-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleExport = () => {
     const snapshot = {
@@ -1023,6 +1070,91 @@ export default function DryRunBridgePlanning() {
                     <p className="text-[9px] text-slate-300">
                       This decision outcome is local preview only. It does not approve, save, send, or execute bridge requests.
                     </p>
+                  </div>
+                  </div>
+                  </div>
+
+                  {/* Section L: Dry-Run Planning Lock Snapshot */}
+                  <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+                  <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+                  <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">L. Dry-Run Planning Lock Snapshot</h2>
+                  </div>
+                  <div className="p-4 space-y-4">
+                  {/* Final Planning Status */}
+                  <div className="px-4 py-3 bg-primary/10 border border-primary/20 rounded-sm">
+                    <div className="text-[9px] font-mono font-bold text-primary mb-1 uppercase">Final Planning Status</div>
+                    <div className="text-[13px] font-mono font-bold text-slate-100">DRY_RUN_PLANNING_LOCKED</div>
+                  </div>
+
+                  {/* Next Phase Readiness */}
+                  <div className="px-4 py-3 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+                    <div className="text-[9px] font-mono font-bold text-emerald-400 mb-1 uppercase">Next Phase Readiness</div>
+                    <p className="text-[10px] text-emerald-300">
+                      Ready for dry-run backend contract planning only — not execution.
+                    </p>
+                  </div>
+
+                  {/* Completed Planning Layers */}
+                  <div>
+                    <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Completed Planning Layers</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                      {COMPLETED_PLANNING_LAYERS.map((layer) => (
+                        <div key={layer} className="flex items-start gap-2 px-3 py-1.5 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+                          <span className="text-emerald-400 shrink-0 mt-0.5 font-bold">✓</span>
+                          <span className="text-[9px] text-slate-300">{layer}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Blocked Capabilities */}
+                  <div>
+                    <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Blocked Capabilities</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                      {BLOCKED_CAPABILITIES.map((capability) => (
+                        <div key={capability} className="flex items-start gap-2 px-3 py-1.5 bg-destructive/5 border border-destructive/20 rounded-sm">
+                          <span className="text-destructive/80 shrink-0 mt-0.5 font-bold">✕</span>
+                          <span className="text-[9px] text-slate-300">{capability}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Boundaries */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="px-3 py-2 bg-secondary/30 border border-border/40 rounded-sm text-center">
+                      <div className="text-[8px] font-mono font-bold text-slate-400 mb-0.5 uppercase">Execution Boundary</div>
+                      <div className="text-[9px] font-mono font-bold text-slate-200">NOT_EXECUTED</div>
+                    </div>
+                    <div className="px-3 py-2 bg-secondary/30 border border-border/40 rounded-sm text-center">
+                      <div className="text-[8px] font-mono font-bold text-slate-400 mb-0.5 uppercase">Backend Boundary</div>
+                      <div className="text-[9px] font-mono font-bold text-slate-200">NOT_CONNECTED</div>
+                    </div>
+                  </div>
+
+                  {/* Warning Note */}
+                  <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
+                    <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Planning Lock</div>
+                    <p className="text-[9px] text-slate-300">
+                      Planning layers locked. No execution, backend connections, or external integrations are permitted at this stage.
+                    </p>
+                  </div>
+
+                  {/* Lock Snapshot Export */}
+                  <div className="bg-primary/5 border border-primary/20 rounded-sm overflow-hidden">
+                    <div className="px-4 py-3 bg-primary/10 border-b border-primary/20 flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={handleExportLockSnapshot}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-primary/10 border border-primary/40 text-primary hover:bg-primary/20 transition-colors rounded-sm font-semibold text-[11px] font-mono uppercase"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export Dry-Run Planning Lock Snapshot
+                      </button>
+                    </div>
+                    <div className="px-4 py-2 bg-secondary/20 border-t border-border/40 text-[8px] font-mono text-muted-foreground/60 text-center italic">
+                      Browser-local JSON export only · No backend or database writes
+                    </div>
                   </div>
                   </div>
                   </div>
