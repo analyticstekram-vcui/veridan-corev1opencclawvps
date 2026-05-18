@@ -253,6 +253,200 @@ export default function VeridanKnowledgeVaultDashboard() {
           />
         </div>
 
+        {/* Knowledge Vault Planning Section */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Knowledge Vault Planning</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Strategic planning for Knowledge Vault capabilities, governance structure, and safety gates before document, upload, and AI indexing features are enabled.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* 1. Purpose Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+                <h3 className="text-[11px] font-mono font-bold uppercase text-slate-100">1. Purpose</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Centralized internal knowledge repository for operators</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Store SOPs, trading rules, credit policies, and governance</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Future sync with Obsidian as source of truth</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>Read-only governance reference for all modules</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Safe Now Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
+                <h3 className="text-[11px] font-mono font-bold uppercase text-emerald-400">2. Safe Now</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Read-only access to vault content</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Viewing SOPs and governance rules</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Operator reference for all procedures</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Planning and scoping knowledge categories</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Blocked Until Later Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[11px] font-mono font-bold uppercase text-destructive/80">3. Blocked Until Later</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Document upload functionality</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>File parsing and extraction</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>AI indexing and semantic search</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Private document storage and retrieval</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Credential or sensitive data storage</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Future Knowledge Categories Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-slate-700/10 border-b border-slate-700/20">
+                <h3 className="text-[11px] font-mono font-bold uppercase text-slate-300">4. Future Knowledge Categories</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-slate-400 shrink-0 mt-0.5">→</span>
+                    <span>Compliance documentation (legal, regulatory)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-slate-400 shrink-0 mt-0.5">→</span>
+                    <span>Audit trails and evidence archives</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-slate-400 shrink-0 mt-0.5">→</span>
+                    <span>Change logs and version history</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-slate-400 shrink-0 mt-0.5">→</span>
+                    <span>Integration guides (brokers, APIs, systems)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-slate-400 shrink-0 mt-0.5">→</span>
+                    <span>Troubleshooting and runbooks</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Governance Requirements Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-cyan-500/10 border-b border-cyan-500/20">
+                <h3 className="text-[11px] font-mono font-bold uppercase text-cyan-400">5. Governance Requirements Before Uploads or AI Indexing</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Define document access control and role-based permissions</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Establish PII detection and redaction rules</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Approve AI indexing scope and limitations</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Define data retention and archive policies</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Establish audit logging for all document access</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Require human review before search results are exposed</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Next Development Step Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
+                <h3 className="text-[11px] font-mono font-bold uppercase text-amber-400">6. Next Development Step</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Finalize knowledge categories and SOP structure</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Define Obsidian vault sync design and safety gates</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Design document upload workflow with governance approval</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Build read-only preview mode before live indexing</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Establish audit trail and compliance requirements</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Info footer */}
         <div className="mt-8 p-4 bg-secondary/20 border border-border/30 rounded-sm flex items-start gap-3">
           <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
