@@ -12,6 +12,7 @@ export default function ModuleNav() {
     { label: 'Approval Workflow', path: '/approval-workflow-planning', icon: FileText },
     { label: 'OpenClaw Monitoring', path: '/openclaw-governance', icon: Cpu },
     { label: 'System Map', path: '/system-map', icon: Layers },
+    { label: 'Trading CMD', path: '/trading-command-center', icon: TrendingUp },
     { label: 'Trading', path: '/trading-operations', icon: TrendingUp },
     { label: 'Credit', path: '/credit-public-side', icon: CreditCard },
     { label: 'Business', path: '/business-operations', icon: Briefcase },

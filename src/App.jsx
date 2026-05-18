@@ -24,6 +24,7 @@ import BaselineEvidenceConsolidation from './components/governance/BaselineEvide
 import DryRunBridgePlanning from './components/governance/DryRunBridgePlanning';
 import DryRunBackendContractPlanning from './components/governance/DryRunBackendContractPlanning';
 import ApprovalWorkflowPlanning from './components/governance/ApprovalWorkflowPlanning';
+import TradingCommandCenter from './pages/TradingCommandCenter';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
       <Route path="/dry-run-bridge-planning" element={<DryRunBridgePlanning />} />
       <Route path="/dry-run-backend-contract" element={<DryRunBackendContractPlanning />} />
       <Route path="/approval-workflow-planning" element={<ApprovalWorkflowPlanning />} />
+      <Route path="/trading-command-center" element={<TradingCommandCenter />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
