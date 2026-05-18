@@ -170,9 +170,9 @@ export default function VeridanCoreSystemMap() {
                       <h2 className="text-sm font-semibold text-slate-100">{module.name}</h2>
                       <p className="mt-2 text-[11px] leading-relaxed text-slate-300">{module.purpose}</p>
                     </div>
-                    <span className={`px-2 py-1 text-[9px] font-mono font-bold uppercase rounded ${modeColorMap[module.mode] || modeColorMap.FUTURE_PHASE || ''}`}>
-                       {module.mode}
-                     </span>
+                    <span className={`px-2 py-1 text-[9px] font-mono font-bold uppercase rounded ${modeColorMap[module.mode] || modeColorMap['UI_ONLY']}`}>
+                      {module.mode}
+                    </span>
                   </div>
                 </button>
               );
@@ -387,6 +387,8 @@ export default function VeridanCoreSystemMap() {
                 </div>
               </div>
             </div>
+          </div>
+          </div>
           </div>
           </div>
           </div>

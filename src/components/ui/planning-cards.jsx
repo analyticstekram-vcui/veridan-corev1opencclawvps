@@ -27,7 +27,7 @@ export function SafetyStatusCard({ title, statuses, disclaimer, children }) {
             <p className="text-[10px] text-slate-300 leading-relaxed">{disclaimer}</p>
           </div>
         ) : null}
-        {children}
+        {children || null}
       </div>
     </div>
   );
@@ -86,7 +86,7 @@ export function BaselineCard({ title, rows, disclaimer, children }) {
             <p className="text-[10px] text-slate-300 leading-relaxed">{disclaimer}</p>
           </div>
         ) : null}
-        {children}
+        {children || null}
       </div>
     </div>
   );
