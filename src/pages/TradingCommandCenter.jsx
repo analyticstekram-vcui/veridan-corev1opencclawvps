@@ -10,6 +10,7 @@ import TradingStrategyRegistry from '../components/trading/TradingStrategyRegist
 import TradingPaperReadinessChecklist from '../components/trading/TradingPaperReadinessChecklist';
 import TradingRiskRuleBuilder from '../components/trading/TradingRiskRuleBuilder';
 import TradingBrokerSandboxRequirements from '../components/trading/TradingBrokerSandboxRequirements';
+import TradingModuleStatusSummary from '../components/trading/TradingModuleStatusSummary';
 
 const TABS = [
   { id: 'strategies', label: 'Strategy Registry' },
@@ -63,6 +64,11 @@ export default function TradingCommandCenter() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Module Status Summary */}
+      <div className="border-b border-border bg-card px-6 py-4">
+        <TradingModuleStatusSummary />
       </div>
 
       {/* Tabs */}
