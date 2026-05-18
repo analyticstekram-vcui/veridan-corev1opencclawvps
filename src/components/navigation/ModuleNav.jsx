@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Radio, TrendingUp, CreditCard, Briefcase, BookOpen, Layers, FileText } from 'lucide-react';
+import { Home, Radio, TrendingUp, CreditCard, Briefcase, BookOpen, Layers, FileText, Cpu } from 'lucide-react';
 
 export default function ModuleNav() {
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
     { label: 'Control Room', path: '/control-room', icon: Radio },
+    { label: 'OpenClaw', path: '/openclaw-governance', icon: Cpu },
     { label: 'Trading', path: '/trading-operations', icon: TrendingUp },
     { label: 'Credit', path: '/credit-public-side', icon: CreditCard },
     { label: 'Business', path: '/business-operations', icon: Briefcase },

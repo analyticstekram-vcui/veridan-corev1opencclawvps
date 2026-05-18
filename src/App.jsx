@@ -19,6 +19,7 @@ import BusinessOperationsDashboard from './components/business/BusinessOperation
 import TradingOperationsDashboard from './components/trading/TradingOperationsDashboard';
 import VeridanCoreSystemMap from './components/ui/veridan-core-system-map';
 import AuditEvidenceDashboard from './components/audit/AuditEvidenceDashboard';
+import OpenClawGovernanceDashboard from './components/openclaw/OpenClawGovernanceDashboard';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -61,6 +62,7 @@ const AuthenticatedApp = () => {
       <Route path="/trading-operations" element={<TradingOperationsDashboard />} />
       <Route path="/system-map" element={<VeridanCoreSystemMap />} />
       <Route path="/audit-evidence" element={<AuditEvidenceDashboard />} />
+      <Route path="/openclaw-governance" element={<OpenClawGovernanceDashboard />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
