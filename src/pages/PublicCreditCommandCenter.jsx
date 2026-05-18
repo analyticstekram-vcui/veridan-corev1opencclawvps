@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import ModuleNav from '../components/navigation/ModuleNav';
+import PublicCreditModuleStatusSummary from '../components/public-credit/PublicCreditModuleStatusSummary';
 import CreditProfilePlanning from '../components/public-credit/CreditProfilePlanning';
 import CreditDisputePlanner from '../components/public-credit/CreditDisputePlanner';
 import BureauMonitoringChecklist from '../components/public-credit/BureauMonitoringChecklist';
@@ -18,18 +19,6 @@ const TABS = [
   { id: 'bureau',   label: 'Bureau Monitoring' },
   { id: 'tradeline',label: 'Tradeline Tracker' },
   { id: 'goals',    label: 'Credit Goals' },
-];
-
-const WHAT_THIS_MEANS =
-  'The Public Credit Command Center can track credit planning records, dispute ideas, monitoring tasks, tradelines, and credit goals. It cannot contact credit bureaus, submit disputes, store credentials, or transmit client data.';
-
-const SAFETY_ROWS = [
-  { label: 'Module Mode',                   value: 'PLANNING_ONLY',  color: 'text-amber-400' },
-  { label: 'Bureau API Calls',              value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'Credit Bureau Submissions',     value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'Credential Storage in Frontend',value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'Client Data Submission',        value: 'DISABLED',       color: 'text-destructive' },
-  { label: 'Backend Mutation',              value: 'DISABLED',       color: 'text-destructive' },
 ];
 
 export default function PublicCreditCommandCenter() {
@@ -63,39 +52,20 @@ export default function PublicCreditCommandCenter() {
       </div>
 
       {/* Module Status Summary Card */}
-      <div className="border-b border-border bg-card px-6 py-4 space-y-4">
-        <div>
-          <div className="text-[11px] font-bold uppercase text-primary">Public Credit Module Current Status</div>
-          <div className="text-[8px] text-slate-500 mt-0.5">Planning-only status · No bureau connectivity · No client data transmission</div>
-        </div>
-
-        {/* Safety Status Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {SAFETY_ROWS.map(item => (
-            <div key={item.label}
-              className="flex items-center justify-between px-4 py-2.5 bg-secondary/20 border border-border/30 rounded-sm">
-              <span className="text-[9px] text-slate-400">{item.label}:</span>
-              <span className={`text-[8px] font-bold font-mono ${item.color}`}>{item.value}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* What This Means */}
-        <div className="px-4 py-3 bg-primary/5 border border-primary/20 rounded-sm">
-          <div className="text-[9px] font-bold uppercase text-primary mb-2">What This Means</div>
-          <p className="text-[8px] text-slate-300 leading-relaxed">{WHAT_THIS_MEANS}</p>
-        </div>
-
-        {/* Safety notice */}
-        <div className="px-3 py-2 bg-amber-500/5 border border-amber-500/20 rounded-sm text-[8px] text-amber-400/80">
-          Planning only · No bureau API calls · No credential storage · No client data submission · No execution
-        </div>
+      <div className="border-b border-border bg-card px-6 py-4">
+        <PublicCreditModuleStatusSummary />
       </div>
 
       {/* Tabs */}
       <div className="border-b border-border bg-card px-6">
         <div className="flex gap-0 overflow-x-auto">
-          {TABS.map(tab => (
+          {[
+            { id: 'profile',  label: 'Credit Profile' },
+            { id: 'dispute',  label: 'Dispute Planner' },
+            { id: 'bureau',   label: 'Bureau Monitoring' },
+            { id: 'tradeline',label: 'Tradeline Tracker' },
+            { id: 'goals',    label: 'Credit Goals' },
+          ].map(tab => (
             <button
               key={tab.id}
               type="button"
