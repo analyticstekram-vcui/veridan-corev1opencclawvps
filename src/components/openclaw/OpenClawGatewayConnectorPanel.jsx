@@ -103,6 +103,7 @@ import ManualReadOnlyMonitoringConsole from './ManualReadOnlyMonitoringConsole.j
 import OpenClawSystemStatusCard from './OpenClawSystemStatusCard.jsx';
 import ManualMonitoringHistoricalStatusDashboard from './ManualMonitoringHistoricalStatusDashboard.jsx';
 import RegenerateEvidenceChainButton from './RegenerateEvidenceChainButton.jsx';
+import OpenClawUnifiedCommandContractRegistry from './OpenClawUnifiedCommandContractRegistry.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
 
@@ -749,6 +750,26 @@ export default function OpenClawGatewayConnectorPanel() {
                        <OpenClawDryRunSimulationPreviewValidator />
                      </div>
                    </div>
+                 </div>
+               )}
+             </div>
+
+             {/* ── COLLAPSIBLE SECTION: Phase 43 — Unified Command Contract Registry ── */}
+             <div className="border-2 border-primary/40 rounded-lg overflow-hidden">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase43_registry')}
+                 className="w-full px-4 py-3 bg-primary/5 border-b-2 border-primary/40 hover:bg-primary/10 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-primary">PHASE 43: Unified Command Contract Registry</div>
+                   <div className="text-[9px] text-primary/70 mt-0.5">Centralizes all allowed, dry-run, and blocked commands. Read-only · No execution.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-primary/60 transition-transform ${expandedGroup === 'phase43_registry' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase43_registry' && (
+                 <div className="p-4">
+                   <OpenClawUnifiedCommandContractRegistry />
                  </div>
                )}
              </div>
