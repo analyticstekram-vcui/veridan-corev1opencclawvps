@@ -28,6 +28,7 @@ import OpenClawDryRunValidatorIntakeBinding from './OpenClawDryRunValidatorIntak
 import OpenClawDryRunIntakeValidatorRecordBinding from './OpenClawDryRunIntakeValidatorRecordBinding.jsx';
 import OpenClawValidatorRecordReviewDecisionGate from './OpenClawValidatorRecordReviewDecisionGate.jsx';
 import OpenClawApprovedReviewDryRunResultPackageBuilder from './OpenClawApprovedReviewDryRunResultPackageBuilder.jsx';
+import OpenClawFullGovernanceDryRunChainEvidenceExport from './OpenClawFullGovernanceDryRunChainEvidenceExport.jsx';
 import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummaryPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
@@ -370,6 +371,21 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
         </button>
         {expandedGroup === 'phase48_result_package_builder' && (
           <div className="p-4"><OpenClawApprovedReviewDryRunResultPackageBuilder /></div>
+        )}
+      </div>
+
+      {/* ── PHASE 49: Full Governance Dry-Run Chain Evidence Export ── */}
+      <div className="border-2 border-teal-500/30 rounded-lg overflow-hidden">
+        <button type="button" onClick={() => toggleGroup('phase49_chain_evidence_export')}
+          className="w-full px-4 py-3 bg-teal-500/5 border-b-2 border-teal-500/30 hover:bg-teal-500/10 transition-colors text-left flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-widest font-bold text-teal-400">PHASE 49: Full Governance Dry-Run Chain Evidence Export</div>
+            <div className="text-[9px] text-teal-400/70 mt-0.5">Collects all Phase 43–48 records into one chain evidence package. No execution · No dispatch.</div>
+          </div>
+          <span className={`text-[10px] font-bold text-teal-400/60 transition-transform ${expandedGroup === 'phase49_chain_evidence_export' ? 'rotate-90' : ''}`}>▶</span>
+        </button>
+        {expandedGroup === 'phase49_chain_evidence_export' && (
+          <div className="p-4"><OpenClawFullGovernanceDryRunChainEvidenceExport /></div>
         )}
       </div>
 
