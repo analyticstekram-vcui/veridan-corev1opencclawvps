@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Radio, TrendingUp, CreditCard, Briefcase, BookOpen } from 'lucide-react';
+import { Home, Radio, TrendingUp, CreditCard, Briefcase, BookOpen, Layers } from 'lucide-react';
 
 export default function ModuleNav() {
   const navItems = [
