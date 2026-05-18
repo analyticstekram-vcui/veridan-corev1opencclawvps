@@ -385,13 +385,11 @@ export default function VeridanCoreSystemMap() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-          </div>
-          </div>
-          </div>
-          </div>
-          </div>
-          );
-          }
+                </div>
+                </div>
+                </div>
+                </div>
+                </div>
+                </div>
+                );
+                }
