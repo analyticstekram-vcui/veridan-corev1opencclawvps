@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu } from 'lucide-react';
 import VeridanCoreBranchDashboard from '../components/dashboard/VeridanCoreBranchDashboard';
+import CurrentBuildStateCard from '../components/governance/CurrentBuildStateCard';
 import GovernanceControlIndex from '../components/governance/GovernanceControlIndex';
 
 export default function Dashboard() {
@@ -49,6 +50,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Current Build State */}
+      <CurrentBuildStateCard />
 
       {/* Governance Control Index */}
       <GovernanceControlIndex />
