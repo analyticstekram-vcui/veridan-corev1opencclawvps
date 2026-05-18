@@ -105,6 +105,7 @@ import ManualMonitoringHistoricalStatusDashboard from './ManualMonitoringHistori
 import RegenerateEvidenceChainButton from './RegenerateEvidenceChainButton.jsx';
 import OpenClawUnifiedCommandContractRegistry from './OpenClawUnifiedCommandContractRegistry.jsx';
 import OpenClawProposalRegistryValidationBinding from './OpenClawProposalRegistryValidationBinding.jsx';
+import OpenClawDryRunValidatorIntakeBinding from './OpenClawDryRunValidatorIntakeBinding.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
 
@@ -791,6 +792,26 @@ export default function OpenClawGatewayConnectorPanel() {
                {expandedGroup === 'phase44_binding' && (
                  <div className="p-4">
                    <OpenClawProposalRegistryValidationBinding />
+                 </div>
+               )}
+             </div>
+
+             {/* ── COLLAPSIBLE SECTION: Phase 45 — Dry-Run Validator Intake Binding ── */}
+             <div className="border-2 border-cyan-500/30 rounded-lg overflow-hidden">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase45_intake')}
+                 className="w-full px-4 py-3 bg-cyan-500/5 border-b-2 border-cyan-500/30 hover:bg-cyan-500/10 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-cyan-400">PHASE 45: Dry-Run Validator Intake Binding</div>
+                   <div className="text-[9px] text-cyan-400/70 mt-0.5">Binds Phase 44 validated proposals to dry-run intake. No execution · No backend calls.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-cyan-400/60 transition-transform ${expandedGroup === 'phase45_intake' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase45_intake' && (
+                 <div className="p-4">
+                   <OpenClawDryRunValidatorIntakeBinding />
                  </div>
                )}
              </div>
