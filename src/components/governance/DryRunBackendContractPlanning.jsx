@@ -23,6 +23,7 @@ import React from 'react';
 import { AlertCircle, Download } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import { Link } from 'react-router-dom';
+import DryRunBackendValidatorTestPanel from './DryRunBackendValidatorTestPanel';
 
 const PROPOSED_ENDPOINT_CONTRACT = {
   method: 'POST',
@@ -366,6 +367,9 @@ export default function DryRunBackendContractPlanning() {
               </div>
             </div>
           </div>
+
+          {/* Section I: Dry-Run Backend Validator Test Panel */}
+          <DryRunBackendValidatorTestPanel />
 
           {/* Section G: Export */}
           <div className="bg-primary/5 border border-primary/20 rounded-sm overflow-hidden">
