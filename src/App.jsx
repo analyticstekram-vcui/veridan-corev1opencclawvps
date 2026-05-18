@@ -18,6 +18,7 @@ import CreditPublicSideDashboard from './components/credit/CreditPublicSideDashb
 import BusinessOperationsDashboard from './components/business/BusinessOperationsDashboard';
 import TradingOperationsDashboard from './components/trading/TradingOperationsDashboard';
 import VeridanCoreSystemMap from './components/ui/veridan-core-system-map';
+import AuditEvidenceDashboard from './components/audit/AuditEvidenceDashboard';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -59,6 +60,7 @@ const AuthenticatedApp = () => {
       <Route path="/business-operations" element={<BusinessOperationsDashboard />} />
       <Route path="/trading-operations" element={<TradingOperationsDashboard />} />
       <Route path="/system-map" element={<VeridanCoreSystemMap />} />
+      <Route path="/audit-evidence" element={<AuditEvidenceDashboard />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
