@@ -27,6 +27,7 @@ import ApprovalWorkflowPlanning from './components/governance/ApprovalWorkflowPl
 import TradingCommandCenter from './pages/TradingCommandCenter';
 import PublicCreditCommandCenter from './pages/PublicCreditCommandCenter';
 import BusinessFormationCommandCenter from './pages/BusinessFormationCommandCenter';
+import AiCommandCenter from './pages/AiCommandCenter';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
       <Route path="/trading-command-center" element={<TradingCommandCenter />} />
       <Route path="/public-credit-command-center" element={<PublicCreditCommandCenter />} />
       <Route path="/business-formation-command-center" element={<BusinessFormationCommandCenter />} />
+      <Route path="/ai-command-center" element={<AiCommandCenter />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

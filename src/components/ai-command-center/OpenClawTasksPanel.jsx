@@ -1,0 +1,60 @@
+/**
+ * OpenClawTasksPanel — Planning-only OpenClaw tasks placeholder.
+ * No OpenClaw dispatch. No browser automation. No external API mutation. localStorage-only future expansion.
+ */
+
+import React from 'react';
+import { AlertTriangle } from 'lucide-react';
+
+export default function OpenClawTasksPanel() {
+  return (
+    <div className="space-y-4 font-mono">
+
+      {/* Header */}
+      <div>
+        <div className="text-[11px] font-bold uppercase text-primary">OpenClaw Tasks</div>
+        <div className="text-[8px] text-slate-500 mt-0.5">Planning-only task collection · No OpenClaw dispatch</div>
+      </div>
+
+      {/* Safety Warning */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-destructive/5 border border-destructive/30 rounded-sm">
+        <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+        <div>
+          <div className="text-[9px] font-bold text-destructive mb-0.5">Planning only. No OpenClaw dispatch, browser automation, AI runtime calls, or external API mutation.</div>
+          <div className="text-[8px] text-destructive/70">No OpenClaw dispatch · No browser automation · No AI runtime · No external API mutation · No credential storage</div>
+        </div>
+      </div>
+
+      {/* Placeholder Content */}
+      <div className="bg-card border border-border/50 rounded-sm p-6">
+        <div className="text-center py-8 text-slate-500">
+          <div className="text-[9px] font-bold uppercase mb-2">OpenClaw Tasks Panel</div>
+          <div className="text-[8px] text-slate-500 max-w-md mx-auto leading-relaxed">
+            This panel is a planning-only placeholder for organizing OpenClaw task plans and browser automation workflows.
+            Future expansion: localStorage-only task collection and export (no OpenClaw dispatch integration).
+          </div>
+        </div>
+      </div>
+
+      {/* Safety Claims Footer */}
+      <div className="px-3 py-2.5 bg-primary/5 border border-primary/15 rounded-sm">
+        <div className="text-[8px] font-bold uppercase text-primary/70 mb-1.5">Safety Claims</div>
+        <div className="flex flex-wrap gap-1">
+          {[
+            'OpenClaw tasks planning only',
+            'No OpenClaw dispatch',
+            'No browser automation',
+            'No AI runtime calls',
+            'No external API mutation',
+            'No credential handling',
+            'No backend mutation',
+            'Browser-only localStorage',
+          ].map(c => (
+            <span key={c} className="px-1.5 py-0.5 bg-primary/5 border border-primary/15 rounded text-[7px] text-primary/70 font-mono">{c}</span>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+}
