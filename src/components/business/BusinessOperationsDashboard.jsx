@@ -173,6 +173,288 @@ export default function BusinessOperationsDashboard() {
           />
         </BaselineCard>
 
+        {/* 1. Business Workflow Categories */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Business Workflow Categories</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Planning structure for eight business operation category types, showing safe-now capabilities, blocked items, and next development steps.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[
+              {
+                name: 'Entity Planning',
+                purpose: 'Business entity structure, registration, and governance planning',
+                safeNow: ['Entity strategy', 'Structure documentation', 'Governance design'],
+                blocked: ['Entity formation submission', 'Live registration', 'Filing automation'],
+                nextStep: 'Finalize entity structure and registration strategy',
+              },
+              {
+                name: 'Operating Agreements',
+                purpose: 'Operating agreements and governance documents for entities',
+                safeNow: ['Agreement templates', 'Terms documentation', 'Governance rules'],
+                blocked: ['Document generation', 'Signature collection', 'Filing submission'],
+                nextStep: 'Design operating agreement framework and approval process',
+              },
+              {
+                name: 'Business Credit Planning',
+                purpose: 'Business credit monitoring and facility planning',
+                safeNow: ['Credit strategy', 'Facility planning', 'Monitoring design'],
+                blocked: ['Credit bureau connection', 'Live credit monitoring', 'Bureau reporting'],
+                nextStep: 'Define business credit integration requirements',
+              },
+              {
+                name: 'Vendor / Tradeline Planning',
+                purpose: 'Vendor partnerships and tradeline affiliate management',
+                safeNow: ['Vendor strategy', 'Relationship planning', 'Integration design'],
+                blocked: ['Vendor connections', 'Live integrations', 'Automated routing'],
+                nextStep: 'Finalize vendor integration contracts and safety gates',
+              },
+              {
+                name: 'Banking Readiness',
+                purpose: 'Banking infrastructure and account readiness planning',
+                safeNow: ['Bank selection', 'Account planning', 'Requirements definition'],
+                blocked: ['Bank connections', 'Account opening', 'Transaction processing'],
+                nextStep: 'Design banking integration contracts before connection',
+              },
+              {
+                name: 'Payment Processing Planning',
+                purpose: 'Payment processing system requirements and integration design',
+                safeNow: ['Processor selection', 'Requirements design', 'Integration planning'],
+                blocked: ['Processor connections', 'Live transactions', 'Money movement'],
+                nextStep: 'Define payment processing contracts and safety gates',
+              },
+              {
+                name: 'Compliance / Records',
+                purpose: 'Compliance documentation and business record management',
+                safeNow: ['Compliance mapping', 'Records planning', 'Audit trail design'],
+                blocked: ['Auto-reporting', 'External submission', 'Authority filing'],
+                nextStep: 'Establish compliance framework and record retention policy',
+              },
+              {
+                name: 'Future Operational Automation',
+                purpose: 'Reserved for automation capabilities when governance approved',
+                safeNow: ['Automation planning', 'Workflow design', 'Integration mapping'],
+                blocked: ['Live automation', 'Process execution', 'System integration'],
+                nextStep: 'Define operational automation requirements before activation',
+              },
+            ].map((category) => (
+              <BaselineCard
+                key={category.name}
+                title={category.name}
+                rows={[
+                  { label: 'Purpose', value: category.purpose },
+                  { label: 'Safe Now', value: category.safeNow.join(' · '), valueClassName: 'text-emerald-400' },
+                  { label: 'Blocked Until Later', value: category.blocked.join(' · '), valueClassName: 'text-destructive/70' },
+                  { label: 'Next Step', value: category.nextStep, valueClassName: 'text-amber-400' },
+                ]}
+                disclaimer="UI-only planning category; no execution or backend logic enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Business Readiness Matrix */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Business Readiness Matrix</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Readiness summary for each business workflow category, showing current mode, safe capabilities, blocked capabilities, and next development step.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[
+              { name: 'Entity Planning', mode: 'UI_ONLY' },
+              { name: 'Operating Agreements', mode: 'UI_ONLY' },
+              { name: 'Business Credit Planning', mode: 'UI_ONLY' },
+              { name: 'Vendor / Tradeline Planning', mode: 'UI_ONLY' },
+              { name: 'Banking Readiness', mode: 'UI_ONLY' },
+              { name: 'Payment Processing Planning', mode: 'UI_ONLY' },
+              { name: 'Compliance / Records', mode: 'UI_ONLY' },
+              { name: 'Future Operational Automation', mode: 'FUTURE_PHASE' },
+            ].map((item) => (
+              <BaselineCard
+                key={`matrix-${item.name}`}
+                title={item.name}
+                rows={[
+                  { label: 'Current Mode', value: item.mode, valueClassName: 'text-amber-500' },
+                  { label: 'Readiness', value: item.mode === 'FUTURE_PHASE' ? 'BLOCKED' : 'PARTIAL', valueClassName: item.mode === 'FUTURE_PHASE' ? 'text-destructive' : 'text-amber-400' },
+                ]}
+                disclaimer="UI-only readiness planning; no execution or backend logic enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 3. Business Readiness Gate */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Business Readiness Gate</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Gate status for each business workflow category showing current mode, readiness level, and the blocking gate before the next phase can proceed.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[
+              { name: 'Entity Planning', readiness: 'PARTIAL', gate: 'Complete entity structure documentation and governance approval' },
+              { name: 'Operating Agreements', readiness: 'PARTIAL', gate: 'Finalize operating agreement templates before document generation' },
+              { name: 'Business Credit Planning', readiness: 'PARTIAL', gate: 'Define business credit integration requirements before bureau connection' },
+              { name: 'Vendor / Tradeline Planning', readiness: 'PARTIAL', gate: 'Complete vendor integration contracts and safety gates' },
+              { name: 'Banking Readiness', readiness: 'PARTIAL', gate: 'Design banking integration architecture before bank connection' },
+              { name: 'Payment Processing Planning', readiness: 'PARTIAL', gate: 'Define payment processing contracts and safety gates before activation' },
+              { name: 'Compliance / Records', readiness: 'PARTIAL', gate: 'Establish compliance framework and record retention policy' },
+              { name: 'Future Operational Automation', readiness: 'BLOCKED', gate: 'Define operational automation requirements and governance approval' },
+            ].map((item) => (
+              <BaselineCard
+                key={`gate-${item.name}`}
+                title={item.name}
+                rows={[
+                  { label: 'Current Mode', value: 'UI_ONLY', valueClassName: 'text-amber-500' },
+                  { label: 'Readiness', value: item.readiness, valueClassName: item.readiness === 'BLOCKED' ? 'text-destructive' : 'text-amber-400' },
+                  { label: 'Blocking Gate', value: item.gate, valueClassName: 'text-slate-300' },
+                ]}
+                disclaimer="UI-only gate guidance; no backend or execution logic is enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Operator Action Plan */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Operator Action Plan</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Summary of what operators can do now, what is blocked, what to build next, and what requires governance approval.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* Safe Now Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-emerald-400">Safe Now</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Plan business entity structure and registration</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Design operating agreements and governance documents</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Plan business credit and tradeline integration</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Design banking and payment processing infrastructure</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Plan business operations governance framework</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Blocked Until Later Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-destructive/80">Blocked Until Later</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Business entity formation and registration submission</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Bank connections and account opening</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Payment processing and money movement</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Client data collection and intake workflows</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Automated business operations and live execution</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Next Build Step Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-amber-400">Next Build Step</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Finalize entity structure documentation and governance approval</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Design operating agreement templates and workflow</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Complete banking and payment processing integration architecture</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Define business operations governance contracts and approval gates</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Establish compliance framework and record retention policy</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Requires Governance Approval Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-cyan-500/10 border-b border-cyan-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-cyan-400">Requires Governance Approval</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Submitting business entity formation and registration</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Activating bank connections and account operations</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Enabling payment processing and money movement</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Activating business operations automation and execution</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Enabling client data intake and external integrations</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-4">
           {/* 1. Operations Mode */}
           <DashboardSection
