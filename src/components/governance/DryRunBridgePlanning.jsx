@@ -74,6 +74,56 @@ const SAFETY_BOUNDARY_CLAIMS = [
   'No database writes',
 ];
 
+const CONTRACT_REQUIRED_FIELDS = [
+  'requestId',
+  'createdAt',
+  'operatorId',
+  'commandType',
+  'targetSystem',
+  'requestedAction',
+  'requestedTarget',
+  'riskTier',
+  'approvalStatus',
+  'executionMode',
+  'executionStatus',
+  'validationStatus',
+  'denialReason',
+  'auditRequired',
+];
+
+const CONTRACT_ALLOWED_VALUES = {
+  commandType: ['READ', 'NAVIGATE', 'EXTRACT', 'VERIFY'],
+  riskTier: ['LOW', 'MEDIUM'],
+  approvalStatus: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DENIED'],
+  executionMode: ['DRY_RUN_ONLY'],
+  executionStatus: ['NOT_EXECUTED'],
+  validationStatus: ['NOT_VALIDATED', 'PASSED', 'FAILED'],
+};
+
+const CONTRACT_FORBIDDEN_VALUES = {
+  commandType: ['CLICK', 'TYPE', 'SUBMIT', 'TRADE', 'TRANSFER', 'LOGIN', 'UPLOAD', 'DELETE', 'MODIFY', 'EXECUTE'],
+  riskTier: ['HIGH', 'CRITICAL'],
+  executionMode: ['LIVE', 'PAPER_EXECUTION', 'REAL_EXECUTION'],
+  executionStatus: ['EXECUTED', 'PARTIALLY_EXECUTED'],
+};
+
+const SAMPLE_VALID_CONTRACT = {
+  requestId: 'req-dry-run-gateway-001',
+  createdAt: '2026-05-18T10:30:00Z',
+  operatorId: 'operator@veridan.com',
+  commandType: 'READ',
+  targetSystem: 'gateway',
+  requestedAction: 'Read health status',
+  requestedTarget: '/api/health',
+  riskTier: 'LOW',
+  approvalStatus: 'PENDING_APPROVAL',
+  executionMode: 'DRY_RUN_ONLY',
+  executionStatus: 'NOT_EXECUTED',
+  validationStatus: 'NOT_VALIDATED',
+  denialReason: null,
+  auditRequired: true,
+};
+
 export default function DryRunBridgePlanning() {
   const handleExport = () => {
     const snapshot = {
@@ -84,6 +134,10 @@ export default function DryRunBridgePlanning() {
       requestShapePreview: REQUEST_SHAPE_PREVIEW,
       validationGates: VALIDATION_GATES,
       safetyBoundary: SAFETY_BOUNDARY_CLAIMS,
+      contractRequiredFields: CONTRACT_REQUIRED_FIELDS,
+      contractAllowedValues: CONTRACT_ALLOWED_VALUES,
+      contractForbiddenValues: CONTRACT_FORBIDDEN_VALUES,
+      sampleValidContract: SAMPLE_VALID_CONTRACT,
       executionStatus: 'NOT_EXECUTED',
       purpose: 'Dry-run bridge validates proposed actions without executing them.',
     };
@@ -219,6 +273,80 @@ export default function DryRunBridgePlanning() {
                     <span className="text-slate-300">{claim}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Section G: Dry-Run Bridge Contract Preview */}
+          <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+            <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+              <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">G. Dry-Run Bridge Contract Preview</h2>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Required Fields */}
+              <div>
+                <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Required Fields</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                  {CONTRACT_REQUIRED_FIELDS.map((field) => (
+                    <div key={field} className="px-2 py-1 bg-secondary/50 border border-border/30 rounded-sm">
+                      <div className="text-[9px] font-mono text-blue-400">{field}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Allowed Values */}
+              <div>
+                <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Allowed Values</h3>
+                <div className="space-y-2">
+                  {Object.entries(CONTRACT_ALLOWED_VALUES).map(([field, values]) => (
+                    <div key={field} className="px-3 py-2 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+                      <div className="text-[9px] font-mono font-semibold text-emerald-400 mb-1">{field}</div>
+                      <div className="flex flex-wrap gap-1">
+                        {values.map((val) => (
+                          <span key={val} className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded text-[8px] font-mono text-emerald-300">
+                            {val}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Forbidden Values */}
+              <div>
+                <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Forbidden Values</h3>
+                <div className="space-y-2">
+                  {Object.entries(CONTRACT_FORBIDDEN_VALUES).map(([field, values]) => (
+                    <div key={field} className="px-3 py-2 bg-destructive/5 border border-destructive/20 rounded-sm">
+                      <div className="text-[9px] font-mono font-semibold text-destructive/80 mb-1">{field}</div>
+                      <div className="flex flex-wrap gap-1">
+                        {values.map((val) => (
+                          <span key={val} className="px-2 py-0.5 bg-destructive/10 border border-destructive/30 rounded text-[8px] font-mono text-destructive/70">
+                            {val}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sample Valid Contract */}
+              <div>
+                <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Sample Valid Contract</h3>
+                <pre className="bg-secondary/50 border border-border/40 px-3 py-2.5 rounded-sm text-[8px] text-blue-400 font-mono overflow-x-auto">
+                  {JSON.stringify(SAMPLE_VALID_CONTRACT, null, 2)}
+                </pre>
+              </div>
+
+              {/* Warning Note */}
+              <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
+                <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Preview Only</div>
+                <p className="text-[9px] text-slate-300">
+                  This is a contract preview only. It does not create, send, validate, approve, or execute bridge requests.
+                </p>
               </div>
             </div>
           </div>
