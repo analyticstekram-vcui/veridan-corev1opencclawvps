@@ -18,7 +18,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, FileText, Archive, BarChart3, Map, Cpu, Lock, Eye, Workflow } from 'lucide-react';
+import { CheckCircle2, FileText, Archive, BarChart3, Map, Cpu, Lock, Eye, Workflow, ClipboardList } from 'lucide-react';
 
 const GOVERNANCE_PAGES = [
   {
@@ -80,6 +80,16 @@ const GOVERNANCE_PAGES = [
     icon: FileText,
     path: '/dry-run-backend-contract',
     note: 'Backend contract planning and request/response shapes',
+  },
+  {
+    id: 'approval_workflow',
+    name: 'Approval Workflow',
+    purpose: 'Define future approval status rules before any dry-run approval mechanism is enabled.',
+    mode: 'Planning',
+    modeColor: 'text-cyan-400 border-cyan-400/30 bg-cyan-400/5',
+    icon: ClipboardList,
+    path: '/approval-workflow-planning',
+    note: 'Approval status transitions and workflow requirements',
   },
   {
     id: 'system_map',
