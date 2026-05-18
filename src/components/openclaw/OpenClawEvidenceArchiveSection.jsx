@@ -27,6 +27,7 @@ import OpenClawProposalRegistryValidationBinding from './OpenClawProposalRegistr
 import OpenClawDryRunValidatorIntakeBinding from './OpenClawDryRunValidatorIntakeBinding.jsx';
 import OpenClawDryRunIntakeValidatorRecordBinding from './OpenClawDryRunIntakeValidatorRecordBinding.jsx';
 import OpenClawValidatorRecordReviewDecisionGate from './OpenClawValidatorRecordReviewDecisionGate.jsx';
+import OpenClawApprovedReviewDryRunResultPackageBuilder from './OpenClawApprovedReviewDryRunResultPackageBuilder.jsx';
 import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummaryPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
@@ -311,6 +312,21 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
         </button>
         {expandedGroup === 'phase47_review_gate' && (
           <div className="p-4"><OpenClawValidatorRecordReviewDecisionGate /></div>
+        )}
+      </div>
+
+      {/* ── PHASE 48: Approved Review → Dry-Run Result Package Builder ── */}
+      <div className="border-2 border-emerald-500/30 rounded-lg overflow-hidden">
+        <button type="button" onClick={() => toggleGroup('phase48_result_package_builder')}
+          className="w-full px-4 py-3 bg-emerald-500/5 border-b-2 border-emerald-500/30 hover:bg-emerald-500/10 transition-colors text-left flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-widest font-bold text-emerald-400">PHASE 48: Approved Review → Dry-Run Result Package Builder</div>
+            <div className="text-[9px] text-emerald-400/70 mt-0.5">Builds result packages from approved Phase 47 reviews. No execution · No dispatch.</div>
+          </div>
+          <span className={`text-[10px] font-bold text-emerald-400/60 transition-transform ${expandedGroup === 'phase48_result_package_builder' ? 'rotate-90' : ''}`}>▶</span>
+        </button>
+        {expandedGroup === 'phase48_result_package_builder' && (
+          <div className="p-4"><OpenClawApprovedReviewDryRunResultPackageBuilder /></div>
         )}
       </div>
 
