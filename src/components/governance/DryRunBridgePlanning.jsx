@@ -401,6 +401,39 @@ const performLocalValidation = (requestObj) => {
   return results;
 };
 
+const deriveDecisionOutcome = (validationResults) => {
+  const failCount = validationResults.filter((r) => r.result === 'FAIL').length;
+  const previewOnlyCount = validationResults.filter((r) => r.result === 'PREVIEW_ONLY').length;
+
+  if (failCount > 0) {
+    return {
+      decision: 'REJECTED_BY_LOCAL_RULES',
+      reason: `${failCount} validation rule(s) failed. Request does not meet bridge criteria.`,
+      executionStatus: 'NOT_EXECUTED',
+      reviewStatus: 'PREVIEW_ONLY',
+      nextAction: 'Fix failed request fields before continuing.',
+    };
+  }
+
+  if (previewOnlyCount > 0) {
+    return {
+      decision: 'HOLD_FOR_MANUAL_REVIEW',
+      reason: `${previewOnlyCount} preview-only check(s) require manual review. Backend validation needed.`,
+      executionStatus: 'NOT_EXECUTED',
+      reviewStatus: 'PREVIEW_ONLY',
+      nextAction: 'Review preview-only checks before dry-run bridge implementation.',
+    };
+  }
+
+  return {
+    decision: 'ACCEPT_FOR_DRY_RUN_REVIEW',
+    reason: 'All local validation checks passed. Request is eligible for dry-run review.',
+    executionStatus: 'NOT_EXECUTED',
+    reviewStatus: 'PREVIEW_ONLY',
+    nextAction: 'Eligible for future dry-run review workflow planning only.',
+  };
+};
+
 export default function DryRunBridgePlanning() {
   const [builderForm, setBuilderForm] = useState(BUILDER_PREVIEW_DEFAULTS);
 
@@ -429,6 +462,7 @@ export default function DryRunBridgePlanning() {
   const passCount = localValidationResults.filter((r) => r.result === 'PASS').length;
   const failCount = localValidationResults.filter((r) => r.result === 'FAIL').length;
   const previewOnlyCount = localValidationResults.filter((r) => r.result === 'PREVIEW_ONLY').length;
+  const decisionOutcome = deriveDecisionOutcome(localValidationResults);
 
   const handleExport = () => {
     const snapshot = {
@@ -463,6 +497,12 @@ export default function DryRunBridgePlanning() {
         parsesFiles: false,
         usesAIIndexing: false,
         writesDatabase: false,
+      },
+      decisionOutcomePreview: decisionOutcome,
+      decisionOutcomeRules: {
+        'REJECTED_BY_LOCAL_RULES': 'If any validation result is FAIL',
+        'HOLD_FOR_MANUAL_REVIEW': 'If no FAIL results but one or more PREVIEW_ONLY results',
+        'ACCEPT_FOR_DRY_RUN_REVIEW': 'If all results are PASS',
       },
       executionStatus: 'NOT_EXECUTED',
       purpose: 'Dry-run bridge validates proposed actions without executing them.',
@@ -899,10 +939,95 @@ export default function DryRunBridgePlanning() {
                       This is local browser-only validation preview. It does not save, approve, send, or execute bridge requests.
                     </p>
                   </div>
-                </div>
-              </div>
+                  </div>
+                  </div>
 
-              {/* Export Section */}
+                  {/* Section K: Dry-Run Decision Outcome Preview */}
+                  <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+                  <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+                  <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">K. Dry-Run Decision Outcome Preview</h2>
+                  </div>
+                  <div className="p-4 space-y-4">
+                  {/* Decision Outcome Card */}
+                  <div
+                    className={`px-4 py-4 border rounded-sm ${
+                      decisionOutcome.decision === 'REJECTED_BY_LOCAL_RULES'
+                        ? 'bg-destructive/5 border-destructive/20'
+                        : decisionOutcome.decision === 'HOLD_FOR_MANUAL_REVIEW'
+                          ? 'bg-amber-500/5 border-amber-500/20'
+                          : 'bg-emerald-500/5 border-emerald-500/20'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div>
+                        <div
+                          className={`text-[11px] font-mono font-bold uppercase mb-1 ${
+                            decisionOutcome.decision === 'REJECTED_BY_LOCAL_RULES'
+                              ? 'text-destructive/90'
+                              : decisionOutcome.decision === 'HOLD_FOR_MANUAL_REVIEW'
+                                ? 'text-amber-600'
+                                : 'text-emerald-600'
+                          }`}
+                        >
+                          Decision
+                        </div>
+                        <div className="text-[12px] font-mono font-bold text-slate-100">{decisionOutcome.decision}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[9px] font-mono font-semibold text-slate-400 mb-1 uppercase">Status</div>
+                        <div className="text-[10px] font-mono text-slate-200">{decisionOutcome.reviewStatus}</div>
+                      </div>
+                    </div>
+
+                    <p className="text-[9px] text-slate-300 mb-3">{decisionOutcome.reason}</p>
+
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="px-3 py-2 bg-secondary/30 border border-border/40 rounded-sm">
+                        <div className="text-[8px] font-mono font-semibold text-slate-400 mb-0.5 uppercase">Execution Status</div>
+                        <div className="text-[9px] font-mono text-slate-200">{decisionOutcome.executionStatus}</div>
+                      </div>
+                      <div className="px-3 py-2 bg-secondary/30 border border-border/40 rounded-sm">
+                        <div className="text-[8px] font-mono font-semibold text-slate-400 mb-0.5 uppercase">Review Status</div>
+                        <div className="text-[9px] font-mono text-slate-200">{decisionOutcome.reviewStatus}</div>
+                      </div>
+                    </div>
+
+                    <div className="px-3 py-2.5 bg-secondary/50 border border-border/40 rounded-sm">
+                      <div className="text-[8px] font-mono font-semibold text-slate-300 mb-1 uppercase">Next Operator Action</div>
+                      <div className="text-[9px] text-slate-300">{decisionOutcome.nextAction}</div>
+                    </div>
+                  </div>
+
+                  {/* Decision Rules Reference */}
+                  <div className="bg-secondary/50 border border-border/40 px-3 py-2.5 rounded-sm">
+                    <h3 className="text-[9px] font-mono font-semibold text-slate-200 mb-2 uppercase">Decision Logic</h3>
+                    <div className="space-y-1.5">
+                      <div className="text-[8px]">
+                        <span className="font-mono font-bold text-destructive/80">REJECTED_BY_LOCAL_RULES:</span>
+                        <span className="text-slate-300"> Any validation result is FAIL</span>
+                      </div>
+                      <div className="text-[8px]">
+                        <span className="font-mono font-bold text-amber-400">HOLD_FOR_MANUAL_REVIEW:</span>
+                        <span className="text-slate-300"> No FAIL but one or more PREVIEW_ONLY results</span>
+                      </div>
+                      <div className="text-[8px]">
+                        <span className="font-mono font-bold text-emerald-400">ACCEPT_FOR_DRY_RUN_REVIEW:</span>
+                        <span className="text-slate-300"> All results are PASS</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Warning Note */}
+                  <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
+                    <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Preview Only</div>
+                    <p className="text-[9px] text-slate-300">
+                      This decision outcome is local preview only. It does not approve, save, send, or execute bridge requests.
+                    </p>
+                  </div>
+                  </div>
+                  </div>
+
+                  {/* Export Section */}
           <div className="bg-primary/5 border border-primary/20 rounded-sm overflow-hidden">
             <div className="px-4 py-3 bg-primary/10 border-b border-primary/20">
               <h2 className="text-[11px] font-mono font-bold uppercase text-primary">Export Planning Snapshot</h2>
