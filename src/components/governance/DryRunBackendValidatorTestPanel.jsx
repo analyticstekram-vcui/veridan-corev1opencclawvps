@@ -195,6 +195,70 @@ export default function DryRunBackendValidatorTestPanel() {
               </div>
             </div>
 
+            {/* Safety Assertion Block */}
+            {(() => {
+              const executionOk = lastResponse.executionStatus === 'NOT_EXECUTED';
+              const outboundOk = lastResponse.outboundCallsMade === false;
+              const persistenceOk = lastResponse.persistenceWritten === false;
+              const allPassed = executionOk && outboundOk && persistenceOk;
+              const status = allPassed ? 'SAFETY_ASSERTION_PASSED' : 'SAFETY_ASSERTION_FAILED';
+
+              return (
+                <div
+                  className={`px-3 py-2.5 border rounded-sm ${
+                    allPassed
+                      ? 'bg-emerald-500/5 border-emerald-500/20'
+                      : 'bg-destructive/5 border-destructive/20'
+                  }`}
+                >
+                  <div className={`text-[9px] font-mono font-semibold mb-2 ${
+                    allPassed ? 'text-emerald-400' : 'text-destructive/80'
+                  } uppercase`}>
+                    Safety Assertion
+                  </div>
+
+                  {/* Safety Checks */}
+                  <div className="space-y-1 mb-2">
+                    <div className="flex items-center justify-between px-2 py-1 text-[8px]">
+                      <span className="text-slate-400">executionStatus === "NOT_EXECUTED"</span>
+                      <span className={`font-mono font-bold ${executionOk ? 'text-emerald-400' : 'text-destructive/80'}`}>
+                        {executionOk ? '✓ PASS' : '✗ FAIL'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-2 py-1 text-[8px]">
+                      <span className="text-slate-400">outboundCallsMade === false</span>
+                      <span className={`font-mono font-bold ${outboundOk ? 'text-emerald-400' : 'text-destructive/80'}`}>
+                        {outboundOk ? '✓ PASS' : '✗ FAIL'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-2 py-1 text-[8px]">
+                      <span className="text-slate-400">persistenceWritten === false</span>
+                      <span className={`font-mono font-bold ${persistenceOk ? 'text-emerald-400' : 'text-destructive/80'}`}>
+                        {persistenceOk ? '✓ PASS' : '✗ FAIL'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div className="px-2 py-1.5 bg-secondary/50 rounded-sm border border-border/30">
+                    <span className="text-[8px] text-slate-400">Status: </span>
+                    <span className={`font-mono font-bold ${allPassed ? 'text-emerald-400' : 'text-destructive/80'}`}>
+                      {status}
+                    </span>
+                  </div>
+
+                  {/* Failure Warning */}
+                  {!allPassed && (
+                    <div className="mt-2 px-2 py-1.5 bg-destructive/10 border border-destructive/20 rounded-sm">
+                      <div className="text-[8px] font-mono text-destructive/80">
+                        Stop. The dry-run validator response violated the non-execution boundary.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Full Response JSON */}
             <div className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
               <div className="text-[9px] font-mono font-semibold text-slate-300 mb-2">Full Response</div>
