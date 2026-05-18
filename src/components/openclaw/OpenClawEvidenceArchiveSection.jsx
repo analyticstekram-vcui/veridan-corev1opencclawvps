@@ -25,6 +25,7 @@ import OpenClawDryRunResultPackager from './OpenClawDryRunResultPackager.jsx';
 import OpenClawUnifiedCommandContractRegistry from './OpenClawUnifiedCommandContractRegistry.jsx';
 import OpenClawProposalRegistryValidationBinding from './OpenClawProposalRegistryValidationBinding.jsx';
 import OpenClawDryRunValidatorIntakeBinding from './OpenClawDryRunValidatorIntakeBinding.jsx';
+import OpenClawDryRunIntakeValidatorRecordBinding from './OpenClawDryRunIntakeValidatorRecordBinding.jsx';
 import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummaryPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
@@ -279,6 +280,21 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
         </button>
         {expandedGroup === 'phase45_intake' && (
           <div className="p-4"><OpenClawDryRunValidatorIntakeBinding /></div>
+        )}
+      </div>
+
+      {/* ── PHASE 46: Dry-Run Intake → Validator Record Binding ── */}
+      <div className="border-2 border-violet-500/30 rounded-lg overflow-hidden">
+        <button type="button" onClick={() => toggleGroup('phase46_validator_binding')}
+          className="w-full px-4 py-3 bg-violet-500/5 border-b-2 border-violet-500/30 hover:bg-violet-500/10 transition-colors text-left flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-widest font-bold text-violet-400">PHASE 46: Dry-Run Intake → Validator Record Binding</div>
+            <div className="text-[9px] text-violet-400/70 mt-0.5">Binds Phase 45 intake records to validator record structure. No execution · No dispatch.</div>
+          </div>
+          <span className={`text-[10px] font-bold text-violet-400/60 transition-transform ${expandedGroup === 'phase46_validator_binding' ? 'rotate-90' : ''}`}>▶</span>
+        </button>
+        {expandedGroup === 'phase46_validator_binding' && (
+          <div className="p-4"><OpenClawDryRunIntakeValidatorRecordBinding /></div>
         )}
       </div>
 
