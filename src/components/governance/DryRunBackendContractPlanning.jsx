@@ -121,6 +121,34 @@ const FORBIDDEN_BACKEND_BEHAVIOR = [
   'No outbound network calls',
 ];
 
+const BACKEND_IMPLEMENTATION_READINESS_CHECKLIST = [
+  'Front-end dry-run planning locked',
+  'Request contract defined',
+  'Response contract defined',
+  'Server-side validation plan defined',
+  'Forbidden backend behavior defined',
+  'No persistence requirement confirmed',
+  'No outbound calls requirement confirmed',
+  'Execution status locked to NOT_EXECUTED',
+  'Implementation status remains NOT_IMPLEMENTED',
+  'Backend route not yet created',
+];
+
+const BACKEND_IMPLEMENTATION_BLOCKED_ACTIONS = [
+  'Do not call OpenClaw',
+  'Do not call SafeBridge',
+  'Do not call MCP',
+  'Do not automate browsers',
+  'Do not call brokers',
+  'Do not call banks',
+  'Do not call bureaus',
+  'Do not store credentials',
+  'Do not upload or parse documents',
+  'Do not write to database',
+  'Do not persist requests',
+  'Do not make outbound network calls',
+];
+
 export default function DryRunBackendContractPlanning() {
   const handleExportContract = () => {
     const contractSnapshot = {
@@ -137,6 +165,10 @@ export default function DryRunBackendContractPlanning() {
       },
       serverSideValidationPlan: SERVER_SIDE_VALIDATION_PLAN,
       forbiddenBackendBehavior: FORBIDDEN_BACKEND_BEHAVIOR,
+      backendImplementationReadinessChecklist: BACKEND_IMPLEMENTATION_READINESS_CHECKLIST,
+      backendImplementationReadinessStatus: 'READY_FOR_BACKEND_ROUTE_DRAFT_ONLY',
+      backendImplementationNextPhaseNote: 'The next phase may draft the backend dry-run route, but it must remain non-executing, non-persistent, and outbound-call disabled.',
+      backendImplementationBlockedActions: BACKEND_IMPLEMENTATION_BLOCKED_ACTIONS,
       implementationStatus: 'NOT_IMPLEMENTED',
       note: 'This is a planning snapshot only. No backend route, logic, or execution exists yet.',
     };
@@ -275,6 +307,62 @@ export default function DryRunBackendContractPlanning() {
                     <span className="text-[9px] text-slate-300">{behavior}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Section H: Backend Contract Implementation Readiness Checklist */}
+          <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+            <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+              <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">H. Backend Contract Implementation Readiness Checklist</h2>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Readiness Status */}
+              <div className="px-4 py-3 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+                <div className="text-[9px] font-mono font-bold text-emerald-400 mb-1 uppercase">Implementation Readiness Status</div>
+                <div className="text-[12px] font-mono font-bold text-slate-100">READY_FOR_BACKEND_ROUTE_DRAFT_ONLY</div>
+              </div>
+
+              {/* Checklist Items */}
+              <div>
+                <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Readiness Checklist</h3>
+                <div className="space-y-1.5">
+                  {BACKEND_IMPLEMENTATION_READINESS_CHECKLIST.map((item) => (
+                    <div key={item} className="flex items-start gap-2 px-3 py-1.5 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+                      <span className="text-emerald-400 shrink-0 mt-0.5 font-bold">✓</span>
+                      <span className="text-[9px] text-slate-300">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Next Phase Note */}
+              <div className="px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-sm">
+                <div className="text-[9px] font-mono font-bold text-amber-400 mb-1 uppercase">Next Phase Guidance</div>
+                <p className="text-[10px] text-amber-300">
+                  The next phase may draft the backend dry-run route, but it must remain non-executing, non-persistent, and outbound-call disabled.
+                </p>
+              </div>
+
+              {/* Blocked Implementation Actions */}
+              <div>
+                <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Blocked Implementation Actions</h3>
+                <div className="space-y-1.5">
+                  {BACKEND_IMPLEMENTATION_BLOCKED_ACTIONS.map((action) => (
+                    <div key={action} className="flex items-start gap-2 px-3 py-1.5 bg-destructive/5 border border-destructive/20 rounded-sm">
+                      <span className="text-destructive/70 shrink-0 mt-0.5 font-bold">✕</span>
+                      <span className="text-[9px] text-slate-300">{action}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Warning Note */}
+              <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
+                <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Implementation Gate</div>
+                <p className="text-[9px] text-slate-300">
+                  Backend route implementation must respect all readiness checklist items and blocked actions. No deviations permitted.
+                </p>
               </div>
             </div>
           </div>
