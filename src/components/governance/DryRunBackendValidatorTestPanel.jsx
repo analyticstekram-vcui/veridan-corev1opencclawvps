@@ -104,6 +104,48 @@ export default function DryRunBackendValidatorTestPanel() {
     setTestHistory([]);
   };
 
+  const handleExportSnapshot = () => {
+    const safetyAssertion = (() => {
+      if (!lastResponse) return null;
+      const executionOk = lastResponse.executionStatus === 'NOT_EXECUTED';
+      const outboundOk = lastResponse.outboundCallsMade === false;
+      const persistenceOk = lastResponse.persistenceWritten === false;
+      const allPassed = executionOk && outboundOk && persistenceOk;
+      return {
+        status: allPassed ? 'PASSED' : 'FAILED',
+        executionStatusOk: executionOk,
+        outboundCallsOk: outboundOk,
+        persistenceWrittenOk: persistenceOk,
+      };
+    })();
+
+    const snapshot = {
+      snapshotType: 'DRY_RUN_VALIDATOR_TEST_LOCK_SNAPSHOT',
+      generatedAt: new Date().toISOString(),
+      endpoint: '/api/dry-run/bridge/preview',
+      lastRequest: lastRequest || null,
+      lastResponse: lastResponse || null,
+      safetyAssertion: safetyAssertion,
+      memoryOnlyHistorySummary: {
+        historyCount: testHistory.length,
+        historyCap: 5,
+        storage: 'REACT_STATE_ONLY',
+        clearsOnRefresh: true,
+      },
+      persistenceStatus: 'NOT_PERSISTED',
+      executionStatus: 'NOT_EXECUTED',
+      outboundStatus: 'NO_OUTBOUND_CALLS_EXCEPT_VALIDATOR_ENDPOINT',
+    };
+
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `validator-test-lock-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
       <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
@@ -302,6 +344,25 @@ export default function DryRunBackendValidatorTestPanel() {
             Allowed endpoint: /api/dry-run/bridge/preview only. No other URLs, no database writes, no persistence.
           </p>
         </div>
+
+        {/* Export Snapshot */}
+        {lastResponse && (
+          <div className="bg-primary/5 border border-primary/20 rounded-sm overflow-hidden">
+            <div className="px-4 py-3 bg-primary/10 border-b border-primary/20 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={handleExportSnapshot}
+                disabled={!lastResponse}
+                className="px-6 py-2.5 bg-primary/10 border border-primary/40 text-primary hover:bg-primary/20 transition-colors rounded-sm font-semibold text-[11px] font-mono uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Export Validator Test Lock Snapshot
+              </button>
+            </div>
+            <div className="px-4 py-2.5 bg-secondary/20 border-t border-border/40 text-[8px] font-mono text-muted-foreground/60 text-center italic">
+              Snapshot export is browser-local only and does not persist test history.
+            </div>
+          </div>
+        )}
 
         {/* Test History */}
         {testHistory.length > 0 && (
