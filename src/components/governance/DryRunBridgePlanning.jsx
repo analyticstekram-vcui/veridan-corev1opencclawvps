@@ -17,7 +17,7 @@
  *   - Use AI indexing
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertCircle, Download, Lock, CheckCircle2, XCircle } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import { Link } from 'react-router-dom';
@@ -228,7 +228,47 @@ const FAIL_RESULT_CODES = [
   'REJECTED_FORBIDDEN_KEYWORD',
 ];
 
+const BUILDER_PREVIEW_DEFAULTS = {
+  operatorId: 'operator-local-preview',
+  commandType: 'READ',
+  targetSystem: 'OpenClaw',
+  requestedAction: 'Check read-only gateway status',
+  requestedTarget: '/status',
+  riskTier: 'LOW',
+  approvalStatus: 'DRAFT',
+};
+
+const BUILDER_COMMAND_TYPES = ['READ', 'NAVIGATE', 'EXTRACT', 'VERIFY'];
+const BUILDER_RISK_TIERS = ['LOW', 'MEDIUM'];
+const BUILDER_APPROVAL_STATUSES = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DENIED'];
+
+const generateRequestId = () => `req-dry-run-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+const getCurrentTimestamp = () => new Date().toISOString();
+
 export default function DryRunBridgePlanning() {
+  const [builderForm, setBuilderForm] = useState(BUILDER_PREVIEW_DEFAULTS);
+
+  const handleBuilderFieldChange = (field, value) => {
+    setBuilderForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const builderPreviewObject = {
+    requestId: generateRequestId(),
+    createdAt: getCurrentTimestamp(),
+    operatorId: builderForm.operatorId,
+    commandType: builderForm.commandType,
+    targetSystem: builderForm.targetSystem,
+    requestedAction: builderForm.requestedAction,
+    requestedTarget: builderForm.requestedTarget,
+    riskTier: builderForm.riskTier,
+    approvalStatus: builderForm.approvalStatus,
+    executionMode: 'DRY_RUN_ONLY',
+    executionStatus: 'NOT_EXECUTED',
+    validationStatus: 'NOT_VALIDATED',
+    denialReason: null,
+    auditRequired: true,
+  };
+
   const handleExport = () => {
     const snapshot = {
       snapshotType: 'DRY_RUN_BRIDGE_PLANNING_SNAPSHOT',
@@ -244,6 +284,8 @@ export default function DryRunBridgePlanning() {
       sampleValidContract: SAMPLE_VALID_CONTRACT,
       validationRulesMatrix: VALIDATION_RULES_MATRIX,
       failResultCodes: FAIL_RESULT_CODES,
+      builderPreviewDefaults: BUILDER_PREVIEW_DEFAULTS,
+      builderPreviewObjectShape: builderPreviewObject,
       executionStatus: 'NOT_EXECUTED',
       purpose: 'Dry-run bridge validates proposed actions without executing them.',
     };
@@ -459,54 +501,167 @@ export default function DryRunBridgePlanning() {
 
               {/* Section H: Dry-Run Bridge Validation Rules Matrix */}
               <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
-              <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-              <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">H. Dry-Run Bridge Validation Rules Matrix</h2>
-              </div>
-              <div className="p-4 space-y-4">
-              {/* Validation Rules Table */}
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {VALIDATION_RULES_MATRIX.map((rule, idx) => (
-                  <div key={idx} className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
-                    <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <div>
-                        <div className="text-[9px] font-mono font-semibold text-slate-100">{idx + 1}. {rule.name}</div>
-                        <p className="text-[8px] text-slate-400 mt-0.5">{rule.description}</p>
+                <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+                  <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">H. Dry-Run Bridge Validation Rules Matrix</h2>
+                </div>
+                <div className="p-4 space-y-4">
+                  {/* Validation Rules Table */}
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {VALIDATION_RULES_MATRIX.map((rule, idx) => (
+                      <div key={idx} className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div>
+                            <div className="text-[9px] font-mono font-semibold text-slate-100">{idx + 1}. {rule.name}</div>
+                            <p className="text-[8px] text-slate-400 mt-0.5">{rule.description}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div className="px-2 py-1.5 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+                            <div className="text-[7px] font-mono font-bold text-emerald-400 mb-0.5 uppercase">Pass</div>
+                            <div className="text-[8px] font-mono text-slate-300">{rule.passCondition}</div>
+                          </div>
+                          <div className="px-2 py-1.5 bg-destructive/5 border border-destructive/20 rounded-sm">
+                            <div className="text-[7px] font-mono font-bold text-destructive/80 mb-0.5 uppercase">Fail</div>
+                            <div className="text-[8px] font-mono text-slate-300">{rule.failResult}</div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      <div className="px-2 py-1.5 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
-                        <div className="text-[7px] font-mono font-bold text-emerald-400 mb-0.5 uppercase">Pass</div>
-                        <div className="text-[8px] font-mono text-slate-300">{rule.passCondition}</div>
-                      </div>
-                      <div className="px-2 py-1.5 bg-destructive/5 border border-destructive/20 rounded-sm">
-                        <div className="text-[7px] font-mono font-bold text-destructive/80 mb-0.5 uppercase">Fail</div>
-                        <div className="text-[8px] font-mono text-slate-300">{rule.failResult}</div>
-                      </div>
+                    ))}
+                  </div>
+
+                  {/* Fail Result Codes */}
+                  <div className="bg-secondary/50 border border-border/40 px-3 py-2.5 rounded-sm">
+                    <h3 className="text-[9px] font-mono font-semibold text-slate-200 mb-2 uppercase">Fail Result Codes</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                      {FAIL_RESULT_CODES.map((code) => (
+                        <div key={code} className="px-2 py-1 bg-destructive/10 border border-destructive/20 rounded-sm">
+                          <div className="text-[8px] font-mono text-destructive/80">{code}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
 
-              {/* Fail Result Codes */}
-              <div className="bg-secondary/50 border border-border/40 px-3 py-2.5 rounded-sm">
-                <h3 className="text-[9px] font-mono font-semibold text-slate-200 mb-2 uppercase">Fail Result Codes</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
-                  {FAIL_RESULT_CODES.map((code) => (
-                    <div key={code} className="px-2 py-1 bg-destructive/10 border border-destructive/20 rounded-sm">
-                      <div className="text-[8px] font-mono text-destructive/80">{code}</div>
-                    </div>
-                  ))}
+                  {/* Warning Note */}
+                  <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
+                    <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Documentation Only</div>
+                    <p className="text-[9px] text-slate-300">
+                      This matrix documents future validation logic only. It does not validate, approve, send, or execute requests.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* Warning Note */}
-              <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
-                <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Documentation Only</div>
-                <p className="text-[9px] text-slate-300">
-                  This matrix documents future validation logic only. It does not validate, approve, send, or execute requests.
-                </p>
-              </div>
-              </div>
+              {/* Section I: Dry-Run Request Builder Preview */}
+              <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+                <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+                  <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">I. Dry-Run Request Builder Preview</h2>
+                </div>
+                <div className="p-4 space-y-4">
+                  {/* Form Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* operatorId */}
+                    <div>
+                      <label className="text-[9px] font-mono font-semibold text-slate-300 block mb-1 uppercase">Operator ID</label>
+                      <input
+                        type="text"
+                        value={builderForm.operatorId}
+                        onChange={(e) => handleBuilderFieldChange('operatorId', e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-secondary/50 border border-border/40 text-[9px] font-mono text-slate-200 rounded-sm focus:outline-none focus:border-primary/40"
+                      />
+                    </div>
+
+                    {/* commandType */}
+                    <div>
+                      <label className="text-[9px] font-mono font-semibold text-slate-300 block mb-1 uppercase">Command Type</label>
+                      <select
+                        value={builderForm.commandType}
+                        onChange={(e) => handleBuilderFieldChange('commandType', e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-secondary/50 border border-border/40 text-[9px] font-mono text-slate-200 rounded-sm focus:outline-none focus:border-primary/40"
+                      >
+                        {BUILDER_COMMAND_TYPES.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* targetSystem */}
+                    <div>
+                      <label className="text-[9px] font-mono font-semibold text-slate-300 block mb-1 uppercase">Target System</label>
+                      <input
+                        type="text"
+                        value={builderForm.targetSystem}
+                        onChange={(e) => handleBuilderFieldChange('targetSystem', e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-secondary/50 border border-border/40 text-[9px] font-mono text-slate-200 rounded-sm focus:outline-none focus:border-primary/40"
+                      />
+                    </div>
+
+                    {/* riskTier */}
+                    <div>
+                      <label className="text-[9px] font-mono font-semibold text-slate-300 block mb-1 uppercase">Risk Tier</label>
+                      <select
+                        value={builderForm.riskTier}
+                        onChange={(e) => handleBuilderFieldChange('riskTier', e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-secondary/50 border border-border/40 text-[9px] font-mono text-slate-200 rounded-sm focus:outline-none focus:border-primary/40"
+                      >
+                        {BUILDER_RISK_TIERS.map((tier) => (
+                          <option key={tier} value={tier}>{tier}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* requestedAction */}
+                    <div className="md:col-span-2">
+                      <label className="text-[9px] font-mono font-semibold text-slate-300 block mb-1 uppercase">Requested Action</label>
+                      <input
+                        type="text"
+                        value={builderForm.requestedAction}
+                        onChange={(e) => handleBuilderFieldChange('requestedAction', e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-secondary/50 border border-border/40 text-[9px] font-mono text-slate-200 rounded-sm focus:outline-none focus:border-primary/40"
+                      />
+                    </div>
+
+                    {/* requestedTarget */}
+                    <div className="md:col-span-2">
+                      <label className="text-[9px] font-mono font-semibold text-slate-300 block mb-1 uppercase">Requested Target</label>
+                      <input
+                        type="text"
+                        value={builderForm.requestedTarget}
+                        onChange={(e) => handleBuilderFieldChange('requestedTarget', e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-secondary/50 border border-border/40 text-[9px] font-mono text-slate-200 rounded-sm focus:outline-none focus:border-primary/40"
+                      />
+                    </div>
+
+                    {/* approvalStatus */}
+                    <div className="md:col-span-2">
+                      <label className="text-[9px] font-mono font-semibold text-slate-300 block mb-1 uppercase">Approval Status</label>
+                      <select
+                        value={builderForm.approvalStatus}
+                        onChange={(e) => handleBuilderFieldChange('approvalStatus', e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-secondary/50 border border-border/40 text-[9px] font-mono text-slate-200 rounded-sm focus:outline-none focus:border-primary/40"
+                      >
+                        {BUILDER_APPROVAL_STATUSES.map((status) => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Live JSON Preview */}
+                  <div>
+                    <h3 className="text-[10px] font-mono font-semibold text-slate-200 mb-2 uppercase">Live Request Preview</h3>
+                    <pre className="bg-secondary/50 border border-border/40 px-3 py-2.5 rounded-sm text-[8px] text-blue-400 font-mono overflow-x-auto">
+                      {JSON.stringify(builderPreviewObject, null, 2)}
+                    </pre>
+                  </div>
+
+                  {/* Warning Note */}
+                  <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
+                    <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Local Preview Only</div>
+                    <p className="text-[9px] text-slate-300">
+                      This builder creates a local preview object only. It does not save, validate, approve, send, or execute bridge requests.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Export Section */}
