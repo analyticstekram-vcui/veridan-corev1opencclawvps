@@ -19,8 +19,7 @@ import { Link } from 'react-router-dom';
 import { CreditCard, Lock, AlertCircle, CheckCircle2, Home } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
-import CreditProfileIntakeStructure from './CreditProfileIntakeStructure';
-import LocalOnlyDisputeTrackerPreview from './LocalOnlyDisputeTrackerPreview';
+
 
 function StatusBadge({ label, value, type = 'neutral' }) {
   const colors = {
@@ -309,180 +308,56 @@ export default function CreditPublicSideDashboard() {
         </div>
 
         {/* 4. Operator Action Plan */}
-        <div className="mt-8">
-          <div className="mb-4">
-            <h2 className="text-2xl font-mono font-bold text-slate-100">Operator Action Plan</h2>
-            <p className="mt-2 text-[13px] font-mono text-slate-300">
-              Summary of what operators can do now, what is blocked, what to build next, and what requires governance approval.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
-              <div className="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
-                <h3 className="text-[12px] font-mono font-bold uppercase text-emerald-400">Safe Now</h3>
-              </div>
-              <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
-                {['Review credit profile structure and monitoring requirements', 'Plan dispute workflow and letter templates', 'Design credit builder program and tradeline strategy', 'Plan business credit profile and D-U-N-S requirements', 'Design borrower review framework and governance gates'].map((item) => (
-                  <div key={item} className="flex items-start gap-2"><span className="text-emerald-400 shrink-0 mt-0.5">✓</span><span>{item}</span></div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
-              <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/20">
-                <h3 className="text-[12px] font-mono font-bold uppercase text-destructive/80">Blocked Until Later</h3>
-              </div>
-              <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
-                {['Bureau connections and live credit monitoring', 'Dispute submission and letter sending', 'Credit pulls and hard inquiry triggers', 'Funding applications and loan processing', 'Client data collection and intake forms'].map((item) => (
-                  <div key={item} className="flex items-start gap-2"><span className="text-destructive/70 shrink-0 mt-0.5">✕</span><span>{item}</span></div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
-              <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
-                <h3 className="text-[12px] font-mono font-bold uppercase text-amber-400">Next Build Step</h3>
-              </div>
-              <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
-                {['Finalize credit profile intake structure and governance approval', 'Complete dispute workflow contracts and approval gates', 'Design credit monitoring integration architecture', 'Define business credit profile requirements documentation', 'Establish borrower review workflow and governance framework'].map((item) => (
-                  <div key={item} className="flex items-start gap-2"><span className="text-amber-400 shrink-0 mt-0.5">→</span><span>{item}</span></div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
-              <div className="px-4 py-3 bg-cyan-500/10 border-b border-cyan-500/20">
-                <h3 className="text-[12px] font-mono font-bold uppercase text-cyan-400">Requires Governance Approval</h3>
-              </div>
-              <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
-                {['Enabling bureau connections and live credit monitoring', 'Activating dispute submission and automated letter sending', 'Enabling funding applications and loan processing', 'Activating credit automation and bureau reporting', 'Enabling client data intake and credential storage'].map((item) => (
-                  <div key={item} className="flex items-start gap-2"><span className="text-cyan-400 shrink-0 mt-0.5">◇</span><span>{item}</span></div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Grid of sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* 1. Public Credit Status */}
-          <DashboardSection
-            title="1. Public Credit Status"
-            description="Current status of credit monitoring and automation systems"
-          >
-            <StatusBadge label="Personal Credit Monitoring" value="NOT_CONNECTED" type="neutral" />
-            <StatusBadge label="Business Credit Monitoring" value="NOT_CONNECTED" type="neutral" />
-            <StatusBadge label="Dispute Automation" value="DISABLED" type="disabled" />
-            <StatusBadge label="Funding Applications" value="DISABLED" type="disabled" />
-            <StatusBadge label="Tradeline Tracking" value="PLANNING" type="planning" />
-          </DashboardSection>
-
-          {/* 2. Personal Credit */}
-          <DashboardSection
-            title="2. Personal Credit"
-            description="Components for personal credit monitoring and management"
-          >
-            <CreditItemCard label="Credit report monitoring" />
-            <CreditItemCard label="Score tracking" />
-            <CreditItemCard label="Negative item inventory" />
-            <CreditItemCard label="Dispute tracker" />
-            <CreditItemCard label="Inquiry tracker" />
-            <CreditItemCard label="Utilization tracker" />
-          </DashboardSection>
-
-          {/* 3. Business Credit */}
-          <DashboardSection
-            title="3. Business Credit"
-            description="Components for business credit profile and readiness"
-          >
-            <CreditItemCard label="Business profile setup" />
-            <CreditItemCard label="D-U-N-S / business identifiers" />
-            <CreditItemCard label="Business bank account readiness" />
-            <CreditItemCard label="Net-30 vendor readiness" />
-            <CreditItemCard label="Business tradeline tracker" />
-            <CreditItemCard label="Funding readiness" />
-          </DashboardSection>
-
-          {/* 4. Dispute Management */}
-          <DashboardSection
-            title="4. Dispute Management"
-            description="Manual dispute tracking and evidence management"
-          >
-            <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/80 py-1.5">
-              <AlertCircle className="w-3 h-3 text-amber-500/60 shrink-0" />
-              <span>Draft disputes only</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/80 py-1.5">
-              <AlertCircle className="w-3 h-3 text-amber-500/60 shrink-0" />
-              <span>Manual review required</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/80 py-1.5">
-              <AlertCircle className="w-3 h-3 text-amber-500/60 shrink-0" />
-              <span>No automatic submission</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/80 py-1.5">
-              <AlertCircle className="w-3 h-3 text-amber-500/60 shrink-0" />
-              <span>Evidence required</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/80 py-1.5">
-              <AlertCircle className="w-3 h-3 text-amber-500/60 shrink-0" />
-              <span>Bureau response tracking (later)</span>
-            </div>
-          </DashboardSection>
-
-          {/* 5. Tradeline / Funding Readiness */}
-          <DashboardSection
-            title="5. Tradeline / Funding Readiness"
-            description="Planning and sequencing for credit building and funding"
-          >
-            <StatusBadge label="Authorized user tradelines" value="PLANNING" type="planning" />
-            <StatusBadge label="Business primary tradelines" value="PLANNING" type="planning" />
-            <StatusBadge label="Vendor accounts" value="PLANNING" type="planning" />
-            <StatusBadge label="Funding sequence" value="NOT_STARTED" type="neutral" />
-            <StatusBadge label="Lender readiness" value="NOT_STARTED" type="neutral" />
-          </DashboardSection>
-
-          {/* 6. Safety Rules */}
-          <DashboardSection
-            title="6. Safety & Compliance Rules"
-            description="Constraints and prohibitions for this phase"
-          >
-            <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5">
-              <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
-              <span>No bureau login yet</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5">
-              <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
-              <span>No credential entry</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5">
-              <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
-              <span>No automatic dispute filing</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5">
-              <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
-              <span>No funding applications submitted</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5">
-              <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
-              <span>No bank connection</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5">
-              <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
-              <span>No credit pull</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-mono text-destructive/70 py-1.5">
-              <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
-              <span>No client data entry yet</span>
-            </div>
-          </DashboardSection>
-
-          {/* 7. Next Allowed Action */}
-          <div className="lg:col-span-2 flex items-start gap-2 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-sm">
-            <CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              <div className="text-[8px] font-mono text-muted-foreground/50 uppercase mb-0.5">Next Allowed Action</div>
-              <div className="text-[10px] font-mono text-amber-500 font-bold leading-snug">Build credit profile intake structure and dispute tracker.</div>
-            </div>
-          </div>
-        </div>
+         <div className="mt-8">
+           <div className="mb-4">
+             <h2 className="text-2xl font-mono font-bold text-slate-100">Operator Action Plan</h2>
+             <p className="mt-2 text-[13px] font-mono text-slate-300">
+               Summary of what operators can do now, what is blocked, what to build next, and what requires governance approval.
+             </p>
+           </div>
+           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+             <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+               <div className="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
+                 <h3 className="text-[12px] font-mono font-bold uppercase text-emerald-400">Safe Now</h3>
+               </div>
+               <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
+                 {['Review credit profile structure and monitoring requirements', 'Plan dispute workflow and letter templates', 'Design credit builder program and tradeline strategy', 'Plan business credit profile and D-U-N-S requirements', 'Design borrower review framework and governance gates'].map((item) => (
+                   <div key={item} className="flex items-start gap-2"><span className="text-emerald-400 shrink-0 mt-0.5">✓</span><span>{item}</span></div>
+                 ))}
+               </div>
+             </div>
+             <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+               <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/20">
+                 <h3 className="text-[12px] font-mono font-bold uppercase text-destructive/80">Blocked Until Later</h3>
+               </div>
+               <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
+                 {['Bureau connections and live credit monitoring', 'Dispute submission and letter sending', 'Credit pulls and hard inquiry triggers', 'Funding applications and loan processing', 'Client data collection and intake forms'].map((item) => (
+                   <div key={item} className="flex items-start gap-2"><span className="text-destructive/70 shrink-0 mt-0.5">✕</span><span>{item}</span></div>
+                 ))}
+               </div>
+             </div>
+             <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+               <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
+                 <h3 className="text-[12px] font-mono font-bold uppercase text-amber-400">Next Build Step</h3>
+               </div>
+               <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
+                 {['Finalize credit profile intake structure and governance approval', 'Complete dispute workflow contracts and approval gates', 'Design credit monitoring integration architecture', 'Define business credit profile requirements documentation', 'Establish borrower review workflow and governance framework'].map((item) => (
+                   <div key={item} className="flex items-start gap-2"><span className="text-amber-400 shrink-0 mt-0.5">→</span><span>{item}</span></div>
+                 ))}
+               </div>
+             </div>
+             <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+               <div className="px-4 py-3 bg-cyan-500/10 border-b border-cyan-500/20">
+                 <h3 className="text-[12px] font-mono font-bold uppercase text-cyan-400">Requires Governance Approval</h3>
+               </div>
+               <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
+                 {['Enabling bureau connections and live credit monitoring', 'Activating dispute submission and automated letter sending', 'Enabling funding applications and loan processing', 'Activating credit automation and bureau reporting', 'Enabling client data intake and credential storage'].map((item) => (
+                   <div key={item} className="flex items-start gap-2"><span className="text-cyan-400 shrink-0 mt-0.5">◇</span><span>{item}</span></div>
+                 ))}
+               </div>
+             </div>
+           </div>
+         </div>
 
         {/* Credit Profile Intake Blueprint Section */}
         <div className="mt-8 mb-8 bg-card border border-border/50 rounded-sm overflow-hidden">
@@ -739,21 +614,15 @@ export default function CreditPublicSideDashboard() {
         </div>
 
         {/* Info footer */}
-        <div className="mt-8 p-4 bg-secondary/20 border border-border/30 rounded-sm flex items-start gap-3">
-          <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-          <div className="text-[9px] font-mono text-muted-foreground/70">
-            <p className="font-bold mb-1">About the Public Side Credit System</p>
-            <p>This dashboard provides read-only visibility into the planning and readiness of Veridan Core's personal and business credit systems. It is for planning and visibility only. No credit bureaus are connected, no credentials are collected, and no applications or disputes are submitted. Manual review is required for all actions.</p>
-          </div>
+         <div className="mt-8 p-4 bg-secondary/20 border border-border/30 rounded-sm flex items-start gap-3">
+           <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+           <div className="text-[9px] font-mono text-muted-foreground/70">
+             <p className="font-bold mb-1">About the Public Side Credit System</p>
+             <p>This dashboard provides read-only visibility into the planning and readiness of Veridan Core's personal and business credit systems. It is for planning and visibility only. No credit bureaus are connected, no credentials are collected, and no applications or disputes are submitted. Manual review is required for all actions.</p>
+           </div>
+         </div>
+         </div>
         </div>
-
-        {/* Credit Profile Intake Structure */}
-        <CreditProfileIntakeStructure />
-
-        {/* Local-Only Dispute Tracker Preview */}
-        <LocalOnlyDisputeTrackerPreview />
         </div>
-      </div>
-    </div>
-  );
-}
+        );
+        }
