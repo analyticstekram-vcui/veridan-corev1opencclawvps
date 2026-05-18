@@ -29,6 +29,7 @@ import OpenClawDryRunIntakeValidatorRecordBinding from './OpenClawDryRunIntakeVa
 import OpenClawValidatorRecordReviewDecisionGate from './OpenClawValidatorRecordReviewDecisionGate.jsx';
 import OpenClawApprovedReviewDryRunResultPackageBuilder from './OpenClawApprovedReviewDryRunResultPackageBuilder.jsx';
 import OpenClawFullGovernanceDryRunChainEvidenceExport from './OpenClawFullGovernanceDryRunChainEvidenceExport.jsx';
+import OpenClawGovernanceDryRunChainCheckpointLock from './OpenClawGovernanceDryRunChainCheckpointLock.jsx';
 import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummaryPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
@@ -386,6 +387,21 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
         </button>
         {expandedGroup === 'phase49_chain_evidence_export' && (
           <div className="p-4"><OpenClawFullGovernanceDryRunChainEvidenceExport /></div>
+        )}
+      </div>
+
+      {/* ── CHECKPOINT LOCK: Phases 43–49 Governance Dry-Run Chain ── */}
+      <div className="border-2 border-primary rounded-lg overflow-hidden">
+        <button type="button" onClick={() => toggleGroup('checkpoint_lock_43_49')}
+          className="w-full px-4 py-3 bg-primary/10 border-b-2 border-primary hover:bg-primary/15 transition-colors text-left flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-widest font-bold text-primary">CHECKPOINT LOCK: Governance Dry-Run Chain Phases 43–49</div>
+            <div className="text-[9px] text-primary/70 mt-0.5">Lock and export the complete Phase 43–49 execution-disabled baseline. No execution · No dispatch.</div>
+          </div>
+          <span className={`text-[10px] font-bold text-primary/60 transition-transform ${expandedGroup === 'checkpoint_lock_43_49' ? 'rotate-90' : ''}`}>▶</span>
+        </button>
+        {expandedGroup === 'checkpoint_lock_43_49' && (
+          <div className="p-4"><OpenClawGovernanceDryRunChainCheckpointLock /></div>
         )}
       </div>
 
