@@ -9,6 +9,7 @@ export default function ModuleNav() {
     { label: 'OpenClaw', path: '/openclaw-governance', icon: Cpu },
     { label: 'Dry-Run Bridge', path: '/dry-run-bridge-planning', icon: Layers },
     { label: 'Backend Contract', path: '/dry-run-backend-contract', icon: FileText },
+    { label: 'Approval Workflow', path: '/approval-workflow-planning', icon: FileText },
     { label: 'Trading', path: '/trading-operations', icon: TrendingUp },
     { label: 'Credit', path: '/credit-public-side', icon: CreditCard },
     { label: 'Business', path: '/business-operations', icon: Briefcase },

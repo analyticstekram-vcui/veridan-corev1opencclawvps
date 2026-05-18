@@ -23,6 +23,7 @@ import OpenClawGovernanceDashboard from './components/openclaw/OpenClawGovernanc
 import BaselineEvidenceConsolidation from './components/governance/BaselineEvidenceConsolidation';
 import DryRunBridgePlanning from './components/governance/DryRunBridgePlanning';
 import DryRunBackendContractPlanning from './components/governance/DryRunBackendContractPlanning';
+import ApprovalWorkflowPlanning from './components/governance/ApprovalWorkflowPlanning';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -69,6 +70,7 @@ const AuthenticatedApp = () => {
       <Route path="/baseline-evidence" element={<BaselineEvidenceConsolidation />} />
       <Route path="/dry-run-bridge-planning" element={<DryRunBridgePlanning />} />
       <Route path="/dry-run-backend-contract" element={<DryRunBackendContractPlanning />} />
+      <Route path="/approval-workflow-planning" element={<ApprovalWorkflowPlanning />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
