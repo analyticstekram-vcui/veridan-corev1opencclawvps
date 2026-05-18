@@ -124,6 +124,110 @@ const SAMPLE_VALID_CONTRACT = {
   auditRequired: true,
 };
 
+const VALIDATION_RULES_MATRIX = [
+  {
+    name: 'Required fields present',
+    description: 'All 14 required contract fields must be present',
+    passCondition: 'All fields exist and non-null',
+    failResult: 'REJECTED_MISSING_FIELD',
+  },
+  {
+    name: 'commandType is allowlisted',
+    description: 'commandType must be READ, NAVIGATE, EXTRACT, or VERIFY',
+    passCondition: 'commandType ∈ [READ, NAVIGATE, EXTRACT, VERIFY]',
+    failResult: 'REJECTED_FORBIDDEN_COMMAND',
+  },
+  {
+    name: 'commandType is not forbidden',
+    description: 'commandType must not be CLICK, TYPE, SUBMIT, TRADE, etc.',
+    passCondition: 'commandType ∉ forbidden list',
+    failResult: 'REJECTED_FORBIDDEN_COMMAND',
+  },
+  {
+    name: 'riskTier is LOW or MEDIUM only',
+    description: 'riskTier must be LOW or MEDIUM, never HIGH or CRITICAL',
+    passCondition: 'riskTier ∈ [LOW, MEDIUM]',
+    failResult: 'REJECTED_HIGH_RISK',
+  },
+  {
+    name: 'approvalStatus is valid',
+    description: 'approvalStatus must be DRAFT, PENDING_APPROVAL, APPROVED, or DENIED',
+    passCondition: 'approvalStatus ∈ valid enum',
+    failResult: 'REJECTED_INVALID_STATUS',
+  },
+  {
+    name: 'executionMode equals DRY_RUN_ONLY',
+    description: 'executionMode must be DRY_RUN_ONLY, never LIVE or PAPER_EXECUTION',
+    passCondition: 'executionMode === "DRY_RUN_ONLY"',
+    failResult: 'REJECTED_EXECUTION_MODE',
+  },
+  {
+    name: 'executionStatus equals NOT_EXECUTED',
+    description: 'executionStatus must be NOT_EXECUTED, never EXECUTED or PARTIALLY_EXECUTED',
+    passCondition: 'executionStatus === "NOT_EXECUTED"',
+    failResult: 'REJECTED_ALREADY_EXECUTED',
+  },
+  {
+    name: 'validationStatus is valid',
+    description: 'validationStatus must be NOT_VALIDATED, PASSED, or FAILED',
+    passCondition: 'validationStatus ∈ [NOT_VALIDATED, PASSED, FAILED]',
+    failResult: 'REJECTED_INVALID_STATUS',
+  },
+  {
+    name: 'auditRequired is true',
+    description: 'auditRequired must always be true for dry-run requests',
+    passCondition: 'auditRequired === true',
+    failResult: 'REJECTED_AUDIT_DISABLED',
+  },
+  {
+    name: 'targetSystem is declared',
+    description: 'targetSystem must be specified (gateway, browser, etc.)',
+    passCondition: 'targetSystem is non-empty string',
+    failResult: 'REJECTED_MISSING_FIELD',
+  },
+  {
+    name: 'requestedAction is plain-language only',
+    description: 'requestedAction must be human-readable, no code or commands',
+    passCondition: 'requestedAction matches plain-language pattern',
+    failResult: 'REJECTED_INVALID_ACTION',
+  },
+  {
+    name: 'requestedTarget is non-sensitive',
+    description: 'requestedTarget must not contain /login, /admin, /secret, etc.',
+    passCondition: 'requestedTarget ∉ sensitive keywords',
+    failResult: 'REJECTED_SENSITIVE_TARGET',
+  },
+  {
+    name: 'denialReason required when FAILED',
+    description: 'If validationStatus is FAILED, denialReason must be populated',
+    passCondition: 'FAILED → denialReason not null; otherwise optional',
+    failResult: 'REJECTED_MISSING_DENIAL_REASON',
+  },
+  {
+    name: 'duplicate requestId blocked',
+    description: 'requestId must be unique across all dry-run requests',
+    passCondition: 'requestId has never been submitted before',
+    failResult: 'REJECTED_DUPLICATE_REQUEST',
+  },
+  {
+    name: 'forbidden keywords blocked',
+    description: 'requestedAction and requestedTarget must not contain /execute, /run, /trade, /transfer, etc.',
+    passCondition: 'No forbidden keywords detected',
+    failResult: 'REJECTED_FORBIDDEN_KEYWORD',
+  },
+];
+
+const FAIL_RESULT_CODES = [
+  'REJECTED_MISSING_FIELD',
+  'REJECTED_FORBIDDEN_COMMAND',
+  'REJECTED_HIGH_RISK',
+  'REJECTED_EXECUTION_MODE',
+  'REJECTED_ALREADY_EXECUTED',
+  'REJECTED_DUPLICATE_REQUEST',
+  'REJECTED_SENSITIVE_TARGET',
+  'REJECTED_FORBIDDEN_KEYWORD',
+];
+
 export default function DryRunBridgePlanning() {
   const handleExport = () => {
     const snapshot = {
@@ -138,6 +242,8 @@ export default function DryRunBridgePlanning() {
       contractAllowedValues: CONTRACT_ALLOWED_VALUES,
       contractForbiddenValues: CONTRACT_FORBIDDEN_VALUES,
       sampleValidContract: SAMPLE_VALID_CONTRACT,
+      validationRulesMatrix: VALIDATION_RULES_MATRIX,
+      failResultCodes: FAIL_RESULT_CODES,
       executionStatus: 'NOT_EXECUTED',
       purpose: 'Dry-run bridge validates proposed actions without executing them.',
     };
@@ -348,10 +454,62 @@ export default function DryRunBridgePlanning() {
                   This is a contract preview only. It does not create, send, validate, approve, or execute bridge requests.
                 </p>
               </div>
-            </div>
-          </div>
+              </div>
+              </div>
 
-          {/* Export Section */}
+              {/* Section H: Dry-Run Bridge Validation Rules Matrix */}
+              <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+              <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">H. Dry-Run Bridge Validation Rules Matrix</h2>
+              </div>
+              <div className="p-4 space-y-4">
+              {/* Validation Rules Table */}
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {VALIDATION_RULES_MATRIX.map((rule, idx) => (
+                  <div key={idx} className="px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-sm">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div>
+                        <div className="text-[9px] font-mono font-semibold text-slate-100">{idx + 1}. {rule.name}</div>
+                        <p className="text-[8px] text-slate-400 mt-0.5">{rule.description}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="px-2 py-1.5 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+                        <div className="text-[7px] font-mono font-bold text-emerald-400 mb-0.5 uppercase">Pass</div>
+                        <div className="text-[8px] font-mono text-slate-300">{rule.passCondition}</div>
+                      </div>
+                      <div className="px-2 py-1.5 bg-destructive/5 border border-destructive/20 rounded-sm">
+                        <div className="text-[7px] font-mono font-bold text-destructive/80 mb-0.5 uppercase">Fail</div>
+                        <div className="text-[8px] font-mono text-slate-300">{rule.failResult}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Fail Result Codes */}
+              <div className="bg-secondary/50 border border-border/40 px-3 py-2.5 rounded-sm">
+                <h3 className="text-[9px] font-mono font-semibold text-slate-200 mb-2 uppercase">Fail Result Codes</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                  {FAIL_RESULT_CODES.map((code) => (
+                    <div key={code} className="px-2 py-1 bg-destructive/10 border border-destructive/20 rounded-sm">
+                      <div className="text-[8px] font-mono text-destructive/80">{code}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Warning Note */}
+              <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
+                <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Documentation Only</div>
+                <p className="text-[9px] text-slate-300">
+                  This matrix documents future validation logic only. It does not validate, approve, send, or execute requests.
+                </p>
+              </div>
+              </div>
+              </div>
+
+              {/* Export Section */}
           <div className="bg-primary/5 border border-primary/20 rounded-sm overflow-hidden">
             <div className="px-4 py-3 bg-primary/10 border-b border-primary/20">
               <h2 className="text-[11px] font-mono font-bold uppercase text-primary">Export Planning Snapshot</h2>
