@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu } from 'lucide-react';
 import VeridanCoreBranchDashboard from '../components/dashboard/VeridanCoreBranchDashboard';
+import GovernanceControlIndex from '../components/governance/GovernanceControlIndex';
 
 export default function Dashboard() {
   const navItems = [
@@ -48,6 +49,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Governance Control Index */}
+      <GovernanceControlIndex />
 
       {/* Main Dashboard */}
       <VeridanCoreBranchDashboard />
