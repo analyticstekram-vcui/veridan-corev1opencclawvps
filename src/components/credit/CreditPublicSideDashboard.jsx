@@ -161,6 +161,205 @@ export default function CreditPublicSideDashboard() {
           />
         </BaselineCard>
 
+        {/* 1. Public Credit Workflow Categories */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Public Credit Workflow Categories</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Planning structure for eight credit workflow category types, showing safe-now capabilities, blocked items, and next development steps.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[
+              {
+                name: 'Credit Profile Review',
+                purpose: 'Personal credit profile structure, monitoring planning, and score tracking',
+                safeNow: ['Profile documentation', 'Score tracking design', 'Negative item inventory'],
+                blocked: ['Bureau connection', 'Live credit pull', 'Automated monitoring'],
+                nextStep: 'Finalize credit profile intake structure and documentation',
+              },
+              {
+                name: 'Credit Monitoring Planning',
+                purpose: 'Credit monitoring integration design and data feed requirements',
+                safeNow: ['Provider selection', 'Monitoring design', 'Alert requirements'],
+                blocked: ['Bureau connection', 'Live monitoring feed', 'Automated alerts'],
+                nextStep: 'Design credit monitoring integration architecture',
+              },
+              {
+                name: 'Dispute Workflow Planning',
+                purpose: 'Dispute management workflow, letter templates, and tracking design',
+                safeNow: ['Workflow design', 'Letter templates', 'Tracking structure'],
+                blocked: ['Dispute submission', 'Letter sending', 'Bureau communication'],
+                nextStep: 'Finalize dispute workflow contracts and approval gates',
+              },
+              {
+                name: 'Credit Builder Planning',
+                purpose: 'Credit building strategy, score improvement planning, and timeline',
+                safeNow: ['Strategy documentation', 'Improvement planning', 'Timeline design'],
+                blocked: ['Account opening', 'Trade application', 'Creditor contact'],
+                nextStep: 'Design credit builder program requirements and safety gates',
+              },
+              {
+                name: 'Authorized User / Tradeline Planning',
+                purpose: 'Authorized user tradeline management and vendor account planning',
+                safeNow: ['Tradeline strategy', 'Vendor planning', 'AU management design'],
+                blocked: ['Account connections', 'Live tradelines', 'Automated reporting'],
+                nextStep: 'Define authorized user and tradeline integration requirements',
+              },
+              {
+                name: 'Business Credit Readiness',
+                purpose: 'Business credit profile, D-U-N-S setup, and funding readiness',
+                safeNow: ['Profile planning', 'DUNS requirements', 'Funding readiness review'],
+                blocked: ['Bureau filings', 'Live credit pull', 'Funding applications'],
+                nextStep: 'Complete business credit profile requirements documentation',
+              },
+              {
+                name: 'Borrower / Client Review',
+                purpose: 'Borrower assessment framework and client credit review planning',
+                safeNow: ['Assessment design', 'Review criteria', 'Governance framework'],
+                blocked: ['Client data entry', 'Credit pulls', 'Application processing'],
+                nextStep: 'Design borrower review workflow with governance gates',
+              },
+              {
+                name: 'Future Credit Automation',
+                purpose: 'Reserved for credit automation capabilities when governance approved',
+                safeNow: ['Automation planning', 'Workflow design', 'Integration mapping'],
+                blocked: ['Live automation', 'Bureau automation', 'Automated disputes'],
+                nextStep: 'Define credit automation requirements before activation',
+              },
+            ].map((category) => (
+              <BaselineCard
+                key={category.name}
+                title={category.name}
+                rows={[
+                  { label: 'Purpose', value: category.purpose },
+                  { label: 'Safe Now', value: category.safeNow.join(' · '), valueClassName: 'text-emerald-400' },
+                  { label: 'Blocked Until Later', value: category.blocked.join(' · '), valueClassName: 'text-destructive/70' },
+                  { label: 'Next Step', value: category.nextStep, valueClassName: 'text-amber-400' },
+                ]}
+                disclaimer="UI-only planning category; no execution, bureau connection, or backend logic enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Public Credit Readiness Matrix */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Public Credit Readiness Matrix</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Readiness summary for each credit workflow category, showing current mode, readiness level, and safe capabilities.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[
+              { name: 'Credit Profile Review', mode: 'UI_ONLY' },
+              { name: 'Credit Monitoring Planning', mode: 'UI_ONLY' },
+              { name: 'Dispute Workflow Planning', mode: 'UI_ONLY' },
+              { name: 'Credit Builder Planning', mode: 'UI_ONLY' },
+              { name: 'Authorized User / Tradeline Planning', mode: 'UI_ONLY' },
+              { name: 'Business Credit Readiness', mode: 'UI_ONLY' },
+              { name: 'Borrower / Client Review', mode: 'UI_ONLY' },
+              { name: 'Future Credit Automation', mode: 'FUTURE_PHASE' },
+            ].map((item) => (
+              <BaselineCard
+                key={`matrix-${item.name}`}
+                title={item.name}
+                rows={[
+                  { label: 'Current Mode', value: item.mode, valueClassName: 'text-amber-500' },
+                  { label: 'Readiness', value: item.mode === 'FUTURE_PHASE' ? 'BLOCKED' : 'PARTIAL', valueClassName: item.mode === 'FUTURE_PHASE' ? 'text-destructive' : 'text-amber-400' },
+                ]}
+                disclaimer="UI-only readiness planning; no execution or backend logic enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 3. Public Credit Readiness Gate */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Public Credit Readiness Gate</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Gate status for each credit workflow category showing current mode, readiness level, and the blocking gate before the next phase can proceed.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[
+              { name: 'Credit Profile Review', readiness: 'PARTIAL', gate: 'Complete credit profile intake structure before bureau connection' },
+              { name: 'Credit Monitoring Planning', readiness: 'PARTIAL', gate: 'Design monitoring integration architecture before bureau connection' },
+              { name: 'Dispute Workflow Planning', readiness: 'PARTIAL', gate: 'Finalize dispute workflow contracts and approval gates before submission' },
+              { name: 'Credit Builder Planning', readiness: 'PARTIAL', gate: 'Define credit builder program requirements and governance approval' },
+              { name: 'Authorized User / Tradeline Planning', readiness: 'PARTIAL', gate: 'Define tradeline integration requirements and safety gates' },
+              { name: 'Business Credit Readiness', readiness: 'PARTIAL', gate: 'Complete business credit profile documentation before bureau filings' },
+              { name: 'Borrower / Client Review', readiness: 'PARTIAL', gate: 'Design borrower review workflow with governance gates before client intake' },
+              { name: 'Future Credit Automation', readiness: 'BLOCKED', gate: 'Define credit automation requirements and governance approval before activation' },
+            ].map((item) => (
+              <BaselineCard
+                key={`gate-${item.name}`}
+                title={item.name}
+                rows={[
+                  { label: 'Current Mode', value: 'UI_ONLY', valueClassName: 'text-amber-500' },
+                  { label: 'Readiness', value: item.readiness, valueClassName: item.readiness === 'BLOCKED' ? 'text-destructive' : 'text-amber-400' },
+                  { label: 'Blocking Gate', value: item.gate, valueClassName: 'text-slate-300' },
+                ]}
+                disclaimer="UI-only gate guidance; no backend or execution logic is enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Operator Action Plan */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Operator Action Plan</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Summary of what operators can do now, what is blocked, what to build next, and what requires governance approval.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-emerald-400">Safe Now</h3>
+              </div>
+              <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
+                {['Review credit profile structure and monitoring requirements', 'Plan dispute workflow and letter templates', 'Design credit builder program and tradeline strategy', 'Plan business credit profile and D-U-N-S requirements', 'Design borrower review framework and governance gates'].map((item) => (
+                  <div key={item} className="flex items-start gap-2"><span className="text-emerald-400 shrink-0 mt-0.5">✓</span><span>{item}</span></div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-destructive/80">Blocked Until Later</h3>
+              </div>
+              <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
+                {['Bureau connections and live credit monitoring', 'Dispute submission and letter sending', 'Credit pulls and hard inquiry triggers', 'Funding applications and loan processing', 'Client data collection and intake forms'].map((item) => (
+                  <div key={item} className="flex items-start gap-2"><span className="text-destructive/70 shrink-0 mt-0.5">✕</span><span>{item}</span></div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-amber-400">Next Build Step</h3>
+              </div>
+              <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
+                {['Finalize credit profile intake structure and governance approval', 'Complete dispute workflow contracts and approval gates', 'Design credit monitoring integration architecture', 'Define business credit profile requirements documentation', 'Establish borrower review workflow and governance framework'].map((item) => (
+                  <div key={item} className="flex items-start gap-2"><span className="text-amber-400 shrink-0 mt-0.5">→</span><span>{item}</span></div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-cyan-500/10 border-b border-cyan-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-cyan-400">Requires Governance Approval</h3>
+              </div>
+              <div className="p-4 space-y-1.5 text-[10px] font-mono text-slate-300">
+                {['Enabling bureau connections and live credit monitoring', 'Activating dispute submission and automated letter sending', 'Enabling funding applications and loan processing', 'Activating credit automation and bureau reporting', 'Enabling client data intake and credential storage'].map((item) => (
+                  <div key={item} className="flex items-start gap-2"><span className="text-cyan-400 shrink-0 mt-0.5">◇</span><span>{item}</span></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Grid of sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* 1. Public Credit Status */}
