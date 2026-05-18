@@ -30,6 +30,7 @@ import OpenClawValidatorRecordReviewDecisionGate from './OpenClawValidatorRecord
 import OpenClawApprovedReviewDryRunResultPackageBuilder from './OpenClawApprovedReviewDryRunResultPackageBuilder.jsx';
 import OpenClawFullGovernanceDryRunChainEvidenceExport from './OpenClawFullGovernanceDryRunChainEvidenceExport.jsx';
 import OpenClawGovernanceDryRunChainCheckpointLock from './OpenClawGovernanceDryRunChainCheckpointLock.jsx';
+import OpenClawExecutionReadinessBoundaryMap from './OpenClawExecutionReadinessBoundaryMap.jsx';
 import OpenClawGovernancePhaseSummaryPanel from './OpenClawGovernancePhaseSummaryPanel.jsx';
 import OpenClawGovernanceCheckpointIndexPanel from './OpenClawGovernanceCheckpointIndexPanel.jsx';
 import OpenClawRuntimeBridgeFlowMap from './OpenClawRuntimeBridgeFlowMap.jsx';
@@ -403,6 +404,31 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
         {expandedGroup === 'checkpoint_lock_43_49' && (
           <div className="p-4"><OpenClawGovernanceDryRunChainCheckpointLock /></div>
         )}
+      </div>
+
+      {/* ── NEXT MAJOR BOUNDARY — EXECUTION READINESS ── */}
+      <div className="mt-6 pt-5 border-t-2 border-amber-500/30">
+        <div className="px-4 py-2 mb-3 bg-amber-500/5 border border-amber-500/20 rounded-sm">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400">
+            Next Major Boundary — Execution Readiness
+          </div>
+          <div className="text-[8px] text-amber-400/70 mt-0.5">
+            Phase 50 · Planning boundary only · Execution gate remains CLOSED
+          </div>
+        </div>
+        <div className="border-2 border-amber-500/30 rounded-lg overflow-hidden">
+          <button type="button" onClick={() => toggleGroup('phase50_execution_readiness')}
+            className="w-full px-4 py-3 bg-amber-500/5 border-b-2 border-amber-500/30 hover:bg-amber-500/10 transition-colors text-left flex items-center justify-between">
+            <div>
+              <div className="text-[11px] uppercase tracking-widest font-bold text-amber-400">PHASE 50: Execution Readiness Boundary Map</div>
+              <div className="text-[9px] text-amber-400/70 mt-0.5">What remains required before any execution mode is permitted. Gate: CLOSED · No execution.</div>
+            </div>
+            <span className={`text-[10px] font-bold text-amber-400/60 transition-transform ${expandedGroup === 'phase50_execution_readiness' ? 'rotate-90' : ''}`}>▶</span>
+          </button>
+          {expandedGroup === 'phase50_execution_readiness' && (
+            <div className="p-4"><OpenClawExecutionReadinessBoundaryMap /></div>
+          )}
+        </div>
       </div>
 
       {/* ── Result Package ── */}
