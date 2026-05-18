@@ -10,6 +10,7 @@ export default function ModuleNav() {
     { label: 'Credit', path: '/credit-public-side', icon: CreditCard },
     { label: 'Business', path: '/business-operations', icon: Briefcase },
     { label: 'Knowledge', path: '/knowledge-vault', icon: BookOpen },
+    { label: 'System Map', path: '/system-map', icon: Layers },
   ];
 
   return (
