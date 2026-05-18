@@ -152,6 +152,288 @@ export default function TradingOperationsDashboard() {
           />
         </BaselineCard>
 
+        {/* 1. Trading Workflow Categories */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Trading Workflow Categories</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Planning structure for eight trading workflow category types, showing safe-now capabilities, blocked items, and next development steps.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[
+              {
+                name: 'Strategy Review',
+                purpose: 'Review and validate trading strategy, entry/exit rules, and risk parameters',
+                safeNow: ['Strategy documentation', 'Rule validation', 'Risk assessment'],
+                blocked: ['Live execution', 'Automated trading', 'Order placement'],
+                nextStep: 'Finalize trading strategy documentation and approval process',
+              },
+              {
+                name: 'Paper Trading',
+                purpose: 'Sandbox simulation environment for strategy testing and operator readiness',
+                safeNow: ['Trading simulation', 'Risk tracking', 'P&L journal'],
+                blocked: ['Live orders', 'Broker connection', 'Money movement'],
+                nextStep: 'Design paper trading simulation framework and approval gates',
+              },
+              {
+                name: 'Risk Controls',
+                purpose: 'Risk management rules, position sizing, and loss limits',
+                safeNow: ['Risk rule documentation', 'Limit definition', 'Compliance review'],
+                blocked: ['Automated enforcement', 'Real-time limits', 'Execution gates'],
+                nextStep: 'Define risk control schema and enforcement mechanisms',
+              },
+              {
+                name: 'Market Data Planning',
+                purpose: 'Data sources and real-time quote requirements for trading',
+                safeNow: ['Data requirements definition', 'Provider selection', 'Schema design'],
+                blocked: ['Live market feeds', 'Real-time quotes', 'Data streaming'],
+                nextStep: 'Design market data integration architecture',
+              },
+              {
+                name: 'TradingView Chart Planning',
+                purpose: 'TradingView webhook integration and signal validation planning',
+                safeNow: ['Webhook schema design', 'Signal validation rules', 'Integration planning'],
+                blocked: ['Webhook endpoint', 'Live signal intake', 'Strategy alerts'],
+                nextStep: 'Finalize webhook schema and signal validation requirements',
+              },
+              {
+                name: 'Broker Integration Planning',
+                purpose: 'Broker API integration design and requirements specification',
+                safeNow: ['Integration planning', 'API specification', 'Auth design'],
+                blocked: ['Broker connection', 'Paper orders', 'Live orders'],
+                nextStep: 'Design broker integration contracts and safety gates',
+              },
+              {
+                name: 'OpenClaw Trade Governance',
+                purpose: 'Governance framework for AI-assisted trade management and approvals',
+                safeNow: ['Governance design', 'Approval workflow', 'Audit planning'],
+                blocked: ['Trade execution', 'Automated trading', 'Order routing'],
+                nextStep: 'Define OpenClaw governance contracts and execution gates',
+              },
+              {
+                name: 'Future Live Execution',
+                purpose: 'Reserved for live trading capabilities when fully approved',
+                safeNow: ['Architecture planning', 'Safety framework', 'Governance design'],
+                blocked: ['Live order placement', 'Broker execution', 'Money movement'],
+                nextStep: 'Define live execution safety requirements before activation',
+              },
+            ].map((category) => (
+              <BaselineCard
+                key={category.name}
+                title={category.name}
+                rows={[
+                  { label: 'Purpose', value: category.purpose },
+                  { label: 'Safe Now', value: category.safeNow.join(' · '), valueClassName: 'text-emerald-400' },
+                  { label: 'Blocked Until Later', value: category.blocked.join(' · '), valueClassName: 'text-destructive/70' },
+                  { label: 'Next Step', value: category.nextStep, valueClassName: 'text-amber-400' },
+                ]}
+                disclaimer="UI-only planning category; no execution or backend logic enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Trading Readiness Matrix */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Trading Readiness Matrix</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Readiness summary for each trading workflow category, showing current mode, safe capabilities, blocked capabilities, and next development step.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[
+              { name: 'Strategy Review', mode: 'READ_ONLY' },
+              { name: 'Paper Trading', mode: 'UI_ONLY' },
+              { name: 'Risk Controls', mode: 'UI_ONLY' },
+              { name: 'Market Data Planning', mode: 'UI_ONLY' },
+              { name: 'TradingView Chart Planning', mode: 'UI_ONLY' },
+              { name: 'Broker Integration Planning', mode: 'UI_ONLY' },
+              { name: 'OpenClaw Trade Governance', mode: 'UI_ONLY' },
+              { name: 'Future Live Execution', mode: 'FUTURE_PHASE' },
+            ].map((item) => (
+              <BaselineCard
+                key={`matrix-${item.name}`}
+                title={item.name}
+                rows={[
+                  { label: 'Current Mode', value: item.mode, valueClassName: 'text-amber-500' },
+                  { label: 'Readiness', value: item.mode === 'FUTURE_PHASE' ? 'BLOCKED' : 'PARTIAL', valueClassName: item.mode === 'FUTURE_PHASE' ? 'text-destructive' : 'text-amber-400' },
+                ]}
+                disclaimer="UI-only readiness planning; no execution or backend logic enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 3. Trading Readiness Gate */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Trading Readiness Gate</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Gate status for each trading workflow category showing current mode, readiness level, and the blocking gate before the next phase can proceed.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[
+              { name: 'Strategy Review', readiness: 'READY', gate: 'Strategy documentation complete and operator approved' },
+              { name: 'Paper Trading', readiness: 'PARTIAL', gate: 'Design paper trading simulation framework before activation' },
+              { name: 'Risk Controls', readiness: 'PARTIAL', gate: 'Define risk control schema and enforcement mechanisms' },
+              { name: 'Market Data Planning', readiness: 'PARTIAL', gate: 'Complete market data integration architecture design' },
+              { name: 'TradingView Chart Planning', readiness: 'PARTIAL', gate: 'Finalize webhook schema and signal validation before webhook intake' },
+              { name: 'Broker Integration Planning', readiness: 'BLOCKED', gate: 'Design broker integration contracts and complete API specification' },
+              { name: 'OpenClaw Trade Governance', readiness: 'BLOCKED', gate: 'Define execution governance contracts before automation' },
+              { name: 'Future Live Execution', readiness: 'BLOCKED', gate: 'Define live execution safety requirements and governance approval' },
+            ].map((item) => (
+              <BaselineCard
+                key={`gate-${item.name}`}
+                title={item.name}
+                rows={[
+                  { label: 'Current Mode', value: item.readiness === 'READY' ? 'READ_ONLY' : 'UI_ONLY', valueClassName: 'text-amber-500' },
+                  { label: 'Readiness', value: item.readiness, valueClassName: item.readiness === 'READY' ? 'text-emerald-400' : item.readiness === 'BLOCKED' ? 'text-destructive' : 'text-amber-400' },
+                  { label: 'Blocking Gate', value: item.gate, valueClassName: 'text-slate-300' },
+                ]}
+                disclaimer="UI-only gate guidance; no backend or execution logic is enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Operator Action Plan */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Operator Action Plan</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Summary of what operators can do now, what is blocked, what to build next, and what requires governance approval.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* Safe Now Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-emerald-400">Safe Now</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Review trading strategy and rules</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>View risk control documentation</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Plan market data integration</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Design TradingView webhook schema</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Plan trading governance framework</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Blocked Until Later Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-destructive/80">Blocked Until Later</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Broker connection and API integration</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>TradingView webhook endpoint and live signals</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Paper trading execution and order submission</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Live trading and money movement</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>API key entry and credential storage</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Next Build Step Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-amber-400">Next Build Step</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Finalize trading strategy documentation and approval process</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Design paper trading simulation framework and gates</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Complete broker integration contract and API specification</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Define trading governance contracts and execution gates</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Establish approval workflow for paper and live trading</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Requires Governance Approval Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-cyan-500/10 border-b border-cyan-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-cyan-400">Requires Governance Approval</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Enabling paper trading simulation execution</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Activating broker connection and API integration</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Enabling TradingView webhook and live signal intake</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Expanding trading automation and OpenClaw control</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Enabling live trading and money movement</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Grid of sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* 1. Trading Strategy */}
