@@ -11,12 +11,14 @@ import TradingPaperReadinessChecklist from '../components/trading/TradingPaperRe
 import TradingRiskRuleBuilder from '../components/trading/TradingRiskRuleBuilder';
 import TradingBrokerSandboxRequirements from '../components/trading/TradingBrokerSandboxRequirements';
 import TradingModuleStatusSummary from '../components/trading/TradingModuleStatusSummary';
+import TradingViewMcpReadinessPanel from '../components/trading/TradingViewMcpReadinessPanel';
 
 const TABS = [
   { id: 'strategies', label: 'Strategy Registry' },
-  { id: 'readiness', label: 'Paper Trading Readiness' },
-  { id: 'risk', label: 'Risk Rules' },
-  { id: 'broker', label: 'Broker Sandbox Requirements' },
+  { id: 'readiness',  label: 'Paper Trading Readiness' },
+  { id: 'risk',       label: 'Risk Rules' },
+  { id: 'broker',     label: 'Broker Sandbox Requirements' },
+  { id: 'mcp',        label: 'TradingView MCP Readiness' },
 ];
 
 export default function TradingCommandCenter() {
@@ -97,6 +99,7 @@ export default function TradingCommandCenter() {
         {activeTab === 'readiness' && <TradingPaperReadinessChecklist />}
         {activeTab === 'risk' && <TradingRiskRuleBuilder />}
         {activeTab === 'broker' && <TradingBrokerSandboxRequirements />}
+        {activeTab === 'mcp'    && <TradingViewMcpReadinessPanel />}
       </div>
     </div>
   );
