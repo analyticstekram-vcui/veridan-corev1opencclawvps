@@ -5,19 +5,75 @@
  * Future: Will connect to Obsidian.
  *
  * Does NOT:
- *   - Call Obsidian
- *   - Call backends
- *   - Call brokers
- *   - Call credit APIs
- *   - Collect credentials
- *   - Write localStorage
- *   - Use timers
+ *   - Call Obsidian, backends, brokers, credit APIs, collectors
+ *   - Collect credentials, write localStorage, use timers
+ *   - Upload documents, parse files, index AI, handle credential data
+ *   - Connect to MCP, OpenClaw execution, TradingView, broker, bank, credit bureau
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Lock, Info, Home, AlertCircle } from 'lucide-react';
+import { BookOpen, Lock, Info, Home } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
+
+const knowledgeCategories = [
+  {
+    name: 'SOPs / Operating Procedures',
+    purpose: 'Standard operating procedures for critical systems and workflows',
+    safeNow: ['View SOP index', 'Reference procedures', 'Operator guidance'],
+    blocked: ['Edit SOPs', 'Workflow automation', 'External triggers'],
+    nextStep: 'Finalize SOP library structure and governance framework',
+  },
+  {
+    name: 'Governance Policies',
+    purpose: 'Governance rules, approval gates, and compliance requirements',
+    safeNow: ['Policy review', 'Governance visibility', 'Compliance reference'],
+    blocked: ['Auto-enforcement', 'Policy modifications', 'External audit hooks'],
+    nextStep: 'Document governance hierarchy and approval chains',
+  },
+  {
+    name: 'Audit / Evidence Notes',
+    purpose: 'Audit trails, evidence baselines, and compliance documentation',
+    safeNow: ['Review evidence', 'Baseline summaries', 'Compliance status'],
+    blocked: ['Evidence collection', 'Automated reporting', 'External submission'],
+    nextStep: 'Establish audit log structure and retention policies',
+  },
+  {
+    name: 'Integration Guides',
+    purpose: 'Documentation for safe integration paths with external systems',
+    safeNow: ['Read integration specs', 'Safety constraints', 'Governance gates'],
+    blocked: ['Live integrations', 'Auto-connectors', 'API activation'],
+    nextStep: 'Define integration safety patterns and approval tiers',
+  },
+  {
+    name: 'Troubleshooting / Runbooks',
+    purpose: 'Operational troubleshooting guides and emergency runbooks',
+    safeNow: ['Read runbooks', 'Procedure reference', 'Operator guides'],
+    blocked: ['Automated execution', 'System modifications', 'Remote triggers'],
+    nextStep: 'Build comprehensive runbook library with safety gates',
+  },
+  {
+    name: 'Changelogs',
+    purpose: 'Version history, change logs, and system evolution records',
+    safeNow: ['View change history', 'Version reference', 'Timeline review'],
+    blocked: ['Auto-generation', 'Changelog edits', 'External publishing'],
+    nextStep: 'Implement structured changelog framework',
+  },
+  {
+    name: 'Legal / Entity References',
+    purpose: 'Legal documents, entity structure, and governance documentation',
+    safeNow: ['Reference documents', 'Entity relationships', 'Structure review'],
+    blocked: ['Document uploads', 'Auto-parsing', 'External sharing'],
+    nextStep: 'Archive and organize legal reference materials',
+  },
+  {
+    name: 'Trading Playbooks',
+    purpose: 'Trading strategies, risk rules, and strategy documentation',
+    safeNow: ['Strategy review', 'Risk rule reference', 'Planning docs'],
+    blocked: ['Live execution', 'Order routing', 'Broker connection'],
+    nextStep: 'Finalize trading strategy playbook structure',
+  },
+];
 
 function KnowledgeSection({ title, description, items }) {
   return (
@@ -35,6 +91,21 @@ function KnowledgeSection({ title, description, items }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function KnowledgeCategoryCard({ category }) {
+  return (
+    <BaselineCard
+      title={category.name}
+      rows={[
+        { label: 'Purpose', value: category.purpose },
+        { label: 'Safe Now', value: category.safeNow.join(' · '), valueClassName: 'text-emerald-400' },
+        { label: 'Blocked Until Later', value: category.blocked.join(' · '), valueClassName: 'text-destructive/70' },
+        { label: 'Next Step', value: category.nextStep, valueClassName: 'text-amber-400' },
+      ]}
+      disclaimer="UI-only planning category; no document upload, parsing, or indexing enabled."
+    />
   );
 }
 
@@ -94,50 +165,113 @@ export default function VeridanKnowledgeVaultDashboard() {
         />
 
         <BaselineCard
-          title="Knowledge Vault Baseline"
+          title="Knowledge Vault Safety Summary (Detailed)"
           rows={[
-            { label: 'Baseline Name', value: 'Knowledge Vault Planning Baseline' },
-            { label: 'Baseline Status', value: 'APPROVED', valueClassName: 'text-primary' },
-            { label: 'Mode', value: 'PLANNING_ONLY', valueClassName: 'text-amber-500' },
-            { label: 'Document Upload', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Current Mode', value: 'READ_ONLY', valueClassName: 'text-amber-500' },
+            { label: 'Document Uploads', value: 'DISABLED', valueClassName: 'text-destructive' },
             { label: 'AI Indexing', value: 'DISABLED', valueClassName: 'text-destructive' },
-            { label: 'Vault Sync', value: 'DISABLED', valueClassName: 'text-destructive' },
             { label: 'Credential Storage', value: 'DISABLED', valueClassName: 'text-destructive' },
-            { label: 'Private Documents', value: 'NOT_COLLECTED', valueClassName: 'text-destructive' },
-            { label: 'External Connectors', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Obsidian Sync', value: 'PLANNING_ONLY', valueClassName: 'text-amber-500' },
+            { label: 'Execution / Automation', value: 'DISABLED', valueClassName: 'text-destructive' },
           ]}
-          disclaimer="This baseline confirms the Knowledge Vault module is approved for planning and structure review only."
+          disclaimer="Knowledge Vault is read-only reference material only. No uploads, parsing, indexing, credentials, automation, or external connectors are enabled."
         >
           <SnapshotExportButton
             snapshot={{
               snapshotType: 'KNOWLEDGE_VAULT_PLANNING_BASELINE',
               baselineName: 'Knowledge Vault Planning Baseline',
               baselineStatus: 'APPROVED',
-              mode: 'PLANNING_ONLY',
+              mode: 'READ_ONLY',
+              currentMode: 'READ_ONLY',
               documentUpload: 'DISABLED',
               aiIndexing: 'DISABLED',
-              vaultSync: 'DISABLED',
               credentialStorage: 'DISABLED',
-              privateDocuments: 'NOT_COLLECTED',
+              obsidianSync: 'PLANNING_ONLY',
+              execution: 'DISABLED',
               externalConnectors: 'DISABLED',
               generatedAt: new Date().toISOString(),
               safetyClaims: [
+                'Read-only reference only',
                 'No document upload',
+                'No file parsing',
                 'No AI indexing',
-                'No vault sync',
                 'No credential storage',
-                'No private document collection',
+                'No automation triggers',
                 'No external connectors',
-                'Planning-only baseline mode',
+                'Planning/governance baseline mode',
               ],
             }}
             filenamePrefix="knowledge-vault-baseline-snapshot"
-            label="Export Knowledge Vault Snapshot"
+            label="Export Baseline Snapshot"
           />
         </BaselineCard>
 
+        {/* Knowledge Categories Section */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Knowledge Categories</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Planning structure for eight knowledge category types, showing safe-now capabilities, blocked items, and next development steps.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {knowledgeCategories.map((category) => (
+              <KnowledgeCategoryCard key={category.name} category={category} />
+            ))}
+          </div>
+        </div>
+
+        {/* Knowledge Vault Readiness Matrix Section */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Knowledge Vault Readiness Matrix</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Readiness summary for each knowledge category, showing current mode, safe capabilities, blocked capabilities, and next development step.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {knowledgeCategories.map((category) => (
+              <BaselineCard
+                key={`matrix-${category.name}`}
+                title={category.name}
+                rows={[
+                  { label: 'Current Mode', value: 'READ_ONLY', valueClassName: 'text-amber-500' },
+                  { label: 'Safe Now', value: category.safeNow.join(' · '), valueClassName: 'text-emerald-400' },
+                  { label: 'Blocked Until Later', value: category.blocked.join(' · '), valueClassName: 'text-destructive/70' },
+                  { label: 'Next Step', value: category.nextStep, valueClassName: 'text-slate-300' },
+                ]}
+                disclaimer="UI-only readiness planning; no execution or backend logic enabled."
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Knowledge Vault Readiness Gate Section */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Knowledge Vault Readiness Gate</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Gate status for each knowledge category showing current mode, readiness level, and the blocking gate before the next phase can proceed.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {knowledgeCategories.map((category) => (
+              <BaselineCard
+                key={`gate-${category.name}`}
+                title={category.name}
+                rows={[
+                  { label: 'Current Mode', value: 'READ_ONLY', valueClassName: 'text-amber-500' },
+                  { label: 'Readiness', value: 'PARTIAL', valueClassName: 'text-amber-400' },
+                  { label: 'Blocking Gate', value: 'Define governance structure and safety constraints before upload/indexing', valueClassName: 'text-slate-300' },
+                ]}
+                disclaimer="UI-only gate guidance; no backend or execution logic is enabled."
+              />
+            ))}
+          </div>
+        </div>
+
         {/* Grid of sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
           {/* 1. SOP Library */}
           <KnowledgeSection
             title="1. SOP Library"
@@ -251,6 +385,141 @@ export default function VeridanKnowledgeVaultDashboard() {
               'Refer to SOP Library when uncertain',
             ]}
           />
+        </div>
+
+        {/* Operator Action Plan Section */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-mono font-bold text-slate-100">Operator Action Plan</h2>
+            <p className="mt-2 text-[13px] font-mono text-slate-300">
+              Summary of what operators can do now, what is blocked, what to build next, and what requires governance approval.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* Safe Now Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-emerald-400">Safe Now</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>View all knowledge categories and reference materials</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Read SOPs, governance policies, and runbooks</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Review trading playbooks and integration guides</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Access legal references and audit trails</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                    <span>Plan knowledge vault structure and governance</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Blocked Until Later Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-destructive/80">Blocked Until Later</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Document upload and file management</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>File parsing and content extraction</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>AI indexing and semantic search</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Obsidian vault sync and integration</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                    <span>Credential or sensitive data storage</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Next Build Step Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-amber-400">Next Build Step</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Finalize knowledge categories and SOP structure</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Define Obsidian vault sync design and safety gates</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Design document upload workflow with governance approval</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Build read-only preview mode before live indexing</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                    <span>Establish audit trail and compliance requirements</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Requires Governance Approval Card */}
+            <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-cyan-500/10 border-b border-cyan-500/20">
+                <h3 className="text-[12px] font-mono font-bold uppercase text-cyan-400">Requires Governance Approval</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Enabling document upload and file storage</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Activating AI indexing and search features</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Connecting to Obsidian or external vault systems</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Storing credential or sensitive reference data</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                    <span>Enabling any automation or external integration</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Knowledge Vault Planning Section */}
