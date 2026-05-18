@@ -146,7 +146,6 @@ export default function OpenClawControl() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [bridgeStatus, setBridgeStatus] = useState(null);
   const [showAdvancedAudit, setShowAdvancedAudit] = useState(false);
   const [operatorMode, setOperatorMode] = useState('SIMPLE');
   const intervalRef = useRef(null);
@@ -167,16 +166,8 @@ export default function OpenClawControl() {
   const fetchStatus = async () => {
     setLoading(true);
     try {
-      const [statusRes, bridgeRes] = await Promise.allSettled([
-        base44.functions.invoke('openclawStatus', {}),
-        base44.functions.invoke('openclawSafeBridge', {
-          commandType: 'SESSION_STATUS',
-          targetUrl: 'https://www.tradingview.com',
-          operator: 'VeridanCore',
-        }),
-      ]);
+      const statusRes = await base44.functions.invoke('openclawStatus', {});
       setStatus(statusRes.status === 'fulfilled' ? statusRes.value.data : null);
-      setBridgeStatus(bridgeRes.status === 'fulfilled' ? bridgeRes.value.data : { status: 'failed', error: 'Bridge unreachable' });
     } catch (_) {
       setStatus(null);
     } finally {
@@ -192,18 +183,6 @@ export default function OpenClawControl() {
   }, []);
 
   const handleOpen = async () => {
-    try {
-      await base44.integrations.Core.InvokeLLM({
-        prompt: JSON.stringify({
-          eventType: 'OPENCLAW_PANEL_OPENED',
-          source: 'VeridanCore.UI',
-          target: 'OpenClawGateway',
-          status: 'USER_INITIATED',
-          timestamp: new Date().toISOString(),
-        }),
-        response_json_schema: { type: 'object', properties: { logged: { type: 'boolean' } } },
-      });
-    } catch (_) {}
     window.open(status?.url || 'https://openclaw.veridancore.com', '_blank', 'noopener,noreferrer');
   };
 
@@ -648,33 +627,7 @@ export default function OpenClawControl() {
                 </div>
               )}
 
-              <div className="mb-3">
-                <div className="text-[9px] uppercase tracking-widest text-slate-400 mb-2 font-semibold">Veridan Safe Bridge · SESSION_STATUS</div>
-                <div className="grid grid-cols-2 gap-2 text-[10px]">
-                  <div className="bg-secondary/30 border border-border px-3 py-2">
-                    <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Bridge</div>
-                    <div className={bridgeStatus?.status === 'success' ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
-                      {bridgeStatus?.status === 'success' ? 'Connected' : bridgeStatus?.status || '—'}
-                    </div>
-                  </div>
-                  <div className="bg-secondary/30 border border-border px-3 py-2">
-                    <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Session Active</div>
-                    <div className={bridgeStatus?.raw?.session_active ? 'text-primary font-semibold' : 'text-slate-300 font-semibold'}>
-                      {bridgeStatus?.raw?.session_active !== undefined ? String(bridgeStatus.raw.session_active) : '—'}
-                    </div>
-                  </div>
-                  <div className="col-span-2 bg-secondary/30 border border-border px-3 py-2">
-                    <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Current URL</div>
-                    <div className="text-blue-400 font-mono truncate">{bridgeStatus?.raw?.current_url || bridgeStatus?.targetUrl || '—'}</div>
-                  </div>
-                  {bridgeStatus?.error && (
-                    <div className="col-span-2 bg-destructive/5 border border-destructive/20 px-3 py-2">
-                      <div className="text-slate-400 uppercase tracking-wider mb-0.5 font-semibold">Error</div>
-                      <div className="text-destructive font-mono text-[10px] break-all">{bridgeStatus.error}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
+
 
               <div className="grid grid-cols-2 gap-2 mb-5 text-[10px]">
                 <div className="bg-secondary/30 border border-border px-3 py-2">
