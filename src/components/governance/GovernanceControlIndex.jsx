@@ -18,7 +18,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, FileText, Archive, BarChart3, Map, Cpu, Lock, Eye } from 'lucide-react';
+import { CheckCircle2, FileText, Archive, BarChart3, Map, Cpu, Lock, Eye, Workflow } from 'lucide-react';
 
 const GOVERNANCE_PAGES = [
   {
@@ -60,6 +60,16 @@ const GOVERNANCE_PAGES = [
     icon: BarChart3,
     path: '/openclaw-control?section=system-verify',
     note: 'OpenClaw Control → System Verify tab (auto-selected)',
+  },
+  {
+    id: 'dry_run_bridge',
+    name: 'Dry-Run Bridge',
+    purpose: 'Plan simulated bridge request rules before any execution layer is enabled.',
+    mode: 'Planning',
+    modeColor: 'text-cyan-400 border-cyan-400/30 bg-cyan-400/5',
+    icon: Workflow,
+    path: '/dry-run-bridge-planning',
+    note: 'Dry-run bridge planning and validation gates',
   },
   {
     id: 'system_map',
