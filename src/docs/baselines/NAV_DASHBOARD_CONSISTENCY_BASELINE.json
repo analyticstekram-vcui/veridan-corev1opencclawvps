@@ -1,0 +1,70 @@
+{
+  "baselineId": "NAV_DASHBOARD_CONSISTENCY_BASELINE",
+  "timestamp": "2026-05-18T00:00:00Z",
+  "status": "APPROVED",
+  "auditType": "Module Consistency & Safety Boundary Verification",
+  "reviewedModules": [
+    {
+      "name": "System Map / Quick Navigation",
+      "file": "components/ui/veridan-core-system-map",
+      "result": "PASS"
+    },
+    {
+      "name": "Trading Operations Dashboard",
+      "file": "components/trading/TradingOperationsDashboard",
+      "result": "PASS"
+    },
+    {
+      "name": "Public Credit Side Dashboard",
+      "file": "components/credit/CreditPublicSideDashboard",
+      "result": "PASS"
+    },
+    {
+      "name": "Business Operations Dashboard",
+      "file": "components/business/BusinessOperationsDashboard",
+      "result": "PASS"
+    },
+    {
+      "name": "Control Room",
+      "file": "pages/ControlRoom",
+      "result": "PASS"
+    },
+    {
+      "name": "OpenClaw Control Panel",
+      "file": "pages/OpenClawControl",
+      "result": "PASS"
+    }
+  ],
+  "confirmations": {
+    "navigationWorks": true,
+    "navigationNote": "All modules have functional Home links. Cross-module navigation verified.",
+    "safetyBoundaryVisible": true,
+    "safetyNote": "All modules display clear safety disclaimers (Planning-only / Governed Preview Mode). Safety boundary clearly marked in all dashboards.",
+    "readOnlyOpenClawStatus": true,
+    "openClawNote": "OpenClawControl.jsx retains only openclawStatus (read-only health check). No execution capabilities exposed.",
+    "prohibitedCallsRemoved": true,
+    "removedCalls": [
+      "openclawSafeBridge (TradingView target)",
+      "InvokeLLM (event logging)"
+    ],
+    "noExecutionLogic": true,
+    "executionNote": "No command execution, automation dispatch, or backend action logic present in any module.",
+    "noProhibitedIntegrations": true,
+    "prohibitedIntegrationsList": [
+      "Broker connections (Tradovate, TradingView, BloFin, Alpaca)",
+      "Bank integrations",
+      "Credit bureau connections",
+      "Payment processing",
+      "TradingView webhooks",
+      "API credential storage",
+      "MCP execution",
+      "OpenClaw command execution"
+    ],
+    "prohibitedIntegrationStatus": "NONE PRESENT"
+  },
+  "evidenceRecord": "docs/VERIDAN_CORE_MODULE_CONSISTENCY_AUDIT_2026_05_18.md",
+  "readinessStatus": "READY_FOR_GOVERNANCE_PREVIEW_MODE",
+  "notes": "All six primary navigation modules have passed structural consistency and safety boundary audit. System is locked in Governance/Planning-Only Preview Mode. Human review required for any future execution phase transitions.",
+  "lockedBy": "Base44 AI Assistant",
+  "modifiable": false
+}
