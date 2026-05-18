@@ -248,8 +248,8 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
          </div>
          <div className="p-4 space-y-2">
            {[
-             { num: '43', name: 'Command Registry', key: 'openclawUnifiedCommandContractRegistry', role: 'Defines all allowed/blocked command types', status: 'Registry only — no execution' },
-             { num: '44', name: 'Proposal Registry Validation', key: 'openclawPhase44ProposalValidationRecords', role: 'Validates proposals against registry', status: 'Validation only — no execution' },
+             { num: '43', name: 'Command Registry', key: 'openclawPhase43UnifiedCommandRegistrySnapshot', role: 'Defines all allowed/blocked command types', status: 'Registry only — no execution' },
+             { num: '44', name: 'Proposal Registry Validation', key: 'openclawPhase44ProposalRegistryValidationRecords', role: 'Validates proposals against registry', status: 'Validation only — no execution' },
              { num: '45', name: 'Dry-Run Intake', key: 'openclawPhase45DryRunValidatorIntakeRecords', role: 'Prepares validated proposals for dry-run', status: 'Intake only — no execution' },
              { num: '46', name: 'Validator Record', key: 'openclawPhase46DryRunValidatorRecords', role: 'Formal validator record binding', status: 'Validator record only — no execution' },
              { num: '47', name: 'Operator Review Decision', key: 'openclawPhase47ValidatorReviewDecisions', role: 'Operator approval/rejection gate', status: 'Review decision only — no execution' },
