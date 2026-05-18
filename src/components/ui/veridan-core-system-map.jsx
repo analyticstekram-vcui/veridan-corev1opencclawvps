@@ -170,7 +170,7 @@ export default function VeridanCoreSystemMap() {
                       <h2 className="text-sm font-semibold text-slate-100">{module.name}</h2>
                       <p className="mt-2 text-[11px] leading-relaxed text-slate-300">{module.purpose}</p>
                     </div>
-                    <span className={`px-2 py-1 text-[9px] font-mono font-bold uppercase rounded ${modeColorMap[module.mode] || modeColorMap['UI_ONLY']}`}>
+                    <span className={`px-2 py-1 text-[9px] font-mono font-bold uppercase rounded ${modeColorMap[module.mode] || modeColorMap.UI_ONLY}`}>
                       {module.mode}
                     </span>
                   </div>
@@ -246,7 +246,7 @@ export default function VeridanCoreSystemMap() {
                   title={module.name}
                   rows={[
                     { label: 'Current Mode', value: module.mode, valueClassName: 'text-amber-500' },
-                    { label: 'Readiness', value: module.readiness, valueClassName: module.readiness === 'READY' ? 'text-emerald-400' : module.readiness === 'PARTIAL' ? 'text-amber-400' : 'text-destructive' },
+                    { label: 'Readiness', value: module.readiness, valueClassName: module.readiness === 'READY' ? 'text-emerald-400' : module.readiness === 'PARTIAL' ? 'text-amber-400' : module.readiness === 'BLOCKED' ? 'text-destructive' : 'text-destructive' },
                     { label: 'Blocking Gate', value: module.blockingGate, valueClassName: 'text-slate-300' },
                   ]}
                   disclaimer="UI-only readiness gate guidance; no backend or execution logic is enabled."
@@ -385,11 +385,11 @@ export default function VeridanCoreSystemMap() {
                     </div>
                   </div>
                 </div>
-                </div>
-                </div>
-                </div>
-                </div>
-                </div>
-                </div>
-                );
-                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
