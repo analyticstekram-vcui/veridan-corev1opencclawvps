@@ -4,6 +4,7 @@ import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCirc
 import VeridanCoreBranchDashboard from '../components/dashboard/VeridanCoreBranchDashboard';
 import CurrentBuildStateCard from '../components/governance/CurrentBuildStateCard';
 import CurrentCapabilitiesBoundary from '../components/governance/CurrentCapabilitiesBoundary';
+import FinalGovernanceBaselineLockSummary from '../components/governance/FinalGovernanceBaselineLockSummary';
 import GovernanceControlIndex from '../components/governance/GovernanceControlIndex';
 
 export default function Dashboard() {
@@ -57,6 +58,9 @@ export default function Dashboard() {
 
       {/* Current Capabilities Boundary */}
       <CurrentCapabilitiesBoundary />
+
+      {/* Final Governance Baseline Lock Summary */}
+      <FinalGovernanceBaselineLockSummary />
 
       {/* Governance Control Index */}
       <GovernanceControlIndex />
