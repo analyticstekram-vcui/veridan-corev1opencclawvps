@@ -106,6 +106,7 @@ import RegenerateEvidenceChainButton from './RegenerateEvidenceChainButton.jsx';
 import OpenClawUnifiedCommandContractRegistry from './OpenClawUnifiedCommandContractRegistry.jsx';
 import OpenClawProposalRegistryValidationBinding from './OpenClawProposalRegistryValidationBinding.jsx';
 import OpenClawDryRunValidatorIntakeBinding from './OpenClawDryRunValidatorIntakeBinding.jsx';
+import OpenClawEvidenceArchiveSection from './OpenClawEvidenceArchiveSection.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
 
@@ -552,6 +553,15 @@ export default function OpenClawGatewayConnectorPanel() {
 
         {/* Tab Content - Evidence Archive */}
          {activeTab === 'archive' && (
+           <OpenClawEvidenceArchiveSection
+             expandedGroup={expandedGroup}
+             toggleGroup={toggleGroup}
+             generateLocalGovernanceBaseline={generateLocalGovernanceBaseline}
+           />
+         )}
+
+         {/* DEAD CODE REMOVED — archive content lives in OpenClawEvidenceArchiveSection */}
+         {false && (
            <div className="space-y-5 border-t border-border/40 pt-5">
 
              {/* ── OBSERVABILITY DASHBOARD — always at top ── */}
