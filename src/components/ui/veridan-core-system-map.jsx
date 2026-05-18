@@ -8,6 +8,13 @@ const moduleStatusStyles = {
   FUTURE_PHASE: 'disabled',
 };
 
+const modeColorMap = {
+  READ_ONLY: 'bg-slate-700/70 text-slate-100',
+  UI_ONLY: 'bg-amber-500/20 text-amber-300',
+  GOVERNED: 'bg-cyan-500/20 text-cyan-300',
+  FUTURE_PHASE: 'bg-slate-600/20 text-slate-300',
+};
+
 const systemModules = [
   {
     name: 'Control Room',
@@ -163,9 +170,9 @@ export default function VeridanCoreSystemMap() {
                       <h2 className="text-sm font-semibold text-slate-100">{module.name}</h2>
                       <p className="mt-2 text-[11px] leading-relaxed text-slate-300">{module.purpose}</p>
                     </div>
-                    <span className={`px-2 py-1 text-[9px] font-mono font-bold uppercase rounded ${module.mode === 'READ_ONLY' ? 'bg-slate-700/70 text-slate-100' : module.mode === 'UI_ONLY' ? 'bg-amber-500/20 text-amber-300' : module.mode === 'GOVERNED' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-600/20 text-slate-300'}`}>
-                      {module.mode}
-                    </span>
+                    <span className={`px-2 py-1 text-[9px] font-mono font-bold uppercase rounded ${modeColorMap[module.mode] || modeColorMap.FUTURE_PHASE || ''}`}>
+                       {module.mode}
+                     </span>
                   </div>
                 </button>
               );
