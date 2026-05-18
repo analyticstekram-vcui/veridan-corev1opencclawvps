@@ -72,6 +72,16 @@ const GOVERNANCE_PAGES = [
     note: 'Dry-run bridge planning and validation gates',
   },
   {
+    id: 'backend_contract',
+    name: 'Backend Contract',
+    purpose: 'Define the future dry-run backend endpoint contract before implementation.',
+    mode: 'Planning',
+    modeColor: 'text-cyan-400 border-cyan-400/30 bg-cyan-400/5',
+    icon: FileText,
+    path: '/dry-run-backend-contract',
+    note: 'Backend contract planning and request/response shapes',
+  },
+  {
     id: 'system_map',
     name: 'System Map',
     purpose: 'Understand how Veridan Core modules connect.',
