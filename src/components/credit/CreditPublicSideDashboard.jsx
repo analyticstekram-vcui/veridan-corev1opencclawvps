@@ -18,6 +18,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { CreditCard, Lock, AlertCircle, CheckCircle2, Home } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
+import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
 import CreditProfileIntakeStructure from './CreditProfileIntakeStructure';
 import LocalOnlyDisputeTrackerPreview from './LocalOnlyDisputeTrackerPreview';
 
@@ -85,181 +86,80 @@ export default function CreditPublicSideDashboard() {
           </Link>
         </div>
 
-        {/* Public Credit Safety Summary Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Public Credit Safety Summary</h2>
-          </div>
-          <div className="p-4 space-y-2">
-            <StatusBadge label="Mode" value="PLANNING_ONLY" type="planning" />
-            <StatusBadge label="Bureau Login" value="NOT_CONNECTED" type="neutral" />
-            <StatusBadge label="Credit Pull" value="DISABLED" type="disabled" />
-            <StatusBadge label="Dispute Automation" value="DISABLED" type="disabled" />
-            <StatusBadge label="Funding Applications" value="DISABLED" type="disabled" />
-            <StatusBadge label="Credential Entry" value="DISABLED" type="disabled" />
-            <StatusBadge label="Client Data Entry" value="DISABLED" type="disabled" />
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3 mt-3">
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                This module is for planning and structure only. It does not connect to credit bureaus, collect client data, submit disputes, pull credit, or apply for funding.
-              </p>
-            </div>
-          </div>
-        </div>
+        <SafetyStatusCard
+          title="Public Credit Safety Summary"
+          statuses={[
+            { label: 'Mode', value: 'PLANNING_ONLY', type: 'planning' },
+            { label: 'Bureau Login', value: 'NOT_CONNECTED', type: 'neutral' },
+            { label: 'Credit Pull', value: 'DISABLED', type: 'disabled' },
+            { label: 'Dispute Automation', value: 'DISABLED', type: 'disabled' },
+            { label: 'Funding Applications', value: 'DISABLED', type: 'disabled' },
+            { label: 'Credential Entry', value: 'DISABLED', type: 'disabled' },
+            { label: 'Client Data Entry', value: 'DISABLED', type: 'disabled' },
+          ]}
+          disclaimer="This module is for planning and structure only. It does not connect to credit bureaus, collect client data, submit disputes, pull credit, or apply for funding."
+        />
 
-        {/* Operator Next Action Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Operator Next Action</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
-              <p className="text-[11px] font-mono font-bold text-primary mb-2">Build credit profile intake structure and dispute tracker.</p>
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                Set up the foundational planning structure for personal and business credit tracking before enabling any bureau connections or client data entry.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <div className="text-[9px] font-mono font-semibold uppercase text-muted-foreground/70 mb-2">Action Checklist</div>
-              <button
-                type="button"
-                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
-              >
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Review personal credit sections</span>
-              </button>
-              <button
-                type="button"
-                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
-              >
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Review business credit sections</span>
-              </button>
-              <button
-                type="button"
-                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
-              >
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no bureau login exists</span>
-              </button>
-              <button
-                type="button"
-                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
-              >
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no credential entry exists</span>
-              </button>
-              <button
-                type="button"
-                className="flex items-start gap-2 hover:opacity-80 transition-opacity text-left w-full"
-              >
-                <span className="text-primary font-bold mt-0.5 shrink-0">☐</span>
-                <span className="text-[10px] text-slate-300">Confirm no automatic dispute submission exists</span>
-              </button>
-              <div className="text-[8px] font-mono text-muted-foreground/50 mt-3">
-                Checklist is local and resets on page refresh.
-              </div>
-            </div>
-          </div>
-        </div>
+        <OperatorNextActionCard
+          title="Operator Next Action"
+          summaryTitle="Build credit profile intake structure and dispute tracker."
+          summaryText="Set up the foundational planning structure for personal and business credit tracking before enabling any bureau connections or client data entry."
+          checklist={[
+            'Review personal credit sections',
+            'Review business credit sections',
+            'Confirm no bureau login exists',
+            'Confirm no credential entry exists',
+            'Confirm no automatic dispute submission exists',
+          ]}
+          note="Checklist is local and resets on page refresh."
+        />
 
-        {/* Public Credit Baseline Card */}
-        <div className="mb-6 bg-card border border-border/50 rounded-sm overflow-hidden">
-          <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-            <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Public Credit Baseline</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Name</span>
-                <span className="text-[10px] font-mono font-bold text-slate-300">Public Credit Planning Baseline</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Baseline Status</span>
-                <span className="text-[10px] font-mono font-bold text-primary">APPROVED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Mode</span>
-                <span className="text-[10px] font-mono font-bold text-amber-500">PLANNING_ONLY</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Intake Blueprint</span>
-                <span className="text-[10px] font-mono font-bold text-slate-300">READ_ONLY</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Dispute Tracker Blueprint</span>
-                <span className="text-[10px] font-mono font-bold text-slate-300">READ_ONLY</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Bureau Login</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">NOT_CONNECTED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Credit Pull</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Dispute Automation</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Credential Entry</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Client Data Entry</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground/70">Document Upload</span>
-                <span className="text-[10px] font-mono font-bold text-destructive">DISABLED</span>
-              </div>
-            </div>
-            <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                This baseline confirms the Public Credit module is approved for planning and structure review only.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const snapshot = {
-                  snapshotType: "PUBLIC_CREDIT_PLANNING_BASELINE",
-                  baselineName: "Public Credit Planning Baseline",
-                  baselineStatus: "APPROVED",
-                  mode: "PLANNING_ONLY",
-                  intakeBlueprint: "READ_ONLY",
-                  disputeTrackerBlueprint: "READ_ONLY",
-                  bureauLogin: "NOT_CONNECTED",
-                  creditPull: "DISABLED",
-                  disputeAutomation: "DISABLED",
-                  credentialEntry: "DISABLED",
-                  clientDataEntry: "DISABLED",
-                  documentUpload: "DISABLED",
-                  generatedAt: new Date().toISOString(),
-                  safetyClaims: [
-                    "No bureau login",
-                    "No credit pull",
-                    "No dispute submission",
-                    "No credential entry",
-                    "No client data collection",
-                    "No document upload",
-                    "Planning-only blueprint mode",
-                  ],
-                };
-                const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `public-credit-baseline-snapshot-${Date.now()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="px-4 py-2 text-[10px] font-mono font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded-sm"
-            >
-              Export Credit Module Snapshot
-            </button>
-          </div>
-        </div>
+        <BaselineCard
+          title="Public Credit Baseline"
+          rows={[
+            { label: 'Baseline Name', value: 'Public Credit Planning Baseline' },
+            { label: 'Baseline Status', value: 'APPROVED', valueClassName: 'text-primary' },
+            { label: 'Mode', value: 'PLANNING_ONLY', valueClassName: 'text-amber-500' },
+            { label: 'Intake Blueprint', value: 'READ_ONLY', valueClassName: 'text-slate-300' },
+            { label: 'Dispute Tracker Blueprint', value: 'READ_ONLY', valueClassName: 'text-slate-300' },
+            { label: 'Bureau Login', value: 'NOT_CONNECTED', valueClassName: 'text-destructive' },
+            { label: 'Credit Pull', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Dispute Automation', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Credential Entry', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Client Data Entry', value: 'DISABLED', valueClassName: 'text-destructive' },
+            { label: 'Document Upload', value: 'DISABLED', valueClassName: 'text-destructive' },
+          ]}
+          disclaimer="This baseline confirms the Public Credit module is approved for planning and structure review only."
+        >
+          <SnapshotExportButton
+            snapshot={{
+              snapshotType: 'PUBLIC_CREDIT_PLANNING_BASELINE',
+              baselineName: 'Public Credit Planning Baseline',
+              baselineStatus: 'APPROVED',
+              mode: 'PLANNING_ONLY',
+              intakeBlueprint: 'READ_ONLY',
+              disputeTrackerBlueprint: 'READ_ONLY',
+              bureauLogin: 'NOT_CONNECTED',
+              creditPull: 'DISABLED',
+              disputeAutomation: 'DISABLED',
+              credentialEntry: 'DISABLED',
+              clientDataEntry: 'DISABLED',
+              documentUpload: 'DISABLED',
+              generatedAt: new Date().toISOString(),
+              safetyClaims: [
+                'No bureau login',
+                'No credit pull',
+                'No dispute submission',
+                'No credential entry',
+                'No client data collection',
+                'No document upload',
+                'Planning-only blueprint mode',
+              ],
+            }}
+            filenamePrefix="public-credit-baseline-snapshot"
+            label="Export Credit Module Snapshot"
+          />
+        </BaselineCard>
 
         {/* Grid of sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
