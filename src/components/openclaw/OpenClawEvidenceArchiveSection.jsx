@@ -240,8 +240,51 @@ export default function OpenClawEvidenceArchiveSection({ expandedGroup, toggleGr
         )}
       </div>
 
-      {/* ── PHASE 43: Unified Command Contract Registry ── */}
-      <div className="border-2 border-primary/40 rounded-lg overflow-hidden">
+      {/* ── GOVERNANCE DRY-RUN CHAIN STATUS SUMMARY ── */}
+       <div className="border-2 border-primary rounded-lg overflow-hidden bg-primary/2">
+         <div className="px-4 py-3 bg-primary/10 border-b-2 border-primary">
+           <div className="text-[12px] font-bold uppercase tracking-wide text-primary mb-0.5">Governance Dry-Run Chain Status</div>
+           <div className="text-[9px] text-primary/70">Complete execution-disabled governance pipeline: Phases 43–48</div>
+         </div>
+         <div className="p-4 space-y-2">
+           {[
+             { num: '43', name: 'Command Registry', key: 'openclawUnifiedCommandContractRegistry', role: 'Defines all allowed/blocked command types', status: 'Registry only — no execution' },
+             { num: '44', name: 'Proposal Registry Validation', key: 'openclawPhase44ProposalValidationRecords', role: 'Validates proposals against registry', status: 'Validation only — no execution' },
+             { num: '45', name: 'Dry-Run Intake', key: 'openclawPhase45DryRunValidatorIntakeRecords', role: 'Prepares validated proposals for dry-run', status: 'Intake only — no execution' },
+             { num: '46', name: 'Validator Record', key: 'openclawPhase46DryRunValidatorRecords', role: 'Formal validator record binding', status: 'Validator record only — no execution' },
+             { num: '47', name: 'Operator Review Decision', key: 'openclawPhase47ValidatorReviewDecisions', role: 'Operator approval/rejection gate', status: 'Review decision only — no execution' },
+             { num: '48', name: 'Dry-Run Result Package', key: 'openclawPhase48DryRunResultPackages', role: 'Builds result artifacts from approved reviews', status: 'Result package only — no execution' },
+           ].map(phase => (
+             <div key={phase.num} className="px-3 py-2 border border-primary/20 rounded-sm bg-card hover:bg-card/80 transition-colors">
+               <div className="flex items-start justify-between gap-3 mb-1">
+                 <div className="flex-1">
+                   <div className="text-[10px] font-bold text-primary">Phase {phase.num} · {phase.name}</div>
+                   <div className="text-[8px] text-slate-400 mt-0.5">{phase.role}</div>
+                 </div>
+                 <span className="text-[7px] px-2 py-0.5 border border-primary/30 bg-primary/5 text-primary rounded font-bold uppercase whitespace-nowrap">{phase.status}</span>
+               </div>
+               <div className="text-[7px] text-blue-400 font-mono">{phase.key}</div>
+             </div>
+           ))}
+           <div className="mt-3 pt-3 border-t border-primary/20 space-y-1.5">
+             <div className="flex items-center justify-between px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-sm">
+               <span className="text-[9px] font-bold text-primary">Live Execution:</span>
+               <span className="text-[8px] px-2 py-0.5 border border-destructive/30 bg-destructive/5 text-destructive rounded font-bold uppercase">DISABLED</span>
+             </div>
+             <div className="flex items-center justify-between px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-sm">
+               <span className="text-[9px] font-bold text-primary">Dispatch:</span>
+               <span className="text-[8px] px-2 py-0.5 border border-destructive/30 bg-destructive/5 text-destructive rounded font-bold uppercase">DISABLED</span>
+             </div>
+             <div className="flex items-center justify-between px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-sm">
+               <span className="text-[9px] font-bold text-primary">Backend Mutation:</span>
+               <span className="text-[8px] px-2 py-0.5 border border-destructive/30 bg-destructive/5 text-destructive rounded font-bold uppercase">DISABLED</span>
+             </div>
+           </div>
+         </div>
+       </div>
+
+       {/* ── PHASE 43: Unified Command Contract Registry ── */}
+       <div className="border-2 border-primary/40 rounded-lg overflow-hidden">
         <button type="button" onClick={() => toggleGroup('phase43_registry')}
           className="w-full px-4 py-3 bg-primary/5 border-b-2 border-primary/40 hover:bg-primary/10 transition-colors text-left flex items-center justify-between">
           <div>
