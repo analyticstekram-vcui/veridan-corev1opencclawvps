@@ -247,8 +247,142 @@ export default function VeridanCoreSystemMap() {
               ))}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+
+          <div className="mt-8">
+            <div className="mb-4">
+              <h2 className="text-2xl font-mono font-bold text-slate-100">Operator Action Plan</h2>
+              <p className="mt-2 text-[13px] font-mono text-slate-300">
+                Summary of what operators can do now, what is blocked, what to build next, and what requires governance approval.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {/* Safe Now Card */}
+              <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+                <div className="px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
+                  <h3 className="text-[12px] font-mono font-bold uppercase text-emerald-400">Safe Now</h3>
+                </div>
+                <div className="p-4 space-y-2">
+                  <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                      <span>Review Control Room governance visibility</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                      <span>Access Knowledge Vault reference materials</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                      <span>Monitor OpenClaw health and status</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                      <span>Review audit and evidence baselines</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+                      <span>Plan trading, business, and credit workflows</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Blocked Until Later Card */}
+              <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+                <div className="px-4 py-3 bg-destructive/10 border-b border-destructive/20">
+                  <h3 className="text-[12px] font-mono font-bold uppercase text-destructive/80">Blocked Until Later</h3>
+                </div>
+                <div className="p-4 space-y-2">
+                  <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                      <span>Broker connections and live trading</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                      <span>TradingView webhook and chart integration</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                      <span>Credit bureau, bank, and payment connections</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                      <span>Command execution and automation dispatch</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-destructive/70 shrink-0 mt-0.5">✕</span>
+                      <span>Document upload and AI indexing</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Next Build Step Card */}
+              <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+                <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
+                  <h3 className="text-[12px] font-mono font-bold uppercase text-amber-400">Next Build Step</h3>
+                </div>
+                <div className="p-4 space-y-2">
+                  <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                      <span>Finalize governance review and baseline approval</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                      <span>Define safe integration paths for each module</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                      <span>Build read-only gateway bridges for monitoring</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                      <span>Establish operator approval workflows</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-amber-400 shrink-0 mt-0.5">→</span>
+                      <span>Test safety gates and execution blocks</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Requires Governance Approval Card */}
+              <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+                <div className="px-4 py-3 bg-cyan-500/10 border-b border-cyan-500/20">
+                  <h3 className="text-[12px] font-mono font-bold uppercase text-cyan-400">Requires Governance Approval</h3>
+                </div>
+                <div className="p-4 space-y-2">
+                  <div className="text-[10px] font-mono text-slate-300 space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                      <span>Enabling paper trading for any strategy</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                      <span>Connecting to live brokers and markets</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                      <span>Activating payment and banking integrations</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                      <span>Expanding command execution authority</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-cyan-400 shrink-0 mt-0.5">◇</span>
+                      <span>Enabling any document or credential storage</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+          </div>
+          </div>
+          );
+          }
