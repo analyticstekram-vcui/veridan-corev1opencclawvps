@@ -5,18 +5,18 @@ import { Home, Radio, TrendingUp, CreditCard, Briefcase, BookOpen, Layers, FileT
 export default function ModuleNav() {
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
-    { label: 'Control Room', path: '/control-room', icon: Radio },
-    { label: 'OpenClaw', path: '/openclaw-governance', icon: Cpu },
+    { label: 'Baselines', path: '/baseline-evidence', icon: Archive },
+    { label: 'Audit / Evidence', path: '/audit-evidence', icon: FileText },
     { label: 'Dry-Run Bridge', path: '/dry-run-bridge-planning', icon: Layers },
     { label: 'Backend Contract', path: '/dry-run-backend-contract', icon: FileText },
     { label: 'Approval Workflow', path: '/approval-workflow-planning', icon: FileText },
+    { label: 'OpenClaw Monitoring', path: '/openclaw-governance', icon: Cpu },
+    { label: 'System Map', path: '/system-map', icon: Layers },
     { label: 'Trading', path: '/trading-operations', icon: TrendingUp },
     { label: 'Credit', path: '/credit-public-side', icon: CreditCard },
     { label: 'Business', path: '/business-operations', icon: Briefcase },
     { label: 'Knowledge', path: '/knowledge-vault', icon: BookOpen },
-    { label: 'Audit / Evidence', path: '/audit-evidence', icon: FileText },
-    { label: 'Baselines', path: '/baseline-evidence', icon: Archive },
-    { label: 'System Map', path: '/system-map', icon: Layers },
+    { label: 'Control Room', path: '/control-room', icon: Radio },
   ];
 
   return (
