@@ -142,18 +142,11 @@ export default function OpenClawGovernanceDashboard() {
                   nextStep: 'Define read-only status check contracts and governance gates',
                 },
                 {
-                  name: 'Cloudflare Access Boundary',
-                  purpose: 'Cloudflare Access protection, token validation, and boundary enforcement design',
-                  safeNow: ['Boundary design', 'Token validation rules', 'Access control planning'],
-                  blocked: ['Live token validation', 'Automated boundary enforcement', 'Access escalation'],
-                  nextStep: 'Establish Cloudflare Access boundary contracts and validation rules',
-                },
-                {
-                  name: 'Environment Key Presence Checks',
-                  purpose: 'Backend environment variable presence verification design (no value exposure)',
-                  safeNow: ['Presence check design', 'Boolean result planning', 'Safety constraints'],
-                  blocked: ['Value exposure', 'Secret reading', 'Key material access'],
-                  nextStep: 'Define environment key presence check contracts and safety gates',
+                  name: 'Operator Approval Queue',
+                  purpose: 'Operator review queue and governance approval workflows for command proposals',
+                  safeNow: ['Queue design', 'Approval criteria', 'Review workflow planning'],
+                  blocked: ['Auto-approval', 'Automatic processing', 'Execution without review'],
+                  nextStep: 'Finalize operator approval queue structure and governance gates',
                 },
                 {
                   name: 'Evidence Chain Review',
@@ -163,25 +156,32 @@ export default function OpenClawGovernanceDashboard() {
                   nextStep: 'Design evidence chain architecture and retention policies',
                 },
                 {
-                  name: 'Command Proposal Governance',
-                  purpose: 'Command proposal workflow, approval gates, and operator review design',
-                  safeNow: ['Proposal workflow design', 'Approval criteria', 'Review gates planning'],
-                  blocked: ['Auto-approval', 'Command execution', 'Direct gateway calls'],
-                  nextStep: 'Finalize command proposal governance contracts and approval workflows',
+                  name: 'Browser Automation Planning',
+                  purpose: 'Safe browser read-only operations and automated web navigation planning',
+                  safeNow: ['Browser planning', 'Safe read design', 'Navigation structure'],
+                  blocked: ['Live browser automation', 'Form submission', 'Data entry automation'],
+                  nextStep: 'Define browser automation safety contracts and governance gates',
                 },
                 {
-                  name: 'Bridge Preview / Dry-Run Planning',
+                  name: 'MCP / Tool Governance Planning',
+                  purpose: 'Model Context Protocol and approved tool registry governance design',
+                  safeNow: ['MCP planning', 'Tool registry design', 'Approval criteria'],
+                  blocked: ['MCP execution', 'Tool invocation', 'Automatic routing'],
+                  nextStep: 'Complete MCP tool governance contracts and approval workflows',
+                },
+                {
+                  name: 'Dry-Run Bridge Planning',
                   purpose: 'Bridge preview and dry-run execution design for safe pre-execution validation',
                   safeNow: ['Preview design', 'Dry-run planning', 'Validation structure'],
                   blocked: ['Live bridge execution', 'Real command submission', 'Actual automation'],
-                  nextStep: 'Complete bridge preview and dry-run contracts before activation',
+                  nextStep: 'Complete dry-run bridge contracts before activation',
                 },
                 {
-                  name: 'Future Execution Activation',
-                  purpose: 'Reserved for execution capabilities when all governance gates are approved',
+                  name: 'Future Execution Control',
+                  purpose: 'Reserved for live execution capabilities when all governance gates are approved',
                   safeNow: ['Execution planning', 'Activation design', 'Safety framework'],
                   blocked: ['Live command execution', 'Browser automation', 'Real gateway calls'],
-                  nextStep: 'Define execution activation requirements and governance approval',
+                  nextStep: 'Define execution control activation requirements and governance approval',
                 },
               ].map((category) => (
                 <BaselineCard
@@ -209,21 +209,21 @@ export default function OpenClawGovernanceDashboard() {
             </div>
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               {[
-                { name: 'Gateway Health Monitoring', mode: 'UI_ONLY' },
-                { name: 'Read-Only Status Checks', mode: 'UI_ONLY' },
-                { name: 'Cloudflare Access Boundary', mode: 'UI_ONLY' },
-                { name: 'Environment Key Presence Checks', mode: 'UI_ONLY' },
-                { name: 'Evidence Chain Review', mode: 'UI_ONLY' },
-                { name: 'Command Proposal Governance', mode: 'UI_ONLY' },
-                { name: 'Bridge Preview / Dry-Run Planning', mode: 'UI_ONLY' },
-                { name: 'Future Execution Activation', mode: 'FUTURE_PHASE' },
+                { name: 'Gateway Health Monitoring', readiness: 'READY' },
+                { name: 'Read-Only Status Checks', readiness: 'READY' },
+                { name: 'Operator Approval Queue', readiness: 'PARTIAL' },
+                { name: 'Evidence Chain Review', readiness: 'PARTIAL' },
+                { name: 'Browser Automation Planning', readiness: 'BLOCKED' },
+                { name: 'MCP / Tool Governance Planning', readiness: 'BLOCKED' },
+                { name: 'Dry-Run Bridge Planning', readiness: 'PARTIAL' },
+                { name: 'Future Execution Control', readiness: 'BLOCKED' },
               ].map((item) => (
                 <BaselineCard
                   key={`matrix-${item.name}`}
                   title={item.name}
                   rows={[
-                    { label: 'Current Mode', value: item.mode, valueClassName: 'text-amber-500' },
-                    { label: 'Readiness', value: item.mode === 'FUTURE_PHASE' ? 'BLOCKED' : 'PARTIAL', valueClassName: item.mode === 'FUTURE_PHASE' ? 'text-destructive' : 'text-amber-400' },
+                    { label: 'Current Mode', value: item.readiness === 'READY' ? 'READ_ONLY' : 'UI_ONLY', valueClassName: item.readiness === 'READY' ? 'text-emerald-400' : 'text-amber-500' },
+                    { label: 'Readiness', value: item.readiness, valueClassName: item.readiness === 'READY' ? 'text-emerald-400' : item.readiness === 'BLOCKED' ? 'text-destructive' : 'text-amber-400' },
                   ]}
                   disclaimer="UI-only readiness planning; no execution or backend logic enabled."
                 />
@@ -241,21 +241,21 @@ export default function OpenClawGovernanceDashboard() {
             </div>
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               {[
-                { name: 'Gateway Health Monitoring', readiness: 'PARTIAL', gate: 'Complete gateway health monitoring architecture before polling activation' },
-                { name: 'Read-Only Status Checks', readiness: 'PARTIAL', gate: 'Define read-only status check contracts and governance gates' },
-                { name: 'Cloudflare Access Boundary', readiness: 'PARTIAL', gate: 'Establish Cloudflare Access boundary enforcement before activation' },
-                { name: 'Environment Key Presence Checks', readiness: 'PARTIAL', gate: 'Define environment key presence checks with safety constraints' },
+                { name: 'Gateway Health Monitoring', readiness: 'READY', gate: 'Gateway health monitoring ready for implementation' },
+                { name: 'Read-Only Status Checks', readiness: 'READY', gate: 'Read-only status checks ready for implementation' },
+                { name: 'Operator Approval Queue', readiness: 'PARTIAL', gate: 'Finalize operator approval queue structure before activation' },
                 { name: 'Evidence Chain Review', readiness: 'PARTIAL', gate: 'Design evidence chain architecture and retention policies' },
-                { name: 'Command Proposal Governance', readiness: 'PARTIAL', gate: 'Finalize command proposal governance contracts and approval workflows' },
-                { name: 'Bridge Preview / Dry-Run Planning', readiness: 'PARTIAL', gate: 'Complete bridge preview and dry-run contracts before execution' },
-                { name: 'Future Execution Activation', readiness: 'BLOCKED', gate: 'Define execution activation requirements and governance approval before activation' },
+                { name: 'Browser Automation Planning', readiness: 'BLOCKED', gate: 'Define browser automation safety constraints before activation' },
+                { name: 'MCP / Tool Governance Planning', readiness: 'BLOCKED', gate: 'Complete MCP tool governance contracts before activation' },
+                { name: 'Dry-Run Bridge Planning', readiness: 'PARTIAL', gate: 'Complete dry-run bridge contracts before execution' },
+                { name: 'Future Execution Control', readiness: 'BLOCKED', gate: 'Define execution control activation requirements and governance approval' },
               ].map((item) => (
                 <BaselineCard
                   key={`gate-${item.name}`}
                   title={item.name}
                   rows={[
-                    { label: 'Current Mode', value: 'UI_ONLY', valueClassName: 'text-amber-500' },
-                    { label: 'Readiness', value: item.readiness, valueClassName: item.readiness === 'BLOCKED' ? 'text-destructive' : 'text-amber-400' },
+                    { label: 'Current Mode', value: item.readiness === 'READY' ? 'READ_ONLY' : 'UI_ONLY', valueClassName: item.readiness === 'READY' ? 'text-emerald-400' : 'text-amber-500' },
+                    { label: 'Readiness', value: item.readiness, valueClassName: item.readiness === 'READY' ? 'text-emerald-400' : item.readiness === 'BLOCKED' ? 'text-destructive' : 'text-amber-400' },
                     { label: 'Blocking Gate', value: item.gate, valueClassName: 'text-slate-300' },
                   ]}
                   disclaimer="UI-only gate guidance; no backend or execution logic is enabled."
