@@ -104,6 +104,7 @@ import OpenClawSystemStatusCard from './OpenClawSystemStatusCard.jsx';
 import ManualMonitoringHistoricalStatusDashboard from './ManualMonitoringHistoricalStatusDashboard.jsx';
 import RegenerateEvidenceChainButton from './RegenerateEvidenceChainButton.jsx';
 import OpenClawUnifiedCommandContractRegistry from './OpenClawUnifiedCommandContractRegistry.jsx';
+import OpenClawProposalRegistryValidationBinding from './OpenClawProposalRegistryValidationBinding.jsx';
 
 const ENDPOINT = 'https://openclaw.veridancore.com';
 
@@ -770,6 +771,26 @@ export default function OpenClawGatewayConnectorPanel() {
                {expandedGroup === 'phase43_registry' && (
                  <div className="p-4">
                    <OpenClawUnifiedCommandContractRegistry />
+                 </div>
+               )}
+             </div>
+
+             {/* ── COLLAPSIBLE SECTION: Phase 44 — Proposal Registry Validation Binding ── */}
+             <div className="border-2 border-amber-500/30 rounded-lg overflow-hidden">
+               <button
+                 type="button"
+                 onClick={() => toggleGroup('phase44_binding')}
+                 className="w-full px-4 py-3 bg-amber-500/5 border-b-2 border-amber-500/30 hover:bg-amber-500/10 transition-colors text-left flex items-center justify-between"
+               >
+                 <div>
+                   <div className="text-[11px] uppercase tracking-widest font-bold text-amber-400">PHASE 44: Proposal Registry Validation Binding</div>
+                   <div className="text-[9px] text-amber-400/70 mt-0.5">Validates proposals against Phase 43 registry. No execution · No backend calls.</div>
+                 </div>
+                 <span className={`text-[10px] font-bold text-amber-400/60 transition-transform ${expandedGroup === 'phase44_binding' ? 'rotate-90' : ''}`}>▶</span>
+               </button>
+               {expandedGroup === 'phase44_binding' && (
+                 <div className="p-4">
+                   <OpenClawProposalRegistryValidationBinding />
                  </div>
                )}
              </div>
