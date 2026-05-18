@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, Lock, CheckCircle2, Home, AlertCircle } from 'lucide-react';
+import { TrendingUp, Lock, Home, AlertCircle } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
 
