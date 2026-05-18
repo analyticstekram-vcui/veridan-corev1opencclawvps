@@ -26,6 +26,7 @@ import DryRunBackendContractPlanning from './components/governance/DryRunBackend
 import ApprovalWorkflowPlanning from './components/governance/ApprovalWorkflowPlanning';
 import TradingCommandCenter from './pages/TradingCommandCenter';
 import PublicCreditCommandCenter from './pages/PublicCreditCommandCenter';
+import BusinessFormationCommandCenter from './pages/BusinessFormationCommandCenter';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -75,6 +76,7 @@ const AuthenticatedApp = () => {
       <Route path="/approval-workflow-planning" element={<ApprovalWorkflowPlanning />} />
       <Route path="/trading-command-center" element={<TradingCommandCenter />} />
       <Route path="/public-credit-command-center" element={<PublicCreditCommandCenter />} />
+      <Route path="/business-formation-command-center" element={<BusinessFormationCommandCenter />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

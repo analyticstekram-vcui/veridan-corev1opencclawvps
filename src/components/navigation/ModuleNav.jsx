@@ -15,6 +15,7 @@ export default function ModuleNav() {
     { label: 'Trading CMD', path: '/trading-command-center', icon: TrendingUp },
     { label: 'Trading', path: '/trading-operations', icon: TrendingUp },
     { label: 'Public Credit CMD', path: '/public-credit-command-center', icon: CreditCard },
+    { label: 'Biz Formation CMD', path: '/business-formation-command-center', icon: Briefcase },
     { label: 'Credit', path: '/credit-public-side', icon: CreditCard },
     { label: 'Business', path: '/business-operations', icon: Briefcase },
     { label: 'Knowledge', path: '/knowledge-vault', icon: BookOpen },
