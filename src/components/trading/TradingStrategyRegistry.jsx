@@ -1,21 +1,55 @@
 /**
  * TradingStrategyRegistry — Planning-only strategy tracker.
- * localStorage only. No API. No execution.
+ * localStorage only. No API. No broker calls. No execution.
  */
 
 import React, { useState, useEffect } from 'react';
+import { Download } from 'lucide-react';
 
 const STORAGE_KEY = 'veridanTradingStrategyRegistry';
+const MAX_RECORDS = 100;
 
-const STRATEGY_TYPES = ['Momentum', 'Mean Reversion', 'Breakout', 'Scalping', 'Swing', 'Arbitrage', 'Market Making', 'Other'];
-const STATUS_OPTIONS = ['DRAFT', 'UNDER_REVIEW', 'APPROVED_FOR_PAPER', 'BLOCKED'];
-const RISK_TIERS = ['LOW', 'MEDIUM', 'HIGH'];
+const MARKET_TYPES = ['Futures', 'Crypto', 'Stocks', 'Forex'];
+const INSTRUMENTS = ['MNQ', 'NQ', 'ES', 'MES', 'BTC', 'ETH', 'Custom'];
+const STRATEGY_TYPES = [
+  'EMA 2/25/200',
+  'MACD Zero-Line Cross',
+  'RSI Overbought/Oversold',
+  'Liquidity Delta',
+  'Support/Resistance Zones',
+  'Smart Trail / Trend Filter',
+  'Custom',
+];
+const STRATEGY_STATUSES = ['IDEA', 'TESTING', 'PAPER_READY', 'DISABLED'];
 
 const STATUS_COLORS = {
-  DRAFT: 'text-slate-400 border-slate-500/30 bg-slate-500/5',
-  UNDER_REVIEW: 'text-amber-400 border-amber-500/30 bg-amber-500/5',
-  APPROVED_FOR_PAPER: 'text-primary border-primary/30 bg-primary/5',
-  BLOCKED: 'text-destructive border-destructive/30 bg-destructive/5',
+  IDEA:        'text-slate-400 border-slate-500/30 bg-slate-500/5',
+  TESTING:     'text-amber-400 border-amber-500/30 bg-amber-500/5',
+  PAPER_READY: 'text-primary border-primary/30 bg-primary/5',
+  DISABLED:    'text-destructive border-destructive/30 bg-destructive/5',
+};
+
+const SAFETY_CLAIMS = [
+  'Strategy registry only',
+  'No live trading',
+  'No broker API calls',
+  'No order placement',
+  'No execution',
+  'Browser-only export',
+];
+
+const BLANK = {
+  strategyName: '',
+  marketType: 'Futures',
+  instrument: 'MNQ',
+  timeframe: '',
+  strategyType: 'EMA 2/25/200',
+  entryRules: '',
+  exitRules: '',
+  riskModel: '',
+  sessionFilter: '',
+  strategyStatus: 'IDEA',
+  notes: '',
 };
 
 function load() {
@@ -25,8 +59,6 @@ function save(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 }
 
-const BLANK = { name: '', type: 'Momentum', description: '', status: 'DRAFT', riskTier: 'LOW', instruments: '', notes: '' };
-
 export default function TradingStrategyRegistry() {
   const [strategies, setStrategies] = useState([]);
   const [form, setForm] = useState(BLANK);
@@ -34,9 +66,10 @@ export default function TradingStrategyRegistry() {
 
   useEffect(() => { setStrategies(load()); }, []);
 
-  const handleAdd = () => {
-    if (!form.name.trim()) return;
-    const updated = [...strategies, { ...form, id: Date.now().toString(), createdAt: new Date().toISOString() }];
+  const handleSave = () => {
+    if (!form.strategyName.trim()) return;
+    const record = { ...form, id: Date.now().toString(), createdAt: new Date().toISOString() };
+    const updated = [record, ...strategies].slice(0, MAX_RECORDS);
     setStrategies(updated);
     save(updated);
     setForm(BLANK);
@@ -49,77 +82,162 @@ export default function TradingStrategyRegistry() {
     save(updated);
   };
 
-  const handleStatusChange = (id, status) => {
-    const updated = strategies.map(s => s.id === id ? { ...s, status } : s);
-    setStrategies(updated);
-    save(updated);
+  const handleExport = () => {
+    const exportPackage = {
+      generatedAt: new Date().toISOString(),
+      snapshotType: 'VERIDAN_TRADING_STRATEGY_REGISTRY',
+      strategies,
+      safetyClaims: SAFETY_CLAIMS,
+    };
+    const blob = new Blob([JSON.stringify(exportPackage, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `veridan-strategy-registry-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
+  const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 font-mono">
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[11px] font-bold uppercase text-primary">Strategy Registry</div>
-          <div className="text-[8px] text-slate-500 mt-0.5">Plan and track trading strategies · No execution · Planning only</div>
+          <div className="text-[8px] text-slate-500 mt-0.5">
+            Plan and track trading strategies · localStorage only · No execution
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm(!showForm)}
-          className="px-3 py-1.5 bg-primary/10 border border-primary/30 text-primary text-[9px] font-bold hover:bg-primary/20 transition-colors rounded-sm"
-        >
-          + Add Strategy
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/30 border border-border text-slate-300 text-[9px] font-bold hover:bg-secondary/50 transition-colors rounded-sm"
+          >
+            <Download className="w-3 h-3" />
+            Export Strategy Registry
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowForm(v => !v)}
+            className="px-3 py-1.5 bg-primary/10 border border-primary/30 text-primary text-[9px] font-bold hover:bg-primary/20 transition-colors rounded-sm"
+          >
+            {showForm ? 'Cancel' : '+ New Strategy'}
+          </button>
+        </div>
       </div>
 
+      {/* Safety notice */}
+      <div className="px-3 py-2 bg-amber-500/5 border border-amber-500/20 rounded-sm text-[8px] text-amber-400/80">
+        Planning only · No live trading · No broker API calls · No order placement · No execution
+      </div>
+
+      {/* Creation Form */}
       {showForm && (
         <div className="bg-card border border-border rounded-sm p-4 space-y-3">
-          <div className="text-[9px] font-bold uppercase text-slate-300 mb-2">New Strategy</div>
+          <div className="text-[9px] font-bold uppercase text-slate-300 mb-1">New Strategy</div>
+
+          {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-[8px] text-slate-400 block mb-1">Name *</label>
+              <label className="text-[8px] text-slate-400 block mb-1">Strategy Name *</label>
               <input
                 className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none focus:border-primary/50"
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="Strategy name"
+                value={form.strategyName}
+                onChange={e => set('strategyName', e.target.value)}
+                placeholder="e.g. EMA Cross Morning Fade"
               />
             </div>
             <div>
-              <label className="text-[8px] text-slate-400 block mb-1">Type</label>
+              <label className="text-[8px] text-slate-400 block mb-1">Market Type</label>
               <select
                 className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none"
-                value={form.type}
-                onChange={e => setForm({ ...form, type: e.target.value })}
+                value={form.marketType}
+                onChange={e => set('marketType', e.target.value)}
+              >
+                {MARKET_TYPES.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[8px] text-slate-400 block mb-1">Instrument</label>
+              <select
+                className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none"
+                value={form.instrument}
+                onChange={e => set('instrument', e.target.value)}
+              >
+                {INSTRUMENTS.map(i => <option key={i}>{i}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[8px] text-slate-400 block mb-1">Timeframe</label>
+              <input
+                className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none focus:border-primary/50"
+                value={form.timeframe}
+                onChange={e => set('timeframe', e.target.value)}
+                placeholder="e.g. 1m, 5m, 15m, 1H"
+              />
+            </div>
+            <div>
+              <label className="text-[8px] text-slate-400 block mb-1">Strategy Type</label>
+              <select
+                className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none"
+                value={form.strategyType}
+                onChange={e => set('strategyType', e.target.value)}
               >
                 {STRATEGY_TYPES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-[8px] text-slate-400 block mb-1">Risk Tier</label>
+              <label className="text-[8px] text-slate-400 block mb-1">Strategy Status</label>
               <select
                 className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none"
-                value={form.riskTier}
-                onChange={e => setForm({ ...form, riskTier: e.target.value })}
+                value={form.strategyStatus}
+                onChange={e => set('strategyStatus', e.target.value)}
               >
-                {RISK_TIERS.map(r => <option key={r}>{r}</option>)}
+                {STRATEGY_STATUSES.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
+          </div>
+
+          {/* Row 2 — text areas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-[8px] text-slate-400 block mb-1">Instruments (comma-separated)</label>
-              <input
-                className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none focus:border-primary/50"
-                value={form.instruments}
-                onChange={e => setForm({ ...form, instruments: e.target.value })}
-                placeholder="e.g. ES, NQ, SPY"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-[8px] text-slate-400 block mb-1">Description</label>
+              <label className="text-[8px] text-slate-400 block mb-1">Entry Rules</label>
               <textarea
                 className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none focus:border-primary/50 h-16 resize-none"
-                value={form.description}
-                onChange={e => setForm({ ...form, description: e.target.value })}
-                placeholder="Strategy description and logic"
+                value={form.entryRules}
+                onChange={e => set('entryRules', e.target.value)}
+                placeholder="Describe entry conditions"
+              />
+            </div>
+            <div>
+              <label className="text-[8px] text-slate-400 block mb-1">Exit Rules</label>
+              <textarea
+                className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none focus:border-primary/50 h-16 resize-none"
+                value={form.exitRules}
+                onChange={e => set('exitRules', e.target.value)}
+                placeholder="Describe exit conditions"
+              />
+            </div>
+            <div>
+              <label className="text-[8px] text-slate-400 block mb-1">Risk Model</label>
+              <input
+                className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none focus:border-primary/50"
+                value={form.riskModel}
+                onChange={e => set('riskModel', e.target.value)}
+                placeholder="e.g. 1% per trade, 2R target"
+              />
+            </div>
+            <div>
+              <label className="text-[8px] text-slate-400 block mb-1">Session Filter</label>
+              <input
+                className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none focus:border-primary/50"
+                value={form.sessionFilter}
+                onChange={e => set('sessionFilter', e.target.value)}
+                placeholder="e.g. NY Open 9:30–11am EST only"
               />
             </div>
             <div className="md:col-span-2">
@@ -127,73 +245,88 @@ export default function TradingStrategyRegistry() {
               <input
                 className="w-full bg-secondary/30 border border-border text-[9px] text-foreground px-2 py-1.5 rounded-sm outline-none focus:border-primary/50"
                 value={form.notes}
-                onChange={e => setForm({ ...form, notes: e.target.value })}
-                placeholder="Operator notes"
+                onChange={e => set('notes', e.target.value)}
+                placeholder="Operator notes, backtest ideas, etc."
               />
             </div>
           </div>
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              onClick={handleAdd}
-              className="px-4 py-1.5 bg-primary/15 border border-primary/40 text-primary text-[9px] font-bold hover:bg-primary/25 transition-colors rounded-sm"
-            >
-              Save Strategy
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowForm(false); setForm(BLANK); }}
-              className="px-4 py-1.5 bg-secondary/30 border border-border text-slate-400 text-[9px] hover:bg-secondary/50 transition-colors rounded-sm"
-            >
-              Cancel
-            </button>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!form.strategyName.trim()}
+            className="px-5 py-2 bg-primary/15 border border-primary/40 text-primary text-[9px] font-bold hover:bg-primary/25 transition-colors rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Save Strategy
+          </button>
+        </div>
+      )}
+
+      {/* Strategy Table */}
+      {strategies.length === 0 ? (
+        <div className="text-center py-10 text-[9px] text-slate-500 border border-border/40 rounded-sm bg-card">
+          No strategies saved yet. Click "+ New Strategy" to add one.
+        </div>
+      ) : (
+        <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+          <div className="px-4 py-2 bg-secondary/20 border-b border-border/40 flex items-center justify-between">
+            <div className="text-[9px] font-bold uppercase text-slate-300">Saved Strategies</div>
+            <div className="text-[8px] text-slate-500">{strategies.length} / {MAX_RECORDS} records</div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[8px]">
+              <thead>
+                <tr className="border-b border-border/40 bg-secondary/10">
+                  {['Created', 'Name', 'Market', 'Instrument', 'Timeframe', 'Type', 'Status', ''].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-slate-500 font-bold uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/20">
+                {strategies.map(s => (
+                  <tr key={s.id} className="hover:bg-secondary/10 transition-colors">
+                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap font-mono">
+                      {new Date(s.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 py-2 text-slate-200 font-bold whitespace-nowrap max-w-[140px] truncate">{s.strategyName}</td>
+                    <td className="px-3 py-2 text-slate-400 whitespace-nowrap">{s.marketType}</td>
+                    <td className="px-3 py-2 text-primary/80 font-mono whitespace-nowrap">{s.instrument}</td>
+                    <td className="px-3 py-2 text-slate-400 whitespace-nowrap">{s.timeframe || '—'}</td>
+                    <td className="px-3 py-2 text-slate-400 whitespace-nowrap max-w-[120px] truncate">{s.strategyType}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={`px-1.5 py-0.5 border rounded text-[7px] font-bold ${STATUS_COLORS[s.strategyStatus] || ''}`}>
+                        {s.strategyStatus}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(s.id)}
+                        className="text-[7px] text-destructive/50 hover:text-destructive transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {strategies.length === 0 ? (
-        <div className="text-center py-10 text-[9px] text-slate-500 border border-border/40 rounded-sm bg-card">
-          No strategies defined yet. Add one above.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {strategies.map(s => (
-            <div key={s.id} className="bg-card border border-border/60 rounded-sm p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-bold text-foreground">{s.name}</span>
-                    <span className="text-[7px] px-1.5 py-0.5 bg-secondary/30 border border-border/40 text-slate-400 rounded">{s.type}</span>
-                    <span className={`text-[7px] px-1.5 py-0.5 border rounded font-bold ${STATUS_COLORS[s.status] || ''}`}>{s.status}</span>
-                    <span className={`text-[7px] px-1.5 py-0.5 border rounded font-bold ${s.riskTier === 'HIGH' ? 'text-destructive border-destructive/30 bg-destructive/5' : s.riskTier === 'MEDIUM' ? 'text-amber-400 border-amber-500/30 bg-amber-500/5' : 'text-primary border-primary/30 bg-primary/5'}`}>
-                      {s.riskTier}
-                    </span>
-                  </div>
-                  {s.instruments && <div className="text-[8px] text-slate-500 mt-1">Instruments: {s.instruments}</div>}
-                  {s.description && <div className="text-[8px] text-slate-400 mt-1 leading-relaxed">{s.description}</div>}
-                  {s.notes && <div className="text-[8px] text-slate-500 mt-1 italic">{s.notes}</div>}
-                </div>
-                <div className="flex flex-col items-end gap-1.5 shrink-0">
-                  <select
-                    className="bg-secondary/30 border border-border text-[8px] text-foreground px-1.5 py-1 rounded-sm outline-none"
-                    value={s.status}
-                    onChange={e => handleStatusChange(s.id, e.target.value)}
-                  >
-                    {STATUS_OPTIONS.map(o => <option key={o}>{o}</option>)}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(s.id)}
-                    className="text-[7px] text-destructive/60 hover:text-destructive transition-colors"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            </div>
+      {/* Safety Claims Footer */}
+      <div className="px-3 py-2.5 bg-primary/5 border border-primary/15 rounded-sm">
+        <div className="text-[8px] font-bold uppercase text-primary/70 mb-1.5">Safety Claims</div>
+        <div className="flex flex-wrap gap-1">
+          {SAFETY_CLAIMS.map(claim => (
+            <span key={claim} className="px-1.5 py-0.5 bg-primary/5 border border-primary/15 rounded text-[7px] text-primary/70 font-mono">
+              {claim}
+            </span>
           ))}
         </div>
-      )}
+      </div>
+
     </div>
   );
 }
