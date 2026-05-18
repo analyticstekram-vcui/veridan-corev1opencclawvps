@@ -1,0 +1,76 @@
+{
+  "baselineId": "READ_ONLY_MONITORING_HARDENING_BASELINE",
+  "timestamp": "2026-05-18T00:00:00Z",
+  "status": "APPROVED",
+  "auditType": "Read-Only Monitoring Hardening & Safety Boundary Verification",
+  "scope": [
+    "OpenClawControl monitoring interactions",
+    "OpenClawGatewayHealthPanel health checks",
+    "ControlRoom Gateway Health tab",
+    "Evidence/archive records"
+  ],
+  "allowedInteractions": {
+    "openclawControlAllowed": "openclawStatus only",
+    "openclawStatusPurpose": "Read-only health/status polling every 15 seconds",
+    "openclawStatusVersionCapabilitiesPurpose": "Manual button-triggered status/version/capabilities check",
+    "openclawHealthCheckPurpose": "Manual button-triggered gateway health endpoint check"
+  },
+  "gatewayHealthChecks": {
+    "triggerMechanism": "Manual button-triggered only",
+    "autoPolling": false,
+    "backgroundMonitoring": false,
+    "allowedCalls": [
+      "openclawHealthCheck (GET /health)",
+      "openclawStatusVersionCapabilities (GET /status, /version, /capabilities)"
+    ]
+  },
+  "secretHandling": {
+    "displayedValues": "Env presence booleans only (GATEWAY_URL, SERVICE_TOKEN, CF_CLIENT_ID, CF_CLIENT_SECRET)",
+    "secretValuesExposed": false,
+    "credentialValuesDisplayed": false,
+    "note": "Backend returns boolean flags only, never returns actual secret values"
+  },
+  "prohibitedCallsAbsent": {
+    "openclawSafeBridge": true,
+    "commandExecution": true,
+    "browserAutomation": true,
+    "mpcExecution": true,
+    "tradingviewTargets": true,
+    "brokerConnections": true,
+    "bankIntegrations": true,
+    "creditBureauConnections": true,
+    "paymentProcessing": true,
+    "credentialDisplay": true,
+    "uploadLogic": true,
+    "aiIndexing": true
+  },
+  "componentVerification": {
+    "openclawGatewayHealthPanel": {
+      "location": "components/terminal/OpenClawGatewayHealthPanel",
+      "allowedCalls": ["openclawHealthCheck", "openclawStatusVersionCapabilities"],
+      "displaySecrets": false,
+      "footer": "READ_ONLY · GET only · No execution · No trading · No credentials · No money movement",
+      "status": "VERIFIED"
+    },
+    "controlRoomGatewayTab": {
+      "location": "pages/ControlRoom (lines 1256-1298)",
+      "explanation": "Gateway Health — Read-Only Status Check",
+      "manualTrigger": true,
+      "safetyChips": ["READ_ONLY", "MANUAL_CHECK_ONLY", "NO_EXECUTION", "NO_CREDENTIAL_VALUES"],
+      "status": "VERIFIED"
+    },
+    "openclawControlStatusTab": {
+      "location": "pages/OpenClawControl (lines 540-695)",
+      "allowedCalls": ["openclawStatus"],
+      "pollingInterval": "15 seconds",
+      "pollingPurpose": "Read-only status monitoring",
+      "secretsDisplayed": false,
+      "status": "VERIFIED"
+    }
+  },
+  "readinessStatus": "READY_FOR_READ_ONLY_STATUS_MONITORING",
+  "approvalNote": "All read-only monitoring components are properly scoped, clearly labeled, and free of execution logic or prohibited integrations. 15-second polling behavior is documented as read-only status monitoring and part of approved baseline.",
+  "evidenceRecord": "docs/VERIDAN_CORE_MODULE_CONSISTENCY_AUDIT_2026_05_18.md",
+  "lockedBy": "Base44 AI Assistant",
+  "modifiable": false
+}
