@@ -200,18 +200,35 @@ export default function ObsidianVpsBridgePanel() {
     setVpsSending(true);
     setVpsError(null);
     setVpsResponse(null);
-    const res = await base44.functions.invoke('obsidianVpsDryRunBridge', {
-      folder: dryRunResult.folder,
-      title: dryRunResult.title,
-      markdownContent: `${dryRunResult.frontmatter}\n\n${content}`,
-      evidenceId: dryRunResult.evidenceId,
-      frontmatter: dryRunResult.frontmatter,
-    });
-    setVpsSending(false);
-    if (res.data?.ok) {
-      setVpsResponse(res.data);
-    } else {
-      setVpsError(res.data?.error || 'VPS bridge returned an unexpected response.');
+    try {
+      const res = await base44.functions.invoke('obsidianVpsDryRunBridge', {
+        folder: dryRunResult.folder,
+        title: dryRunResult.title,
+        markdownContent: `${dryRunResult.frontmatter}\n\n${content}`,
+        evidenceId: dryRunResult.evidenceId,
+        frontmatter: dryRunResult.frontmatter,
+      });
+      if (res.data?.ok) {
+        setVpsResponse(res.data);
+      } else {
+        const errMsg = res.data?.error || res.data?.details?.error || 'VPS bridge returned an unexpected response.';
+        setVpsError(`Bridge error: ${errMsg}`);
+      }
+    } catch (err) {
+      // Axios throws on 4xx/5xx — extract the backend error message if available
+      const backendMsg = err?.response?.data?.error || err?.response?.data?.details?.error;
+      const httpStatus = err?.response?.status;
+      if (backendMsg) {
+        setVpsError(`[HTTP ${httpStatus}] ${backendMsg}`);
+      } else if (httpStatus === 502) {
+        setVpsError('[502] VPS bridge is unreachable — the VPS endpoint did not respond. Check that VERIDAN_BRIDGE_URL is correct and the VPS bridge service is running.');
+      } else if (httpStatus === 503) {
+        setVpsError('[503] Bridge not configured — VERIDAN_BRIDGE_URL or VERIDAN_BRIDGE_TOKEN secret is missing.');
+      } else {
+        setVpsError(err?.message || 'Unexpected error calling VPS bridge.');
+      }
+    } finally {
+      setVpsSending(false);
     }
   }, [dryRunResult, content]);
 
