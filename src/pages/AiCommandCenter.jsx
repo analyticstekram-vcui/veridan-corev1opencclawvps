@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import ModuleNav from '../components/navigation/ModuleNav';
+import AiCommandCenterModuleStatusSummary from '../components/ai-command-center/AiCommandCenterModuleStatusSummary';
 import SystemBriefPanel from '../components/ai-command-center/SystemBriefPanel';
 import ProposedActionsPanel from '../components/ai-command-center/ProposedActionsPanel';
 import CodexTasksPanel from '../components/ai-command-center/CodexTasksPanel';
@@ -19,9 +20,6 @@ const TABS = [
   { id: 'openclaw', label: 'OpenClaw Tasks' },
   { id: 'review',   label: 'Operator Review' },
 ];
-
-const WHAT_THIS_MEANS =
-  'The AI Command Center can organize briefs, proposed actions, Codex task requests, OpenClaw task plans, and operator review records. It cannot call AI runtimes, execute Codex tasks, dispatch OpenClaw commands, automate browsers, mutate external systems, or handle credentials.';
 
 export default function AiCommandCenter() {
   const [activeTab, setActiveTab] = useState('brief');
@@ -53,41 +51,9 @@ export default function AiCommandCenter() {
         </div>
       </div>
 
-      {/* AI Command Center Current Status */}
-      <div className="border-b border-border bg-card px-6 py-4 space-y-4">
-        <div>
-          <div className="text-[11px] font-bold uppercase text-primary">AI Command Center Current Status</div>
-          <div className="text-[8px] text-slate-500 mt-0.5">Planning-only status · No AI runtime · No Codex execution · No credential storage</div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {[
-            { label: 'Module Mode',                  value: 'PLANNING_ONLY',  color: 'text-amber-400' },
-            { label: 'AI Runtime Calls',             value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'OpenAI API Calls',             value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Codex Execution',              value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'OpenClaw Dispatch',            value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Browser Automation',           value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'External API Mutation',        value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Credential Handling',          value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Backend Mutation',             value: 'DISABLED',       color: 'text-destructive' },
-          ].map(item => (
-            <div key={item.label}
-              className="flex items-center justify-between px-4 py-2.5 bg-secondary/20 border border-border/30 rounded-sm">
-              <span className="text-[9px] text-slate-400">{item.label}:</span>
-              <span className={`text-[8px] font-bold font-mono ${item.color}`}>{item.value}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="px-4 py-3 bg-primary/5 border border-primary/20 rounded-sm">
-          <div className="text-[9px] font-bold uppercase text-primary mb-2">What This Means</div>
-          <p className="text-[8px] text-slate-300 leading-relaxed">{WHAT_THIS_MEANS}</p>
-        </div>
-
-        <div className="px-3 py-2 bg-amber-500/5 border border-amber-500/20 rounded-sm text-[8px] text-amber-400/80">
-          Planning only · No AI runtime calls · No Codex execution · No OpenClaw dispatch · No credential storage · No backend mutation
-        </div>
+      {/* AI Command Center Module Status Summary */}
+      <div className="border-b border-border bg-card px-6 py-4">
+        <AiCommandCenterModuleStatusSummary />
       </div>
 
       {/* Tabs */}
