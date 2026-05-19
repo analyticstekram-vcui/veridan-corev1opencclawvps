@@ -5,6 +5,7 @@ import { Home, Radio, TrendingUp, CreditCard, Briefcase, BookOpen, Layers, FileT
 export default function ModuleNav() {
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
+    { label: 'Global Command Dashboard', path: '/global-command-dashboard', icon: Cpu },
     { label: 'AI Command Center', path: '/ai-command-center', icon: Cpu },
     { label: 'Baselines', path: '/baseline-evidence', icon: Archive },
     { label: 'Audit / Evidence', path: '/audit-evidence', icon: FileText },

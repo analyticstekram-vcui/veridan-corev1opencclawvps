@@ -6,6 +6,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Dashboard from './pages/Dashboard';
+import GlobalCommandDashboard from './pages/GlobalCommandDashboard';
 import CreditLedger from './pages/CreditLedger';
 import OpenClawControl from './pages/OpenClawControl';
 import BrowserControl from './pages/BrowserControl';
@@ -57,6 +58,7 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/" element={<Dashboard />} />
+      <Route path="/global-command-dashboard" element={<GlobalCommandDashboard />} />
       <Route path="/credit-ledger" element={<CreditLedger />} />
       <Route path="/openclaw-control" element={<OpenClawControl />} />
       <Route path="/browser-control" element={<BrowserControl />} />
