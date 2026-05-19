@@ -510,6 +510,97 @@ export default function ObsidianVpsBridgePanel() {
               </div>
             </div>
 
+            {/* ── Send to VPS Dry-Run Bridge ── prominent, above Export */}
+            <div className="bg-amber-500/5 border border-amber-500/30 rounded-sm p-3 space-y-2">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
+                <Send className="w-3.5 h-3.5" />
+                Send to VPS Dry-Run Bridge
+              </div>
+              <div className="text-[7px] text-slate-500 leading-relaxed">
+                Calls <span className="text-amber-400/80 font-mono">/api/obsidian/dry-run</span> via backend only ·
+                Bridge token injected server-side · Never exposed to frontend · No credentials in localStorage ·
+                Dry-run endpoint only · No filesystem writes · No execution
+              </div>
+              <div className="text-[7px] text-slate-600 bg-secondary/30 border border-border/30 rounded-sm px-2 py-1.5">
+                <span className="text-slate-400 font-bold">Note:</span> The local UI preview path above uses a governance
+                placeholder root (<span className="font-mono text-slate-400">/opt/veridan/obsidian-vault</span>).
+                The VPS Bridge Response <span className="font-mono text-amber-400">wouldWritePath</span> below will show
+                the actual path as resolved by the VPS, expected under{' '}
+                <span className="font-mono text-amber-400">/root/veridans-mind-vault</span>.
+              </div>
+
+              <button
+                type="button"
+                onClick={sendToVpsBridge}
+                disabled={vpsSending || !dryRunResult}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {vpsSending
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending to VPS Bridge…</>
+                  : <><Send className="w-3.5 h-3.5" /> Send to VPS Dry-Run Bridge (/api/obsidian/dry-run)</>
+                }
+              </button>
+
+              {!dryRunResult && (
+                <div className="text-[8px] text-slate-500 font-mono text-center">Generate a valid dry-run packet first.</div>
+              )}
+            </div>
+
+            {/* Error */}
+            {vpsError && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-sm px-3 py-2 flex items-start gap-2">
+                <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                <div className="text-[8px] text-destructive font-mono">{vpsError}</div>
+              </div>
+            )}
+
+            {/* VPS Bridge Response */}
+            {vpsResponse && (
+              <div className="bg-card border border-amber-500/30 rounded-sm overflow-hidden">
+                <div className="bg-amber-500/10 px-4 py-2.5 flex items-center gap-2 border-b border-amber-500/20">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">VPS Bridge Response</span>
+                  <span className="ml-auto text-[7px] font-mono text-amber-400/60">DRY_RUN · NOT_EXECUTED</span>
+                </div>
+                <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-[8px] font-mono">
+                  {[
+                    { key: 'ok',               val: String(vpsResponse.ok),           note: null },
+                    { key: 'bridgeMode',        val: vpsResponse.bridgeMode,           note: null },
+                    { key: 'action',            val: vpsResponse.action,               note: null },
+                    { key: 'vaultRoot',         val: vpsResponse.vaultRoot,            note: 'VPS-resolved root' },
+                    { key: 'targetFolder',      val: vpsResponse.targetFolder,         note: null },
+                    { key: 'fileName',          val: vpsResponse.fileName,             note: null },
+                    { key: 'wouldWritePath',    val: vpsResponse.wouldWritePath,       note: 'Actual VPS path — may differ from UI preview' },
+                    { key: 'markdownBytes',     val: String(vpsResponse.markdownBytes), note: null },
+                    { key: 'previewHash',       val: vpsResponse.previewHash || '(none)', note: null },
+                    { key: 'evidenceId',        val: vpsResponse.evidenceId,           note: null },
+                    { key: 'filesystemWrite',   val: vpsResponse.filesystemWrite,      note: null },
+                    { key: 'executionStatus',   val: vpsResponse.executionStatus,      note: null },
+                    { key: 'dispatchStatus',    val: vpsResponse.dispatchStatus,       note: null },
+                    { key: 'obsidianSync',      val: vpsResponse.obsidianSync,         note: null },
+                    { key: 'openClawDispatch',  val: vpsResponse.openClawDispatch,     note: null },
+                    { key: 'timestamp',         val: vpsResponse.timestamp,            note: null },
+                  ].map(({ key, val, note }) => (
+                    <div key={key} className={`bg-secondary/20 border rounded-sm px-2 py-1.5 ${key === 'wouldWritePath' ? 'md:col-span-2 border-amber-500/30' : 'border-border/30'}`}>
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <span className="text-[7px] text-slate-500 uppercase">{key}</span>
+                        {note && <span className="text-[6px] text-amber-400/70 italic">— {note}</span>}
+                      </div>
+                      <div className={`font-mono break-all ${
+                        val === 'DISABLED' || val === 'NOT_EXECUTED' || val === 'NOT_DISPATCHED'
+                          ? 'text-destructive'
+                          : val === 'true'
+                          ? 'text-primary'
+                          : key === 'wouldWritePath'
+                          ? 'text-amber-300'
+                          : 'text-slate-300'
+                      }`}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Export button */}
             <button
               type="button"
@@ -519,78 +610,6 @@ export default function ObsidianVpsBridgePanel() {
               <Download className="w-3.5 h-3.5" />
               Export JSON Bridge Packet
             </button>
-
-            {/* Send to VPS Dry-Run Bridge */}
-            <div className="border-t border-border/40 pt-3 space-y-3">
-              <div className="text-[8px] font-bold uppercase text-slate-400 flex items-center gap-1.5">
-                <Send className="w-3 h-3 text-amber-400" />
-                VPS Dry-Run Bridge — Server-Side Call
-              </div>
-              <div className="text-[7px] text-slate-600">
-                Bridge token injected server-side only · Not exposed to frontend · Dry-run endpoint only · No filesystem writes
-              </div>
-              <button
-                type="button"
-                onClick={sendToVpsBridge}
-                disabled={vpsSending}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-bold rounded-sm hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {vpsSending
-                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending to VPS Bridge…</>
-                  : <><Send className="w-3.5 h-3.5" /> Send to VPS Dry-Run Bridge (/api/obsidian/dry-run)</>
-                }
-              </button>
-
-              {/* Error */}
-              {vpsError && (
-                <div className="bg-destructive/10 border border-destructive/30 rounded-sm px-3 py-2 flex items-start gap-2">
-                  <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
-                  <div className="text-[8px] text-destructive font-mono">{vpsError}</div>
-                </div>
-              )}
-
-              {/* VPS Response */}
-              {vpsResponse && (
-                <div className="bg-card border border-amber-500/20 rounded-sm overflow-hidden">
-                  <div className="bg-amber-500/10 px-4 py-2 flex items-center gap-2 border-b border-amber-500/20">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-amber-400">VPS Bridge Response</span>
-                    <span className="ml-auto text-[7px] font-mono text-amber-400/60">DRY_RUN · NOT_EXECUTED</span>
-                  </div>
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-[8px] font-mono">
-                    {[
-                      { key: 'ok',              val: String(vpsResponse.ok) },
-                      { key: 'bridgeMode',      val: vpsResponse.bridgeMode },
-                      { key: 'action',          val: vpsResponse.action },
-                      { key: 'vaultRoot',       val: vpsResponse.vaultRoot },
-                      { key: 'targetFolder',    val: vpsResponse.targetFolder },
-                      { key: 'fileName',        val: vpsResponse.fileName },
-                      { key: 'wouldWritePath',  val: vpsResponse.wouldWritePath },
-                      { key: 'markdownBytes',   val: String(vpsResponse.markdownBytes) },
-                      { key: 'previewHash',     val: vpsResponse.previewHash || '(none)' },
-                      { key: 'evidenceId',      val: vpsResponse.evidenceId },
-                      { key: 'filesystemWrite', val: vpsResponse.filesystemWrite },
-                      { key: 'executionStatus', val: vpsResponse.executionStatus },
-                      { key: 'dispatchStatus',  val: vpsResponse.dispatchStatus },
-                      { key: 'obsidianSync',    val: vpsResponse.obsidianSync },
-                      { key: 'openClawDispatch',val: vpsResponse.openClawDispatch },
-                      { key: 'timestamp',       val: vpsResponse.timestamp },
-                    ].map(({ key, val }) => (
-                      <div key={key} className="bg-secondary/20 border border-border/30 rounded-sm px-2 py-1.5">
-                        <div className="text-[7px] text-slate-500 uppercase mb-0.5">{key}</div>
-                        <div className={`font-mono break-all ${
-                          val === 'DISABLED' || val === 'NOT_EXECUTED' || val === 'NOT_DISPATCHED'
-                            ? 'text-destructive'
-                            : val === 'true'
-                            ? 'text-primary'
-                            : 'text-slate-300'
-                        }`}>{val}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}
