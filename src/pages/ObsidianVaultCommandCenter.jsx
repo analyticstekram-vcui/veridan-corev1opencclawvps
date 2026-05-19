@@ -14,6 +14,7 @@ import ObsidianNoteUpdateBuilder from '../components/obsidian-vault/ObsidianNote
 import ObsidianOpenClawTaskQueue from '../components/obsidian-vault/ObsidianOpenClawTaskQueue';
 import ObsidianOperatorApprovalQueue from '../components/obsidian-vault/ObsidianOperatorApprovalQueue';
 import ObsidianEvidenceChainLog from '../components/obsidian-vault/ObsidianEvidenceChainLog';
+import ObsidianVaultVerificationReport from '../components/obsidian-vault/ObsidianVaultVerificationReport';
 
 const TABS = [
   { id: 'status',    label: 'Module Status' },
@@ -23,6 +24,7 @@ const TABS = [
   { id: 'oclaw',     label: 'OpenClaw Queue' },
   { id: 'approval',  label: 'Approval Queue' },
   { id: 'evidence',  label: 'Evidence Chain' },
+  { id: 'verify',    label: 'Verification Report' },
 ];
 
 export default function ObsidianVaultCommandCenter() {
@@ -98,6 +100,7 @@ export default function ObsidianVaultCommandCenter() {
         {activeTab === 'oclaw'    && <ObsidianOpenClawTaskQueue />}
         {activeTab === 'approval' && <ObsidianOperatorApprovalQueue />}
         {activeTab === 'evidence' && <ObsidianEvidenceChainLog />}
+        {activeTab === 'verify'   && <ObsidianVaultVerificationReport />}
       </div>
     </div>
   );

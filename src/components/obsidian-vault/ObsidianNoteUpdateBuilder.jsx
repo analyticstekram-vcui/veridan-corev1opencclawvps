@@ -13,7 +13,10 @@ const STORAGE_KEY = 'veridanObsidianNoteUpdateRequests';
 const FOLDER_KEY = 'veridanObsidianVaultFolderMap';
 
 const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH'];
-const ALLOWED_TASK_TYPES = ['UPDATE_NOTE_PREVIEW', 'SUMMARIZE', 'VERIFY', 'RESEARCH'];
+const ALLOWED_TASK_TYPES = [
+  'READ', 'RESEARCH', 'WRITE_NOTE_PREVIEW',
+  'UPDATE_NOTE_PREVIEW', 'SUMMARIZE', 'VERIFY', 'PROPOSE_ACTION',
+];
 
 const riskColor = { LOW: 'text-primary', MEDIUM: 'text-amber-400', HIGH: 'text-destructive' };
 const riskBorder = { LOW: 'border-primary/30', MEDIUM: 'border-amber-500/30', HIGH: 'border-destructive/30' };
@@ -43,11 +46,15 @@ export default function ObsidianNoteUpdateBuilder() {
 
   const submit = () => {
     if (!form.targetNote.trim()) return;
+    const ts = Date.now();
     const record = {
-      requestId: `note-update-${Date.now()}`,
+      requestId: `note-update-${ts}`,
+      evidenceId: `EV-UPDATE-${ts}`,
+      module: 'OBSIDIAN_VAULT_CONTROL',
       requestType: 'NOTE_UPDATE_PREVIEW',
       taskType: form.taskType,
       targetNote: form.targetNote.trim(),
+      notePath: `${form.folder || '(root)'}/${form.targetNote.trim()}.md`,
       folder: form.folder || '(root)',
       updateSection: form.updateSection.trim(),
       proposedChangeSummary: form.proposedChangeSummary.trim(),
@@ -55,7 +62,7 @@ export default function ObsidianNoteUpdateBuilder() {
       rationale: form.rationale.trim(),
       executionStatus: 'PREVIEW_ONLY',
       approvalStatus: 'PENDING_REVIEW',
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(ts).toISOString(),
     };
     save([record, ...requests]);
     setForm({ targetNote: '', folder: '', taskType: 'UPDATE_NOTE_PREVIEW', updateSection: '', proposedChangeSummary: '', riskLevel: 'LOW', rationale: '' });
@@ -190,9 +197,12 @@ export default function ObsidianNoteUpdateBuilder() {
                     <span className="text-[8px] text-slate-500">{r.taskType}</span>
                   </div>
                   <div className="text-[8px] text-slate-500">
-                    Folder: <span className="text-slate-400">{r.folder}</span> ·
+                    Path: <span className="text-slate-400 font-mono">{r.notePath}</span>
+                  </div>
+                  <div className="text-[8px] text-slate-500">
                     {r.updateSection && <> Section: <span className="text-slate-400">{r.updateSection}</span> · </>}
                     Status: <span className="text-slate-400">{r.approvalStatus}</span> ·
+                    EV: <span className="text-slate-600 font-mono">{r.evidenceId}</span> ·
                     {new Date(r.createdAt).toLocaleString()}
                   </div>
                   {r.proposedChangeSummary && (

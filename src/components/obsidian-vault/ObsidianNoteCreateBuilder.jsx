@@ -13,7 +13,10 @@ const STORAGE_KEY = 'veridanObsidianNoteCreateRequests';
 const FOLDER_KEY = 'veridanObsidianVaultFolderMap';
 
 const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH'];
-const ALLOWED_TASK_TYPES = ['WRITE_NOTE_PREVIEW', 'SUMMARIZE', 'PROPOSE_ACTION'];
+const ALLOWED_TASK_TYPES = [
+  'READ', 'RESEARCH', 'WRITE_NOTE_PREVIEW',
+  'UPDATE_NOTE_PREVIEW', 'SUMMARIZE', 'VERIFY', 'PROPOSE_ACTION',
+];
 
 const riskColor = { LOW: 'text-primary', MEDIUM: 'text-amber-400', HIGH: 'text-destructive' };
 const riskBorder = { LOW: 'border-primary/30', MEDIUM: 'border-amber-500/30', HIGH: 'border-destructive/30' };
@@ -42,18 +45,22 @@ export default function ObsidianNoteCreateBuilder() {
 
   const submit = () => {
     if (!form.title.trim()) return;
+    const ts = Date.now();
     const record = {
-      requestId: `note-create-${Date.now()}`,
+      requestId: `note-create-${ts}`,
+      evidenceId: `EV-CREATE-${ts}`,
+      module: 'OBSIDIAN_VAULT_CONTROL',
       requestType: 'NOTE_CREATE_PREVIEW',
       taskType: form.taskType,
       title: form.title.trim(),
+      notePath: `${form.folder || '(root)'}/${form.title.trim()}.md`,
       folder: form.folder || '(root)',
       contentPreview: form.contentPreview.trim(),
       riskLevel: form.riskLevel,
       rationale: form.rationale.trim(),
       executionStatus: 'PREVIEW_ONLY',
       approvalStatus: 'PENDING_REVIEW',
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(ts).toISOString(),
     };
     save([record, ...requests]);
     setForm({ title: '', folder: '', taskType: 'WRITE_NOTE_PREVIEW', contentPreview: '', riskLevel: 'LOW', rationale: '' });
@@ -177,8 +184,11 @@ export default function ObsidianNoteCreateBuilder() {
                     <span className="text-[8px] text-slate-500">{r.taskType}</span>
                   </div>
                   <div className="text-[8px] text-slate-500">
-                    Folder: <span className="text-slate-400">{r.folder}</span> ·
+                    Path: <span className="text-slate-400 font-mono">{r.notePath}</span>
+                  </div>
+                  <div className="text-[8px] text-slate-500">
                     Status: <span className="text-slate-400">{r.approvalStatus}</span> ·
+                    EV: <span className="text-slate-600 font-mono">{r.evidenceId}</span> ·
                     {new Date(r.createdAt).toLocaleString()}
                   </div>
                   {r.contentPreview && (
