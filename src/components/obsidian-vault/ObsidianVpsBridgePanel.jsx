@@ -14,6 +14,8 @@
 import React, { useState, useCallback } from 'react';
 import { Copy, Download, ShieldAlert, CheckCircle2, Ban, AlertTriangle, FileText, ChevronDown } from 'lucide-react';
 import ObsidianVpsBridgeReadinessChecklist from './ObsidianVpsBridgeReadinessChecklist';
+import ObsidianVpsBridgeEvidenceLog, { BRIDGE_EVIDENCE_LOG_KEY } from './ObsidianVpsBridgeEvidenceLog';
+import { loadFromStorage, saveToStorage } from '../../utils/localStorageManager';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -129,6 +131,7 @@ export default function ObsidianVpsBridgePanel() {
   const [dryRunResult, setDryRunResult] = useState(null);
   const [copied, setCopied]       = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+  const [logRefresh, setLogRefresh] = useState(0);
 
   const createdAt   = dryRunResult?.createdAt  || '';
   const evidenceId  = dryRunResult?.evidenceId || '';
@@ -149,15 +152,21 @@ export default function ObsidianVpsBridgePanel() {
     if (!pathValid || !approved) return;
     const id = generateEvidenceId();
     const ts = new Date().toISOString();
-    setDryRunResult({
+    const fm = generateFrontmatter(title, folder, id, ts);
+    const result = {
       evidenceId: id,
       createdAt: ts,
       vaultRoot: VAULT_ROOT,
       folder,
       title,
+      noteType: 'DRY_RUN_PREVIEW',
+      operatorNote: '',
       targetPath: `${VAULT_ROOT}/${folder}/${title}${ALLOWED_EXTENSION}`,
       contentLength: content.length,
+      contentPreview: content.slice(0, 300) + (content.length > 300 ? '\n…(truncated)' : ''),
+      frontmatter: fm,
       pathErrors: [],
+      validationStatus: 'PASS',
       bridgeMode: 'VPS_OBSIDIAN_BRIDGE_DRY_RUN',
       executionStatus: 'NOT_EXECUTED',
       dispatchStatus: 'NOT_DISPATCHED',
@@ -166,7 +175,12 @@ export default function ObsidianVpsBridgePanel() {
       openClawDispatch: 'DISABLED',
       approvedByOperator: true,
       verifiedAt: ts,
-    });
+    };
+    setDryRunResult(result);
+    // Persist to evidence log
+    const existing = loadFromStorage(BRIDGE_EVIDENCE_LOG_KEY);
+    saveToStorage(BRIDGE_EVIDENCE_LOG_KEY, [...existing, result]);
+    setLogRefresh(n => n + 1);
   }, [pathValid, approved, folder, title, content]);
 
   const handleCopy = () => {
@@ -482,6 +496,11 @@ export default function ObsidianVpsBridgePanel() {
           </div>
         </div>
       )}
+
+      {/* Bridge Packet History / Evidence Log */}
+      <div className="border-t border-border/40 pt-4">
+        <ObsidianVpsBridgeEvidenceLog refreshSignal={logRefresh} />
+      </div>
 
       {/* Footer disclaimer */}
       <div className="bg-card border border-border/30 rounded-sm px-4 py-3 text-[8px] font-mono text-slate-500 leading-relaxed">
