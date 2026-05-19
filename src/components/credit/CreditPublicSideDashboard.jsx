@@ -16,47 +16,9 @@
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CreditCard, Lock, AlertCircle, CheckCircle2, Home } from 'lucide-react';
+import { CreditCard, Lock, AlertCircle, Home } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
-
-
-function StatusBadge({ label, value, type = 'neutral' }) {
-  const colors = {
-    neutral: 'text-slate-400 border-slate-600/30 bg-slate-600/5',
-    disabled: 'text-destructive border-destructive/30 bg-destructive/5',
-    planning: 'text-amber-500 border-amber-500/30 bg-amber-500/5',
-  };
-  return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 border rounded-sm ${colors[type]}`}>
-      <span className="text-[8px] font-mono text-muted-foreground/60 uppercase">{label}</span>
-      <span className="text-[10px] font-mono font-bold flex-1">{value}</span>
-    </div>
-  );
-}
-
-function DashboardSection({ title, description, children }) {
-  return (
-    <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
-      <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-        <h3 className="text-[11px] font-mono font-bold uppercase text-slate-100">{title}</h3>
-        <p className="text-[9px] font-mono text-slate-400 mt-1">{description}</p>
-      </div>
-      <div className="p-4 space-y-2">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function CreditItemCard({ label }) {
-  return (
-    <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/80 py-1.5 px-2 bg-secondary/20 border border-border/30 rounded-sm">
-      <CheckCircle2 className="w-3 h-3 text-primary/60 shrink-0" />
-      <span>{label}</span>
-    </div>
-  );
-}
 
 export default function CreditPublicSideDashboard() {
   return (
