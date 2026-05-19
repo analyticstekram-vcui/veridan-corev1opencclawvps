@@ -12,18 +12,52 @@
  *   - Connect to external services
  *   - Use timers or polling
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Radio, Lock, AlertCircle, CheckCircle2, Home } from 'lucide-react';
+import { Radio, Lock, AlertCircle, CheckCircle2, Home, ShieldAlert } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
+import ProductionTruthReconciliationPanel from '@/components/openclaw/ProductionTruthReconciliationPanel';
+
+const TABS = [
+  { id: 'governance', label: 'Governance Overview' },
+  { id: 'truth',      label: 'Production Truth Reconciliation' },
+];
 
 export default function OpenClawGovernanceDashboard() {
+  const [activeTab, setActiveTab] = useState('governance');
   return (
     <div className="min-h-screen bg-background">
       <ModuleNav />
+      {/* Tab bar */}
+      <div className="border-b border-border bg-card px-6">
+        <div className="flex gap-0">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-3 text-[9px] font-bold uppercase tracking-widest border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {tab.id === 'truth' && <ShieldAlert className="w-3 h-3 inline mr-1.5" />}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="p-6">
         <div className="max-w-[1200px] mx-auto">
+
+          {/* Truth Reconciliation tab */}
+          {activeTab === 'truth' && <ProductionTruthReconciliationPanel />}
+
+          {/* Governance Overview tab */}
+          {activeTab === 'governance' && <>
           {/* Header */}
           <div className="mb-8 flex items-start justify-between">
             <div className="flex-1">
@@ -327,6 +361,7 @@ export default function OpenClawGovernanceDashboard() {
               <p>This dashboard provides read-only visibility into the planning and governance structure of Veridan Core's OpenClaw AI gateway. It is for planning and visibility only. No commands are executed, no browsers are automated, and no credentials are handled. All operations require manual operator approval and are disabled until explicitly enabled through governance approval.</p>
             </div>
           </div>
+          </>}
         </div>
       </div>
     </div>
