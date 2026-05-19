@@ -12,7 +12,8 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Copy, Download, ShieldAlert, CheckCircle2, Ban, AlertTriangle, FileText, ChevronDown } from 'lucide-react';
+import { Copy, Download, ShieldAlert, CheckCircle2, Ban, AlertTriangle, FileText, ChevronDown, Send, Loader2, XCircle } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import ObsidianVpsBridgeReadinessChecklist from './ObsidianVpsBridgeReadinessChecklist';
 import ObsidianVpsBridgeEvidenceLog, { BRIDGE_EVIDENCE_LOG_KEY } from './ObsidianVpsBridgeEvidenceLog';
 import ObsidianVpsBridgeSelfTest from './ObsidianVpsBridgeSelfTest';
@@ -134,6 +135,9 @@ export default function ObsidianVpsBridgePanel() {
   const [copied, setCopied]       = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [logRefresh, setLogRefresh] = useState(0);
+  const [vpsResponse, setVpsResponse]   = useState(null);
+  const [vpsSending, setVpsSending]     = useState(false);
+  const [vpsError, setVpsError]         = useState(null);
 
   const createdAt   = dryRunResult?.createdAt  || '';
   const evidenceId  = dryRunResult?.evidenceId || '';
@@ -190,6 +194,26 @@ export default function ObsidianVpsBridgePanel() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const sendToVpsBridge = useCallback(async () => {
+    if (!dryRunResult) return;
+    setVpsSending(true);
+    setVpsError(null);
+    setVpsResponse(null);
+    const res = await base44.functions.invoke('obsidianVpsDryRunBridge', {
+      folder: dryRunResult.folder,
+      title: dryRunResult.title,
+      markdownContent: `${dryRunResult.frontmatter}\n\n${content}`,
+      evidenceId: dryRunResult.evidenceId,
+      frontmatter: dryRunResult.frontmatter,
+    });
+    setVpsSending(false);
+    if (res.data?.ok) {
+      setVpsResponse(res.data);
+    } else {
+      setVpsError(res.data?.error || 'VPS bridge returned an unexpected response.');
+    }
+  }, [dryRunResult, content]);
 
   const handleExportJson = () => {
     if (!dryRunResult) return;
@@ -495,6 +519,78 @@ export default function ObsidianVpsBridgePanel() {
               <Download className="w-3.5 h-3.5" />
               Export JSON Bridge Packet
             </button>
+
+            {/* Send to VPS Dry-Run Bridge */}
+            <div className="border-t border-border/40 pt-3 space-y-3">
+              <div className="text-[8px] font-bold uppercase text-slate-400 flex items-center gap-1.5">
+                <Send className="w-3 h-3 text-amber-400" />
+                VPS Dry-Run Bridge — Server-Side Call
+              </div>
+              <div className="text-[7px] text-slate-600">
+                Bridge token injected server-side only · Not exposed to frontend · Dry-run endpoint only · No filesystem writes
+              </div>
+              <button
+                type="button"
+                onClick={sendToVpsBridge}
+                disabled={vpsSending}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-bold rounded-sm hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {vpsSending
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending to VPS Bridge…</>
+                  : <><Send className="w-3.5 h-3.5" /> Send to VPS Dry-Run Bridge (/api/obsidian/dry-run)</>
+                }
+              </button>
+
+              {/* Error */}
+              {vpsError && (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-sm px-3 py-2 flex items-start gap-2">
+                  <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                  <div className="text-[8px] text-destructive font-mono">{vpsError}</div>
+                </div>
+              )}
+
+              {/* VPS Response */}
+              {vpsResponse && (
+                <div className="bg-card border border-amber-500/20 rounded-sm overflow-hidden">
+                  <div className="bg-amber-500/10 px-4 py-2 flex items-center gap-2 border-b border-amber-500/20">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-amber-400">VPS Bridge Response</span>
+                    <span className="ml-auto text-[7px] font-mono text-amber-400/60">DRY_RUN · NOT_EXECUTED</span>
+                  </div>
+                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-[8px] font-mono">
+                    {[
+                      { key: 'ok',              val: String(vpsResponse.ok) },
+                      { key: 'bridgeMode',      val: vpsResponse.bridgeMode },
+                      { key: 'action',          val: vpsResponse.action },
+                      { key: 'vaultRoot',       val: vpsResponse.vaultRoot },
+                      { key: 'targetFolder',    val: vpsResponse.targetFolder },
+                      { key: 'fileName',        val: vpsResponse.fileName },
+                      { key: 'wouldWritePath',  val: vpsResponse.wouldWritePath },
+                      { key: 'markdownBytes',   val: String(vpsResponse.markdownBytes) },
+                      { key: 'previewHash',     val: vpsResponse.previewHash || '(none)' },
+                      { key: 'evidenceId',      val: vpsResponse.evidenceId },
+                      { key: 'filesystemWrite', val: vpsResponse.filesystemWrite },
+                      { key: 'executionStatus', val: vpsResponse.executionStatus },
+                      { key: 'dispatchStatus',  val: vpsResponse.dispatchStatus },
+                      { key: 'obsidianSync',    val: vpsResponse.obsidianSync },
+                      { key: 'openClawDispatch',val: vpsResponse.openClawDispatch },
+                      { key: 'timestamp',       val: vpsResponse.timestamp },
+                    ].map(({ key, val }) => (
+                      <div key={key} className="bg-secondary/20 border border-border/30 rounded-sm px-2 py-1.5">
+                        <div className="text-[7px] text-slate-500 uppercase mb-0.5">{key}</div>
+                        <div className={`font-mono break-all ${
+                          val === 'DISABLED' || val === 'NOT_EXECUTED' || val === 'NOT_DISPATCHED'
+                            ? 'text-destructive'
+                            : val === 'true'
+                            ? 'text-primary'
+                            : 'text-slate-300'
+                        }`}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
