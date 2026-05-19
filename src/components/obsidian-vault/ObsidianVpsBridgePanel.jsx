@@ -12,7 +12,8 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Copy, Download, ShieldAlert, CheckCircle2, Ban, AlertTriangle, FileText } from 'lucide-react';
+import { Copy, Download, ShieldAlert, CheckCircle2, Ban, AlertTriangle, FileText, ChevronDown } from 'lucide-react';
+import ObsidianVpsBridgeReadinessChecklist from './ObsidianVpsBridgeReadinessChecklist';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -127,6 +128,7 @@ export default function ObsidianVpsBridgePanel() {
   const [approved, setApproved]   = useState(false);
   const [dryRunResult, setDryRunResult] = useState(null);
   const [copied, setCopied]       = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
 
   const createdAt   = dryRunResult?.createdAt  || '';
   const evidenceId  = dryRunResult?.evidenceId || '';
@@ -218,6 +220,23 @@ export default function ObsidianVpsBridgePanel() {
 
   return (
     <div className="space-y-4 font-mono">
+
+      {/* Readiness Checklist Toggle */}
+      <button
+        type="button"
+        onClick={() => setShowChecklist(!showChecklist)}
+        className="w-full px-4 py-2.5 bg-secondary/30 border border-border/40 text-slate-300 text-[10px] font-bold rounded-sm hover:bg-secondary/50 transition-colors flex items-center justify-between"
+      >
+        <span>VPS Bridge Readiness Checklist</span>
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showChecklist ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Checklist Panel */}
+      {showChecklist && (
+        <div className="border border-border/40 rounded-sm p-4 bg-secondary/10">
+          <ObsidianVpsBridgeReadinessChecklist />
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
