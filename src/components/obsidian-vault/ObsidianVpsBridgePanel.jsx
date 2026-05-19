@@ -16,6 +16,7 @@ import { Copy, Download, ShieldAlert, CheckCircle2, Ban, AlertTriangle, FileText
 import ObsidianVpsBridgeReadinessChecklist from './ObsidianVpsBridgeReadinessChecklist';
 import ObsidianVpsBridgeEvidenceLog, { BRIDGE_EVIDENCE_LOG_KEY } from './ObsidianVpsBridgeEvidenceLog';
 import ObsidianVpsBridgeSelfTest from './ObsidianVpsBridgeSelfTest';
+import ObsidianVpsBridgeBaselineLock from './ObsidianVpsBridgeBaselineLock';
 import { loadFromStorage, saveToStorage } from '../../utils/localStorageManager';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -506,6 +507,11 @@ export default function ObsidianVpsBridgePanel() {
       {/* Self-Test Panel */}
       <div className="border-t border-border/40 pt-4">
         <ObsidianVpsBridgeSelfTest />
+      </div>
+
+      {/* Baseline Lock */}
+      <div className="border-t border-border/40 pt-4">
+        <ObsidianVpsBridgeBaselineLock />
       </div>
 
       {/* Footer disclaimer */}
