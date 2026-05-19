@@ -5,9 +5,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
 import { exportSnapshotAndSave } from '../../utils/exportSnapshot';
 import { loadFromStorage } from '../../utils/localStorageManager';
+import SummaryCardHeader from '../ui/SummaryCardHeader';
+import SummaryCountsGrid from '../ui/SummaryCountsGrid';
+import SummarySafetyStatusGrid from '../ui/SummarySafetyStatusGrid';
+import SummaryWhatThisMeans from '../ui/SummaryWhatThisMeans';
+import SummarySafetyClaimsFooter from '../ui/SummarySafetyClaimsFooter';
 
 const STORAGE_KEYS = {
   SYSTEM_BRIEF: 'veridanAiCommandCenterSystemBriefSnapshot',
@@ -98,74 +102,41 @@ export default function AiCommandCenterModuleStatusSummary() {
 
   return (
     <div className="space-y-4 font-mono">
+      <SummaryCardHeader
+        title="AI Command Center Module Current Status"
+        subtitle="Planning-only status · No AI runtime · No Codex execution · No credential storage"
+        onExport={handleExport}
+      />
 
-      {/* Header and Export */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-[11px] font-bold uppercase text-primary">AI Command Center Module Current Status</div>
-          <div className="text-[8px] text-slate-500 mt-0.5">Planning-only status · No AI runtime · No Codex execution · No credential storage</div>
-        </div>
-        <button onClick={handleExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/30 border border-border text-slate-300 text-[9px] font-bold hover:bg-secondary/50 transition-colors rounded-sm">
-          <Download className="w-3 h-3" /> Export Status
-        </button>
-      </div>
+      <SummaryCountsGrid
+        title="Module Counts"
+        items={[
+          { label: 'System Brief Present', value: counts.systemBriefPresent, color: 'text-primary' },
+          { label: 'Total Proposed Actions', value: counts.totalProposedActions, color: 'text-primary' },
+          { label: 'Proposed Actions Needing Review', value: counts.proposedActionsNeedingReview, color: 'text-primary' },
+          { label: 'Proposed Actions Approved', value: counts.proposedActionsApproved, color: 'text-primary' },
+          { label: 'Total Codex Task Drafts', value: counts.totalCodexTasks, color: 'text-primary' },
+          { label: 'Codex Tasks Approved', value: counts.codexTasksApproved, color: 'text-primary' },
+          { label: 'Total OpenClaw Task Plans', value: counts.totalOpenClawTasks, color: 'text-primary' },
+          { label: 'OpenClaw Tasks Approved', value: counts.openClawTasksApproved, color: 'text-primary' },
+          { label: 'Total Operator Reviews', value: counts.totalOperatorReviews, color: 'text-primary' },
+          { label: 'Operator Reviews Approved', value: counts.operatorReviewsApproved, color: 'text-primary' },
+          { label: 'Operator Reviews Rejected', value: counts.operatorReviewsRejected, color: 'text-primary' },
+          { label: 'Operator Reviews Needs Changes', value: counts.operatorReviewsNeedsChanges, color: 'text-primary' },
+        ]}
+      />
 
-      {/* Counts Grid */}
-      <div className="bg-card border border-border/50 rounded-sm p-4">
-        <div className="text-[9px] font-bold uppercase text-slate-300 mb-3">Module Counts</div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-          {[
-            { label: 'System Brief Present', value: counts.systemBriefPresent },
-            { label: 'Total Proposed Actions', value: counts.totalProposedActions },
-            { label: 'Proposed Actions Needing Review', value: counts.proposedActionsNeedingReview },
-            { label: 'Proposed Actions Approved', value: counts.proposedActionsApproved },
-            { label: 'Total Codex Task Drafts', value: counts.totalCodexTasks },
-            { label: 'Codex Tasks Approved', value: counts.codexTasksApproved },
-            { label: 'Total OpenClaw Task Plans', value: counts.totalOpenClawTasks },
-            { label: 'OpenClaw Tasks Approved', value: counts.openClawTasksApproved },
-            { label: 'Total Operator Reviews', value: counts.totalOperatorReviews },
-            { label: 'Operator Reviews Approved', value: counts.operatorReviewsApproved },
-            { label: 'Operator Reviews Rejected', value: counts.operatorReviewsRejected },
-            { label: 'Operator Reviews Needs Changes', value: counts.operatorReviewsNeedsChanges },
-          ].map(item => (
-            <div key={item.label} className="flex flex-col items-center px-2 py-2.5 bg-secondary/20 border border-border/30 rounded-sm">
-              <span className="text-[14px] font-bold font-mono text-primary">{item.value}</span>
-              <span className="text-[7px] text-slate-500 mt-0.5 text-center">{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <SummarySafetyStatusGrid
+        title="Safety Status"
+        items={Object.entries(safetyStatus).map(([label, value]) => ({
+          label,
+          value,
+          color: value === 'PLANNING_ONLY' ? 'text-amber-400' : 'text-destructive',
+        }))}
+      />
 
-      {/* Safety Status Grid */}
-      <div className="bg-card border border-border/50 rounded-sm p-4">
-        <div className="text-[9px] font-bold uppercase text-slate-300 mb-3">Safety Status</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {Object.entries(safetyStatus).map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between px-4 py-2.5 bg-secondary/20 border border-border/30 rounded-sm">
-              <span className="text-[8px] text-slate-400">{label}:</span>
-              <span className={`text-[8px] font-bold font-mono ${value === 'PLANNING_ONLY' ? 'text-amber-400' : 'text-destructive'}`}>{value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* What This Means */}
-      <div className="px-4 py-3 bg-primary/5 border border-primary/20 rounded-sm">
-        <div className="text-[9px] font-bold uppercase text-primary mb-2">What This Means</div>
-        <p className="text-[8px] text-slate-300 leading-relaxed">{WHAT_THIS_MEANS}</p>
-      </div>
-
-      {/* Safety Claims */}
-      <div className="px-3 py-2.5 bg-primary/5 border border-primary/15 rounded-sm">
-        <div className="text-[8px] font-bold uppercase text-primary/70 mb-1.5">Safety Claims</div>
-        <div className="flex flex-wrap gap-1">
-          {SAFETY_CLAIMS.map(c => (
-            <span key={c} className="px-1.5 py-0.5 bg-primary/5 border border-primary/15 rounded text-[7px] text-primary/70 font-mono">{c}</span>
-          ))}
-        </div>
-      </div>
-
+      <SummaryWhatThisMeans text={WHAT_THIS_MEANS} />
+      <SummarySafetyClaimsFooter claims={SAFETY_CLAIMS} />
     </div>
   );
 }

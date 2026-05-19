@@ -4,9 +4,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
 import { exportSnapshotAndSave } from '../../utils/exportSnapshot';
 import { loadFromStorage } from '../../utils/localStorageManager';
+import SummaryCardHeader from '../ui/SummaryCardHeader';
+import SummaryCountsGrid from '../ui/SummaryCountsGrid';
+import SummarySafetyStatusGrid from '../ui/SummarySafetyStatusGrid';
+import SummaryWhatThisMeans from '../ui/SummaryWhatThisMeans';
+import SummarySafetyClaimsFooter from '../ui/SummarySafetyClaimsFooter';
 
 const STORAGE_KEY_SNAPSHOT = 'veridanBusinessFormationModuleStatusSnapshot';
 
@@ -130,84 +134,46 @@ export default function BusinessFormationModuleStatusSummary() {
 
   return (
     <div className="space-y-4 font-mono">
+      <SummaryCardHeader
+        title="Business Formation Module Current Status"
+        subtitle="Planning-only status · No legal filing · No API calls · No credential storage"
+        onExport={handleExport}
+      />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-[11px] font-bold uppercase text-primary">Business Formation Module Current Status</div>
-          <div className="text-[8px] text-slate-500 mt-0.5">Planning-only status · No legal filing · No API calls · No credential storage</div>
-        </div>
-        <button onClick={handleExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/30 border border-border text-slate-300 text-[9px] font-bold hover:bg-secondary/50 transition-colors rounded-sm">
-          <Download className="w-3 h-3" /> Export Status
-        </button>
-      </div>
+      <SummaryCountsGrid
+        title="Planning Counts"
+        items={[
+          { label: 'Total Entities',              value: counts.totalEntityPlans,                color: 'text-slate-200' },
+          { label: 'Planning Entities',           value: counts.planningEntityPlans,            color: 'text-slate-400' },
+          { label: 'Ready for Offline Entities',  value: counts.readyForOfflineEntityPlans,    color: 'text-primary' },
+          { label: 'Total Structures',            value: counts.totalStructurePlans,           color: 'text-slate-200' },
+          { label: 'Offline Review Structures',   value: counts.offlineReviewStructurePlans,   color: 'text-orange-400' },
+          { label: 'Total RA Workflows',          value: counts.totalWorkflows,                color: 'text-slate-200' },
+          { label: 'Offline Review Workflows',    value: counts.selectedForOfflineReviewWorkflows, color: 'text-orange-400' },
+          { label: 'Total EIN/Bank/Credit',       value: counts.totalReadiness,                color: 'text-slate-200' },
+          { label: 'Ready for Offline Readiness', value: counts.readyForOfflineActionReadiness, color: 'text-primary' },
+          { label: 'Total Affiliate Plans',       value: counts.totalRevenuePlans,             color: 'text-slate-200' },
+          { label: 'Active Affiliate Plans',      value: counts.activeForPlanningRevenuePlans, color: 'text-primary' },
+        ]}
+      />
 
-      {/* Counts Grid */}
-      <div className="bg-card border border-border/50 rounded-sm p-4">
-        <div className="text-[9px] font-bold uppercase text-slate-300 mb-3">Planning Counts</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            { label: 'Total Entities',              value: counts.totalEntityPlans,                color: 'text-slate-200' },
-            { label: 'Planning Entities',           value: counts.planningEntityPlans,            color: 'text-slate-400' },
-            { label: 'Ready for Offline Entities',  value: counts.readyForOfflineEntityPlans,    color: 'text-primary' },
-            { label: 'Total Structures',            value: counts.totalStructurePlans,           color: 'text-slate-200' },
-            { label: 'Offline Review Structures',   value: counts.offlineReviewStructurePlans,   color: 'text-orange-400' },
-            { label: 'Total RA Workflows',          value: counts.totalWorkflows,                color: 'text-slate-200' },
-            { label: 'Offline Review Workflows',    value: counts.selectedForOfflineReviewWorkflows, color: 'text-orange-400' },
-            { label: 'Total EIN/Bank/Credit',       value: counts.totalReadiness,                color: 'text-slate-200' },
-            { label: 'Ready for Offline Readiness', value: counts.readyForOfflineActionReadiness, color: 'text-primary' },
-            { label: 'Total Affiliate Plans',       value: counts.totalRevenuePlans,             color: 'text-slate-200' },
-            { label: 'Active Affiliate Plans',      value: counts.activeForPlanningRevenuePlans, color: 'text-primary' },
-          ].map((item, idx) => (
-            <div key={idx} className="flex flex-col items-center px-2 py-2.5 bg-secondary/20 border border-border/30 rounded-sm">
-              <span className={`text-[16px] font-bold font-mono ${item.color}`}>{item.value}</span>
-              <span className="text-[7px] text-slate-500 mt-0.5 text-center leading-tight">{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <SummarySafetyStatusGrid
+        title="Safety Status"
+        items={[
+          { label: 'Module Mode',                      value: 'PLANNING_ONLY',  color: 'text-amber-400' },
+          { label: 'Legal Filing',                     value: 'DISABLED',       color: 'text-destructive' },
+          { label: 'Registered Agent API Calls',       value: 'DISABLED',       color: 'text-destructive' },
+          { label: 'EIN Submission',                   value: 'DISABLED',       color: 'text-destructive' },
+          { label: 'Bank Account Opening',             value: 'DISABLED',       color: 'text-destructive' },
+          { label: 'Payment Processing',               value: 'DISABLED',       color: 'text-destructive' },
+          { label: 'Client Data Submission',           value: 'DISABLED',       color: 'text-destructive' },
+          { label: 'Credential Storage in Frontend',   value: 'DISABLED',       color: 'text-destructive' },
+          { label: 'Backend Mutation',                 value: 'DISABLED',       color: 'text-destructive' },
+        ]}
+      />
 
-      {/* Safety Status */}
-      <div className="bg-card border border-border/50 rounded-sm p-4">
-        <div className="text-[9px] font-bold uppercase text-slate-300 mb-3">Safety Status</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {[
-            { label: 'Module Mode',                      value: 'PLANNING_ONLY',  color: 'text-amber-400' },
-            { label: 'Legal Filing',                     value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Registered Agent API Calls',       value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'EIN Submission',                   value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Bank Account Opening',             value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Payment Processing',               value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Client Data Submission',           value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Credential Storage in Frontend',   value: 'DISABLED',       color: 'text-destructive' },
-            { label: 'Backend Mutation',                 value: 'DISABLED',       color: 'text-destructive' },
-          ].map(item => (
-            <div key={item.label}
-              className="flex items-center justify-between px-4 py-2.5 bg-secondary/20 border border-border/30 rounded-sm">
-              <span className="text-[9px] text-slate-400">{item.label}:</span>
-              <span className={`text-[8px] font-bold font-mono ${item.color}`}>{item.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* What This Means */}
-      <div className="px-4 py-3 bg-primary/5 border border-primary/20 rounded-sm">
-        <div className="text-[9px] font-bold uppercase text-primary mb-2">What This Means</div>
-        <p className="text-[8px] text-slate-300 leading-relaxed">{WHAT_THIS_MEANS}</p>
-      </div>
-
-      {/* Safety Claims */}
-      <div className="px-3 py-2.5 bg-primary/5 border border-primary/15 rounded-sm">
-        <div className="text-[8px] font-bold uppercase text-primary/70 mb-1.5">Safety Claims</div>
-        <div className="flex flex-wrap gap-1">
-          {SAFETY_CLAIMS.map(c => (
-            <span key={c} className="px-1.5 py-0.5 bg-primary/5 border border-primary/15 rounded text-[7px] text-primary/70 font-mono">{c}</span>
-          ))}
-        </div>
-      </div>
-
+      <SummaryWhatThisMeans text={WHAT_THIS_MEANS} />
+      <SummarySafetyClaimsFooter claims={SAFETY_CLAIMS} />
     </div>
   );
 }

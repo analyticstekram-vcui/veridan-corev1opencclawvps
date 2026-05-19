@@ -5,9 +5,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
 import { exportSnapshotAndSave } from '../utils/exportSnapshot';
 import ModuleNav from '../components/navigation/ModuleNav';
+import SummaryCardHeader from '../components/ui/SummaryCardHeader';
+import SummarySafetyStatusGrid from '../components/ui/SummarySafetyStatusGrid';
+import SummaryWhatThisMeans from '../components/ui/SummaryWhatThisMeans';
+import SummarySafetyClaimsFooter from '../components/ui/SummarySafetyClaimsFooter';
 
 const STORAGE_KEYS = {
   TRADING: 'veridanTradingModuleStatusSnapshot',
@@ -128,17 +131,11 @@ export default function GlobalCommandDashboard() {
       {/* Content */}
       <div className="flex-1 p-6 max-w-5xl mx-auto w-full space-y-4">
 
-        {/* Header and Export */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[11px] font-bold uppercase text-primary">Veridan Core Global Status</div>
-            <div className="text-[8px] text-slate-500 mt-0.5">Planning-only · All modules · No execution · No external mutations</div>
-          </div>
-          <button onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/30 border border-border text-slate-300 text-[9px] font-bold hover:bg-secondary/50 transition-colors rounded-sm">
-            <Download className="w-3 h-3" /> Export Status
-          </button>
-        </div>
+        <SummaryCardHeader
+          title="Veridan Core Global Status"
+          subtitle="Planning-only · All modules · No execution · No external mutations"
+          onExport={handleExport}
+        />
 
         {/* Module Snapshot Presence */}
         <div className="bg-card border border-border/50 rounded-sm p-4">
@@ -161,52 +158,29 @@ export default function GlobalCommandDashboard() {
           </div>
         </div>
 
-        {/* Global Mode */}
-        <div className="bg-card border border-border/50 rounded-sm p-4">
-          <div className="text-[9px] font-bold uppercase text-slate-300 mb-3">Global Mode</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {[
-              { label: 'Global mode', value: 'PLANNING_ONLY' },
-              { label: 'Execution readiness', value: 'NOT_READY_FOR_EXECUTION' },
-              { label: 'OpenClaw governance', value: 'LOCKED_EXECUTION_DISABLED' },
-              { label: 'Trading automation', value: 'DISABLED' },
-              { label: 'Broker API calls', value: 'DISABLED' },
-              { label: 'Credit bureau calls', value: 'DISABLED' },
-              { label: 'Legal filing', value: 'DISABLED' },
-              { label: 'Bank account opening', value: 'DISABLED' },
-              { label: 'Payment processing', value: 'DISABLED' },
-              { label: 'Codex execution', value: 'DISABLED' },
-              { label: 'OpenClaw dispatch', value: 'DISABLED' },
-              { label: 'MCP calls', value: 'DISABLED' },
-              { label: 'Browser automation', value: 'DISABLED' },
-              { label: 'Credential handling', value: 'DISABLED' },
-              { label: 'Backend mutation', value: 'DISABLED' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center justify-between px-3 py-2 bg-secondary/20 border border-border/30 rounded-sm">
-                <span className="text-[8px] text-slate-400">{item.label}:</span>
-                <span className={`text-[8px] font-bold font-mono ${item.value === 'PLANNING_ONLY' ? 'text-amber-400' : 'text-destructive'}`}>
-                  {item.value}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <SummarySafetyStatusGrid
+          title="Global Mode"
+          items={[
+            { label: 'Global mode', value: 'PLANNING_ONLY', color: 'text-amber-400' },
+            { label: 'Execution readiness', value: 'NOT_READY_FOR_EXECUTION', color: 'text-destructive' },
+            { label: 'OpenClaw governance', value: 'LOCKED_EXECUTION_DISABLED', color: 'text-destructive' },
+            { label: 'Trading automation', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'Broker API calls', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'Credit bureau calls', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'Legal filing', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'Bank account opening', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'Payment processing', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'Codex execution', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'OpenClaw dispatch', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'MCP calls', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'Browser automation', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'Credential handling', value: 'DISABLED', color: 'text-destructive' },
+            { label: 'Backend mutation', value: 'DISABLED', color: 'text-destructive' },
+          ]}
+        />
 
-        {/* What This Means */}
-        <div className="px-4 py-3 bg-primary/5 border border-primary/20 rounded-sm">
-          <div className="text-[9px] font-bold uppercase text-primary mb-2">What This Means</div>
-          <p className="text-[8px] text-slate-300 leading-relaxed">{WHAT_THIS_MEANS}</p>
-        </div>
-
-        {/* Safety Claims */}
-        <div className="px-3 py-2.5 bg-primary/5 border border-primary/15 rounded-sm">
-          <div className="text-[8px] font-bold uppercase text-primary/70 mb-1.5">Safety Claims</div>
-          <div className="flex flex-wrap gap-1">
-            {SAFETY_CLAIMS.map(c => (
-              <span key={c} className="px-1.5 py-0.5 bg-primary/5 border border-primary/15 rounded text-[7px] text-primary/70 font-mono">{c}</span>
-            ))}
-          </div>
-        </div>
+        <SummaryWhatThisMeans text={WHAT_THIS_MEANS} />
+        <SummarySafetyClaimsFooter claims={SAFETY_CLAIMS} />
 
       </div>
     </div>

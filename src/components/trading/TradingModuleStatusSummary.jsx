@@ -5,9 +5,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
 import { exportSnapshotAndSave } from '../../utils/exportSnapshot';
 import { loadFromStorage } from '../../utils/localStorageManager';
+import SummaryCardHeader from '../ui/SummaryCardHeader';
+import SummaryCountsGrid from '../ui/SummaryCountsGrid';
+import SummarySafetyStatusGrid from '../ui/SummarySafetyStatusGrid';
+import SummaryWhatThisMeans from '../ui/SummaryWhatThisMeans';
+import SummarySafetyClaimsFooter from '../ui/SummarySafetyClaimsFooter';
 
 const STRATEGY_KEY   = 'veridanTradingStrategyRegistry';
 const RISK_KEY       = 'veridanTradingRiskRules';
@@ -95,88 +99,40 @@ export default function TradingModuleStatusSummary() {
 
   return (
     <div className="space-y-4 font-mono">
+      <SummaryCardHeader
+        title="Trading Module Current Status"
+        subtitle="Planning-only status snapshot · All 4 trading modules"
+        onExport={handleExport}
+      />
 
-      {/* Title */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-[11px] font-bold uppercase text-primary">Trading Module Current Status</div>
-          <div className="text-[8px] text-slate-500 mt-0.5">Planning-only status snapshot · All 4 trading modules</div>
-        </div>
-        <button
-          type="button"
-          onClick={handleExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/30 border border-border text-slate-300 text-[9px] font-bold hover:bg-secondary/50 transition-colors rounded-sm"
-        >
-          <Download className="w-3 h-3" />
-          Export Trading Module Status
-        </button>
-      </div>
+      <SummaryCountsGrid
+        title="Module Counts"
+        items={[
+          { label: 'Total Strategies', value: counts.totalStrategies, color: 'text-slate-200' },
+          { label: 'Paper-Ready Strategies', value: counts.paperReadyStrategies, color: 'text-primary' },
+          { label: 'Total Risk Rules', value: counts.totalRiskRules, color: 'text-slate-200' },
+          { label: 'Paper-Ready Risk Rules', value: counts.paperReadyRiskRules, color: 'text-primary' },
+          { label: 'Total Readiness Records', value: counts.totalReadinessRecords, color: 'text-slate-200' },
+          { label: 'Paper-Ready Readiness', value: counts.paperReadyReadinessRecords, color: 'text-primary' },
+          { label: 'Total Broker Requirements', value: counts.totalBrokerRequirements, color: 'text-slate-200' },
+          { label: 'Sandbox-Ready Brokers', value: counts.sandboxReadyBrokerRequirements, color: 'text-primary' },
+        ]}
+      />
 
-      {/* Counts Grid */}
-      <div className="bg-card border border-border/50 rounded-sm p-4">
-        <div className="text-[9px] font-bold uppercase text-slate-300 mb-3">Module Counts</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: 'Total Strategies', value: counts.totalStrategies, color: 'text-slate-200' },
-            { label: 'Paper-Ready Strategies', value: counts.paperReadyStrategies, color: 'text-primary' },
-            { label: 'Total Risk Rules', value: counts.totalRiskRules, color: 'text-slate-200' },
-            { label: 'Paper-Ready Risk Rules', value: counts.paperReadyRiskRules, color: 'text-primary' },
-            { label: 'Total Readiness Records', value: counts.totalReadinessRecords, color: 'text-slate-200' },
-            { label: 'Paper-Ready Readiness', value: counts.paperReadyReadinessRecords, color: 'text-primary' },
-            { label: 'Total Broker Requirements', value: counts.totalBrokerRequirements, color: 'text-slate-200' },
-            { label: 'Sandbox-Ready Brokers', value: counts.sandboxReadyBrokerRequirements, color: 'text-primary' },
-          ].map(item => (
-            <div key={item.label} className="flex flex-col items-center px-3 py-2.5 bg-secondary/20 border border-border/30 rounded-sm">
-              <span className={`text-[18px] font-bold font-mono ${item.color}`}>{item.value}</span>
-              <span className="text-[7px] text-slate-500 mt-0.5 text-center leading-tight">{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <SummarySafetyStatusGrid
+        title="Safety Status"
+        items={[
+          { label: 'Trading Module Mode', value: 'PLANNING_ONLY', color: 'text-amber-400' },
+          { label: 'Live Trading', value: 'DISABLED', color: 'text-destructive' },
+          { label: 'Broker API Calls', value: 'DISABLED', color: 'text-destructive' },
+          { label: 'Order Placement', value: 'DISABLED', color: 'text-destructive' },
+          { label: 'Credential Storage in Frontend', value: 'DISABLED', color: 'text-destructive' },
+          { label: 'Backend Mutation', value: 'DISABLED', color: 'text-destructive' },
+        ]}
+      />
 
-      {/* Safety Status Grid */}
-      <div className="bg-card border border-border/50 rounded-sm p-4">
-        <div className="text-[9px] font-bold uppercase text-slate-300 mb-3">Safety Status</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {[
-            { label: 'Trading Module Mode', value: 'PLANNING_ONLY', color: 'text-amber-400' },
-            { label: 'Live Trading', value: 'DISABLED', color: 'text-destructive' },
-            { label: 'Broker API Calls', value: 'DISABLED', color: 'text-destructive' },
-            { label: 'Order Placement', value: 'DISABLED', color: 'text-destructive' },
-            { label: 'Credential Storage in Frontend', value: 'DISABLED', color: 'text-destructive' },
-            { label: 'Backend Mutation', value: 'DISABLED', color: 'text-destructive' },
-          ].map(item => (
-            <div
-              key={item.label}
-              className="flex items-center justify-between px-4 py-2.5 bg-secondary/20 border border-border/30 rounded-sm"
-            >
-              <span className="text-[9px] text-slate-400">{item.label}:</span>
-              <span className={`text-[8px] font-bold font-mono ${item.color}`}>{item.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* What This Means */}
-      <div className="px-4 py-3 bg-primary/5 border border-primary/20 rounded-sm">
-        <div className="text-[9px] font-bold uppercase text-primary mb-2">What This Means</div>
-        <p className="text-[8px] text-slate-300 leading-relaxed">
-          {WHAT_THIS_MEANS}
-        </p>
-      </div>
-
-      {/* Safety Claims */}
-      <div className="px-4 py-3 bg-primary/5 border border-primary/15 rounded-sm">
-        <div className="text-[8px] font-bold uppercase text-primary/70 mb-2">Safety Claims</div>
-        <div className="flex flex-wrap gap-1">
-          {SAFETY_CLAIMS.map(claim => (
-            <span key={claim} className="px-1.5 py-0.5 bg-primary/5 border border-primary/15 rounded text-[7px] text-primary/70 font-mono">
-              {claim}
-            </span>
-          ))}
-        </div>
-      </div>
-
+      <SummaryWhatThisMeans text={WHAT_THIS_MEANS} />
+      <SummarySafetyClaimsFooter claims={SAFETY_CLAIMS} />
     </div>
   );
 }
