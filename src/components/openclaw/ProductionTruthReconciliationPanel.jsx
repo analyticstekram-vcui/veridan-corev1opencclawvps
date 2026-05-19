@@ -163,6 +163,256 @@ const BUCKET_CONFIG = {
   },
 };
 
+// ─── Recommended Next Action logic ───────────────────────────────────────────
+
+const BROKER_NAMES = ['broker credentials vaulted', 'broker credential vault'];
+const API_KEY_NAME  = 'api keys stored server-side only';
+const LIVE_TRADING  = 'live order execution';
+const LIVE_PAYMENT  = 'payment/transfer execution';
+
+function getRecommendedAction(buckets) {
+  const conflicts     = buckets.STATUS_CONFLICT;
+  const blocked       = buckets.BLOCKED_FROM_PRODUCTION;
+  const preview       = buckets.PREVIEW_UI_ONLY;
+  const verified      = buckets.VERIFIED_SAFE;
+
+  const conflictNames = conflicts.map(c => c.def.name.toLowerCase());
+  const blockedNames  = blocked.map(c => c.def.name.toLowerCase());
+
+  // Priority 1 — any status conflicts
+  if (conflicts.length > 0) {
+    return {
+      priority: 1,
+      level: 'CRITICAL',
+      action: 'Resolve status conflicts before any execution bridge expansion.',
+      reason: `${conflicts.length} checklist item${conflicts.length > 1 ? 's are' : ' is'} marked COMPLETE but ${conflicts.length > 1 ? 'have' : 'has'} review notes that contradict completion. These must be re-reviewed and corrected before the reconciliation can be trusted.`,
+      blockedCapabilities: [
+        'OpenClaw execution bridge expansion',
+        'Live broker connection',
+        'Live trading enablement',
+        'Any production promotion',
+      ],
+      safeCapabilities: [
+        'Read-only gateway status checks',
+        'Dry-run bridge contract preview',
+        'Operator review and re-annotation',
+        'Evidence chain export',
+        'Governance audit review',
+      ],
+    };
+  }
+
+  // Priority 2 — broker credential items conflicted or blocked
+  const brokerIssue = BROKER_NAMES.some(n => conflictNames.includes(n) || blockedNames.includes(n));
+  if (brokerIssue) {
+    return {
+      priority: 2,
+      level: 'HIGH',
+      action: 'Do not enable broker or live trading. Build and verify server-side credential vault first.',
+      reason: 'Broker credential vault items are blocked or unresolved. Enabling live broker connections without a verified server-side vault risks credential exposure.',
+      blockedCapabilities: [
+        'Live broker API connection',
+        'Paper trading with real credentials',
+        'Live order execution',
+        'Any credential entry in UI',
+      ],
+      safeCapabilities: [
+        'Paper trading adapter design (no credentials)',
+        'Vault architecture planning',
+        'Read-only connector skeleton review',
+        'Dry-run bridge testing',
+      ],
+    };
+  }
+
+  // Priority 3 — API keys stored server-side conflicted
+  const apiKeyConflict = conflictNames.includes(API_KEY_NAME);
+  if (apiKeyConflict) {
+    return {
+      priority: 3,
+      level: 'HIGH',
+      action: 'Run backend environment/secret audit before enabling OpenClaw execution.',
+      reason: '"API keys stored server-side only" is marked COMPLETE but has a conflicting review note. Secret exposure risk must be verified clean before execution bridges are opened.',
+      blockedCapabilities: [
+        'OpenClaw execution bridge',
+        'Any live API key usage via frontend path',
+        'Broker credential activation',
+      ],
+      safeCapabilities: [
+        'Backend function audit (read-only review)',
+        'Environment variable presence check',
+        'Dry-run bridge preview',
+        'Governance checklist review',
+      ],
+    };
+  }
+
+  // Priority 4 — live execution items blocked
+  const liveBlocked = blockedNames.includes(LIVE_TRADING) || blockedNames.includes(LIVE_PAYMENT);
+  if (liveBlocked) {
+    return {
+      priority: 4,
+      level: 'MEDIUM',
+      action: 'Keep trading and treasury execution disabled.',
+      reason: 'Live order execution and/or payment/transfer execution are explicitly blocked from production. These governance gates must remain enforced until all prerequisites are satisfied.',
+      blockedCapabilities: [
+        'Live order execution',
+        'Payment / transfer execution',
+        'Treasury bridge activation',
+        'Broker live mode',
+      ],
+      safeCapabilities: [
+        'Read-only status bridge',
+        'Paper trading design and dry-run',
+        'Approval workflow review',
+        'Governance policy audit',
+      ],
+    };
+  }
+
+  // Priority 5 — only preview/UI items remain
+  if (preview.length > 0 && blocked.length === 0 && conflicts.length === 0) {
+    return {
+      priority: 5,
+      level: 'LOW',
+      action: 'Continue read-only verification and dry-run bridge testing.',
+      reason: `${preview.length} item${preview.length > 1 ? 's are' : ' is'} in Preview/UI Only state. No blockers or conflicts detected. Safe to continue verification work without expanding execution boundaries.`,
+      blockedCapabilities: [
+        'Execution bridge promotion',
+        'Live broker connection',
+        'Live mode activation',
+      ],
+      safeCapabilities: [
+        'Dry-run bridge contract testing',
+        'Read-only gateway health checks',
+        'Checklist operator review',
+        'Evidence chain export',
+        'Governance documentation review',
+      ],
+    };
+  }
+
+  // Priority 6 — all verified safe
+  if (verified.length === CHECKLIST_ITEMS.length) {
+    return {
+      priority: 6,
+      level: 'CLEAR',
+      action: 'Ready for controlled read-only gateway verification.',
+      reason: 'All checklist items reconcile as Verified Safe with no conflicts, blocks, or preview-only items. Controlled read-only gateway verification may proceed under governance approval.',
+      blockedCapabilities: [
+        'Live execution (still requires separate governance gate)',
+        'Live trading',
+        'Payment execution',
+      ],
+      safeCapabilities: [
+        'Read-only gateway verification',
+        'Controlled dry-run bridge testing',
+        'Full evidence chain review',
+        'Governance board sign-off preparation',
+      ],
+    };
+  }
+
+  // Fallback
+  return {
+    priority: 5,
+    level: 'LOW',
+    action: 'Continue read-only verification and dry-run bridge testing.',
+    reason: 'No critical conflicts or blockers detected. Continue verification work.',
+    blockedCapabilities: ['Execution bridge promotion', 'Live mode activation'],
+    safeCapabilities: ['Read-only checks', 'Dry-run bridge preview', 'Governance review'],
+  };
+}
+
+const ACTION_LEVEL_STYLE = {
+  CRITICAL: { bg: 'bg-orange-500/10', border: 'border-orange-500/30', text: 'text-orange-400', label: 'CRITICAL ACTION REQUIRED' },
+  HIGH:     { bg: 'bg-destructive/10', border: 'border-destructive/30', text: 'text-destructive', label: 'HIGH PRIORITY' },
+  MEDIUM:   { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', label: 'MEDIUM PRIORITY' },
+  LOW:      { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-400', label: 'ADVISORY' },
+  CLEAR:    { bg: 'bg-primary/10', border: 'border-primary/30', text: 'text-primary', label: 'CLEAR TO PROCEED' },
+};
+
+function RecommendedNextAction({ buckets }) {
+  const rec = getRecommendedAction(buckets);
+  const style = ACTION_LEVEL_STYLE[rec.level];
+
+  return (
+    <div className={`${style.bg} border ${style.border} rounded-sm overflow-hidden`}>
+      {/* Header */}
+      <div className={`px-4 py-2.5 border-b ${style.border} flex items-center gap-2`}>
+        <AlertTriangle className={`w-4 h-4 ${style.text} shrink-0`} />
+        <span className={`text-[10px] font-bold uppercase tracking-widest ${style.text}`}>
+          Recommended Next Operator Action
+        </span>
+        <span className={`ml-auto text-[7px] font-bold border px-2 py-0.5 rounded-sm ${style.border} ${style.text}`}>
+          {style.label}
+        </span>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* Primary action */}
+        <div>
+          <div className="text-[8px] font-bold uppercase text-slate-500 mb-1">Primary Next Action</div>
+          <div className={`text-[11px] font-bold font-mono ${style.text}`}>{rec.action}</div>
+        </div>
+
+        {/* Reason */}
+        <div>
+          <div className="text-[8px] font-bold uppercase text-slate-500 mb-1">Reason</div>
+          <div className="text-[9px] text-slate-300 leading-relaxed">{rec.reason}</div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Blocked capabilities */}
+          <div className="bg-destructive/5 border border-destructive/20 rounded-sm p-3">
+            <div className="text-[8px] font-bold uppercase text-destructive mb-2 flex items-center gap-1">
+              <Ban className="w-3 h-3" /> Blocked Capabilities
+            </div>
+            <div className="space-y-1">
+              {rec.blockedCapabilities.map((c, i) => (
+                <div key={i} className="text-[8px] font-mono text-destructive/80 flex items-start gap-1.5">
+                  <span className="shrink-0 mt-0.5">✗</span> {c}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Safe capabilities */}
+          <div className="bg-primary/5 border border-primary/20 rounded-sm p-3">
+            <div className="text-[8px] font-bold uppercase text-primary mb-2 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Safe Capabilities Still Allowed
+            </div>
+            <div className="space-y-1">
+              {rec.safeCapabilities.map((c, i) => (
+                <div key={i} className="text-[8px] font-mono text-primary/80 flex items-start gap-1.5">
+                  <span className="shrink-0 mt-0.5">✓</span> {c}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Hard constraints footer */}
+        <div className="bg-secondary/20 border border-border/30 rounded-sm px-3 py-2 text-[7px] font-mono text-slate-600 flex flex-wrap gap-x-3 gap-y-1">
+          <span>No execution button</span>
+          <span>·</span>
+          <span>No dispatch</span>
+          <span>·</span>
+          <span>No broker actions</span>
+          <span>·</span>
+          <span>No payment actions</span>
+          <span>·</span>
+          <span>No credential handling</span>
+          <span>·</span>
+          <span>No filesystem writes</span>
+          <span>·</span>
+          <span>No live mode</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const PRIORITY_COLOR = {
   CRITICAL: 'text-destructive',
   HIGH: 'text-orange-400',
@@ -332,6 +582,9 @@ export default function ProductionTruthReconciliationPanel() {
           </div>
         ))}
       </div>
+
+      {/* Recommended Next Operator Action */}
+      <RecommendedNextAction buckets={buckets} />
 
       {/* Overall truthfulness banner */}
       {totalConflicts === 0 && totalBlocked === 0 ? (
