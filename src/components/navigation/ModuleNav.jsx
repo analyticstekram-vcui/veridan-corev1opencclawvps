@@ -22,6 +22,7 @@ export default function ModuleNav() {
     { label: 'Business', path: '/business-operations', icon: Briefcase },
     { label: 'Knowledge', path: '/knowledge-vault', icon: BookOpen },
     { label: 'Control Room', path: '/control-room', icon: Radio },
+    { label: 'Obsidian Vault', path: '/obsidian-vault', icon: BookOpen },
   ];
 
   return (

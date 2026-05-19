@@ -29,6 +29,7 @@ import TradingCommandCenter from './pages/TradingCommandCenter';
 import PublicCreditCommandCenter from './pages/PublicCreditCommandCenter';
 import BusinessFormationCommandCenter from './pages/BusinessFormationCommandCenter';
 import AiCommandCenter from './pages/AiCommandCenter';
+import ObsidianVaultCommandCenter from './pages/ObsidianVaultCommandCenter';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -81,6 +82,7 @@ const AuthenticatedApp = () => {
       <Route path="/public-credit-command-center" element={<PublicCreditCommandCenter />} />
       <Route path="/business-formation-command-center" element={<BusinessFormationCommandCenter />} />
       <Route path="/ai-command-center" element={<AiCommandCenter />} />
+      <Route path="/obsidian-vault" element={<ObsidianVaultCommandCenter />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
