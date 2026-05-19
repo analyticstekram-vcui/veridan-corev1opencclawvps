@@ -16,6 +16,7 @@ import ObsidianOperatorApprovalQueue from '../components/obsidian-vault/Obsidian
 import ObsidianEvidenceChainLog from '../components/obsidian-vault/ObsidianEvidenceChainLog';
 import ObsidianVaultVerificationReport from '../components/obsidian-vault/ObsidianVaultVerificationReport';
 import ObsidianLocalFileBridgePreview from '../components/obsidian-vault/ObsidianLocalFileBridgePreview';
+import ObsidianVpsBridgePanel from '../components/obsidian-vault/ObsidianVpsBridgePanel';
 
 const TABS = [
   { id: 'status',    label: 'Module Status' },
@@ -27,6 +28,7 @@ const TABS = [
   { id: 'evidence',  label: 'Evidence Chain' },
   { id: 'verify',    label: 'Verification Report' },
   { id: 'bridge',    label: 'Local File Bridge Preview' },
+  { id: 'vpsbridge', label: 'VPS Bridge' },
 ];
 
 export default function ObsidianVaultCommandCenter() {
@@ -104,6 +106,7 @@ export default function ObsidianVaultCommandCenter() {
         {activeTab === 'evidence' && <ObsidianEvidenceChainLog />}
         {activeTab === 'verify'   && <ObsidianVaultVerificationReport />}
         {activeTab === 'bridge'   && <ObsidianLocalFileBridgePreview />}
+        {activeTab === 'vpsbridge' && <ObsidianVpsBridgePanel />}
       </div>
     </div>
   );
