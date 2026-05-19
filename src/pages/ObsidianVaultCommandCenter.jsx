@@ -15,6 +15,7 @@ import ObsidianOpenClawTaskQueue from '../components/obsidian-vault/ObsidianOpen
 import ObsidianOperatorApprovalQueue from '../components/obsidian-vault/ObsidianOperatorApprovalQueue';
 import ObsidianEvidenceChainLog from '../components/obsidian-vault/ObsidianEvidenceChainLog';
 import ObsidianVaultVerificationReport from '../components/obsidian-vault/ObsidianVaultVerificationReport';
+import ObsidianLocalFileBridgePreview from '../components/obsidian-vault/ObsidianLocalFileBridgePreview';
 
 const TABS = [
   { id: 'status',    label: 'Module Status' },
@@ -25,6 +26,7 @@ const TABS = [
   { id: 'approval',  label: 'Approval Queue' },
   { id: 'evidence',  label: 'Evidence Chain' },
   { id: 'verify',    label: 'Verification Report' },
+  { id: 'bridge',    label: 'Local File Bridge Preview' },
 ];
 
 export default function ObsidianVaultCommandCenter() {
@@ -101,6 +103,7 @@ export default function ObsidianVaultCommandCenter() {
         {activeTab === 'approval' && <ObsidianOperatorApprovalQueue />}
         {activeTab === 'evidence' && <ObsidianEvidenceChainLog />}
         {activeTab === 'verify'   && <ObsidianVaultVerificationReport />}
+        {activeTab === 'bridge'   && <ObsidianLocalFileBridgePreview />}
       </div>
     </div>
   );
