@@ -6,6 +6,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
+import { exportSnapshotAndSave } from '../../utils/exportSnapshot';
+import { loadFromStorage } from '../../utils/localStorageManager';
 
 const PROFILE_KEY       = 'veridanPublicCreditProfilePlans';
 const DISPUTE_KEY       = 'veridanPublicCreditDisputePlans';
@@ -41,9 +43,6 @@ const SAFETY_ROWS = [
   { label: 'Backend Mutation',                       value: 'DISABLED',            color: 'text-destructive' },
 ];
 
-function load(key) { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } }
-function save(key, d) { try { localStorage.setItem(key, JSON.stringify(d)); } catch {} }
-
 export default function PublicCreditModuleStatusSummary() {
   const [counts, setCounts] = useState({
     totalProfilePlans: 0,
@@ -60,11 +59,11 @@ export default function PublicCreditModuleStatusSummary() {
   });
 
   useEffect(() => {
-    const profiles = load(PROFILE_KEY);
-    const disputes = load(DISPUTE_KEY);
-    const bureauTasks = load(BUREAU_KEY);
-    const tradelines = load(TRADELINE_KEY);
-    const goals = load(GOALS_KEY);
+    const profiles = loadFromStorage(PROFILE_KEY);
+    const disputes = loadFromStorage(DISPUTE_KEY);
+    const bureauTasks = loadFromStorage(BUREAU_KEY);
+    const tradelines = loadFromStorage(TRADELINE_KEY);
+    const goals = loadFromStorage(GOALS_KEY);
 
     setCounts({
       totalProfilePlans: profiles.length,
@@ -82,35 +81,26 @@ export default function PublicCreditModuleStatusSummary() {
   }, []);
 
   const handleExport = () => {
-    const exportData = {
-      generatedAt: new Date().toISOString(),
+    exportSnapshotAndSave({
       snapshotType: 'VERIDAN_PUBLIC_CREDIT_MODULE_STATUS',
-      counts,
-      safetyStatus: {
-        moduleName: 'Public Credit Command Center',
-        mode: 'PLANNING_ONLY',
-        bureauAPICallsEnabled: false,
-        creditBureauSubmissionsEnabled: false,
-        bureauLoginAutomationEnabled: false,
-        credentialStorageEnabled: false,
-        sensitiveIdentityDataCollectionEnabled: false,
-        clientDocumentUploadEnabled: false,
-        backendMutationEnabled: false,
+      data: {
+        counts,
+        safetyStatus: {
+          moduleName: 'Public Credit Command Center',
+          mode: 'PLANNING_ONLY',
+          bureauAPICallsEnabled: false,
+          creditBureauSubmissionsEnabled: false,
+          bureauLoginAutomationEnabled: false,
+          credentialStorageEnabled: false,
+          sensitiveIdentityDataCollectionEnabled: false,
+          clientDocumentUploadEnabled: false,
+          backendMutationEnabled: false,
+        },
       },
+      filename: 'veridan-public-credit-module-status',
       safetyClaims: SAFETY_CLAIMS,
-    };
-    
-    // Save to localStorage
-    save(SNAPSHOT_KEY, exportData);
-    
-    // Export as JSON file
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `veridan-public-credit-module-status-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      storageKey: SNAPSHOT_KEY,
+    });
   };
 
   return (

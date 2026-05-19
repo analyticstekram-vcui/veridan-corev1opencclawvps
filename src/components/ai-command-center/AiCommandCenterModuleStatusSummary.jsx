@@ -6,6 +6,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
+import { exportSnapshotAndSave } from '../../utils/exportSnapshot';
+import { loadFromStorage } from '../../utils/localStorageManager';
 
 const STORAGE_KEYS = {
   SYSTEM_BRIEF: 'veridanAiCommandCenterSystemBriefSnapshot',
@@ -36,10 +38,6 @@ const SAFETY_CLAIMS = [
   'Browser-only export',
 ];
 
-function loadData(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
-}
-
 export default function AiCommandCenterModuleStatusSummary() {
   const [systemBriefPresent, setSystemBriefPresent] = useState(false);
   const [proposedActions, setProposedActions] = useState([]);
@@ -49,10 +47,10 @@ export default function AiCommandCenterModuleStatusSummary() {
 
   useEffect(() => {
     setSystemBriefPresent(!!localStorage.getItem(STORAGE_KEYS.SYSTEM_BRIEF));
-    setProposedActions(loadData(STORAGE_KEYS.PROPOSED_ACTIONS));
-    setCodexTasks(loadData(STORAGE_KEYS.CODEX_TASKS));
-    setOpenClawTasks(loadData(STORAGE_KEYS.OPENCLAW_TASKS));
-    setOperatorReviews(loadData(STORAGE_KEYS.OPERATOR_REVIEWS));
+    setProposedActions(loadFromStorage(STORAGE_KEYS.PROPOSED_ACTIONS));
+    setCodexTasks(loadFromStorage(STORAGE_KEYS.CODEX_TASKS));
+    setOpenClawTasks(loadFromStorage(STORAGE_KEYS.OPENCLAW_TASKS));
+    setOperatorReviews(loadFromStorage(STORAGE_KEYS.OPERATOR_REVIEWS));
   }, []);
 
   const counts = {
@@ -86,31 +84,16 @@ export default function AiCommandCenterModuleStatusSummary() {
   };
 
   const handleExport = () => {
-    const snapshot = {
-      generatedAt: new Date().toISOString(),
+    exportSnapshotAndSave({
       snapshotType: 'VERIDAN_AI_COMMAND_CENTER_MODULE_STATUS',
-      counts,
-      safetyStatus,
+      data: {
+        counts,
+        safetyStatus,
+      },
+      filename: 'veridan-ai-command-center-module-status',
       safetyClaims: SAFETY_CLAIMS,
-    };
-
-    // Store in localStorage
-    try {
-      localStorage.setItem(STATUS_SNAPSHOT_KEY, JSON.stringify(snapshot));
-    } catch (e) {
-      console.error('Failed to store status snapshot:', e);
-    }
-
-    // Export JSON
-    const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
-      type: 'application/json',
+      storageKey: STATUS_SNAPSHOT_KEY,
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `veridan-ai-command-center-module-status-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   return (

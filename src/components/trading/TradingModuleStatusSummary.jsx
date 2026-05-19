@@ -6,6 +6,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
+import { exportSnapshotAndSave } from '../../utils/exportSnapshot';
+import { loadFromStorage } from '../../utils/localStorageManager';
 
 const STRATEGY_KEY   = 'veridanTradingStrategyRegistry';
 const RISK_KEY       = 'veridanTradingRiskRules';
@@ -27,14 +29,6 @@ const SAFETY_CLAIMS = [
 const WHAT_THIS_MEANS =
   'The Trading Command Center can track strategies, risk rules, paper readiness, and broker sandbox requirements. It cannot place trades, call broker APIs, store credentials, or execute orders.';
 
-function load(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
-}
-
-function save(key, data) {
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
-}
-
 export default function TradingModuleStatusSummary() {
   const [counts, setCounts] = useState({
     totalStrategies: 0,
@@ -48,10 +42,10 @@ export default function TradingModuleStatusSummary() {
   });
 
   useEffect(() => {
-    const strategies = load(STRATEGY_KEY);
-    const riskRules = load(RISK_KEY);
-    const readiness = load(READINESS_KEY);
-    const broker = load(BROKER_KEY);
+    const strategies = loadFromStorage(STRATEGY_KEY);
+    const riskRules = loadFromStorage(RISK_KEY);
+    const readiness = loadFromStorage(READINESS_KEY);
+    const broker = loadFromStorage(BROKER_KEY);
 
     setCounts({
       totalStrategies: strategies.length,
@@ -66,44 +60,37 @@ export default function TradingModuleStatusSummary() {
   }, []);
 
   const handleExport = () => {
-    const strategies = load(STRATEGY_KEY);
-    const riskRules = load(RISK_KEY);
-    const readiness = load(READINESS_KEY);
-    const broker = load(BROKER_KEY);
+    const strategies = loadFromStorage(STRATEGY_KEY);
+    const riskRules = loadFromStorage(RISK_KEY);
+    const readiness = loadFromStorage(READINESS_KEY);
+    const broker = loadFromStorage(BROKER_KEY);
 
-    const exportData = {
-      generatedAt: new Date().toISOString(),
+    exportSnapshotAndSave({
       snapshotType: 'VERIDAN_TRADING_MODULE_STATUS',
-      counts: {
-        totalStrategies: strategies.length,
-        paperReadyStrategies: strategies.filter(s => s.strategyStatus === 'PAPER_READY').length,
-        totalRiskRules: riskRules.length,
-        paperReadyRiskRules: riskRules.filter(r => r.ruleStatus === 'PAPER_READY').length,
-        totalReadinessRecords: readiness.length,
-        paperReadyReadinessRecords: readiness.filter(r => r.readinessStatus === 'PAPER_READY').length,
-        totalBrokerRequirements: broker.length,
-        sandboxReadyBrokerRequirements: broker.filter(b => b.accountStatus === 'SANDBOX_READY').length,
+      data: {
+        counts: {
+          totalStrategies: strategies.length,
+          paperReadyStrategies: strategies.filter(s => s.strategyStatus === 'PAPER_READY').length,
+          totalRiskRules: riskRules.length,
+          paperReadyRiskRules: riskRules.filter(r => r.ruleStatus === 'PAPER_READY').length,
+          totalReadinessRecords: readiness.length,
+          paperReadyReadinessRecords: readiness.filter(r => r.readinessStatus === 'PAPER_READY').length,
+          totalBrokerRequirements: broker.length,
+          sandboxReadyBrokerRequirements: broker.filter(b => b.accountStatus === 'SANDBOX_READY').length,
+        },
+        safetyStatus: {
+          tradingModuleMode: 'PLANNING_ONLY',
+          liveTradingDisabled: true,
+          brokerAPICallsDisabled: true,
+          orderPlacementDisabled: true,
+          credentialStorageDisabled: true,
+          backendMutationDisabled: true,
+        },
       },
-      safetyStatus: {
-        tradingModuleMode: 'PLANNING_ONLY',
-        liveTradingDisabled: true,
-        brokerAPICallsDisabled: true,
-        orderPlacementDisabled: true,
-        credentialStorageDisabled: true,
-        backendMutationDisabled: true,
-      },
+      filename: 'veridan-trading-module-status',
       safetyClaims: SAFETY_CLAIMS,
-    };
-
-    save(SNAPSHOT_KEY, exportData);
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `veridan-trading-module-status-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      storageKey: SNAPSHOT_KEY,
+    });
   };
 
   return (

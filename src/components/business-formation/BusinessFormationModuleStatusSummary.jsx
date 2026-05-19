@@ -5,6 +5,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
+import { exportSnapshotAndSave } from '../../utils/exportSnapshot';
+import { loadFromStorage } from '../../utils/localStorageManager';
 
 const STORAGE_KEY_SNAPSHOT = 'veridanBusinessFormationModuleStatusSnapshot';
 
@@ -26,31 +28,11 @@ const WHAT_THIS_MEANS =
   'The Business Formation Command Center can track entity plans, structure relationships, registered agent workflows, EIN/bank/credit readiness, and affiliate revenue plans. It cannot file legal documents, call registered agent APIs, submit EIN applications, open bank accounts, process payments, submit client data, store credentials, or mutate backend systems.';
 
 function loadCounts() {
-  let entityPlans = [];
-  let structurePlans = [];
-  let workflows = [];
-  let readiness = [];
-  let revenuePlans = [];
-
-  try {
-    entityPlans = JSON.parse(localStorage.getItem('veridanBusinessEntityRegistry') || '[]');
-  } catch {}
-
-  try {
-    structurePlans = JSON.parse(localStorage.getItem('veridanBusinessStructurePlans') || '[]');
-  } catch {}
-
-  try {
-    workflows = JSON.parse(localStorage.getItem('veridanRegisteredAgentWorkflows') || '[]');
-  } catch {}
-
-  try {
-    readiness = JSON.parse(localStorage.getItem('veridanEinBankCreditReadiness') || '[]');
-  } catch {}
-
-  try {
-    revenuePlans = JSON.parse(localStorage.getItem('veridanAffiliateRevenuePlans') || '[]');
-  } catch {}
+  const entityPlans = loadFromStorage('veridanBusinessEntityRegistry');
+  const structurePlans = loadFromStorage('veridanBusinessStructurePlans');
+  const workflows = loadFromStorage('veridanRegisteredAgentWorkflows');
+  const readiness = loadFromStorage('veridanEinBankCreditReadiness');
+  const revenuePlans = loadFromStorage('veridanAffiliateRevenuePlans');
 
   return {
     entityPlans,
@@ -111,52 +93,39 @@ export default function BusinessFormationModuleStatusSummary() {
   }, []);
 
   const handleExport = () => {
-    const data = loadCounts();
-
-    const exportPayload = {
-      generatedAt: new Date().toISOString(),
+    exportSnapshotAndSave({
       snapshotType: 'VERIDAN_BUSINESS_FORMATION_MODULE_STATUS',
-      counts: {
-        totalEntityPlans: counts.totalEntityPlans,
-        planningEntityPlans: counts.planningEntityPlans,
-        readyForOfflineEntityPlans: counts.readyForOfflineEntityPlans,
-        totalStructurePlans: counts.totalStructurePlans,
-        offlineReviewStructurePlans: counts.offlineReviewStructurePlans,
-        totalWorkflows: counts.totalWorkflows,
-        selectedForOfflineReviewWorkflows: counts.selectedForOfflineReviewWorkflows,
-        totalReadiness: counts.totalReadiness,
-        readyForOfflineActionReadiness: counts.readyForOfflineActionReadiness,
-        totalRevenuePlans: counts.totalRevenuePlans,
-        activeForPlanningRevenuePlans: counts.activeForPlanningRevenuePlans,
+      data: {
+        counts: {
+          totalEntityPlans: counts.totalEntityPlans,
+          planningEntityPlans: counts.planningEntityPlans,
+          readyForOfflineEntityPlans: counts.readyForOfflineEntityPlans,
+          totalStructurePlans: counts.totalStructurePlans,
+          offlineReviewStructurePlans: counts.offlineReviewStructurePlans,
+          totalWorkflows: counts.totalWorkflows,
+          selectedForOfflineReviewWorkflows: counts.selectedForOfflineReviewWorkflows,
+          totalReadiness: counts.totalReadiness,
+          readyForOfflineActionReadiness: counts.readyForOfflineActionReadiness,
+          totalRevenuePlans: counts.totalRevenuePlans,
+          activeForPlanningRevenuePlans: counts.activeForPlanningRevenuePlans,
+        },
+        safetyStatus: {
+          moduleName: 'Business Formation Command Center',
+          moduleMode: 'PLANNING_ONLY',
+          legalFiling: 'DISABLED',
+          registeredAgentApiCalls: 'DISABLED',
+          einSubmission: 'DISABLED',
+          bankAccountOpening: 'DISABLED',
+          paymentProcessing: 'DISABLED',
+          clientDataSubmission: 'DISABLED',
+          credentialStorageInFrontend: 'DISABLED',
+          backendMutation: 'DISABLED',
+        },
       },
-      safetyStatus: {
-        moduleName: 'Business Formation Command Center',
-        moduleMode: 'PLANNING_ONLY',
-        legalFiling: 'DISABLED',
-        registeredAgentApiCalls: 'DISABLED',
-        einSubmission: 'DISABLED',
-        bankAccountOpening: 'DISABLED',
-        paymentProcessing: 'DISABLED',
-        clientDataSubmission: 'DISABLED',
-        credentialStorageInFrontend: 'DISABLED',
-        backendMutation: 'DISABLED',
-      },
+      filename: 'veridan-business-formation-module-status',
       safetyClaims: SAFETY_CLAIMS,
-    };
-
-    // Store in localStorage
-    try {
-      localStorage.setItem(STORAGE_KEY_SNAPSHOT, JSON.stringify(exportPayload));
-    } catch {}
-
-    // Export as JSON file
-    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `veridan-business-formation-module-status-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      storageKey: STORAGE_KEY_SNAPSHOT,
+    });
   };
 
   return (

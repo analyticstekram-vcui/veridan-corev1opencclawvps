@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
+import { exportSnapshotAndSave } from '../utils/exportSnapshot';
 import ModuleNav from '../components/navigation/ModuleNav';
 
 const STORAGE_KEYS = {
@@ -63,53 +64,38 @@ export default function GlobalCommandDashboard() {
   };
 
   const handleExport = () => {
-    const snapshot = {
-      generatedAt: new Date().toISOString(),
+    exportSnapshotAndSave({
       snapshotType: 'VERIDAN_GLOBAL_COMMAND_DASHBOARD_STATUS',
-      snapshotPresence: {
-        'Trading module snapshot present': snapshotPresence.trading,
-        'Public Credit module snapshot present': snapshotPresence.publicCredit,
-        'Business Formation module snapshot present': snapshotPresence.businessFormation,
-        'AI Command Center snapshot present': snapshotPresence.aiCommandCenter,
-        'OpenClaw governance checkpoint present': snapshotPresence.openClawCheckpoint,
+      data: {
+        snapshotPresence: {
+          'Trading module snapshot present': snapshotPresence.trading,
+          'Public Credit module snapshot present': snapshotPresence.publicCredit,
+          'Business Formation module snapshot present': snapshotPresence.businessFormation,
+          'AI Command Center snapshot present': snapshotPresence.aiCommandCenter,
+          'OpenClaw governance checkpoint present': snapshotPresence.openClawCheckpoint,
+        },
+        globalMode: {
+          'Global mode': 'PLANNING_ONLY',
+          'Execution readiness': 'NOT_READY_FOR_EXECUTION',
+          'OpenClaw governance': 'LOCKED_EXECUTION_DISABLED',
+          'Trading automation': 'DISABLED',
+          'Broker API calls': 'DISABLED',
+          'Credit bureau calls': 'DISABLED',
+          'Legal filing': 'DISABLED',
+          'Bank account opening': 'DISABLED',
+          'Payment processing': 'DISABLED',
+          'Codex execution': 'DISABLED',
+          'OpenClaw dispatch': 'DISABLED',
+          'MCP calls': 'DISABLED',
+          'Browser automation': 'DISABLED',
+          'Credential handling': 'DISABLED',
+          'Backend mutation': 'DISABLED',
+        },
       },
-      globalMode: {
-        'Global mode': 'PLANNING_ONLY',
-        'Execution readiness': 'NOT_READY_FOR_EXECUTION',
-        'OpenClaw governance': 'LOCKED_EXECUTION_DISABLED',
-        'Trading automation': 'DISABLED',
-        'Broker API calls': 'DISABLED',
-        'Credit bureau calls': 'DISABLED',
-        'Legal filing': 'DISABLED',
-        'Bank account opening': 'DISABLED',
-        'Payment processing': 'DISABLED',
-        'Codex execution': 'DISABLED',
-        'OpenClaw dispatch': 'DISABLED',
-        'MCP calls': 'DISABLED',
-        'Browser automation': 'DISABLED',
-        'Credential handling': 'DISABLED',
-        'Backend mutation': 'DISABLED',
-      },
+      filename: 'veridan-global-command-dashboard',
       safetyClaims: SAFETY_CLAIMS,
-    };
-
-    // Store in localStorage
-    try {
-      localStorage.setItem(STATUS_SNAPSHOT_KEY, JSON.stringify(snapshot));
-    } catch (e) {
-      console.error('Failed to store dashboard snapshot:', e);
-    }
-
-    // Export JSON
-    const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
-      type: 'application/json',
+      storageKey: STATUS_SNAPSHOT_KEY,
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `veridan-global-command-dashboard-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
