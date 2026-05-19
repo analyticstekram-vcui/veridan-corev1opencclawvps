@@ -15,6 +15,7 @@ import React, { useState, useCallback } from 'react';
 import { Copy, Download, ShieldAlert, CheckCircle2, Ban, AlertTriangle, FileText, ChevronDown } from 'lucide-react';
 import ObsidianVpsBridgeReadinessChecklist from './ObsidianVpsBridgeReadinessChecklist';
 import ObsidianVpsBridgeEvidenceLog, { BRIDGE_EVIDENCE_LOG_KEY } from './ObsidianVpsBridgeEvidenceLog';
+import ObsidianVpsBridgeSelfTest from './ObsidianVpsBridgeSelfTest';
 import { loadFromStorage, saveToStorage } from '../../utils/localStorageManager';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -500,6 +501,11 @@ export default function ObsidianVpsBridgePanel() {
       {/* Bridge Packet History / Evidence Log */}
       <div className="border-t border-border/40 pt-4">
         <ObsidianVpsBridgeEvidenceLog refreshSignal={logRefresh} />
+      </div>
+
+      {/* Self-Test Panel */}
+      <div className="border-t border-border/40 pt-4">
+        <ObsidianVpsBridgeSelfTest />
       </div>
 
       {/* Footer disclaimer */}
