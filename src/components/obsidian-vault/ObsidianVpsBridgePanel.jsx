@@ -530,11 +530,11 @@ export default function ObsidianVpsBridgePanel() {
                 Dry-run endpoint only · No filesystem writes · No execution
               </div>
               <div className="text-[7px] text-slate-600 bg-secondary/30 border border-border/30 rounded-sm px-2 py-1.5">
-                <span className="text-slate-400 font-bold">Note:</span> The local UI preview path above uses a governance
-                placeholder root (<span className="font-mono text-slate-400">/opt/veridan/obsidian-vault</span>).
-                The VPS Bridge Response <span className="font-mono text-amber-400">wouldWritePath</span> below will show
-                the actual path as resolved by the VPS, expected under{' '}
-                <span className="font-mono text-amber-400">/root/veridans-mind-vault</span>.
+                <span className="text-slate-400 font-bold">Operator Note:</span> Expected public bridge URL is{' '}
+                <span className="font-mono text-amber-400">https://bridge.veridancore.com/api/obsidian/dry-run</span>.
+                Localhost only works from inside the VPS. The VPS Bridge Response{' '}
+                <span className="font-mono text-amber-400">wouldWritePath</span> below will show the actual path as
+                resolved by the VPS bridge service.
               </div>
 
               <button
