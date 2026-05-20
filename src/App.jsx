@@ -31,6 +31,7 @@ import BusinessFormationCommandCenter from './pages/BusinessFormationCommandCent
 import AiCommandCenter from './pages/AiCommandCenter';
 import ObsidianVaultCommandCenter from './pages/ObsidianVaultCommandCenter';
 import WebhookContractPreview from './pages/WebhookContractPreview';
+import McpTradingViewPreview from './pages/McpTradingViewPreview';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -85,6 +86,7 @@ const AuthenticatedApp = () => {
       <Route path="/ai-command-center" element={<AiCommandCenter />} />
       <Route path="/obsidian-vault" element={<ObsidianVaultCommandCenter />} />
       <Route path="/webhook-contract-preview" element={<WebhookContractPreview />} />
+      <Route path="/mcp-tradingview-preview" element={<McpTradingViewPreview />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
