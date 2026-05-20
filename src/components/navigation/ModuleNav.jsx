@@ -25,6 +25,7 @@ export default function ModuleNav() {
     { label: 'Obsidian Vault', path: '/obsidian-vault', icon: BookOpen },
     { label: 'Webhook Contracts', path: '/webhook-contract-preview', icon: Layers },
     { label: 'MCP TradingView', path: '/mcp-tradingview-preview', icon: TrendingUp },
+    { label: 'Wake Dispatch Gate', path: '/wake-dispatch-preview', icon: Layers },
   ];
 
   return (
