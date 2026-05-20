@@ -23,6 +23,7 @@ export default function ModuleNav() {
     { label: 'Knowledge', path: '/knowledge-vault', icon: BookOpen },
     { label: 'Control Room', path: '/control-room', icon: Radio },
     { label: 'Obsidian Vault', path: '/obsidian-vault', icon: BookOpen },
+    { label: 'Webhook Contracts', path: '/webhook-contract-preview', icon: Layers },
   ];
 
   return (

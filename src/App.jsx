@@ -30,6 +30,7 @@ import PublicCreditCommandCenter from './pages/PublicCreditCommandCenter';
 import BusinessFormationCommandCenter from './pages/BusinessFormationCommandCenter';
 import AiCommandCenter from './pages/AiCommandCenter';
 import ObsidianVaultCommandCenter from './pages/ObsidianVaultCommandCenter';
+import WebhookContractPreview from './pages/WebhookContractPreview';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -83,6 +84,7 @@ const AuthenticatedApp = () => {
       <Route path="/business-formation-command-center" element={<BusinessFormationCommandCenter />} />
       <Route path="/ai-command-center" element={<AiCommandCenter />} />
       <Route path="/obsidian-vault" element={<ObsidianVaultCommandCenter />} />
+      <Route path="/webhook-contract-preview" element={<WebhookContractPreview />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
