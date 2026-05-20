@@ -19,6 +19,7 @@ import ObsidianVpsBridgeEvidenceLog, { BRIDGE_EVIDENCE_LOG_KEY } from './Obsidia
 import ObsidianVpsBridgeSelfTest from './ObsidianVpsBridgeSelfTest';
 import ObsidianVpsBridgeBaselineLock from './ObsidianVpsBridgeBaselineLock';
 import { loadFromStorage, saveToStorage } from '../../utils/localStorageManager';
+import VpsBridgeDiagnosticPanel from './VpsBridgeDiagnosticPanel';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -211,22 +212,12 @@ export default function ObsidianVpsBridgePanel() {
       if (res.data?.ok) {
         setVpsResponse(res.data);
       } else {
-        const errMsg = res.data?.error || res.data?.details?.error || 'VPS bridge returned an unexpected response.';
-        setVpsError(`Bridge error: ${errMsg}`);
+        setVpsError({ status: res.status, message: res.data?.error || 'VPS bridge returned an unexpected response.', raw: res.data });
       }
     } catch (err) {
-      // Axios throws on 4xx/5xx — extract the backend error message if available
+      const status = err?.response?.status;
       const backendMsg = err?.response?.data?.error || err?.response?.data?.details?.error;
-      const httpStatus = err?.response?.status;
-      if (backendMsg) {
-        setVpsError(`[HTTP ${httpStatus}] ${backendMsg}`);
-      } else if (httpStatus === 502) {
-        setVpsError('[502] VPS bridge is unreachable — the VPS endpoint did not respond. Check that VERIDAN_BRIDGE_URL is correct and the VPS bridge service is running.');
-      } else if (httpStatus === 503) {
-        setVpsError('[503] Bridge not configured — VERIDAN_BRIDGE_URL or VERIDAN_BRIDGE_TOKEN secret is missing.');
-      } else {
-        setVpsError(err?.message || 'Unexpected error calling VPS bridge.');
-      }
+      setVpsError({ status, message: backendMsg || err?.message || 'Unexpected error', raw: err?.response?.data });
     } finally {
       setVpsSending(false);
     }
@@ -563,12 +554,9 @@ export default function ObsidianVpsBridgePanel() {
               )}
             </div>
 
-            {/* Error */}
+            {/* Diagnostic error panel */}
             {vpsError && (
-              <div className="bg-destructive/10 border border-destructive/30 rounded-sm px-3 py-2 flex items-start gap-2">
-                <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
-                <div className="text-[8px] text-destructive font-mono">{vpsError}</div>
-              </div>
+              <VpsBridgeDiagnosticPanel error={vpsError} />
             )}
 
             {/* VPS Bridge Response */}
