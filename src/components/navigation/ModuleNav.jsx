@@ -27,6 +27,7 @@ export default function ModuleNav() {
     { label: 'MCP TradingView', path: '/mcp-tradingview-preview', icon: TrendingUp },
     { label: 'Wake Dispatch Gate', path: '/wake-dispatch-preview', icon: Layers },
     { label: 'Wake Backend Dry-Run', path: '/wake-backend-dry-run', icon: Layers },
+    { label: 'Wake Activation Gate', path: '/wake-activation-readiness', icon: Layers },
   ];
 
   return (

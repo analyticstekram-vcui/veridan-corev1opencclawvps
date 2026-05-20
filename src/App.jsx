@@ -34,6 +34,7 @@ import WebhookContractPreview from './pages/WebhookContractPreview';
 import McpTradingViewPreview from './pages/McpTradingViewPreview';
 import OpenClawWakeDispatchPreview from './pages/OpenClawWakeDispatchPreview';
 import WakeBackendDryRun from './pages/WakeBackendDryRun';
+import WakeActivationReadiness from './pages/WakeActivationReadiness';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -91,6 +92,7 @@ const AuthenticatedApp = () => {
       <Route path="/mcp-tradingview-preview" element={<McpTradingViewPreview />} />
       <Route path="/wake-dispatch-preview" element={<OpenClawWakeDispatchPreview />} />
       <Route path="/wake-backend-dry-run" element={<WakeBackendDryRun />} />
+      <Route path="/wake-activation-readiness" element={<WakeActivationReadiness />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
