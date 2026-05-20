@@ -291,6 +291,56 @@ export const PHASE3_CONTRACT = {
   },
 };
 
+export const RELAY_WIRING_AUDIT_KEY = 'tradingViewMcpPhase3RelayWiringAudit';
+
+export const RELAY_WIRING_CONTRACT = {
+  phase:            'PHASE_3_LOCAL_RELAY_WIRING',
+  bridgeMode:       'LOCAL_TERMINAL_RELAY_PREVIEW',
+  executionStatus:  'NOT_EXECUTED',
+  executionEnabled: false,
+  brokerAccess:     'DISABLED',
+  credentialEntry:  'DISABLED',
+  liveOrders:       'DISABLED',
+  fundMovement:     'DISABLED',
+  processName:      'veridan-tv-mcp',
+  workingDirectory: 'C:\\Users\\peter\\tradingview-mcp',
+  pm2Status:        'online',
+  launchCommand:    'pm2 start src/server.js --name veridan-tv-mcp',
+  testCommandPattern: 'npm run tv -- <command>',
+  relayStatus:      'LOCAL_TERMINAL_RELAY_PREVIEW',
+  allowedCommands:  ['status', 'quote', 'candles', 'values', 'screenshot', 'ui-state', 'discover'],
+  blockedCommands: [
+    'alert create', 'alert delete', 'pine save', 'pine compile',
+    'draw remove', 'layout switch', 'watchlist add',
+    'trade', 'order', 'broker', 'buy', 'sell',
+    'position', 'account', 'credential', 'login',
+    'password', 'apiKey', 'secret',
+  ],
+  normalizedResponseShape: {
+    auditId:            'string — unique TVMCP-XXXXX-YYY identifier',
+    command:            'string — command name (status, quote, candles, values, screenshot, ui-state, discover)',
+    executionStatus:    '"NOT_EXECUTED" — always fixed; never EXECUTED',
+    relayMode:          '"LOCAL_TERMINAL_RELAY_PREVIEW" — always fixed',
+    riskClass:          '"SAFE_READ" for all allowed commands',
+    success:            'boolean — true if simulated result produced',
+    source:             '"tradingview-mcp" — always fixed',
+    rawResult:          'object | null — raw CLI stdout preview (simulated)',
+    normalizedResult:   'object | null — structured parsed fields',
+    reviewedByOperator: 'boolean — true if operator confirmed in audit log',
+    timestamp:          'ISO8601 string — when response was generated',
+  },
+  verificationChecks: [
+    { id: 'TVMCP-23', label: 'PM2 process name documented: veridan-tv-mcp' },
+    { id: 'TVMCP-24', label: 'Only safe commands are allowlisted (status/quote/candles/values/screenshot/ui-state/discover)' },
+    { id: 'TVMCP-25', label: 'Execution remains disabled — executionStatus: NOT_EXECUTED' },
+    { id: 'TVMCP-26', label: 'Broker access remains disabled' },
+    { id: 'TVMCP-27', label: 'Credentials remain disabled — no apiKey, password, secret' },
+    { id: 'TVMCP-28', label: 'No live orders are possible — order/buy/sell/trade all blocked' },
+    { id: 'TVMCP-29', label: 'Terminal relay is preview-only — no subprocess spawned' },
+    { id: 'TVMCP-30', label: 'Normalized results preserve audit metadata (auditId, timestamp, reviewedByOperator)' },
+  ],
+};
+
 export function generateAuditId() {
   return `TVMCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
 }

@@ -16,17 +16,19 @@ import TvMcpVerificationChecklist from '../components/tradingview-mcp/TvMcpVerif
 import TvMcpRelayPathPreview from '../components/tradingview-mcp/TvMcpRelayPathPreview';
 import TvMcpKnownResults from '../components/tradingview-mcp/TvMcpKnownResults';
 import TvMcpPhase3RelayWiring from '../components/tradingview-mcp/TvMcpPhase3RelayWiring';
+import TvMcpRelayWiringTab from '../components/tradingview-mcp/TvMcpRelayWiringTab';
 import { FIXED_STATUSES, GUARDRAILS, generateAuditId, loadAuditLog, saveAuditEntry } from '../components/tradingview-mcp/tvMcpContracts';
 import { ShieldAlert } from 'lucide-react';
 
 const TABS = [
-  { id: 'bridge',   label: 'Bridge Panel' },
-  { id: 'relay',    label: 'Relay Adapter' },
-  { id: 'results',  label: 'Known Results' },
-  { id: 'phase3',   label: 'Phase 3 Relay Wiring' },
-  { id: 'contract', label: 'Bridge Contract' },
-  { id: 'audit',    label: 'Audit Log' },
-  { id: 'verify',   label: 'Verification' },
+  { id: 'bridge',       label: 'Bridge Panel' },
+  { id: 'relay',        label: 'Relay Adapter' },
+  { id: 'results',      label: 'Known Results' },
+  { id: 'phase3',       label: 'Phase 3 Sim' },
+  { id: 'relaywiring',  label: 'Relay Wiring' },
+  { id: 'contract',     label: 'Bridge Contract' },
+  { id: 'audit',        label: 'Audit Log' },
+  { id: 'verify',       label: 'Verification' },
 ];
 
 export default function TradingViewMcpBridge() {
@@ -186,6 +188,8 @@ export default function TradingViewMcpBridge() {
         {activeTab === 'results' && <TvMcpKnownResults />}
 
         {activeTab === 'phase3' && <TvMcpPhase3RelayWiring />}
+
+        {activeTab === 'relaywiring' && <TvMcpRelayWiringTab />}
 
         {activeTab === 'contract' && <TvMcpBridgeContract />}
 
