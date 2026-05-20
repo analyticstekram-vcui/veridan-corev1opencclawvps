@@ -20,6 +20,7 @@ import ObsidianVpsBridgeSelfTest from './ObsidianVpsBridgeSelfTest';
 import ObsidianVpsBridgeBaselineLock from './ObsidianVpsBridgeBaselineLock';
 import { loadFromStorage, saveToStorage } from '../../utils/localStorageManager';
 import VpsBridgeDiagnosticPanel from './VpsBridgeDiagnosticPanel';
+import ObsidianVpsWritePreviewGate from './ObsidianVpsWritePreviewGate';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -605,6 +606,11 @@ export default function ObsidianVpsBridgePanel() {
                 </div>
               </div>
             )}
+
+            {/* Controlled Write Preview Gate */}
+            <div className="border-t border-border/40 pt-4">
+              <ObsidianVpsWritePreviewGate vpsResponse={vpsResponse} />
+            </div>
 
             {/* Export button */}
             <button
