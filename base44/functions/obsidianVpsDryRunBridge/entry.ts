@@ -98,11 +98,14 @@ Deno.serve(async (req) => {
       clientTimestamp: new Date().toISOString(),
     };
 
-    const bridgeUrl   = Deno.env.get('VERIDAN_BRIDGE_URL');
+    const bridgeUrl   = Deno.env.get('OBSIDIAN_VPS_BRIDGE_URL');
     const bridgeToken = Deno.env.get('VERIDAN_BRIDGE_TOKEN');
 
-    if (!bridgeUrl || !bridgeToken) {
-      return Response.json({ error: 'Bridge not configured — VERIDAN_BRIDGE_URL or VERIDAN_BRIDGE_TOKEN missing' }, { status: 503 });
+    if (!bridgeUrl) {
+      return Response.json({ error: 'Bridge not configured — OBSIDIAN_VPS_BRIDGE_URL missing. Set it to https://bridge.veridancore.com in App Secrets.' }, { status: 503 });
+    }
+    if (!bridgeToken) {
+      return Response.json({ error: 'Bridge not configured — VERIDAN_BRIDGE_TOKEN missing.' }, { status: 503 });
     }
 
     const endpoint = `${bridgeUrl.replace(/\/$/, '')}/api/obsidian/dry-run`;

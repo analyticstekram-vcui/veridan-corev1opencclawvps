@@ -33,10 +33,10 @@ const DIAGNOSTICS = {
     bg: 'bg-amber-500/5',
     headerBg: 'bg-amber-500/10',
     title: 'Bridge Not Configured (503)',
-    likelyCause: 'The backend function could not find VERIDAN_BRIDGE_URL or VERIDAN_BRIDGE_TOKEN in App Secrets.',
+    likelyCause: 'The backend function could not find OBSIDIAN_VPS_BRIDGE_URL or VERIDAN_BRIDGE_TOKEN in App Secrets.',
     endpointNote: 'Endpoint cannot be determined — secrets not configured',
     checks: [
-      'Go to App Settings → Secrets and confirm VERIDAN_BRIDGE_URL is set',
+      'Go to App Settings → Secrets and confirm OBSIDIAN_VPS_BRIDGE_URL is set to https://bridge.veridancore.com',
       'Confirm VERIDAN_BRIDGE_TOKEN is set (value is hidden — never expose in UI)',
       'Re-deploy or trigger a function warm-up after adding secrets',
     ],
