@@ -13,11 +13,15 @@ import TvMcpResultViewer from '../components/tradingview-mcp/TvMcpResultViewer';
 import TvMcpBridgeContract from '../components/tradingview-mcp/TvMcpBridgeContract';
 import TvMcpAuditLog from '../components/tradingview-mcp/TvMcpAuditLog';
 import TvMcpVerificationChecklist from '../components/tradingview-mcp/TvMcpVerificationChecklist';
+import TvMcpRelayPathPreview from '../components/tradingview-mcp/TvMcpRelayPathPreview';
+import TvMcpKnownResults from '../components/tradingview-mcp/TvMcpKnownResults';
 import { FIXED_STATUSES, GUARDRAILS, generateAuditId, loadAuditLog, saveAuditEntry } from '../components/tradingview-mcp/tvMcpContracts';
 import { ShieldAlert } from 'lucide-react';
 
 const TABS = [
   { id: 'bridge',    label: 'Bridge Panel' },
+  { id: 'relay',     label: 'Relay Adapter' },
+  { id: 'results',   label: 'Known Results' },
   { id: 'contract',  label: 'Bridge Contract' },
   { id: 'audit',     label: 'Audit Log' },
   { id: 'verify',    label: 'Verification' },
@@ -94,7 +98,10 @@ export default function TradingViewMcpBridge() {
             </div>
             <h1 className="text-lg font-bold text-foreground">TradingView MCP Bridge</h1>
             <p className="text-[9px] text-slate-400 mt-1">
-              Local MCP CLI · C:\Users\peter\tradingview-mcp · npm run tv -- &lt;command&gt; · READ_ONLY
+              Phase 2: Local Relay Simulation · C:\Users\peter\tradingview-mcp · npm run tv -- &lt;command&gt; · READ_ONLY
+            </p>
+            <p className="text-[7px] text-slate-600 font-mono mt-0.5">
+              auditLog: tradingViewMcpBridgeRelayAudit · relay: NOT_CONNECTED_TO_LIVE_BACKEND
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
@@ -171,6 +178,10 @@ export default function TradingViewMcpBridge() {
             </div>
           </>
         )}
+
+        {activeTab === 'relay' && <TvMcpRelayPathPreview />}
+
+        {activeTab === 'results' && <TvMcpKnownResults />}
 
         {activeTab === 'contract' && <TvMcpBridgeContract />}
 
