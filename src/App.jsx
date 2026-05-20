@@ -36,6 +36,7 @@ import OpenClawWakeDispatchPreview from './pages/OpenClawWakeDispatchPreview';
 import WakeBackendDryRun from './pages/WakeBackendDryRun';
 import WakeActivationReadiness from './pages/WakeActivationReadiness';
 import TradingViewMcpBridge from './pages/TradingViewMcpBridge';
+import OpenClawMonitoring from './pages/OpenClawMonitoring';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -95,6 +96,7 @@ const AuthenticatedApp = () => {
       <Route path="/wake-backend-dry-run" element={<WakeBackendDryRun />} />
       <Route path="/wake-activation-readiness" element={<WakeActivationReadiness />} />
       <Route path="/tradingview-mcp-bridge" element={<TradingViewMcpBridge />} />
+      <Route path="/openclaw-monitoring" element={<OpenClawMonitoring />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
