@@ -228,6 +228,7 @@ export const VERIFICATION_CHECKLIST = [
   { id: 'TVMCP-14', label: 'Info command classified REVIEW_REQUIRED (evaluate error)' },
   // Phase 2 — relay simulation checks
   { id: 'TVMCP-15', label: 'Relay remains simulation only — no live subprocess' },
+
   { id: 'TVMCP-16', label: 'No broker commands in relay path' },
   { id: 'TVMCP-17', label: 'No trade placement in relay simulation' },
   { id: 'TVMCP-18', label: 'No credentials requested or stored at any relay stage' },
@@ -235,9 +236,60 @@ export const VERIFICATION_CHECKLIST = [
   { id: 'TVMCP-20', label: 'Manual terminal proof captured — status/quote/screenshot/values verified' },
   { id: 'TVMCP-21', label: 'Info error classified REVIEW_REQUIRED in relay normalizer' },
   { id: 'TVMCP-22', label: 'Chart intelligence ready for read-only Veridan Core ingestion' },
+  // Phase 3 — relay wiring checks
+  { id: 'TVMCP-23', label: 'Phase 3 tab exists' },
+  { id: 'TVMCP-24', label: 'Command allowlist displayed' },
+  { id: 'TVMCP-25', label: 'Dangerous command blocklist displayed' },
+  { id: 'TVMCP-26', label: 'Backend relay contract exists' },
+  { id: 'TVMCP-27', label: 'executionStatus never says EXECUTED' },
+  { id: 'TVMCP-28', label: 'Unsupported commands are rejected' },
+  { id: 'TVMCP-29', label: 'info command remains REVIEW_REQUIRED' },
+  { id: 'TVMCP-30', label: 'localStorage audit key tradingViewMcpPhase3RelayAudit exists' },
+  { id: 'TVMCP-31', label: 'Normalized relay result schema is enforced' },
+  { id: 'TVMCP-32', label: 'No broker/trade/order execution logic exists' },
 ];
 
 export const AUDIT_LOG_KEY = 'tradingViewMcpBridgeRelayAudit';
+export const PHASE3_AUDIT_LOG_KEY = 'tradingViewMcpPhase3RelayAudit';
+
+export const PHASE3_CONTRACT = {
+  phase:          'PHASE_3_LOCAL_RELAY_WIRING',
+  bridgeMode:     'LOCAL_TERMINAL_RELAY_PREVIEW',
+  executionStatus:'NOT_EXECUTED',
+  localPath:      'C:\\Users\\peter\\tradingview-mcp',
+  cliFormat:      'npm run tv -- <command>',
+  allowedCommands: ['status', 'quote', 'values', 'screenshot', 'ohlcv', 'ui-state', 'range', 'stream', 'info'],
+  reviewRequired:  ['info'],
+  blockedCommands: [
+    'alert create', 'alert delete', 'pine save', 'pine compile',
+    'draw remove', 'layout switch', 'watchlist add',
+    'trade', 'order', 'broker', 'buy', 'sell',
+    'position', 'account', 'credential', 'login',
+    'password', 'apiKey', 'secret',
+  ],
+  validExecutionStatuses: [
+    'NOT_EXECUTED',
+    'REJECTED_NOT_EXECUTED',
+    'READY_FOR_LOCAL_RELAY',
+    'REVIEW_REQUIRED',
+  ],
+  normalizedSchema: {
+    auditId:            'string — unique TVMCP-XXXXX-YYY identifier',
+    requestId:          'string — per-request REQ-XXXXX identifier',
+    command:            'string — command name (e.g. status, quote)',
+    commandArgs:        'object | null — optional command arguments',
+    allowed:            'boolean — whether command passed allowlist check',
+    riskClass:          'SAFE_READ | REVIEW_REQUIRED | BLOCKED',
+    executionStatus:    'NOT_EXECUTED | REJECTED_NOT_EXECUTED | READY_FOR_LOCAL_RELAY | REVIEW_REQUIRED',
+    resultStatus:       'SUCCESS | REJECTED | ERROR',
+    reviewedByOperator: 'boolean — true after operator confirms in audit log',
+    timestamp:          'ISO8601 string — when response was generated',
+    normalizedData:     'object | null — structured MCP response fields',
+    rawPreview:         'object | null — raw CLI output preview',
+    error:              'string | null — error message if failed',
+    notes:              'string | null — governance or known-issue notes',
+  },
+};
 
 export function generateAuditId() {
   return `TVMCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;

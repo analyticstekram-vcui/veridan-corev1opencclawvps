@@ -15,16 +15,18 @@ import TvMcpAuditLog from '../components/tradingview-mcp/TvMcpAuditLog';
 import TvMcpVerificationChecklist from '../components/tradingview-mcp/TvMcpVerificationChecklist';
 import TvMcpRelayPathPreview from '../components/tradingview-mcp/TvMcpRelayPathPreview';
 import TvMcpKnownResults from '../components/tradingview-mcp/TvMcpKnownResults';
+import TvMcpPhase3RelayWiring from '../components/tradingview-mcp/TvMcpPhase3RelayWiring';
 import { FIXED_STATUSES, GUARDRAILS, generateAuditId, loadAuditLog, saveAuditEntry } from '../components/tradingview-mcp/tvMcpContracts';
 import { ShieldAlert } from 'lucide-react';
 
 const TABS = [
-  { id: 'bridge',    label: 'Bridge Panel' },
-  { id: 'relay',     label: 'Relay Adapter' },
-  { id: 'results',   label: 'Known Results' },
-  { id: 'contract',  label: 'Bridge Contract' },
-  { id: 'audit',     label: 'Audit Log' },
-  { id: 'verify',    label: 'Verification' },
+  { id: 'bridge',   label: 'Bridge Panel' },
+  { id: 'relay',    label: 'Relay Adapter' },
+  { id: 'results',  label: 'Known Results' },
+  { id: 'phase3',   label: 'Phase 3 Relay Wiring' },
+  { id: 'contract', label: 'Bridge Contract' },
+  { id: 'audit',    label: 'Audit Log' },
+  { id: 'verify',   label: 'Verification' },
 ];
 
 export default function TradingViewMcpBridge() {
@@ -98,10 +100,10 @@ export default function TradingViewMcpBridge() {
             </div>
             <h1 className="text-lg font-bold text-foreground">TradingView MCP Bridge</h1>
             <p className="text-[9px] text-slate-400 mt-1">
-              Phase 2: Local Relay Simulation · C:\Users\peter\tradingview-mcp · npm run tv -- &lt;command&gt; · READ_ONLY
+              Phase 2 + 3 · C:\Users\peter\tradingview-mcp · npm run tv -- &lt;command&gt; · READ_ONLY
             </p>
             <p className="text-[7px] text-slate-600 font-mono mt-0.5">
-              auditLog: tradingViewMcpBridgeRelayAudit · relay: NOT_CONNECTED_TO_LIVE_BACKEND
+              phase3AuditLog: tradingViewMcpPhase3RelayAudit · relay: LOCAL_TERMINAL_RELAY_PREVIEW
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
@@ -182,6 +184,8 @@ export default function TradingViewMcpBridge() {
         {activeTab === 'relay' && <TvMcpRelayPathPreview />}
 
         {activeTab === 'results' && <TvMcpKnownResults />}
+
+        {activeTab === 'phase3' && <TvMcpPhase3RelayWiring />}
 
         {activeTab === 'contract' && <TvMcpBridgeContract />}
 

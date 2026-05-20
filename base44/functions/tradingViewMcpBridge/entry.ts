@@ -34,9 +34,16 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// Phase 2 allowlist
 const ALLOWED_COMMANDS    = ['status', 'quote', 'ohlcv', 'values', 'screenshot', 'ui-state', 'discover', 'info'];
-const BLOCKED_COMMANDS    = ['trade', 'order', 'broker', 'login', 'credential', 'password', 'withdraw', 'deposit'];
+// Phase 3 extends with range, stream
+const PHASE3_ALLOWED      = ['status', 'quote', 'values', 'screenshot', 'ohlcv', 'ui-state', 'range', 'stream', 'info'];
+const BLOCKED_COMMANDS    = ['trade', 'order', 'broker', 'login', 'credential', 'password', 'withdraw', 'deposit',
+                             'alert create', 'alert delete', 'pine save', 'pine compile', 'draw remove',
+                             'layout switch', 'watchlist add', 'buy', 'sell', 'position', 'account', 'apiKey', 'secret'];
 const REVIEW_REQUIRED_COMMANDS = ['info'];
+// Valid executionStatus values — TVMCP-27: never "EXECUTED"
+const VALID_EXECUTION_STATUSES = ['NOT_EXECUTED', 'REJECTED_NOT_EXECUTED', 'READY_FOR_LOCAL_RELAY', 'REVIEW_REQUIRED'];
 
 const KNOWN_ISSUES = {
   info: 'evaluate is not defined — upstream MCP CLI bug, not a bridge failure. Classified REVIEW_REQUIRED (TVMCP-21).',
@@ -139,60 +146,84 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { command } = body;
+    const { command, phase } = body;
+    const isPhase3 = phase === 3;
+    const effectiveAllowList = isPhase3 ? PHASE3_ALLOWED : ALLOWED_COMMANDS;
 
     if (!command) {
       return Response.json({ error: 'command is required' }, { status: 400 });
     }
 
-    // Block forbidden commands
-    if (BLOCKED_COMMANDS.includes(command.toLowerCase())) {
+    // TVMCP-28: Block forbidden commands
+    const cmdLower = command.toLowerCase();
+    const isBlocked = BLOCKED_COMMANDS.some(b => cmdLower.includes(b.toLowerCase()));
+    if (isBlocked) {
+      const auditId = `TVMCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
       return Response.json({
-        ok: false,
-        success: false,
-        command,
-        risk: 'BLOCKED',
-        riskClass: 'BLOCKED',
+        ok: false, success: false, allowed: false,
+        command, risk: 'BLOCKED', riskClass: 'BLOCKED',
         error: `Command "${command}" is blocked by bridge governance policy.`,
-        blockedCommands: BLOCKED_COMMANDS,
         executionAllowed: false,
-        executionStatus: 'BLOCKED',
-        bridgeMode: 'READ_ONLY',
+        executionStatus: 'REJECTED_NOT_EXECUTED',
+        bridgeMode: isPhase3 ? 'LOCAL_TERMINAL_RELAY_PREVIEW' : 'READ_ONLY',
+        phase: isPhase3 ? 'PHASE_3_LOCAL_RELAY_WIRING' : 'PHASE_2_LOCAL_RELAY_SIMULATION',
+        auditId,
         timestamp: new Date().toISOString(),
-        phase: 'PHASE_2_LOCAL_RELAY_SIMULATION',
+        notes: 'Command blocked by governance policy. TVMCP-28.',
       });
     }
 
-    // Only allow known commands
-    if (!ALLOWED_COMMANDS.includes(command.toLowerCase())) {
+    // TVMCP-28: Only allow known commands for the current phase
+    if (!effectiveAllowList.includes(cmdLower)) {
+      const auditId = `TVMCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
       return Response.json({
-        ok: false,
-        success: false,
-        command,
-        risk: 'BLOCKED',
-        riskClass: 'BLOCKED',
+        ok: false, success: false, allowed: false,
+        command, risk: 'BLOCKED', riskClass: 'BLOCKED',
         error: `Command "${command}" is not in the allowed command list.`,
-        allowedCommands: ALLOWED_COMMANDS,
         executionAllowed: false,
-        executionStatus: 'BLOCKED',
-        bridgeMode: 'READ_ONLY',
+        executionStatus: 'REJECTED_NOT_EXECUTED',
+        bridgeMode: isPhase3 ? 'LOCAL_TERMINAL_RELAY_PREVIEW' : 'READ_ONLY',
+        phase: isPhase3 ? 'PHASE_3_LOCAL_RELAY_WIRING' : 'PHASE_2_LOCAL_RELAY_SIMULATION',
+        auditId,
         timestamp: new Date().toISOString(),
-        phase: 'PHASE_2_LOCAL_RELAY_SIMULATION',
+        notes: 'Command not in allowlist. TVMCP-28.',
       });
     }
 
-    const risk = REVIEW_REQUIRED_COMMANDS.includes(command.toLowerCase()) ? 'REVIEW_REQUIRED' : 'SAFE_READ';
-    const payload = VERIFIED_PAYLOADS[command] || { note: 'No simulation payload for this command.' };
+    const risk = REVIEW_REQUIRED_COMMANDS.includes(cmdLower) ? 'REVIEW_REQUIRED' : 'SAFE_READ';
+    const payload = VERIFIED_PAYLOADS[command] || VERIFIED_PAYLOADS[cmdLower] || { note: 'No simulation payload for this command.' };
     const auditId = `TVMCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+    const requestId = `REQ-${Date.now().toString(36).toUpperCase()}`;
 
-    return Response.json(normalizeResult({
-      command,
-      payload,
-      risk,
-      isDryRun: true,
-      knownIssue: KNOWN_ISSUES[command] || null,
-      auditId,
-    }));
+    // Phase 3 — TVMCP-27: executionStatus never "EXECUTED"
+    const executionStatus = risk === 'REVIEW_REQUIRED'
+      ? 'REVIEW_REQUIRED'
+      : isPhase3
+        ? 'READY_FOR_LOCAL_RELAY'
+        : 'NOT_EXECUTED';
+
+    const base = normalizeResult({ command, payload, risk, isDryRun: true, knownIssue: KNOWN_ISSUES[command] || null, auditId });
+
+    // Phase 3 relay contract additions (TVMCP-26, TVMCP-31)
+    if (isPhase3) {
+      return Response.json({
+        ...base,
+        requestId,
+        allowed: true,
+        executionStatus,
+        riskClass: risk,
+        resultStatus: 'SUCCESS',
+        reviewedByOperator: false,
+        normalizedData: payload,
+        rawPreview: payload,
+        notes: KNOWN_ISSUES[command] || `Phase 3 relay simulation. No subprocess executed. TVMCP-26.`,
+        bridgeMode: 'LOCAL_TERMINAL_RELAY_PREVIEW',
+        phase: 'PHASE_3_LOCAL_RELAY_WIRING',
+        auditLogKey: 'tradingViewMcpPhase3RelayAudit',
+      });
+    }
+
+    return Response.json(base);
 
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
