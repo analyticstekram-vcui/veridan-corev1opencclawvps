@@ -13,8 +13,8 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const ALLOWED_COMMANDS = ['health', 'status', 'quote', 'values', 'screenshot', 'ui-state', 'discover', 'range', 'stream'];
-const BLOCKED_COMMANDS = ['trade', 'order', 'buy', 'sell', 'close', 'flatten', 'broker', 'login', 'password', 'credential', 'withdraw', 'deposit', 'transfer'];
+const ALLOWED_COMMANDS = ['status', 'quote'];
+const BLOCKED_COMMANDS = ['trade', 'order', 'buy', 'sell', 'close', 'flatten', 'broker', 'login', 'password', 'credential', 'withdraw', 'deposit', 'transfer', 'health', 'values', 'screenshot', 'ui-state', 'discover', 'range', 'stream'];
 
 function makeEnvelope({ command, status, httpStatus = null, relayReachable = false, data = null, error = null, notes = null }) {
   return {
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     const startTime = Date.now();
     let fetchResponse;
     try {
-      fetchResponse = await fetch(`${relayUrl}/mcp/${command}`, {
+      fetchResponse = await fetch(`${relayUrl}/relay?command=${command}`, {
         method: 'GET',
         headers,
         signal: AbortSignal.timeout(8000),
@@ -118,8 +118,9 @@ Deno.serve(async (req) => {
     }
 
     const relayReachable = httpStatus >= 200 && httpStatus < 500;
+    const relayJsonSuccess = responseData?.success === true;
 
-    if (!fetchResponse.ok) {
+    if (!fetchResponse.ok || !relayJsonSuccess) {
       return Response.json(makeEnvelope({
         command,
         status: 'HOLD_FOR_MCP_RELAY',

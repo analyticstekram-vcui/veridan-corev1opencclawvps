@@ -10,8 +10,8 @@ import { Shield, Play, Copy, Trash2, RefreshCw, CheckCircle2, XCircle, AlertTria
 
 const STORAGE_KEY = 'veridanTradingViewMcpChecks';
 
-const ALLOWED_COMMANDS = ['health', 'status', 'quote', 'values', 'screenshot', 'ui-state', 'discover', 'range', 'stream'];
-const BLOCKED_COMMANDS = ['trade', 'order', 'buy', 'sell', 'close', 'flatten', 'broker', 'login', 'password', 'credential', 'withdraw', 'deposit', 'transfer'];
+const ALLOWED_COMMANDS = ['status', 'quote'];
+const BLOCKED_COMMANDS = ['trade', 'order', 'buy', 'sell', 'close', 'flatten', 'broker', 'login', 'password', 'credential', 'withdraw', 'deposit', 'transfer', 'health', 'values', 'screenshot', 'ui-state', 'discover', 'range', 'stream'];
 
 function loadChecks() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
