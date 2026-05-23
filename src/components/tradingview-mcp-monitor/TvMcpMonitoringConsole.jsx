@@ -921,7 +921,7 @@ export default function TvMcpMonitoringConsole() {
               { label: 'Risk Class',            value: evidence.riskClass,               cls: 'text-amber-400 font-bold' },
               { label: 'Safety Passes',         value: evidence.safetyPassCount,         cls: 'text-primary font-bold' },
               { label: 'Safety Failures',       value: evidence.safetyFailCount,         cls: evidence.safetyFailCount > 0 ? 'text-destructive font-bold' : 'text-primary font-bold' },
-              { label: 'Last Command',          value: formatCommandLabel(evidence.lastCommand), cls: evidence.lastCommand && evidence.lastCommand !== 'unknown' ? 'text-primary font-bold' : 'text-slate-400' },
+              { label: 'Last Command',          value: formatCommandLabel(evidence.lastCommand), cls: evidence.lastCommand && evidence.lastCommand !== 'unknown' ? 'text-primary font-bold' : 'text-slate-400', rawValue: evidence.lastCommand ?? 'none' },
               { label: 'Last Event Source',     value: evidence.lastCommandSource ?? 'none', cls: evidence.lastCommandSource ? 'text-slate-300 font-mono text-[7px]' : 'text-slate-500' },
               { label: 'Last Command At',       value: evidence.lastCommandAt ? new Date(evidence.lastCommandAt).toLocaleTimeString() : 'none', cls: evidence.lastCommandAt ? 'text-slate-300' : 'text-slate-500' },
               { label: 'Last Success At',       value: evidence.lastSuccessfulCheckAt ? new Date(evidence.lastSuccessfulCheckAt).toLocaleTimeString() : 'N/A' },
@@ -947,6 +947,9 @@ export default function TvMcpMonitoringConsole() {
               <div key={c.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
                 <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{c.label}</div>
                 <div className={`text-[9px] font-mono font-bold break-all ${c.cls || 'text-slate-300'}`}>{String(c.value)}</div>
+                {c.rawValue !== undefined && (
+                  <div className="text-[7px] text-slate-600 font-mono mt-0.5">raw: {String(c.rawValue)}</div>
+                )}
               </div>
             ))}
           </div>
