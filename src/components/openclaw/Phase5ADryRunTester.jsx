@@ -30,12 +30,11 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     return `https://${raw}`;
   };
 
-  // Prerequisites check with HTTPS normalization and expiration
+  // Prerequisites check with HTTPS normalization
   const hasProposalId = signedRequest?.proposalId && typeof signedRequest.proposalId === 'string' && signedRequest.proposalId.trim().length > 0;
   const rawTarget = signedRequest?.targetUrl || signedRequest?.requestedTarget || signedRequest?.target || signedRequest?.url || "";
   const normalizedTarget = normalizeHttpsTarget(rawTarget);
   const hasValidHttpsTarget = normalizedTarget && normalizedTarget.startsWith("https://");
-  const hasExpirationAt = signedRequest?.expirationAt && typeof signedRequest.expirationAt === 'string' && signedRequest.expirationAt.trim().length > 0;
 
   // Simple deterministic hash helper for previewHash generation
   const generatePreviewHash = (obj) => {
@@ -123,7 +122,16 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
       };
 
       const previewResponse = await base44.functions.invoke('openclawBridgePreview', previewPayload);
-      setResult(previewResponse.data);
+      const resultData = previewResponse.data || {};
+      
+      // Add submission debug info
+      resultData.submissionDebug = {
+        submittedAt,
+        expirationAt,
+        expiresInMinutes: 5,
+      };
+      
+      setResult(resultData);
     } catch (err) {
       // Try to extract backend error details from response
       let errorMsg = err.message || 'Failed to invoke signer or preview';
@@ -178,13 +186,9 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
             )}
             <span>requestedTarget: {hasValidHttpsTarget ? 'HTTPS PRESENT' : 'MISSING/INVALID HTTPS'}</span>
           </div>
-          <div className={`flex items-center gap-2 text-[8px] ${hasExpirationAt ? 'text-primary' : 'text-destructive'}`}>
-            {hasExpirationAt ? (
-              <CheckCircle2 className="w-3 h-3" />
-            ) : (
-              <XCircle className="w-3 h-3" />
-            )}
-            <span>expirationAt: {hasExpirationAt ? 'PRESENT' : 'MISSING'}</span>
+          <div className="flex items-center gap-2 text-[8px] text-primary">
+            <CheckCircle2 className="w-3 h-3" />
+            <span>expirationAt: GENERATED ON SUBMIT</span>
           </div>
           <div className="text-[7px] text-slate-500">
             Requires an APPROVED OpenClawProposal with matching commandType, targetUrl, riskTier, and operatorId.
@@ -200,7 +204,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         {/* Test Button */}
         <Button
           onClick={handleTest}
-          disabled={loading || !hasProposalId || !hasValidHttpsTarget || !hasExpirationAt}
+          disabled={loading || !hasProposalId || !hasValidHttpsTarget}
           className="w-full bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
@@ -294,6 +298,15 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
               </div>
 
               <div className="mt-2 pt-2 border-t border-current/20 text-[7px] text-slate-400 italic">{result.note}</div>
+              
+              {/* Submission Debug Info */}
+              {result.submissionDebug && (
+                <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px] text-slate-500">
+                  <div>Submitted At: <span className="text-slate-300 font-mono">{result.submissionDebug.submittedAt}</span></div>
+                  <div>Expiration At: <span className="text-slate-300 font-mono">{result.submissionDebug.expirationAt}</span></div>
+                  <div>Expires In: <span className="text-slate-300 font-semibold">{result.submissionDebug.expiresInMinutes} minutes</span></div>
+                </div>
+              )}
             </div>
           </div>
         )}
