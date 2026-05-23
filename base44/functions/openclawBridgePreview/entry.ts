@@ -719,8 +719,132 @@ Deno.serve(async (req) => {
       );
     }
 
-    // All checks passed - log to audit
+    // ========================================================================
+    // PHASE 5: APPROVAL BINDING — SERVER-SIDE VERIFICATION
+    // Verify proposalId exists in DB with status=APPROVED and fields match
+    // ========================================================================
+    const br = body.bridgeRequest;
+    const proposalId = br?.proposalId;
     const validatedAt = new Date().toISOString();
+    
+    let approvalBindingStatus = 'PASS';
+    let approvalBindingReason = null;
+
+    if (!proposalId) {
+      approvalBindingStatus = 'FAIL';
+      approvalBindingReason = 'proposalId field missing from bridgeRequest';
+    } else {
+      try {
+        const proposals = await base44.asServiceRole.entities.OpenClawProposal.filter(
+          { requestId: proposalId },
+          '-createdAt',
+          1
+        );
+
+        if (!proposals || proposals.length === 0) {
+          approvalBindingStatus = 'FAIL';
+          approvalBindingReason = 'No approved proposal found with proposalId';
+        } else {
+          const proposal = proposals[0];
+
+          // Check proposal status
+          if (proposal.status !== 'APPROVED') {
+            approvalBindingStatus = 'FAIL';
+            approvalBindingReason = `Proposal status is ${proposal.status}, not APPROVED`;
+          }
+          // Check commandType match
+          else if (proposal.commandType !== br.commandType) {
+            approvalBindingStatus = 'FAIL';
+            approvalBindingReason = `Proposal commandType ${proposal.commandType} does not match bridgeRequest ${br.commandType}`;
+          }
+          // Check targetUrl match
+          else if (proposal.url && proposal.url !== br.targetUrl && proposal.target !== br.targetUrl) {
+            approvalBindingStatus = 'FAIL';
+            approvalBindingReason = `Proposal targetUrl does not match bridgeRequest targetUrl`;
+          }
+          // Check riskTier match
+          else if (proposal.riskTier !== br.riskTier) {
+            approvalBindingStatus = 'FAIL';
+            approvalBindingReason = `Proposal riskTier ${proposal.riskTier} does not match bridgeRequest ${br.riskTier}`;
+          }
+          // Check operatorId match
+          else if (proposal.proposedBy && proposal.proposedBy !== body.operatorId) {
+            approvalBindingStatus = 'FAIL';
+            approvalBindingReason = `Proposal proposedBy ${proposal.proposedBy} does not match operatorId ${body.operatorId}`;
+          }
+        }
+      } catch (err) {
+        approvalBindingStatus = 'FAIL';
+        approvalBindingReason = `Approval binding check error: ${err.message}`;
+      }
+    }
+
+    // If approval binding failed, reject request
+    if (approvalBindingStatus === 'FAIL') {
+      const rejectionReason = `Approval binding failed: ${approvalBindingReason}`;
+      try {
+        await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
+          auditId,
+          requestId,
+          previewHash: body.previewHash || null,
+          operatorId: body.operatorId || null,
+          accepted: false,
+          rejectedReason: rejectionReason,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          targetUrl: br?.targetUrl || null,
+          commandType: br?.commandType || null,
+          riskTier: br?.riskTier || null,
+          receivedAt,
+          validatedAt,
+          validationMessages: [],
+          inputTextPresent: !!br?.inputText,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: signatureCheck.mode,
+          policyGateResult: 'PASS',
+          policyGateMessages: [],
+          replayCheckResult: 'PASS',
+          replayCheckMessages: [],
+          signatureCheckResult: 'PASS',
+          signatureCheckMessages: [],
+          signingVersion: body.signingVersion || null,
+          signedAt: body.signedAt || null,
+          signaturePresent: !!body.signature,
+          approvalBindingStatus,
+          note: 'Request rejected by approval binding check. No OpenClaw call was made.',
+        });
+      } catch (auditErr) {
+        console.error('Failed to create approval binding rejection audit record:', auditErr.message);
+      }
+
+      return Response.json(
+        {
+          accepted: false,
+          rejectedReason: rejectionReason,
+          requestId,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'REJECTED_NOT_EXECUTED',
+          auditId,
+          receivedAt,
+          validatedAt,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: signatureCheck.mode,
+          policyGateResult: 'PASS',
+          policyGateMessages: [],
+          replayCheckResult: 'PASS',
+          replayCheckMessages: [],
+          signatureCheckResult: 'PASS',
+          signatureCheckMessages: [],
+          approvalBindingStatus,
+          note: 'Request rejected by approval binding check. No OpenClaw call was made.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // All checks passed - log to audit
     try {
       await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
         auditId,
@@ -731,13 +855,13 @@ Deno.serve(async (req) => {
         rejectedReason: null,
         bridgeMode: 'DRY_RUN_ONLY',
         executionStatus: 'NOT_EXECUTED',
-        targetUrl: body.bridgeRequest?.targetUrl || null,
-        commandType: body.bridgeRequest?.commandType || null,
-        riskTier: body.bridgeRequest?.riskTier || null,
+        targetUrl: br?.targetUrl || null,
+        commandType: br?.commandType || null,
+        riskTier: br?.riskTier || null,
         receivedAt,
         validatedAt,
         validationMessages: [],
-        inputTextPresent: !!body.bridgeRequest?.inputText,
+        inputTextPresent: !!br?.inputText,
         hmacSecretConfigured: hmacSecretCheck.configured,
         secretExposed: false,
         signatureMode: signatureCheck.mode,
@@ -750,7 +874,8 @@ Deno.serve(async (req) => {
         signingVersion: body.signingVersion || null,
         signedAt: body.signedAt || null,
         signaturePresent: !!body.signature,
-        note: 'Phases 1-4B validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
+        approvalBindingStatus: 'PASS',
+        note: 'Phases 1-5 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
         });
         } catch (auditErr) {
         console.error('Failed to create audit record:', auditErr.message);
@@ -775,7 +900,8 @@ Deno.serve(async (req) => {
         replayCheckMessages: [],
         signatureCheckResult: 'PASS',
         signatureCheckMessages: [],
-        note: 'Phases 1-4B validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
+        approvalBindingStatus: 'PASS',
+        note: 'Phases 1-5 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
         },
       { status: 200 }
     );
