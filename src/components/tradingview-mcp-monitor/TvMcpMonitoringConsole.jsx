@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Shield, Play, Copy, Trash2, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import TvMcpEvidenceSummary from './TvMcpEvidenceSummary';
+import TvMcpManualChartInstructions from './TvMcpManualChartInstructions';
 
 const STORAGE_KEY = 'veridanTradingViewMcpChecks';
 
@@ -307,6 +308,9 @@ export default function TvMcpMonitoringConsole() {
 
       {/* Evidence Summary */}
       <TvMcpEvidenceSummary checks={checks} />
+
+      {/* Manual Chart Control Instructions */}
+      <TvMcpManualChartInstructions checks={checks} />
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
