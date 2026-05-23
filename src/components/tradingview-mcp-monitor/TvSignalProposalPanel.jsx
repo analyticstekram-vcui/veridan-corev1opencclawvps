@@ -117,7 +117,7 @@ const SAFETY_ASSERTIONS = [
 function buildProposal(alert) {
   const sourceKey = alert._sourceKey ?? 'unknown';
 
-  // Defensively extract nested payload
+  // Defensively extract nested payload (Phase 2 may embed fields inside parsedPayload/payload)
   const payload = (() => {
     try {
       if (alert.parsedPayload && typeof alert.parsedPayload === 'object') return alert.parsedPayload;
@@ -127,15 +127,16 @@ function buildProposal(alert) {
     return {};
   })();
 
-  const symbol       = safeStr(payload.symbol       ?? alert.symbol       ?? payload.ticker    ?? alert.ticker,    'UNKNOWN');
-  const timeframe    = safeStr(payload.timeframe     ?? alert.timeframe    ?? payload.interval  ?? alert.interval,  'N/A');
-  const strategyName = safeStr(payload.strategy      ?? payload.strategyName ?? alert.strategyName,                'N/A');
-  const signalType   = safeStr(payload.signal        ?? payload.signalType   ?? alert.signalType ?? alert.command,  'N/A');
-  const side         = safeStr(payload.side          ?? payload.direction     ?? alert.side,                        'N/A');
-  const price        = safeStr(payload.price         ?? payload.close         ?? alert.price,                       'N/A');
-  const alertMessage = safeStr(payload.message ?? payload.alertMessage ?? alert.alertMessage ?? alert.message,      'N/A');
-  const riskProfile  = safeStr(payload.riskProfile   ?? payload.risk          ?? alert.riskProfile ?? alert.riskClass, 'LOW');
-  const alertTs      = alert.receivedAt ?? alert.validatedAt ?? alert.createdAt ?? alert.timestamp ?? new Date().toISOString();
+  // Map fields from top-level alert first, then fall into nested payload
+  const symbol       = safeStr(alert.symbol       || alert.chartSymbol  || alert.ticker      || payload.symbol      || payload.ticker,    'UNKNOWN');
+  const timeframe    = safeStr(alert.timeframe     || alert.tf           || alert.resolution  || payload.timeframe   || payload.interval,  'N/A');
+  const strategyName = safeStr(alert.strategyName  || alert.strategy     || payload.strategyName || payload.strategy,                     'N/A');
+  const signalType   = safeStr(alert.signalType    || alert.signal       || payload.signalType   || payload.signal   || alert.command,     'N/A');
+  const side         = safeStr(alert.side          || alert.direction    || payload.side          || payload.direction,                    'N/A');
+  const price        = safeStr(alert.price         || alert.last         || alert.close       || payload.price       || payload.close,     'N/A');
+  const alertMessage = safeStr(alert.alertMessage  || alert.message      || payload.alertMessage  || payload.message,                     'N/A');
+  const riskProfile  = safeStr(alert.riskProfile   || alert.riskClass    || payload.riskProfile   || payload.risk,   'SIGNAL_INTAKE_ONLY');
+  const alertTs      = alert.timestamp || alert.receivedAt || alert.validatedAt || alert.createdAt || payload.timestamp || new Date().toISOString();
 
   return {
     proposalId:              genId(),
@@ -153,6 +154,7 @@ function buildProposal(alert) {
     signalType,
     side,
     price,
+    sourceTimestamp:         alertTs,
     alertTimestamp:          alertTs,
     alertMessage,
     riskProfile,
