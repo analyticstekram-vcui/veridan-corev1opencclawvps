@@ -1045,6 +1045,110 @@ export default function TvMcpMonitoringConsole() {
         </div>
       )}
 
+      {/* Event Source Coverage block */}
+      {(evidence && showEvidence) && (() => {
+        // Read candidate counts from already-computed evidence fields — no fetch, no mutation.
+        // Mirrors the same source keys used in buildEvidenceChain's commandCandidates array.
+        const sourceCountMap = {
+          [STORAGE_KEY]:        safeArray(STORAGE_KEY).length,
+          [NAV_HISTORY_KEY]:    safeArray(NAV_HISTORY_KEY).length,
+          [PREVIEWS_KEY]:       safeArray(PREVIEWS_KEY).length,
+          [ALERT_ACCEPTED_KEY]: safeArray(ALERT_ACCEPTED_KEY).length,
+          [ALERT_REJECTED_KEY]: safeArray(ALERT_REJECTED_KEY).length,
+          [PROPOSAL_KEY]:       safeArray(PROPOSAL_KEY).length,
+          [APPROVAL_KEY]:       safeArray(APPROVAL_KEY).length,
+        };
+
+        // Friendly display names matching the user-facing source labels
+        const SOURCE_LABELS = {
+          [STORAGE_KEY]:        'monitoring_check',
+          [NAV_HISTORY_KEY]:    'bridge_preview',
+          [PREVIEWS_KEY]:       'gateway_status',
+          [ALERT_ACCEPTED_KEY]: 'evidence_history',
+          [ALERT_REJECTED_KEY]: 'dry_run_audit',
+          [PROPOSAL_KEY]:       'approval_event',
+          [APPROVAL_KEY]:       'approval_governance',
+        };
+
+        const totalCandidates = Object.values(sourceCountMap).reduce((s, n) => s + n, 0);
+
+        // Valid = source has at least one record and the evidence resolver found a command from it
+        const resolvedSource = evidence.lastCommandSource ?? null;
+        const sourcesPresent = Object.entries(sourceCountMap)
+          .filter(([, cnt]) => cnt > 0)
+          .map(([key]) => SOURCE_LABELS[key] ?? key);
+
+        // Valid command-bearing count: sum of records from sources that carry real commands
+        // (STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY — alerts/proposals carry synthetic commands)
+        const cmdSources = [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY];
+        const validCount   = cmdSources.reduce((s, k) => s + (sourceCountMap[k] ?? 0), 0);
+        const ignoredCount = totalCandidates - validCount;
+
+        let statusMsg;
+        if (totalCandidates === 0) {
+          statusMsg = 'No event candidates available.';
+        } else if (validCount === 0) {
+          statusMsg = 'Candidates found, but no valid command-bearing event.';
+        } else {
+          statusMsg = 'Valid command candidates available.';
+        }
+
+        return (
+          <div className="bg-card border border-border/40 rounded-sm overflow-hidden">
+            <div className="px-4 py-2 bg-secondary/20 border-b border-border/40 flex items-center gap-2">
+              <span className="text-[8px] font-bold uppercase text-slate-400">Event Source Coverage</span>
+              <span className="ml-2 text-[7px] font-mono text-slate-600">display-only · read-only · no fetch · no dispatch</span>
+              <span className={`ml-auto text-[7px] font-bold font-mono px-2 py-0.5 rounded-sm border ${
+                validCount > 0 ? 'text-primary border-primary/30 bg-primary/5'
+                : totalCandidates > 0 ? 'text-amber-400 border-amber-400/30 bg-amber-400/5'
+                : 'text-slate-500 border-border/30 bg-secondary/20'
+              }`}>{statusMsg}</span>
+            </div>
+            <div className="p-3 space-y-2">
+              {/* Count summary */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Total Candidates', value: totalCandidates, cls: 'text-foreground font-bold' },
+                  { label: 'Valid (cmd-bearing)', value: validCount, cls: validCount > 0 ? 'text-primary font-bold' : 'text-slate-500' },
+                  { label: 'Ignored / Synthetic', value: ignoredCount, cls: 'text-slate-400' },
+                ].map(c => (
+                  <div key={c.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
+                    <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{c.label}</div>
+                    <div className={`text-[9px] font-mono ${c.cls}`}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Sources present */}
+              <div className="bg-secondary/20 border border-border/20 rounded-sm px-3 py-2">
+                <div className="text-[7px] uppercase text-slate-500 font-bold mb-1.5">Sources Present</div>
+                {sourcesPresent.length === 0 ? (
+                  <span className="text-[7px] font-mono text-slate-600">none</span>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {sourcesPresent.map(s => (
+                      <span key={s} className={`text-[7px] font-mono px-2 py-0.5 rounded-sm border ${
+                        s === (SOURCE_LABELS[resolvedSource] ?? resolvedSource)
+                          ? 'text-primary border-primary/30 bg-primary/5'
+                          : 'text-slate-400 border-border/20 bg-secondary/30'
+                      }`}>{s}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Per-source breakdown */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {Object.entries(sourceCountMap).map(([key, cnt]) => (
+                  <div key={key} className="bg-secondary/10 border border-border/10 rounded-sm px-2 py-1.5">
+                    <div className="text-[6.5px] uppercase text-slate-600 font-bold mb-0.5">{SOURCE_LABELS[key] ?? key}</div>
+                    <div className={`text-[8px] font-mono font-bold ${cnt > 0 ? 'text-slate-300' : 'text-slate-700'}`}>{cnt} rec</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Command Evidence Verification block */}
       {(evidence && showEvidence) && (() => {
         const coherence   = getCommandEvidenceCoherence(evidence);
