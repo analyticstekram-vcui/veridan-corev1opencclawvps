@@ -141,7 +141,10 @@ export default function TvProposalApprovalQueue() {
     writeArray(APPROVAL_KEY, updated);
     setLastResult(record);
     setNote('');
-    try { window.dispatchEvent(new CustomEvent('veridanTradingViewProposalApprovalRecordsUpdated')); } catch {}
+    try {
+      window.dispatchEvent(new CustomEvent('veridanTradingViewProposalApprovalRecordsUpdated'));
+      window.dispatchEvent(new Event('veridanTradingViewProposalPreviewsUpdated'));
+    } catch {}
   };
 
   const toggle = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));

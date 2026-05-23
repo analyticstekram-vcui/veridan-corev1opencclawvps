@@ -384,15 +384,25 @@ function buildEvidenceChain(rawChecks) {
     const proposals    = records.filter(r => r.isProposal);
     const lastProposal = proposals[0] ?? null;
 
-    // Approval-specific aggregates (read from storage directly — simpler than normalizing)
-    const rawApprovals     = safeArray(APPROVAL_KEY);
-    const lastApproval     = rawApprovals[0] ?? null;
-    const approvedCount    = rawApprovals.filter(a => a.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW').length;
-    const lastApprovalAt   = lastApproval?.createdAt ?? null;
+    // Approval-specific aggregates — read directly from localStorage (always fresh)
+    const rawApprovals   = safeArray(APPROVAL_KEY);
+    // Sort newest first by createdAt / approvedAt / timestamp
+    rawApprovals.sort((a, b) => {
+      const ta = new Date(a.approvedAt ?? a.createdAt ?? a.timestamp ?? 0).getTime();
+      const tb = new Date(b.approvedAt ?? b.createdAt ?? b.timestamp ?? 0).getTime();
+      return tb - ta;
+    });
+    const lastApproval       = rawApprovals[0] ?? null;
+    const approvedCount      = rawApprovals.filter(a => a.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW').length;
+    const lastApprovalAt     = lastApproval?.approvedAt ?? lastApproval?.createdAt ?? lastApproval?.timestamp ?? null;
     const lastApprovalStatus = lastApproval?.approvalStatus ?? null;
-    const lastApprovedSymbol = lastApproval?.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW' ? (lastApproval?.symbol ?? null) : null;
-    const lastApprovedSide   = lastApproval?.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW' ? (lastApproval?.side ?? null) : null;
-    const paperTradePreviewAllowed = lastApproval?.paperTradePreviewAllowed ?? false;
+    const lastApproved       = rawApprovals.find(a => a.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW') ?? null;
+    const lastApprovedSymbol = lastApproved?.symbol ?? null;
+    const lastApprovedSide   = lastApproved?.side   ?? null;
+    const paperTradePreviewAllowed =
+      (lastApproved?.paperTradePreviewAllowed === true) ||
+      (lastApproved?.paperTradePreview === true) ||
+      false;
 
     // Safety counts — sum across all records; rejected alerts contribute 0 failures (intentional policy)
     let totalSafetyPass = 0;
@@ -475,15 +485,28 @@ export default function TvMcpMonitoringConsole() {
   const [showEvidence,  setShowEvidence]  = useState(false);
   const [evidenceError, setEvidenceError] = useState(null);
 
-  useEffect(() => {
+  const refreshEvidence = () => {
     try {
       const stored = loadChecks();
       setChecks(stored);
       const chain = buildEvidenceChain(stored);
       if (chain) { setEvidence(chain); setShowEvidence(true); }
     } catch (err) {
-      console.error('[TvMcpMonitoringConsole] useEffect evidence error:', err);
+      console.error('[TvMcpMonitoringConsole] refreshEvidence error:', err);
     }
+  };
+
+  useEffect(() => {
+    refreshEvidence();
+    const events = [
+      'veridanTradingViewProposalApprovalRecordsUpdated',
+      'veridanTradingViewProposalPreviewsUpdated',
+      'veridanTradingViewSignalProposalPreviewsUpdated',
+      'veridanTradingViewAlertRecordsUpdated',
+      'storage',
+    ];
+    events.forEach(e => window.addEventListener(e, refreshEvidence));
+    return () => events.forEach(e => window.removeEventListener(e, refreshEvidence));
   }, []);
 
   const runCheck = async () => {
@@ -528,10 +551,7 @@ export default function TvMcpMonitoringConsole() {
   const regenEvidence = () => {
     setEvidenceError(null);
     try {
-      const stored = loadChecks();
-      setChecks(stored);
-      const chain = buildEvidenceChain(stored);
-      setEvidence(chain);
+      refreshEvidence();
       setShowEvidence(true);
     } catch (err) {
       console.error('[TvMcpMonitoringConsole] regenEvidence error:', err);
