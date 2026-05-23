@@ -13,23 +13,12 @@ export default function TvMcpManualChartInstructions({ checks }) {
   const lastStatusCheck = checks?.find(c => c.command === 'status' && c.status === 'SUCCESS') ?? null;
   const lastQuoteCheck  = checks?.find(c => c.command === 'quote'  && c.status === 'SUCCESS') ?? null;
 
-  // Parse rawData for extracted fields
-  function parseStdout(rawData) {
-    if (!rawData) return null;
-    const stdout = rawData?.stdout ?? rawData?.result?.stdout ?? null;
-    if (!stdout) return rawData;
-    if (typeof stdout === 'object') return stdout;
-    try { return JSON.parse(stdout); } catch { return null; }
-  }
-
-  const statusParsed = parseStdout(lastStatusCheck?.rawData) ?? {};
-  const quoteParsed  = parseStdout(lastQuoteCheck?.rawData)  ?? {};
-
-  const currentSymbol       = statusParsed.chart_symbol ?? quoteParsed.symbol ?? lastStatusCheck?.chartSymbol ?? null;
-  const currentResolution  = statusParsed.chart_resolution ?? lastStatusCheck?.chartResolution ?? null;
-  const lastQuotePrice     = quoteParsed.last ?? quoteParsed.price ?? null;
+  // Pull pre-parsed fields stored on the record (set by TvMcpMonitoringConsole's extractFields)
+  const currentSymbol      = lastStatusCheck?.chartSymbol    ?? lastQuoteCheck?.quoteSymbol   ?? null;
+  const currentResolution  = lastStatusCheck?.chartResolution                                 ?? null;
+  const lastQuotePrice     = lastQuoteCheck?.quoteLast                                        ?? null;
   const lastQuoteTime      = lastQuoteCheck?.createdAt ? new Date(lastQuoteCheck.createdAt).toLocaleString() : null;
-  const lastChartTitle     = statusParsed.target_title ?? null;
+  const lastChartTitle     = lastStatusCheck?.targetTitle                                     ?? null;
 
   const checklist = [
     { step: 1, task: 'Open TradingView VPS browser session' },
@@ -50,9 +39,9 @@ export default function TvMcpManualChartInstructions({ checks }) {
       {/* Explanation */}
       <div className="px-4 py-3 border-b border-border/20 text-[8px] text-slate-400 leading-relaxed space-y-1">
         <p>
-          <span className="font-bold text-slate-300">Chart changes are performed manually</span> in the VPS TradingView browser session. 
-          You control the symbol and timeframe directly in the UI. After changing the chart, 
-          use the <span className="text-primary font-bold">status</span> and <span className="text-primary font-bold">quote</span> checks 
+          <span className="font-bold text-slate-300">Chart changes are performed manually</span> in the VPS TradingView browser session.
+          You control the symbol and timeframe directly in the UI. After changing the chart,
+          use the <span className="text-primary font-bold">status</span> and <span className="text-primary font-bold">quote</span> checks
           to verify the new chart configuration and fetch live price data.
         </p>
         <p className="text-slate-500 italic">
@@ -62,15 +51,15 @@ export default function TvMcpManualChartInstructions({ checks }) {
 
       {/* Current chart state */}
       <div className="px-4 py-3 border-b border-border/20">
-        <div className="text-[7px] font-bold uppercase tracking-widest text-slate-500 mb-2">Current Chart State</div>
+        <div className="text-[7px] font-bold uppercase tracking-widest text-slate-500 mb-2">Current Chart State (from last checks)</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {[
-            { label: 'Symbol',       value: currentSymbol ?? 'N/A',      cls: 'text-primary font-bold' },
-            { label: 'Resolution',   value: currentResolution ?? 'N/A',  cls: 'text-slate-300' },
-            { label: 'Last Quote',   value: lastQuotePrice ?? 'N/A',     cls: 'text-primary font-bold' },
-            { label: 'Quote Time',   value: lastQuoteTime ?? 'N/A',      cls: 'text-slate-400 text-[7px]' },
-            { label: 'Chart Title',  value: lastChartTitle ?? 'N/A',     cls: 'text-slate-400 text-[7px]' },
-            { label: 'Status',       value: 'READ_ONLY',                 cls: 'text-amber-400 font-bold' },
+            { label: 'Symbol',       value: currentSymbol      ?? 'N/A', cls: 'text-primary font-bold' },
+            { label: 'Resolution',   value: currentResolution  ?? 'N/A', cls: 'text-slate-300' },
+            { label: 'Last Quote',   value: lastQuotePrice     ?? 'N/A', cls: 'text-primary font-bold' },
+            { label: 'Quote Time',   value: lastQuoteTime      ?? 'N/A', cls: 'text-slate-400' },
+            { label: 'Chart Title',  value: lastChartTitle     ?? 'N/A', cls: 'text-slate-400' },
+            { label: 'Mode',         value: 'READ_ONLY',                 cls: 'text-amber-400 font-bold' },
           ].map(({ label, value, cls }) => (
             <div key={label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
               <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{label}</div>
@@ -87,7 +76,7 @@ export default function TvMcpManualChartInstructions({ checks }) {
           onClick={() => setExpandChecklist(!expandChecklist)}
           className="flex items-center gap-2 mb-2 text-[8px] font-bold uppercase text-slate-400 hover:text-slate-300 transition-colors"
         >
-          <span className="text-slate-500">▼</span>
+          <span className="text-slate-500">{expandChecklist ? '▼' : '▶'}</span>
           Workflow Checklist ({checklist.length} steps)
         </button>
 
@@ -112,9 +101,7 @@ export default function TvMcpManualChartInstructions({ checks }) {
       {/* Safety footer */}
       <div className="px-4 py-2 border-t border-border/20 flex items-center gap-2 text-[7px] text-slate-600 font-mono">
         <CheckCircle2 className="w-2.5 h-2.5 text-primary shrink-0" />
-        <span>
-          All chart control is manual. Status and quote checks are read-only GET operations. No automated switching. No execution.
-        </span>
+        All chart control is manual. Status and quote checks are read-only GET operations. No automated switching. No execution.
       </div>
     </div>
   );

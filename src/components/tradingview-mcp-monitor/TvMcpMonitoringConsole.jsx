@@ -22,6 +22,81 @@ function saveChecks(checks) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(checks.slice(0, 100))); } catch {}
 }
 
+/**
+ * Parse the last valid JSON object from a stdout string.
+ * npm output often includes non-JSON lines before the actual JSON payload.
+ */
+export function parseLastJsonFromStdout(stdout) {
+  if (!stdout) return null;
+  if (typeof stdout === 'object') return stdout;
+  // Find all JSON objects in the string and return the last valid one
+  const matches = [];
+  let depth = 0, start = -1;
+  for (let i = 0; i < stdout.length; i++) {
+    if (stdout[i] === '{') { if (depth === 0) start = i; depth++; }
+    else if (stdout[i] === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        matches.push(stdout.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+  for (let i = matches.length - 1; i >= 0; i--) {
+    try { return JSON.parse(matches[i]); } catch { /* skip */ }
+  }
+  return null;
+}
+
+/**
+ * Extract normalised fields from the relay response, drilling into stdout if needed.
+ * Never exposes the relay URL.
+ */
+function extractFields(command, result) {
+  const raw = result?.data ?? result ?? {};
+
+  // Try to parse stdout for nested JSON
+  const stdout = raw?.stdout ?? raw?.result?.stdout ?? null;
+  const parsed = parseLastJsonFromStdout(stdout) ?? {};
+
+  if (command === 'status') {
+    return {
+      cdpConnected:    parsed.cdp_connected    ?? raw.cdp_connected    ?? result?.cdpConnected    ?? null,
+      chartSymbol:     parsed.chart_symbol     ?? raw.chart_symbol     ?? result?.chartSymbol     ?? null,
+      chartResolution: parsed.chart_resolution ?? raw.chart_resolution ?? result?.chartResolution ?? null,
+      targetTitle:     parsed.target_title     ?? raw.target_title     ?? null,
+      apiAvailable:    parsed.api_available    ?? raw.api_available    ?? null,
+      // Never expose relay URL — always fixed
+      targetUrl:       'relay-internal (not exposed)',
+      parsedPayload:   parsed,
+    };
+  }
+
+  if (command === 'quote') {
+    return {
+      cdpConnected:    null,
+      chartSymbol:     parsed.symbol      ?? raw.symbol      ?? result?.chartSymbol ?? null,
+      chartResolution: null,
+      targetTitle:     null,
+      apiAvailable:    null,
+      targetUrl:       'relay-internal (not exposed)',
+      quoteSymbol:     parsed.symbol      ?? raw.symbol      ?? null,
+      quoteLast:       parsed.last        ?? raw.last        ?? null,
+      quoteOpen:       parsed.open        ?? raw.open        ?? null,
+      quoteHigh:       parsed.high        ?? raw.high        ?? null,
+      quoteLow:        parsed.low         ?? raw.low         ?? null,
+      quoteClose:      parsed.close       ?? raw.close       ?? null,
+      quoteVolume:     parsed.volume      ?? raw.volume      ?? null,
+      quoteDescription:parsed.description ?? raw.description ?? null,
+      quoteExchange:   parsed.exchange    ?? raw.exchange    ?? null,
+      quoteType:       parsed.type        ?? raw.type        ?? null,
+      parsedPayload:   parsed,
+    };
+  }
+
+  return { targetUrl: 'relay-internal (not exposed)', parsedPayload: parsed };
+}
+
 function buildCheckRecord({ command, result, durationMs }) {
   const safetyAssertions = [
     { key: 'readOnly',               value: true,  pass: true },
@@ -41,6 +116,8 @@ function buildCheckRecord({ command, result, durationMs }) {
     { key: 'browserWriteActionUsed', value: false, pass: true },
   ];
 
+  const fields = extractFields(command, result);
+
   return {
     checkId:            'mcp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
     createdAt:          new Date().toISOString(),
@@ -48,10 +125,23 @@ function buildCheckRecord({ command, result, durationMs }) {
     status:             result?.status || 'UNKNOWN',
     httpStatus:         result?.httpStatus ?? null,
     relayReachable:     result?.relayReachable ?? false,
-    cdpConnected:       result?.cdpConnected ?? null,
-    chartSymbol:        result?.chartSymbol ?? null,
-    chartResolution:    result?.chartResolution ?? null,
+    cdpConnected:       fields.cdpConnected,
+    chartSymbol:        fields.chartSymbol,
+    chartResolution:    fields.chartResolution,
+    targetTitle:        fields.targetTitle ?? null,
+    apiAvailable:       fields.apiAvailable ?? null,
     targetUrl:          'relay-internal (not exposed)',
+    // quote fields (populated when command=quote)
+    quoteSymbol:        fields.quoteSymbol        ?? null,
+    quoteLast:          fields.quoteLast          ?? null,
+    quoteOpen:          fields.quoteOpen          ?? null,
+    quoteHigh:          fields.quoteHigh          ?? null,
+    quoteLow:           fields.quoteLow           ?? null,
+    quoteClose:         fields.quoteClose         ?? null,
+    quoteVolume:        fields.quoteVolume        ?? null,
+    quoteDescription:   fields.quoteDescription   ?? null,
+    quoteExchange:      fields.quoteExchange      ?? null,
+    quoteType:          fields.quoteType          ?? null,
     responseSummary:    result?.error || result?.notes || (result?.ok ? 'Check succeeded' : 'Check held'),
     durationMs:         durationMs ?? null,
     executionLock:      'LOCKED',
@@ -65,6 +155,7 @@ function buildCheckRecord({ command, result, durationMs }) {
     safetyPassCount:    safetyAssertions.filter(a => a.pass).length,
     safetyFailCount:    safetyAssertions.filter(a => !a.pass).length,
     rawData:            result?.data ?? null,
+    parsedPayload:      fields.parsedPayload ?? null,
     sourceComponent:    'TvMcpMonitoringConsole',
   };
 }
@@ -269,6 +360,54 @@ export default function TvMcpMonitoringConsole() {
             <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">Target URL</div>
             <div className="text-[8px] font-mono text-slate-400">{latestCheck.targetUrl}</div>
           </div>
+
+          {/* Parsed stdout fields — status */}
+          {latestCheck.command === 'status' && (
+            <div className="bg-card border border-primary/20 rounded-sm overflow-hidden">
+              <div className="px-4 py-2 bg-primary/5 border-b border-primary/20 text-[8px] font-bold uppercase text-primary">Parsed Status Fields</div>
+              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { label: 'cdp_connected',    value: latestCheck.cdpConnected    == null ? 'N/A' : String(latestCheck.cdpConnected) },
+                  { label: 'chart_symbol',     value: latestCheck.chartSymbol     ?? 'N/A' },
+                  { label: 'chart_resolution', value: latestCheck.chartResolution ?? 'N/A' },
+                  { label: 'target_title',     value: latestCheck.targetTitle     ?? 'N/A' },
+                  { label: 'api_available',    value: latestCheck.apiAvailable    == null ? 'N/A' : String(latestCheck.apiAvailable) },
+                  { label: 'target_url',       value: 'relay-internal (not exposed)' },
+                ].map(f => (
+                  <div key={f.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
+                    <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{f.label}</div>
+                    <div className="text-[8px] font-mono text-slate-300 break-all">{f.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Parsed stdout fields — quote */}
+          {latestCheck.command === 'quote' && (
+            <div className="bg-card border border-primary/20 rounded-sm overflow-hidden">
+              <div className="px-4 py-2 bg-primary/5 border-b border-primary/20 text-[8px] font-bold uppercase text-primary">Parsed Quote Fields</div>
+              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { label: 'symbol',      value: latestCheck.quoteSymbol      ?? 'N/A' },
+                  { label: 'last',        value: latestCheck.quoteLast        ?? 'N/A' },
+                  { label: 'open',        value: latestCheck.quoteOpen        ?? 'N/A' },
+                  { label: 'high',        value: latestCheck.quoteHigh        ?? 'N/A' },
+                  { label: 'low',         value: latestCheck.quoteLow         ?? 'N/A' },
+                  { label: 'close',       value: latestCheck.quoteClose       ?? 'N/A' },
+                  { label: 'volume',      value: latestCheck.quoteVolume      ?? 'N/A' },
+                  { label: 'description', value: latestCheck.quoteDescription ?? 'N/A' },
+                  { label: 'exchange',    value: latestCheck.quoteExchange    ?? 'N/A' },
+                  { label: 'type',        value: latestCheck.quoteType        ?? 'N/A' },
+                ].map(f => (
+                  <div key={f.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
+                    <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{f.label}</div>
+                    <div className="text-[8px] font-mono text-slate-300 break-all">{f.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Safety assertions */}
           <div className="bg-card border border-border/40 rounded-sm overflow-hidden">
