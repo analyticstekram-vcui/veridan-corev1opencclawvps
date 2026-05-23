@@ -12,9 +12,11 @@ import TvMcpManualChartInstructions from './TvMcpManualChartInstructions';
 import TvMcpChartControlPanel from './TvMcpChartControlPanel';
 import TvAlertIntakePanel from './TvAlertIntakePanel';
 
-const STORAGE_KEY     = 'veridanTradingViewMcpChecks';
-const NAV_HISTORY_KEY = 'veridanTvMcpChartNavHistory';
-const PREVIEWS_KEY    = 'veridanTvMcpChartControlPreviews';
+const STORAGE_KEY       = 'veridanTradingViewMcpChecks';
+const NAV_HISTORY_KEY   = 'veridanTvMcpChartNavHistory';
+const PREVIEWS_KEY      = 'veridanTvMcpChartControlPreviews';
+const ALERT_ACCEPTED_KEY = 'veridanTradingViewAlertIntakeRecords';
+const ALERT_REJECTED_KEY = 'veridanTradingViewAlertRejectedRecords';
 
 const SUCCESS_STATUSES = ['SUCCESS', 'CONNECTED_READ_ONLY', 'QUOTE_CONNECTED', 'HEALTH_CONNECTED', 'STATUS_CONNECTED', 'READ_ONLY_CHECK_ONLY', 'VERIFIED', 'PASSED', 'READ_ONLY_VERIFIED'];
 
@@ -172,91 +174,149 @@ function readStorage(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
 }
 
-/** A record is successful if its status string matches OR if any success flag is truthy */
+const SAFE_EXECUTION_STATUSES = new Set(['NOT_EXECUTED', 'READ_ONLY_CHECK_ONLY', 'BROWSER_NAVIGATION_ONLY', 'PREVIEW_ONLY', undefined, null]);
+
+/** A record is successful if its status or flags indicate a clean pass */
 function isSuccessRecord(r) {
+  if (!r) return false;
   if (SUCCESS_STATUSES.includes(r.status)) return true;
-  if (r.success === true) return true;
-  if (r.quoteSuccess === true || r.quoteOk === true) return true;
-  if (r.statusSuccess === true || r.statusOk === true) return true;
-  if (r.healthSuccess === true || r.healthOk === true) return true;
-  // Nav history: if both statusOk and quoteOk are true treat as success
+  if (r.status === 'ACCEPTED') return true;
+  if (r.accepted === true || r.success === true) return true;
+  if (r.quoteOk === true || r.statusOk === true || r.healthOk === true) return true;
   if (r.statusOk && r.quoteOk) return true;
   return false;
 }
 
-/** A record passes safety if all five safety flags are clean */
+/** A record is blocked if it was explicitly rejected/blocked */
+function isBlockedRecord(r) {
+  if (!r) return false;
+  if (r.status === 'BLOCKED_BY_POLICY' || r.status === 'REJECTED') return true;
+  if (r.blocked === true || r.rejected === true) return true;
+  if (typeof r.rejectionReason === 'string' && r.rejectionReason.toLowerCase().includes('blocked term')) return true;
+  return false;
+}
+
+/** A record passes safety unless it shows a violation */
 function isSafeRecord(r) {
+  if (!r) return true;
   if (r.tradingAttempted === true) return false;
   if (r.brokerActionsAttempted === true || r.brokerActionAttempted === true) return false;
   if (r.credentialExposed === true) return false;
   if (r.moneyMovementAttempted === true) return false;
-  if (r.liveTrading !== undefined && r.liveTrading !== 'DISABLED' && r.liveTrading !== false) return false;
-  if (r.brokerConnection !== undefined && r.brokerConnection !== 'DISABLED' && r.brokerConnection !== false) return false;
+  if (r.dispatchAllowed === true) return false;
+  if (r.executionAllowed === true) return false;
+  if (r.executionStatus !== undefined && r.executionStatus !== null && !SAFE_EXECUTION_STATUSES.has(r.executionStatus)) return false;
+  if (r.liveTrading !== undefined && r.liveTrading !== null && r.liveTrading !== 'DISABLED' && r.liveTrading !== false) return false;
+  if (r.brokerConnection !== undefined && r.brokerConnection !== null && r.brokerConnection !== 'DISABLED' && r.brokerConnection !== false) return false;
   return true;
 }
 
 /** Derive a canonical timestamp from a record regardless of field name */
 function recordTimestamp(r) {
-  return r.createdAt ?? r.invokedAt ?? r.timestamp ?? null;
+  if (!r) return null;
+  return r.createdAt ?? r.receivedAt ?? r.validatedAt ?? r.invokedAt ?? r.timestamp ?? null;
 }
 
 /**
- * Load all three storage keys, merge, sort by createdAt desc.
- * Nav history entries are normalised into check-like records.
+ * Load all five storage keys, normalise, merge, sort newest first.
  */
 function loadAllEvidenceRecords() {
-  const mcpChecks  = readStorage(STORAGE_KEY);
-  const navHistory = readStorage(NAV_HISTORY_KEY);
-  const previews   = readStorage(PREVIEWS_KEY);
+  const mcpChecks       = readStorage(STORAGE_KEY);
+  const navHistory      = readStorage(NAV_HISTORY_KEY);
+  const previews        = readStorage(PREVIEWS_KEY);
+  const alertAccepted   = readStorage(ALERT_ACCEPTED_KEY);
+  const alertRejected   = readStorage(ALERT_REJECTED_KEY);
 
-  // Normalise nav history entries
   const navAsChecks = navHistory.map(n => ({
-    checkId:        n.auditId ?? ('nav-' + (recordTimestamp(n) || Date.now())),
-    createdAt:      recordTimestamp(n) ?? new Date().toISOString(),
-    command:        n.lastCommand ?? n.command ?? 'read_only_chart_verification',
-    status:         n.status ?? (n.statusOk && n.quoteOk ? 'QUOTE_CONNECTED' : 'UNKNOWN'),
-    relayReachable: !!(n.statusOk || n.quoteOk),
-    statusOk:       n.statusOk ?? false,
-    quoteOk:        n.quoteOk  ?? false,
-    tradingAttempted:       n.tradingAttempted       ?? false,
-    brokerActionsAttempted: n.brokerActionsAttempted ?? false,
-    moneyMovementAttempted: n.moneyMovementAttempted ?? false,
-    credentialExposed:      n.credentialExposed      ?? false,
-    liveTrading:    n.liveTrading    ?? 'DISABLED',
-    brokerConnection: n.brokerConnection ?? 'DISABLED',
-    safetyPassCount: null, // computed below
-    safetyFailCount: null,
-    sourceComponent: 'TvMcpChartControlPanel',
+    checkId:               n.auditId ?? ('nav-' + (recordTimestamp(n) || Date.now())),
+    createdAt:             recordTimestamp(n) ?? new Date().toISOString(),
+    command:               n.lastCommand ?? n.command ?? 'read_only_chart_verification',
+    status:                n.status ?? (n.statusOk && n.quoteOk ? 'QUOTE_CONNECTED' : 'UNKNOWN'),
+    relayReachable:        !!(n.statusOk || n.quoteOk),
+    statusOk:              n.statusOk ?? false,
+    quoteOk:               n.quoteOk  ?? false,
+    tradingAttempted:      n.tradingAttempted       ?? false,
+    brokerActionsAttempted:n.brokerActionsAttempted ?? false,
+    moneyMovementAttempted:n.moneyMovementAttempted ?? false,
+    credentialExposed:     n.credentialExposed      ?? false,
+    liveTrading:           n.liveTrading    ?? 'DISABLED',
+    brokerConnection:      n.brokerConnection ?? 'DISABLED',
+    safetyPassCount:       null,
+    safetyFailCount:       null,
+    sourceComponent:       'TvMcpChartControlPanel',
   }));
 
-  // Previews are metadata only — include only locally-approved ones as lightweight evidence
   const approvedPreviews = previews
     .filter(p => p.approvalStatus === 'LOCALLY_APPROVED')
     .map(p => ({
-      checkId:    p.previewId ?? ('preview-' + (recordTimestamp(p) || '')),
-      createdAt:  p.approvedAt ?? recordTimestamp(p) ?? new Date().toISOString(),
-      command:    'chart_preview_approval',
-      status:     'LOCALLY_APPROVED',
-      tradingAttempted: false, brokerActionsAttempted: false,
-      moneyMovementAttempted: false, credentialExposed: false,
-      liveTrading: 'DISABLED', brokerConnection: 'DISABLED',
-      safetyPassCount: null, safetyFailCount: null,
-      sourceComponent: 'TvMcpChartControlPanel',
+      checkId:               p.previewId ?? ('preview-' + (recordTimestamp(p) || '')),
+      createdAt:             p.approvedAt ?? recordTimestamp(p) ?? new Date().toISOString(),
+      command:               'chart_preview_approval',
+      status:                'LOCALLY_APPROVED',
+      tradingAttempted:      false, brokerActionsAttempted: false,
+      moneyMovementAttempted:false, credentialExposed: false,
+      liveTrading:           'DISABLED', brokerConnection: 'DISABLED',
+      safetyPassCount:       null, safetyFailCount: null,
+      sourceComponent:       'TvMcpChartControlPanel',
     }));
 
-  const all = [...mcpChecks, ...navAsChecks, ...approvedPreviews];
+  // Normalise accepted alert records
+  const acceptedAsChecks = alertAccepted.map(a => ({
+    checkId:               a.alertId ?? ('alert-acc-' + (recordTimestamp(a) || Date.now())),
+    createdAt:             recordTimestamp(a) ?? new Date().toISOString(),
+    command:               'alert_intake',
+    status:                'ACCEPTED',
+    executionStatus:       a.executionStatus ?? 'NOT_EXECUTED',
+    riskClass:             a.riskClass ?? 'SIGNAL_INTAKE_ONLY',
+    tradingAttempted:      false,
+    brokerActionsAttempted:false,
+    moneyMovementAttempted:false,
+    credentialExposed:     false,
+    dispatchAllowed:       false,
+    executionAllowed:      false,
+    liveTrading:           'DISABLED',
+    brokerConnection:      'DISABLED',
+    safetyPassCount:       null,
+    safetyFailCount:       null,
+    sourceComponent:       'TvAlertIntakePanel',
+  }));
+
+  // Normalise rejected alert records
+  const rejectedAsChecks = alertRejected.map(a => ({
+    checkId:               a.alertId ?? ('alert-rej-' + (recordTimestamp(a) || Date.now())),
+    createdAt:             recordTimestamp(a) ?? new Date().toISOString(),
+    command:               'alert_rejected',
+    status:                'REJECTED',
+    blocked:               true,
+    rejectionReason:       a.rejectionReason ?? null,
+    executionStatus:       a.executionStatus ?? 'NOT_EXECUTED',
+    riskClass:             a.riskClass ?? 'SIGNAL_INTAKE_ONLY',
+    tradingAttempted:      false,
+    brokerActionsAttempted:false,
+    moneyMovementAttempted:false,
+    credentialExposed:     false,
+    dispatchAllowed:       false,
+    executionAllowed:      false,
+    liveTrading:           'DISABLED',
+    brokerConnection:      'DISABLED',
+    safetyPassCount:       null,
+    safetyFailCount:       null,
+    sourceComponent:       'TvAlertIntakePanel',
+  }));
+
+  const all = [...mcpChecks, ...navAsChecks, ...approvedPreviews, ...acceptedAsChecks, ...rejectedAsChecks];
   all.sort((a, b) => new Date(recordTimestamp(b) ?? 0) - new Date(recordTimestamp(a) ?? 0));
   return all;
 }
 
 function buildEvidenceChain(checks) {
-  const successful = checks.filter(isSuccessRecord);
-  const blocked    = checks.filter(c => c.status === 'BLOCKED_BY_POLICY');
-  const last       = checks[0];
-  const lastSuccessful = successful[0];
+  if (!checks || checks.length === 0) return null;
 
-  // Safety pass/fail: for records with explicit safetyPassCount use it,
-  // otherwise derive from safety flags
+  const successful     = checks.filter(isSuccessRecord);
+  const blocked        = checks.filter(isBlockedRecord);
+  const last           = checks[0];
+  const lastSuccessful = successful[0] ?? null;
+
   let totalSafetyPass = 0;
   let totalSafetyFail = 0;
   for (const c of checks) {
@@ -269,24 +329,28 @@ function buildEvidenceChain(checks) {
     }
   }
 
+  // Latest timestamp — any field
+  const lastSuccessAt = lastSuccessful ? (recordTimestamp(lastSuccessful) ?? null) : null;
+  const lastCommand   = last?.command ?? null;
+
   return {
-    totalChecks:           checks.length,
-    successfulChecks:      successful.length,
-    blockedCommandTests:   blocked.length,
-    lastSuccessfulCheckAt: lastSuccessful ? (recordTimestamp(lastSuccessful) ?? null) : null,
-    lastCommand:           lastSuccessful?.command ?? last?.command ?? null,
-    safetyPassCount:       totalSafetyPass,
-    safetyFailCount:       totalSafetyFail,
-    lockStatus:            'LOCKED',
-    executionStatus:       'READ_ONLY_CHECK_ONLY',
-    tradingAttempted:      false,
-    brokerActionAttempted: false,
+    totalChecks:            checks.length,
+    successfulChecks:       successful.length,
+    blockedCommandTests:    blocked.length,
+    lastSuccessfulCheckAt:  lastSuccessAt,
+    lastCommand,
+    safetyPassCount:        totalSafetyPass,
+    safetyFailCount:        totalSafetyFail,
+    lockStatus:             'LOCKED',
+    executionStatus:        'NOT_EXECUTED',
+    tradingAttempted:       false,
+    brokerActionAttempted:  false,
     moneyMovementAttempted: false,
-    credentialExposed:     false,
-    liveTrading:           'DISABLED',
-    brokerConnection:      'DISABLED',
-    generatedAt:           new Date().toISOString(),
-    sourceKeys: [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY],
+    credentialExposed:      false,
+    liveTrading:            'DISABLED',
+    brokerConnection:       'DISABLED',
+    generatedAt:            new Date().toISOString(),
+    sourceKeys:             [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY, ALERT_ACCEPTED_KEY, ALERT_REJECTED_KEY],
   };
 }
 
@@ -602,7 +666,7 @@ export default function TvMcpMonitoringConsole() {
         <div className="bg-card border border-primary/20 rounded-sm overflow-hidden">
           <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/20">
             <span className="text-[9px] font-bold uppercase text-primary">MCP Evidence Chain</span>
-            <span className="ml-2 text-[7px] text-slate-500 font-mono">sources: mcpChecks + navHistory + previews</span>
+            <span className="ml-2 text-[7px] text-slate-500 font-mono">sources: mcpChecks · navHistory · previews · alertAccepted · alertRejected</span>
           </div>
           <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
