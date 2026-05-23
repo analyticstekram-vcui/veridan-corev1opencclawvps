@@ -247,6 +247,42 @@ function getCommandEvidenceCoherence(evidence) {
 }
 
 /**
+ * Derive a display-only reason explaining the command evidence coherence state.
+ * Does not mutate evidence. Pure classification based on field presence.
+ */
+function getCommandEvidenceCoherenceReason(evidence) {
+  const cmd = evidence?.lastCommand;
+  const src = evidence?.lastCommandSource;
+  const ts  = evidence?.lastCommandAt;
+
+  const hasCmd = cmd && typeof cmd === 'string' && cmd.trim() &&
+    !['unknown', 'none', 'n/a', 'null', 'undefined'].includes(cmd.trim().toLowerCase());
+  const hasSrc = src && typeof src === 'string' && src.trim();
+  const hasTs  = ts  && typeof ts  === 'string' && ts.trim();
+
+  if (!hasCmd && !hasSrc && !hasTs) {
+    return 'No valid command evidence found.';
+  }
+  if (hasCmd && hasSrc && hasTs) {
+    return 'Command, source, and timestamp are aligned.';
+  }
+
+  // REVIEW cases — determine what's missing
+  const missing = [];
+  if (hasCmd && !hasSrc) missing.push('source');
+  if (hasCmd && !hasTs)  missing.push('timestamp');
+  if (!hasCmd && (hasSrc || hasTs)) {
+    return 'Source or timestamp exists without a valid command.';
+  }
+
+  if (missing.length > 0) {
+    return `Command evidence is incomplete: missing ${missing.join(' and ')}.`;
+  }
+
+  return 'Command evidence is incomplete.';
+}
+
+/**
  * Format raw command value for debug/secondary display.
  * Handles edge cases: null, undefined, empty, whitespace, placeholders.
  * Display-only; does not mutate evidence.lastCommand.
@@ -945,13 +981,15 @@ export default function TvMcpMonitoringConsole() {
             <span className="text-[7px] text-slate-500 font-mono">sources: mcpChecks · navHistory · previews · alertAccepted · alertRejected · proposals · approvals</span>
             {(() => {
               const coherence = getCommandEvidenceCoherence(evidence);
+              const reason = getCommandEvidenceCoherenceReason(evidence);
               const styles = {
                 COHERENT: 'bg-primary/10 border-primary/30 text-primary',
                 REVIEW:   'bg-amber-500/10 border-amber-500/30 text-amber-400',
                 NONE:     'bg-secondary/30 border-border/30 text-slate-500',
               };
               return (
-                <span className={`ml-auto px-2 py-0.5 rounded-sm border text-[7px] font-bold font-mono uppercase ${styles[coherence]}`}>
+                <span className={`ml-auto px-2 py-0.5 rounded-sm border text-[7px] font-bold font-mono uppercase ${styles[coherence]}`}
+                  title={reason}>
                   CMD EVIDENCE: {coherence}
                 </span>
               );
