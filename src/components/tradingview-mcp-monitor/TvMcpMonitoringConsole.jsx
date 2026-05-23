@@ -12,13 +12,15 @@ import TvMcpManualChartInstructions from './TvMcpManualChartInstructions';
 import TvMcpChartControlPanel from './TvMcpChartControlPanel';
 import TvAlertIntakePanel from './TvAlertIntakePanel';
 import TvSignalProposalPanel from './TvSignalProposalPanel';
+import TvProposalApprovalQueue from './TvProposalApprovalQueue';
 
-const STORAGE_KEY       = 'veridanTradingViewMcpChecks';
-const NAV_HISTORY_KEY   = 'veridanTvMcpChartNavHistory';
-const PREVIEWS_KEY      = 'veridanTvMcpChartControlPreviews';
+const STORAGE_KEY        = 'veridanTradingViewMcpChecks';
+const NAV_HISTORY_KEY    = 'veridanTvMcpChartNavHistory';
+const PREVIEWS_KEY       = 'veridanTvMcpChartControlPreviews';
 const ALERT_ACCEPTED_KEY = 'veridanTradingViewAlertIntakeRecords';
-const ALERT_REJECTED_KEY  = 'veridanTradingViewAlertRejectedRecords';
-const PROPOSAL_KEY        = 'veridanTradingViewSignalProposalPreviews';
+const ALERT_REJECTED_KEY = 'veridanTradingViewAlertRejectedRecords';
+const PROPOSAL_KEY       = 'veridanTradingViewSignalProposalPreviews';
+const APPROVAL_KEY       = 'veridanTradingViewProposalApprovalRecords';
 
 const SUCCESS_STATUSES = ['SUCCESS', 'CONNECTED_READ_ONLY', 'QUOTE_CONNECTED', 'HEALTH_CONNECTED', 'STATUS_CONNECTED', 'READ_ONLY_CHECK_ONLY', 'VERIFIED', 'PASSED', 'READ_ONLY_VERIFIED'];
 
@@ -326,6 +328,7 @@ function loadAllNormalizedRecords() {
     { key: ALERT_ACCEPTED_KEY, arr: safeArray(ALERT_ACCEPTED_KEY) },
     { key: ALERT_REJECTED_KEY, arr: safeArray(ALERT_REJECTED_KEY) },
     { key: PROPOSAL_KEY,       arr: safeArray(PROPOSAL_KEY) },
+    { key: APPROVAL_KEY,       arr: safeArray(APPROVAL_KEY) },
   ];
 
   const all = [];
@@ -378,8 +381,18 @@ function buildEvidenceChain(rawChecks) {
     const lastBlockTerm     = lastRejectedAlert?.blockedTerm ?? null;
 
     // Proposal-specific aggregates
-    const proposals        = records.filter(r => r.isProposal);
-    const lastProposal     = proposals[0] ?? null;
+    const proposals    = records.filter(r => r.isProposal);
+    const lastProposal = proposals[0] ?? null;
+
+    // Approval-specific aggregates (read from storage directly — simpler than normalizing)
+    const rawApprovals     = safeArray(APPROVAL_KEY);
+    const lastApproval     = rawApprovals[0] ?? null;
+    const approvedCount    = rawApprovals.filter(a => a.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW').length;
+    const lastApprovalAt   = lastApproval?.createdAt ?? null;
+    const lastApprovalStatus = lastApproval?.approvalStatus ?? null;
+    const lastApprovedSymbol = lastApproval?.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW' ? (lastApproval?.symbol ?? null) : null;
+    const lastApprovedSide   = lastApproval?.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW' ? (lastApproval?.side ?? null) : null;
+    const paperTradePreviewAllowed = lastApproval?.paperTradePreviewAllowed ?? false;
 
     // Safety counts — sum across all records; rejected alerts contribute 0 failures (intentional policy)
     let totalSafetyPass = 0;
@@ -418,7 +431,14 @@ function buildEvidenceChain(rawChecks) {
       liveTrading:            'DISABLED',
       brokerConnection:       'DISABLED',
       generatedAt:            new Date().toISOString(),
-      sourceKeys:             [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY, ALERT_ACCEPTED_KEY, ALERT_REJECTED_KEY, PROPOSAL_KEY],
+      proposalApprovalCount:       rawApprovals.length,
+      proposalApprovedCount:       approvedCount,
+      lastProposalApprovalAt:      lastApprovalAt,
+      lastProposalApprovalStatus:  lastApprovalStatus,
+      lastApprovedProposalSymbol:  lastApprovedSymbol,
+      lastApprovedProposalSide:    lastApprovedSide,
+      paperTradePreviewAllowed,
+      sourceKeys:             [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY, ALERT_ACCEPTED_KEY, ALERT_REJECTED_KEY, PROPOSAL_KEY, APPROVAL_KEY],
     };
 
     try { localStorage.setItem(EVIDENCE_SUMMARY_KEY, JSON.stringify(chain)); } catch {}
@@ -731,6 +751,9 @@ export default function TvMcpMonitoringConsole() {
       {/* Phase 3 — Signal to Proposal Preview */}
       <TvSignalProposalPanel />
 
+      {/* Phase 4 — Proposal Approval Queue */}
+      <TvProposalApprovalQueue />
+
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={copyLatest} disabled={!latestCheck}
@@ -785,6 +808,13 @@ export default function TvMcpMonitoringConsole() {
               { label: 'Last Proposal Symbol',    value: evidence.lastProposalSymbol    ?? 'N/A',   cls: 'text-primary font-mono' },
               { label: 'Last Proposal Side',      value: evidence.lastProposalSide      ?? 'N/A',   cls: 'text-amber-400 font-bold' },
               { label: 'Last Proposal Risk',      value: evidence.lastProposalRiskProfile ?? 'N/A', cls: 'text-amber-400' },
+              { label: 'Proposal Approvals',      value: evidence.proposalApprovalCount ?? 0,       cls: 'text-purple-400 font-bold' },
+              { label: 'Approved Count',          value: evidence.proposalApprovedCount ?? 0,       cls: 'text-primary font-bold' },
+              { label: 'Last Approval At',        value: evidence.lastProposalApprovalAt ? new Date(evidence.lastProposalApprovalAt).toLocaleTimeString() : 'N/A', cls: 'text-purple-400' },
+              { label: 'Last Approval Status',    value: evidence.lastProposalApprovalStatus ?? 'N/A', cls: 'text-purple-400 font-bold' },
+              { label: 'Last Approved Symbol',    value: evidence.lastApprovedProposalSymbol ?? 'N/A', cls: 'text-primary font-mono' },
+              { label: 'Last Approved Side',      value: evidence.lastApprovedProposalSide   ?? 'N/A', cls: 'text-amber-400 font-bold' },
+              { label: 'Paper Trade Preview',     value: String(evidence.paperTradePreviewAllowed ?? false), cls: evidence.paperTradePreviewAllowed ? 'text-primary font-bold' : 'text-destructive font-bold' },
             ].map(c => (
               <div key={c.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
                 <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{c.label}</div>
