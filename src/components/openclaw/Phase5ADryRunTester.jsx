@@ -48,6 +48,33 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     return `hash-${Math.abs(hash).toString(36)}`;
   };
 
+  // Sanitize signer response to redact secrets
+  const sanitizeSignerResponse = (value) => {
+    if (!value || typeof value !== 'object') return value;
+
+    const clone = JSON.parse(JSON.stringify(value));
+
+    const redact = (obj) => {
+      if (!obj || typeof obj !== 'object') return;
+      Object.keys(obj).forEach((key) => {
+        const lower = key.toLowerCase();
+        if (
+          lower.includes('secret') ||
+          lower.includes('token') ||
+          lower.includes('key') ||
+          lower.includes('credential')
+        ) {
+          obj[key] = '[REDACTED]';
+        } else if (typeof obj[key] === 'object') {
+          redact(obj[key]);
+        }
+      });
+    };
+
+    redact(clone);
+    return clone;
+  };
+
   const handleTest = async () => {
     setLoading(true);
     setError(null);
@@ -109,31 +136,63 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         return;
       }
 
-      // Normalize signer response to extract signature from common response shapes
-      const rawSignerResult = signerResponse?.data || signerResponse?.result || signerResponse?.signedRequest || signerResponse || {};
+      // Build deeper signer result candidates
+      const signerCandidates = [
+        signerResponse,
+        signerResponse?.data,
+        signerResponse?.result,
+        signerResponse?.response,
+        signerResponse?.output,
+        signerResponse?.body,
+        signerResponse?.data?.data,
+        signerResponse?.data?.result,
+        signerResponse?.data?.response,
+        signerResponse?.data?.output,
+        signerResponse?.data?.body,
+        signerResponse?.data?.signedRequest,
+        signerResponse?.result?.signedRequest,
+        signerResponse?.response?.signedRequest,
+      ].filter(Boolean);
+
+      // Find first candidate with a signature
+      const rawSignerResult =
+        signerCandidates.find((candidate) =>
+          candidate?.signature ||
+          candidate?.signedSignature ||
+          candidate?.bridgeSignature ||
+          candidate?.signedRequest?.signature
+        ) ||
+        signerResponse?.data ||
+        signerResponse?.result ||
+        signerResponse ||
+        {};
+
+      const extractedSignature =
+        rawSignerResult.signature ||
+        rawSignerResult.signedSignature ||
+        rawSignerResult.bridgeSignature ||
+        rawSignerResult.signedRequest?.signature ||
+        "";
+
       const sigerResponseKeys = Object.keys(signerResponse || {}).join(', ');
       const rawSignerResultKeys = Object.keys(rawSignerResult).join(', ');
       
       const normalizedSignedRequest = {
         ...rawSignerResult,
-        signature:
-          rawSignerResult.signature ||
-          rawSignerResult.signedSignature ||
-          rawSignerResult.bridgeSignature ||
-          signerResponse?.signature ||
-          signerResponse?.data?.signature ||
-          signerResponse?.result?.signature ||
-          "",
+        ...(rawSignerResult.signedRequest || {}),
+        signature: extractedSignature,
         signingVersion:
           rawSignerResult.signingVersion ||
-          rawSignerResult.version ||
+          rawSignerResult.signedRequest?.signingVersion ||
           "OPENCLAW_BRIDGE_V1",
         signedAt:
           rawSignerResult.signedAt ||
+          rawSignerResult.signedRequest?.signedAt ||
           rawSignerResult.timestamp ||
           submittedAt,
         operatorId:
           rawSignerResult.operatorId ||
+          rawSignerResult.signedRequest?.operatorId ||
           fullBridgeRequest.operatorId ||
           operatorId,
         previewHash,
@@ -167,9 +226,24 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         expiresInMinutes: 5,
         signerResponseKeys: sigerResponseKeys,
         rawSignerResultKeys,
-        signaturePresent: !!normalizedSignedRequest.signature,
+        signaturePresent: Boolean(extractedSignature),
+        signatureLength: extractedSignature?.length || 0,
         signingVersion: normalizedSignedRequest.signingVersion,
         signedAt: normalizedSignedRequest.signedAt,
+        sanitizedSignerResponse: sanitizeSignerResponse(signerResponse),
+        signerCandidateCount: signerCandidates.length,
+        candidateKeys: signerCandidates.map((candidate, index) => ({
+          index,
+          keys: Object.keys(candidate || {}),
+          hasSignature: Boolean(
+            candidate?.signature ||
+            candidate?.signedSignature ||
+            candidate?.bridgeSignature ||
+            candidate?.signedRequest?.signature
+          ),
+          hasSignedRequest: Boolean(candidate?.signedRequest),
+          signedRequestKeys: candidate?.signedRequest ? Object.keys(candidate.signedRequest) : []
+        })),
       };
       
       setResult(resultData);
@@ -346,15 +420,46 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
               
               {/* Submission Debug Info */}
               {result.submissionDebug && (
-                <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px] text-slate-500">
+                <div className="mt-2 pt-2 border-t border-current/20 space-y-1.5 text-[7px] text-slate-500">
                   <div>Submitted At: <span className="text-slate-300 font-mono">{result.submissionDebug.submittedAt}</span></div>
                   <div>Expiration At: <span className="text-slate-300 font-mono">{result.submissionDebug.expirationAt}</span></div>
                   <div>Expires In: <span className="text-slate-300 font-semibold">{result.submissionDebug.expiresInMinutes} minutes</span></div>
                   <div>Signature Present: <span className="text-slate-300 font-semibold">{result.submissionDebug.signaturePresent ? 'YES' : 'NO'}</span></div>
+                  <div>Signature Length: <span className="text-slate-300 font-semibold">{result.submissionDebug.signatureLength} chars</span></div>
                   <div>Signing Version: <span className="text-slate-300 font-mono">{result.submissionDebug.signingVersion}</span></div>
                   <div>Signed At: <span className="text-slate-300 font-mono">{result.submissionDebug.signedAt}</span></div>
                   <div className="text-[6px] text-slate-600 mt-1">Signer Response Keys: {result.submissionDebug.signerResponseKeys}</div>
                   <div className="text-[6px] text-slate-600">Raw Signer Result Keys: {result.submissionDebug.rawSignerResultKeys}</div>
+                  <div className="text-[6px] text-slate-600">Signer Candidates Found: {result.submissionDebug.signerCandidateCount}</div>
+
+                  {/* Candidate details */}
+                  {result.submissionDebug.candidateKeys && (
+                    <div className="mt-1 space-y-1 bg-secondary/50 p-2 rounded border border-border/20 max-h-48 overflow-y-auto">
+                      <div className="text-[6px] font-semibold text-slate-300 uppercase mb-1">Candidate Breakdown</div>
+                      {result.submissionDebug.candidateKeys.map((candidate, idx) => (
+                        <div key={idx} className="text-[6px] border-l border-border/40 pl-1.5 py-0.5">
+                          <div className="text-slate-400">Candidate {candidate.index}:</div>
+                          <div className="text-slate-500">Keys: {candidate.keys.join(', ') || 'none'}</div>
+                          <div className={candidate.hasSignature ? 'text-primary' : 'text-slate-600'}>
+                            Signature: {candidate.hasSignature ? '✓ FOUND' : '✗ none'}
+                          </div>
+                          {candidate.hasSignedRequest && (
+                            <div className="text-slate-500">SignedRequest Keys: {candidate.signedRequestKeys.join(', ')}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sanitized Signer Response JSON */}
+                  {result.submissionDebug.sanitizedSignerResponse && (
+                    <div className="mt-1 bg-secondary/50 p-2 rounded border border-border/20 max-h-48 overflow-y-auto">
+                      <div className="text-[6px] font-semibold text-slate-300 uppercase mb-1">Sanitized Signer Response</div>
+                      <pre className="text-[5px] text-slate-400 font-mono overflow-x-auto whitespace-pre-wrap break-words">
+                        {JSON.stringify(result.submissionDebug.sanitizedSignerResponse, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
