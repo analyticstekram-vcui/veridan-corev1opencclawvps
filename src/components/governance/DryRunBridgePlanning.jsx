@@ -21,6 +21,7 @@ import React, { useState } from 'react';
 import { AlertCircle, Download, Lock, CheckCircle2, XCircle } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import { Link } from 'react-router-dom';
+import Phase5ADryRunTester from '@/components/openclaw/Phase5ADryRunTester';
 
 const ALLOWED_COMMAND_TYPES = ['READ', 'NAVIGATE', 'EXTRACT', 'VERIFY'];
 
@@ -926,10 +927,24 @@ export default function DryRunBridgePlanning() {
                       This builder creates a local preview object only. It does not save, validate, approve, send, or execute bridge requests.
                     </p>
                   </div>
-                </div>
-              </div>
+                  </div>
+                  </div>
 
-              {/* Section J: Local Validation Preview */}
+                  {/* Phase 5A Signed Dry-Run Tester */}
+                  <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
+                  <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+                  <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Phase 5A: Signed Dry-Run Tester</h2>
+                  </div>
+                  <div className="p-4">
+                  <Phase5ADryRunTester 
+                    signedRequest={builderPreviewObject} 
+                    proposalId={builderPreviewObject.requestId}
+                    operatorId={builderForm.operatorId}
+                  />
+                  </div>
+                  </div>
+
+                  {/* Section J: Local Validation Preview */}
               <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
                 <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
                   <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">J. Local Validation Preview</h2>
