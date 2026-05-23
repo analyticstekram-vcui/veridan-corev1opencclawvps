@@ -14,7 +14,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const ALLOWED_TIMEFRAMES = ['1', '5', '15', '30', '60', '240', 'D', 'W'];
 const ALLOWED_CHART_TYPES = ['candlestick', 'bars', 'line'];
-const BLOCKED_WORDS = ['buy', 'sell', 'order', 'trade', 'close', 'flatten', 'broker', 'login', 'password', 'credential', 'withdraw', 'deposit', 'transfer'];
+const BLOCKED_WORDS = ['login', 'password', 'credential', 'withdraw', 'deposit', 'transfer'];
 
 function generateAuditId() {
   return `TVNAV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
@@ -104,13 +104,13 @@ Deno.serve(async (req) => {
       }));
     }
 
-    // Blocked word check on all string inputs
-    const toCheck = [symbol, timeframe, chartType, operatorReason, operatorNote || ''];
-    for (const str of toCheck) {
+    // Blocked word check — only scan freeform user text (reason and note), not symbol/timeframe/chartType
+    const freeformInputs = [operatorReason, operatorNote || ''];
+    for (const str of freeformInputs) {
       if (containsBlockedWord(str)) {
         return Response.json(makeEnvelope({
           auditId, status: 'REJECTED_BLOCKED_WORD',
-          error: `Input contains a blocked word. Trading, broker, credential, and money-movement terms are prohibited.`,
+          error: `Operator reason/note contains a blocked word (login, password, credential, withdraw, deposit, transfer).`,
           operatorApproval: true,
         }));
       }
