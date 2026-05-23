@@ -162,7 +162,7 @@ function buildCheckRecord({ command, result, durationMs }) {
 }
 
 function buildEvidenceChain(checks) {
-  const successful = checks.filter(c => c.status === 'SUCCESS');
+  const successful = checks.filter(c => ['SUCCESS', 'CONNECTED_READ_ONLY', 'QUOTE_CONNECTED'].includes(c.status));
   const blocked    = checks.filter(c => c.status === 'BLOCKED_BY_POLICY');
   const last       = checks[0];
   const totalSafetyPass = checks.reduce((s, c) => s + (c.safetyPassCount || 0), 0);
@@ -181,11 +181,13 @@ function buildEvidenceChain(checks) {
 }
 
 const STATUS_STYLE = {
-  SUCCESS:                { text: 'text-primary',     border: 'border-primary/30',     bg: 'bg-primary/5'     },
-  BLOCKED_BY_POLICY:      { text: 'text-destructive', border: 'border-destructive/30', bg: 'bg-destructive/5' },
-  HOLD_FOR_BACKEND_ENV:   { text: 'text-amber-400',   border: 'border-amber-400/30',   bg: 'bg-amber-400/5'   },
-  HOLD_FOR_MCP_RELAY:     { text: 'text-amber-400',   border: 'border-amber-400/30',   bg: 'bg-amber-400/5'   },
-  UNKNOWN:                { text: 'text-slate-400',   border: 'border-border/40',      bg: 'bg-secondary/10'  },
+  SUCCESS:              { text: 'text-primary',     border: 'border-primary/30',     bg: 'bg-primary/5'     },
+  CONNECTED_READ_ONLY:  { text: 'text-primary',     border: 'border-primary/30',     bg: 'bg-primary/5'     },
+  QUOTE_CONNECTED:      { text: 'text-primary',     border: 'border-primary/30',     bg: 'bg-primary/5'     },
+  BLOCKED_BY_POLICY:    { text: 'text-destructive', border: 'border-destructive/30', bg: 'bg-destructive/5' },
+  HOLD_FOR_BACKEND_ENV: { text: 'text-amber-400',   border: 'border-amber-400/30',   bg: 'bg-amber-400/5'   },
+  HOLD_FOR_MCP_RELAY:   { text: 'text-amber-400',   border: 'border-amber-400/30',   bg: 'bg-amber-400/5'   },
+  UNKNOWN:              { text: 'text-slate-400',   border: 'border-border/40',      bg: 'bg-secondary/10'  },
 };
 
 function statusStyle(s) { return STATUS_STYLE[s] || STATUS_STYLE.UNKNOWN; }

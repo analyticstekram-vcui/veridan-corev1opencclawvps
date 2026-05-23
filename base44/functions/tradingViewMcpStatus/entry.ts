@@ -1,24 +1,26 @@
 /**
  * tradingViewMcpStatus
- * Read-only status check relay for the TradingView MCP bridge.
+ * Read-only status/quote relay for the TradingView MCP bridge.
+ *
+ * Endpoint routing:
+ *   health check  → GET {RELAY_BASE_URL}/health
+ *   status check  → GET {RELAY_BASE_URL}/relay?command=status
+ *   quote check   → GET {RELAY_BASE_URL}/relay?command=quote
+ *
  * SAFETY CONTRACT:
- *   - GET-only requests to the local relay
- *   - Allowlisted commands only — blocked list enforced
+ *   - GET-only, allowlisted commands only
+ *   - No trade, broker, credential, money movement terms sent
  *   - No secrets exposed in response
- *   - No arbitrary URL input accepted
- *   - No arbitrary shell commands
- *   - No browser write actions
- *   - No trading, no broker, no credentials, no money movement
- *   - Returns standardized JSON envelopes only
+ *   - executionStatus always NOT_EXECUTED
+ *   - liveTrading, brokerConnection, moneyMovement, credentialAccess always DISABLED
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const ALLOWED_COMMANDS = ['status', 'quote'];
-const BLOCKED_COMMANDS = ['trade', 'order', 'buy', 'sell', 'close', 'flatten', 'broker', 'login', 'password', 'credential', 'withdraw', 'deposit', 'transfer', 'health', 'values', 'screenshot', 'ui-state', 'discover', 'range', 'stream'];
 
 function makeEnvelope({ command, status, httpStatus = null, relayReachable = false, data = null, error = null, notes = null }) {
   return {
-    ok: status === 'SUCCESS',
+    ok:               status === 'SUCCESS' || status === 'CONNECTED_READ_ONLY' || status === 'QUOTE_CONNECTED',
     command,
     status,
     httpStatus,
@@ -26,15 +28,38 @@ function makeEnvelope({ command, status, httpStatus = null, relayReachable = fal
     data,
     error,
     notes,
-    executionStatus: 'NOT_EXECUTED',
-    dispatchAllowed: false,
+    executionStatus:  'NOT_EXECUTED',
+    dispatchAllowed:  false,
     executionAllowed: false,
-    liveTrading: 'DISABLED',
+    liveTrading:      'DISABLED',
     brokerConnection: 'DISABLED',
     credentialAccess: 'DISABLED',
-    moneyMovement: 'DISABLED',
-    timestamp: new Date().toISOString(),
+    moneyMovement:    'DISABLED',
+    riskClass:        'SAFE_READ',
+    timestamp:        new Date().toISOString(),
   };
+}
+
+function sanitizeRelayResponse(data) {
+  if (typeof data !== 'object' || data === null) return data;
+  const BLOCKED_KEYS = ['password', 'secret', 'token', 'apiKey', 'api_key', 'credential', 'auth', 'private_key', 'access_token', 'refresh_token'];
+  const out = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (BLOCKED_KEYS.some(bk => k.toLowerCase().includes(bk))) continue;
+    out[k] = typeof v === 'object' && v !== null ? sanitizeRelayResponse(v) : v;
+  }
+  return out;
+}
+
+async function fetchRelay(url, headers) {
+  const res = await fetch(url, {
+    method: 'GET',
+    headers,
+    signal: AbortSignal.timeout(8000),
+  });
+  let body = null;
+  try { body = await res.json(); } catch { body = null; }
+  return { ok: res.ok, httpStatus: res.status, body };
 }
 
 Deno.serve(async (req) => {
@@ -48,119 +73,92 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const command = (body?.command || '').toLowerCase().trim();
 
-    // Reject blocked commands
-    if (BLOCKED_COMMANDS.some(b => command === b || command.startsWith(b))) {
-      return Response.json(makeEnvelope({
-        command,
-        status: 'BLOCKED_BY_POLICY',
-        error: `Command "${command}" is on the blocked list. No trade/order/broker/credential commands allowed.`,
-        notes: `Blocked commands: ${BLOCKED_COMMANDS.join(', ')}`,
-      }));
-    }
-
-    // Reject commands not on allowlist
     if (!ALLOWED_COMMANDS.includes(command)) {
       return Response.json(makeEnvelope({
         command,
         status: 'BLOCKED_BY_POLICY',
-        error: `Command "${command}" is not on the allowlist.`,
-        notes: `Allowed: ${ALLOWED_COMMANDS.join(', ')}`,
+        error: `Command "${command}" is not allowed. Allowed: ${ALLOWED_COMMANDS.join(', ')}`,
       }));
     }
 
-    // Check for required env var
-    const relayUrl = Deno.env.get('TRADINGVIEW_MCP_RELAY_URL');
-    if (!relayUrl) {
+    const relayBase = Deno.env.get('TRADINGVIEW_MCP_RELAY_URL');
+    if (!relayBase) {
       return Response.json(makeEnvelope({
         command,
         status: 'HOLD_FOR_BACKEND_ENV',
-        error: 'TRADINGVIEW_MCP_RELAY_URL environment variable is not set.',
-        notes: 'Set TRADINGVIEW_MCP_RELAY_URL to the local relay endpoint.',
+        error: 'TRADINGVIEW_MCP_RELAY_URL is not set.',
       }));
     }
 
-    // Optional relay token (never exposed in response)
     const relayToken = Deno.env.get('TRADINGVIEW_MCP_RELAY_TOKEN') || null;
-
-    // Build headers — token presence only, value never returned
     const headers = { 'Content-Type': 'application/json' };
-    if (relayToken) {
-      headers['Authorization'] = `Bearer ${relayToken}`;
+    if (relayToken) headers['Authorization'] = `Bearer ${relayToken}`;
+
+    // Step 1 — health check
+    let healthOk = false;
+    try {
+      const health = await fetchRelay(`${relayBase}/health`, headers);
+      healthOk = health.ok;
+    } catch {
+      healthOk = false;
     }
 
-    // Make GET-only request to relay
-    const startTime = Date.now();
-    let fetchResponse;
+    // Step 2 — relay command
+    const relayUrl = `${relayBase}/relay?command=${encodeURIComponent(command)}`;
+    let relayResult;
     try {
-      fetchResponse = await fetch(`${relayUrl}/relay?command=${command}`, {
-        method: 'GET',
-        headers,
-        signal: AbortSignal.timeout(8000),
-      });
+      relayResult = await fetchRelay(relayUrl, headers);
     } catch (fetchErr) {
+      // Health worked but relay failed
+      const notes = healthOk
+        ? '/health reachable but /relay?command=' + command + ' failed.'
+        : 'Relay unreachable. Verify veridan-tv-mcp process is running.';
       return Response.json(makeEnvelope({
         command,
         status: 'HOLD_FOR_MCP_RELAY',
-        relayReachable: false,
-        error: fetchErr.message || 'Relay unreachable',
-        notes: 'Verify the local relay process (veridan-tv-mcp) is running and TRADINGVIEW_MCP_RELAY_URL is correct.',
+        relayReachable: healthOk,
+        error: fetchErr.message || 'Relay fetch error',
+        notes,
       }));
     }
 
-    const durationMs = Date.now() - startTime;
-    const httpStatus = fetchResponse.status;
-    let responseData = null;
-
-    try {
-      responseData = await fetchResponse.json();
-    } catch {
-      responseData = null;
-    }
-
+    const { ok: relayOk, httpStatus, body: responseData } = relayResult;
     const relayReachable = httpStatus >= 200 && httpStatus < 500;
-    const relayJsonSuccess = responseData?.success === true;
 
-    if (!fetchResponse.ok || !relayJsonSuccess) {
+    if (!relayOk) {
       return Response.json(makeEnvelope({
         command,
         status: 'HOLD_FOR_MCP_RELAY',
         httpStatus,
         relayReachable,
         data: responseData,
-        error: `Relay returned HTTP ${httpStatus}`,
-        notes: 'Check relay process health.',
+        error: `/relay?command=${command} returned HTTP ${httpStatus}`,
+        notes: healthOk ? '/health OK but relay command failed.' : 'Relay unreachable.',
       }));
     }
 
-    // Strip any secret-like fields from relay response before forwarding
     const safeData = responseData ? sanitizeRelayResponse(responseData) : null;
+
+    // Status label based on command
+    const successStatus = command === 'quote' ? 'QUOTE_CONNECTED' : 'CONNECTED_READ_ONLY';
 
     return Response.json({
       ...makeEnvelope({
         command,
-        status: 'SUCCESS',
+        status: successStatus,
         httpStatus,
         relayReachable: true,
         data: safeData,
       }),
-      durationMs,
-      cdpConnected: safeData?.cdp_connected ?? null,
-      chartSymbol: safeData?.chart_symbol ?? null,
+      healthOk,
+      // Convenience fields for the monitoring console
+      cdpConnected:    safeData?.cdp_connected    ?? null,
+      chartSymbol:     safeData?.chart_symbol     ?? safeData?.symbol     ?? null,
       chartResolution: safeData?.chart_resolution ?? null,
+      stdout:          safeData?.stdout           ?? null,
     });
 
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
-
-function sanitizeRelayResponse(data) {
-  if (typeof data !== 'object' || data === null) return data;
-  const BLOCKED_KEYS = ['password', 'secret', 'token', 'apiKey', 'api_key', 'credential', 'auth', 'private_key', 'access_token', 'refresh_token'];
-  const out = {};
-  for (const [k, v] of Object.entries(data)) {
-    if (BLOCKED_KEYS.some(bk => k.toLowerCase().includes(bk))) continue;
-    out[k] = typeof v === 'object' && v !== null ? sanitizeRelayResponse(v) : v;
-  }
-  return out;
-}
