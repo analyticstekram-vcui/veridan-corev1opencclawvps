@@ -5,7 +5,7 @@
  * LOCAL_ONLY / MANUAL_EVIDENCE / NOT_EXECUTED
  */
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, Info, Edit2 } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, Info, Edit2, Copy, ChevronDown } from 'lucide-react';
 
 const TEST_CASES = [
   {
@@ -94,6 +94,8 @@ function saveResults(results) {
 export default function Phase5ApprovalBindingTestCases() {
   const [results, setResults] = useState(loadResults());
   const [editingId, setEditingId] = useState(null);
+  const [showEvidencePacket, setShowEvidencePacket] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState(null);
 
   useEffect(() => {
     saveResults(results);
@@ -128,6 +130,38 @@ export default function Phase5ApprovalBindingTestCases() {
   const passCount = counts['PASS'] || 0;
   const failCount = counts['FAIL'] || 0;
   const notRunCount = counts['NOT_RUN'] || 0;
+
+  const buildEvidencePacket = () => ({
+    generatedAt: new Date().toISOString(),
+    component: 'Phase5ApprovalBindingTestCases',
+    phase: 'Phase 5 Approval Binding',
+    safetyMode: 'LOCAL_ONLY_MANUAL_EVIDENCE',
+    executionStatus: 'NOT_EXECUTED',
+    testCaseCount: TEST_CASES.length,
+    passCount,
+    failCount,
+    notRunCount,
+    testCases: TEST_CASES.map(tc => ({
+      id: tc.id,
+      title: tc.title,
+      expectedOutcome: tc.expectedOutcome,
+      manualStatus: getResultStatus(tc.id),
+      notes: getNotes(tc.id) || null,
+    })),
+  });
+
+  const handleCopyEvidencePacket = async () => {
+    try {
+      const packet = buildEvidencePacket();
+      const json = JSON.stringify(packet, null, 2);
+      await navigator.clipboard.writeText(json);
+      setCopyFeedback('Copied to clipboard');
+      setTimeout(() => setCopyFeedback(null), 2000);
+    } catch (err) {
+      setCopyFeedback('Copy failed');
+      setTimeout(() => setCopyFeedback(null), 2000);
+    }
+  };
 
   return (
     <div className="border border-primary/20 bg-primary/5 rounded-lg overflow-hidden">
@@ -265,6 +299,53 @@ export default function Phase5ApprovalBindingTestCases() {
             </div>
           );
         })}
+      </div>
+
+      {/* Evidence Packet Export */}
+      <div className="border-t border-primary/20 bg-primary/5 overflow-hidden">
+        <button
+          onClick={() => setShowEvidencePacket(!showEvidencePacket)}
+          className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-primary/10 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <ChevronDown className={`w-3.5 h-3.5 text-primary transition-transform ${showEvidencePacket ? 'rotate-180' : ''}`} />
+            <span className="text-[9px] font-semibold text-primary uppercase tracking-wider">
+              Evidence Packet Export (LOCAL_ONLY_EXPORT)
+            </span>
+          </div>
+          <span className="text-[7px] text-primary/60">NOT_EXECUTED</span>
+        </button>
+
+        {showEvidencePacket && (
+          <div className="px-4 py-3 space-y-2 border-t border-primary/20">
+            {/* Copy button + feedback */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyEvidencePacket}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] border border-primary/30 text-primary bg-primary/10 hover:bg-primary/20 rounded font-bold transition-colors"
+              >
+                <Copy className="w-3 h-3" />
+                Copy Evidence Packet JSON
+              </button>
+              {copyFeedback && (
+                <span className="text-[8px] text-primary font-semibold">
+                  {copyFeedback}
+                </span>
+              )}
+            </div>
+
+            {/* JSON display */}
+            <pre className="bg-secondary/20 border border-border/40 rounded p-3 text-[7px] font-mono text-foreground/80 overflow-auto max-h-64 whitespace-pre-wrap break-words">
+              {JSON.stringify(buildEvidencePacket(), null, 2)}
+            </pre>
+
+            {/* Safety note */}
+            <div className="text-[7px] text-primary/60 flex items-center gap-1 italic">
+              <Info className="w-2.5 h-2.5 shrink-0" />
+              <span>Local clipboard only. Evidence packet is NOT sent to backend. No execution. LOCAL_ONLY_EXPORT.</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer note */}
