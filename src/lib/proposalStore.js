@@ -256,6 +256,7 @@ export function saveSyncEntry(localId, entry) {
 }
 
 // Map local commandType → backend allowlist (READ, NAVIGATE, EXTRACT, VERIFY)
+// Unknown types return null; backend rejects via policy gate validation.
 export function mapCommandType(localType) {
   const map = {
     STATUS_CHECK:   'VERIFY',
@@ -264,5 +265,5 @@ export function mapCommandType(localType) {
     SUMMARIZE_PAGE: 'EXTRACT',
     CHECK_WEBHOOK:  'VERIFY',
   };
-  return map[localType] || 'READ';
+  return map[localType] || null;
 }
