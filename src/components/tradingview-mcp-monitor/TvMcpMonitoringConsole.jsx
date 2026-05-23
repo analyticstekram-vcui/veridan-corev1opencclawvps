@@ -227,6 +227,22 @@ function formatCommandLabel(cmd) {
   return lookup[lower] ?? safeString(cmd, 'none');
 }
 
+/**
+ * Format raw command value for debug/secondary display.
+ * Handles edge cases: null, undefined, empty, whitespace, placeholders.
+ * Display-only; does not mutate evidence.lastCommand.
+ */
+function formatRawCommandDebugValue(cmd) {
+  if (!cmd || typeof cmd !== 'string') return 'none';
+  const trimmed = cmd.trim();
+  if (!trimmed) return 'none';
+  const lower = trimmed.toLowerCase();
+  if (lower === 'unknown' || lower === 'n/a' || lower === 'null' || lower === 'undefined') {
+    return 'none';
+  }
+  return trimmed;
+}
+
 const SUCCESS_STATUS_SET = new Set([
   'SUCCESS', 'CONNECTED_READ_ONLY', 'QUOTE_CONNECTED', 'HEALTH_CONNECTED',
   'STATUS_CONNECTED', 'READ_ONLY_CHECK_ONLY', 'VERIFIED', 'PASSED',
@@ -921,7 +937,7 @@ export default function TvMcpMonitoringConsole() {
               { label: 'Risk Class',            value: evidence.riskClass,               cls: 'text-amber-400 font-bold' },
               { label: 'Safety Passes',         value: evidence.safetyPassCount,         cls: 'text-primary font-bold' },
               { label: 'Safety Failures',       value: evidence.safetyFailCount,         cls: evidence.safetyFailCount > 0 ? 'text-destructive font-bold' : 'text-primary font-bold' },
-              { label: 'Last Command',          value: formatCommandLabel(evidence.lastCommand), cls: evidence.lastCommand && evidence.lastCommand !== 'unknown' ? 'text-primary font-bold' : 'text-slate-400', rawValue: evidence.lastCommand ?? 'none' },
+              { label: 'Last Command',          value: formatCommandLabel(evidence.lastCommand), cls: evidence.lastCommand && evidence.lastCommand !== 'unknown' ? 'text-primary font-bold' : 'text-slate-400', rawValue: formatRawCommandDebugValue(evidence.lastCommand) },
               { label: 'Last Event Source',     value: evidence.lastCommandSource ?? 'none', cls: evidence.lastCommandSource ? 'text-slate-300 font-mono text-[7px]' : 'text-slate-500' },
               { label: 'Last Command At',       value: evidence.lastCommandAt ? new Date(evidence.lastCommandAt).toLocaleTimeString() : 'none', cls: evidence.lastCommandAt ? 'text-slate-300' : 'text-slate-500' },
               { label: 'Last Success At',       value: evidence.lastSuccessfulCheckAt ? new Date(evidence.lastSuccessfulCheckAt).toLocaleTimeString() : 'N/A' },
