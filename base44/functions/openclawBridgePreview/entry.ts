@@ -395,9 +395,96 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ========================================================================
+    // NORMALIZE INCOMING REQUEST PAYLOAD
+    // Handle Base44 function payload wrappers to extract inner object
+    // ========================================================================
+    const incoming =
+      body?.body ||
+      body?.data ||
+      body?.payload ||
+      body?.params ||
+      body ||
+      {};
+
+    const payload =
+      incoming?.data ||
+      incoming?.payload ||
+      incoming?.body ||
+      incoming;
+
+    // Extract fields from likely paths with fallbacks
+    const bridgeRequest =
+      payload.bridgeRequest ||
+      incoming.bridgeRequest ||
+      body?.bridgeRequest ||
+      {};
+
+    const signedRequest =
+      payload.signedRequest ||
+      incoming.signedRequest ||
+      body?.signedRequest ||
+      payload.signatureEnvelope ||
+      incoming.signatureEnvelope ||
+      {};
+
+    const signature =
+      signedRequest.signature ||
+      payload.signature ||
+      incoming.signature ||
+      body?.signature ||
+      "";
+
+    const normalizedSignedRequest = {
+      ...signedRequest,
+      signature,
+    };
+
+    const previewHash =
+      payload.previewHash ||
+      incoming.previewHash ||
+      body?.previewHash ||
+      bridgeRequest.previewHash ||
+      normalizedSignedRequest.previewHash ||
+      "";
+
+    const operatorId =
+      payload.operatorId ||
+      incoming.operatorId ||
+      body?.operatorId ||
+      bridgeRequest.operatorId ||
+      normalizedSignedRequest.operatorId ||
+      "";
+
+    const submittedAt =
+      payload.submittedAt ||
+      incoming.submittedAt ||
+      body?.submittedAt ||
+      bridgeRequest.submittedAt ||
+      normalizedSignedRequest.submittedAt ||
+      "";
+
+    const expirationAt =
+      payload.expirationAt ||
+      incoming.expirationAt ||
+      body?.expirationAt ||
+      bridgeRequest.expirationAt ||
+      normalizedSignedRequest.expirationAt ||
+      "";
+
+    // Create normalized body for validation
+    const normalizedBody = {
+      bridgeRequest,
+      signedRequest: normalizedSignedRequest,
+      previewHash,
+      operatorId,
+      submittedAt,
+      expirationAt,
+    };
+
     // Extract requestId if available
-    if (body?.bridgeRequest?.requestId) {
-      requestId = body.bridgeRequest.requestId;
+    if (bridgeRequest?.requestId) {
+      requestId = bridgeRequest.requestId;
     }
 
     // ========================================================================
@@ -463,7 +550,7 @@ Deno.serve(async (req) => {
     // DO NOT EXECUTE ACTIONS
     // ========================================================================
 
-    const validation = validateBridgeRequest(body);
+    const validation = validateBridgeRequest(normalizedBody);
 
     if (!validation.isValid) {
       const validatedAt = new Date().toISOString();
@@ -472,15 +559,15 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
           dryRunAuditId: auditId,
           requestId,
-          previewHash: body.previewHash || null,
-          operatorId: body.operatorId || null,
+          previewHash: previewHash || null,
+          operatorId: operatorId || null,
           acceptedForDryRun: false,
           rejectedReason: rejectionReason,
           bridgeMode: 'DRY_RUN_ONLY',
           executionStatus: 'REJECTED_NOT_EXECUTED',
-          targetUrl: body.bridgeRequest?.targetUrl || null,
-          commandType: body.bridgeRequest?.commandType || null,
-          riskTier: body.bridgeRequest?.riskTier || null,
+          targetUrl: bridgeRequest?.targetUrl || null,
+          commandType: bridgeRequest?.commandType || null,
+          riskTier: bridgeRequest?.riskTier || null,
           createdAt: new Date().toISOString(),
           validatedAt,
           policyGateResult: null,
@@ -512,13 +599,21 @@ Deno.serve(async (req) => {
           replayCheckResult: null,
           replayCheckMessages: [],
           note: 'Request rejected. No OpenClaw call was made.',
+          debug: {
+            receivedTopLevelKeys: Object.keys(body || {}),
+            incomingKeys: Object.keys(incoming || {}),
+            payloadKeys: Object.keys(payload || {}),
+            signedRequestKeys: Object.keys(signedRequest || {}),
+            signaturePresent: Boolean(signature),
+            signatureLength: signature?.length || 0,
+          }
         },
         { status: 400 }
       );
     }
 
     // Phase 2: Policy gating
-    const policyCheck = checkPolicy(body.bridgeRequest);
+    const policyCheck = checkPolicy(bridgeRequest);
 
     if (policyCheck.result === 'FAIL') {
       const validatedAt = new Date().toISOString();
@@ -573,7 +668,7 @@ Deno.serve(async (req) => {
     }
 
     // Phase 2: Replay protection
-    const replayCheck = await checkReplay(base44, requestId, body.previewHash);
+    const replayCheck = await checkReplay(base44, requestId, previewHash);
 
     if (replayCheck.result === 'FAIL') {
       const validatedAt = new Date().toISOString();
@@ -631,7 +726,7 @@ Deno.serve(async (req) => {
 
     // Phase 3-4B: Signed request validation (Phase 4B: Real HMAC if secret configured)
     const hmacSecret = Deno.env.get('OPENCLAW_BRIDGE_HMAC_SECRET');
-    const signatureCheck = await validateSignedRequest(body, hmacSecretCheck.configured, hmacSecret);
+    const signatureCheck = await validateSignedRequest(normalizedSignedRequest, hmacSecretCheck.configured, hmacSecret);
 
     if (signatureCheck.result === 'FAIL') {
       const validatedAt = new Date().toISOString();
@@ -693,7 +788,7 @@ Deno.serve(async (req) => {
     // PHASE 5: APPROVAL BINDING — SERVER-SIDE VERIFICATION
     // Verify proposalId exists in DB with status=APPROVED and fields match
     // ========================================================================
-    const br = body.bridgeRequest;
+    const br = bridgeRequest;
     const proposalId = br?.proposalId;
     const validatedAt = new Date().toISOString();
     
@@ -738,9 +833,9 @@ Deno.serve(async (req) => {
             approvalBindingReason = `Proposal riskTier ${proposal.riskTier} does not match bridgeRequest ${br.riskTier}`;
           }
           // Check operatorId match
-          else if (proposal.proposedBy && proposal.proposedBy !== body.operatorId) {
+          else if (proposal.proposedBy && proposal.proposedBy !== operatorId) {
             approvalBindingStatus = 'FAIL';
-            approvalBindingReason = `Proposal proposedBy ${proposal.proposedBy} does not match operatorId ${body.operatorId}`;
+            approvalBindingReason = `Proposal proposedBy ${proposal.proposedBy} does not match operatorId ${operatorId}`;
           }
         }
       } catch (err) {
