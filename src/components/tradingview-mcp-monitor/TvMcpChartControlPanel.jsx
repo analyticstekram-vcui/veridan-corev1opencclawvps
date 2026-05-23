@@ -1,43 +1,47 @@
 /**
  * TvMcpChartControlPanel
- * Governed Chart Control — Preview Only
- * Operator enters symbol/timeframe to generate a local preview record.
- * No execution. No dispatch. No broker. No trading. No credentials. No money movement.
- * Approval only stores local evidence — it does NOT send any command.
+ * Phase 5 — Governed Chart Control
+ * Step 1: Generate Preview (local only, no relay call)
+ * Step 2: Approve Chart Switch Preview (local evidence)
+ * Step 3: Execute Governed Chart Navigation (calls tradingViewMcpNavigateChart)
+ *
+ * No trading. No broker. No credentials. No money movement.
  */
 import React, { useState } from 'react';
-import { FilePlus, CheckCircle2, XCircle, Shield } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { FilePlus, CheckCircle2, XCircle, Shield, Navigation, AlertTriangle, RefreshCw } from 'lucide-react';
 
-const PREVIEW_STORAGE_KEY = 'veridanTvMcpChartControlPreviews';
+const PREVIEW_STORAGE_KEY  = 'veridanTvMcpChartControlPreviews';
+const NAV_STORAGE_KEY      = 'veridanTvMcpChartNavHistory';
 
-const CHART_TYPES = ['candlestick', 'bar', 'line', 'area', 'heikin_ashi', 'hollow_candle'];
-const TIMEFRAMES  = ['1', '3', '5', '15', '30', '60', '120', '240', 'D', 'W'];
+const CHART_TYPES = ['candlestick', 'bars', 'line'];
+const TIMEFRAMES  = ['1', '5', '15', '30', '60', '240', 'D', 'W'];
 
-function loadPreviews() {
-  try { return JSON.parse(localStorage.getItem(PREVIEW_STORAGE_KEY) || '[]'); } catch { return []; }
+function loadFromStorage(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
 }
-function savePreviews(list) {
-  try { localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(list.slice(0, 50))); } catch {}
+function saveToStorage(key, list) {
+  try { localStorage.setItem(key, JSON.stringify(list.slice(0, 50))); } catch {}
 }
 
 function buildPreview({ symbol, timeframe, chartType, reason, operatorNote, currentSymbol }) {
   return {
-    previewId:        'cpv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5),
-    createdAt:        new Date().toISOString(),
-    currentSymbol:    currentSymbol || 'UNKNOWN',
-    requestedSymbol:  symbol.trim().toUpperCase(),
+    previewId:          'cpv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5),
+    createdAt:          new Date().toISOString(),
+    currentSymbol:      currentSymbol || 'UNKNOWN',
+    requestedSymbol:    symbol.trim().toUpperCase(),
     requestedTimeframe: timeframe,
-    chartType:        chartType,
-    reason:           reason.trim(),
-    operatorNote:     operatorNote.trim(),
-    executionStatus:  'PREVIEW_ONLY',
-    dispatchAllowed:  false,
-    tradingAllowed:   false,
-    brokerConnection: 'DISABLED',
-    moneyMovement:    'DISABLED',
-    credentialAccess: 'DISABLED',
-    approvalStatus:   'PENDING',
-    approvedAt:       null,
+    chartType,
+    reason:             reason.trim(),
+    operatorNote:       operatorNote.trim(),
+    executionStatus:    'PREVIEW_ONLY',
+    dispatchAllowed:    false,
+    tradingAllowed:     false,
+    brokerConnection:   'DISABLED',
+    moneyMovement:      'DISABLED',
+    credentialAccess:   'DISABLED',
+    approvalStatus:     'PENDING',
+    approvedAt:         null,
   };
 }
 
@@ -48,13 +52,17 @@ export default function TvMcpChartControlPanel({ checks }) {
   const [reason,       setReason]       = useState('');
   const [operatorNote, setOperatorNote] = useState('');
   const [preview,      setPreview]      = useState(null);
-  const [previews,     setPreviews]     = useState(() => loadPreviews());
+  const [previews,     setPreviews]     = useState(() => loadFromStorage(PREVIEW_STORAGE_KEY));
+  const [navLoading,   setNavLoading]   = useState(false);
+  const [navResult,    setNavResult]    = useState(null);
+  const [navHistory,   setNavHistory]   = useState(() => loadFromStorage(NAV_STORAGE_KEY));
 
   // Current symbol from latest successful status check
   const currentSymbol = checks?.find(c => c.command === 'status' && c.status === 'SUCCESS')?.chartSymbol ?? null;
 
   const generatePreview = () => {
     if (!symbol.trim()) return;
+    setNavResult(null);
     const p = buildPreview({ symbol, timeframe, chartType, reason, operatorNote, currentSymbol });
     setPreview(p);
   };
@@ -65,11 +73,55 @@ export default function TvMcpChartControlPanel({ checks }) {
     setPreview(approved);
     const updated = [approved, ...previews];
     setPreviews(updated);
-    savePreviews(updated);
+    saveToStorage(PREVIEW_STORAGE_KEY, updated);
+  };
+
+  const executeNavigation = async () => {
+    if (!preview || preview.approvalStatus !== 'LOCALLY_APPROVED' || navLoading) return;
+    setNavLoading(true);
+    setNavResult(null);
+    try {
+      const res = await base44.functions.invoke('tradingViewMcpNavigateChart', {
+        symbol:          preview.requestedSymbol,
+        timeframe:       preview.requestedTimeframe,
+        chartType:       preview.chartType,
+        operatorReason:  preview.reason || 'Operator-approved chart navigation',
+        operatorNote:    preview.operatorNote || '',
+        operatorApproval: true,
+      });
+      const result = res.data || {};
+      const record = {
+        ...result,
+        previewId:   preview.previewId,
+        invokedAt:   new Date().toISOString(),
+      };
+      setNavResult(record);
+      const updated = [record, ...navHistory];
+      setNavHistory(updated);
+      saveToStorage(NAV_STORAGE_KEY, updated);
+    } catch (err) {
+      setNavResult({
+        status: 'HOLD_FOR_MCP_RELAY',
+        error: err.message || 'Backend error',
+        executionStatus: 'BROWSER_NAVIGATION_ONLY',
+        tradingAttempted: false,
+        brokerActionsAttempted: false,
+        moneyMovementAttempted: false,
+        credentialExposed: false,
+        liveTrading: 'DISABLED',
+        brokerConnection: 'DISABLED',
+        riskClass: 'SAFE_BROWSER_NAVIGATION',
+        operatorApproval: true,
+        invokedAt: new Date().toISOString(),
+      });
+    } finally {
+      setNavLoading(false);
+    }
   };
 
   const clearPreview = () => {
     setPreview(null);
+    setNavResult(null);
     setSymbol('');
     setReason('');
     setOperatorNote('');
@@ -78,21 +130,23 @@ export default function TvMcpChartControlPanel({ checks }) {
   const inputCls = 'w-full px-3 py-2 bg-secondary/20 border border-border/40 text-foreground text-[9px] font-mono rounded-sm focus:outline-none focus:border-primary/50';
   const labelCls = 'text-[7px] uppercase tracking-widest text-slate-500 font-bold mb-1 block';
 
+  const navSuccess = navResult?.status === 'SUCCESS';
+
   return (
     <div className="bg-card border border-amber-500/20 rounded-sm overflow-hidden">
 
       {/* Header */}
       <div className="px-4 py-2.5 bg-amber-500/5 border-b border-amber-500/20 flex items-center gap-2">
         <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-        <span className="text-[9px] font-bold uppercase text-amber-400">Governed Chart Control</span>
-        <span className="ml-auto text-[7px] font-mono text-destructive font-bold">PREVIEW_ONLY · NO EXECUTION</span>
+        <span className="text-[9px] font-bold uppercase text-amber-400">Phase 5 — Governed Chart Navigation</span>
+        <span className="ml-auto text-[7px] font-mono text-destructive font-bold">BROWSER_NAVIGATION_ONLY · NO TRADING</span>
       </div>
 
       {/* Safety notice */}
       <div className="px-4 py-2 border-b border-border/20 text-[8px] text-slate-500 leading-relaxed">
-        Enter a symbol and timeframe to generate a <span className="text-amber-400 font-bold">local preview record</span>.
-        No command is sent to the relay. No broker order, trade, credential request, or money movement is triggered.
-        Chart changes must be performed <span className="font-bold text-slate-300">manually</span> in the VPS TradingView browser.
+        <span className="text-amber-400 font-bold">NOT trading. NOT broker execution. Does NOT place orders. Does NOT access credentials. Does NOT move money.</span>
+        {' '}This only changes the TradingView browser chart symbol/timeframe view via the local relay.
+        Requires operator approval before execution.
       </div>
 
       {/* Current symbol context */}
@@ -101,21 +155,33 @@ export default function TvMcpChartControlPanel({ checks }) {
         <span className="text-[9px] font-mono font-bold text-primary">{currentSymbol ?? 'N/A — run a status check first'}</span>
       </div>
 
+      {/* Step indicators */}
+      <div className="px-4 py-2 border-b border-border/20 flex items-center gap-3 text-[7px] font-mono">
+        {[
+          { n: '1', label: 'Generate Preview', done: !!preview },
+          { n: '2', label: 'Approve Preview',  done: preview?.approvalStatus === 'LOCALLY_APPROVED' },
+          { n: '3', label: 'Execute Navigation', done: !!navResult && navSuccess },
+          { n: '4', label: 'Re-run Status + Quote', done: false },
+        ].map((s, i) => (
+          <React.Fragment key={s.n}>
+            {i > 0 && <span className="text-slate-700">→</span>}
+            <span className={s.done ? 'text-primary font-bold' : 'text-slate-500'}>
+              {s.done ? '✓' : s.n}. {s.label}
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+
       {/* Form */}
       <div className="p-4 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Symbol *</label>
-            <input
-              type="text"
-              value={symbol}
-              onChange={e => setSymbol(e.target.value)}
-              placeholder="e.g. CME_MINI_DL:MNQH2026"
-              className={inputCls}
-            />
+            <input type="text" value={symbol} onChange={e => setSymbol(e.target.value)}
+              placeholder="e.g. CME_MINI_DL:MNQH2026" className={inputCls} />
           </div>
           <div>
-            <label className={labelCls}>Timeframe</label>
+            <label className={labelCls}>Timeframe *</label>
             <select value={timeframe} onChange={e => setTimeframe(e.target.value)} className={inputCls}>
               {TIMEFRAMES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -127,34 +193,20 @@ export default function TvMcpChartControlPanel({ checks }) {
             </select>
           </div>
           <div>
-            <label className={labelCls}>Reason</label>
-            <input
-              type="text"
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              placeholder="e.g. Shift to 4H for session review"
-              className={inputCls}
-            />
+            <label className={labelCls}>Reason *</label>
+            <input type="text" value={reason} onChange={e => setReason(e.target.value)}
+              placeholder="e.g. Shift to 4H for session review" className={inputCls} />
           </div>
         </div>
         <div>
           <label className={labelCls}>Operator Note</label>
-          <input
-            type="text"
-            value={operatorNote}
-            onChange={e => setOperatorNote(e.target.value)}
-            placeholder="Optional governance note"
-            className={inputCls}
-          />
+          <input type="text" value={operatorNote} onChange={e => setOperatorNote(e.target.value)}
+            placeholder="Optional governance note" className={inputCls} />
         </div>
 
         <div className="flex gap-2 pt-1">
-          <button
-            type="button"
-            onClick={generatePreview}
-            disabled={!symbol.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-bold rounded-sm hover:bg-amber-500/20 disabled:opacity-40 transition-colors"
-          >
+          <button type="button" onClick={generatePreview} disabled={!symbol.trim()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-bold rounded-sm hover:bg-amber-500/20 disabled:opacity-40 transition-colors">
             <FilePlus className="w-3 h-3" /> Generate Preview
           </button>
           {preview && (
@@ -166,27 +218,26 @@ export default function TvMcpChartControlPanel({ checks }) {
         </div>
       </div>
 
-      {/* Preview record */}
+      {/* Preview record + approval + execution */}
       {preview && (
         <div className="border-t border-amber-500/20 p-4 space-y-3">
-          <div className="text-[8px] font-bold uppercase text-amber-400 mb-1">Preview Record</div>
+          <div className="text-[8px] font-bold uppercase text-amber-400">Preview Record</div>
 
-          {/* Safety fields */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
-              { label: 'Current Symbol',     value: preview.currentSymbol,        cls: 'text-slate-300' },
-              { label: 'Requested Symbol',   value: preview.requestedSymbol,      cls: 'text-primary font-bold' },
-              { label: 'Requested TF',       value: preview.requestedTimeframe,   cls: 'text-primary font-bold' },
-              { label: 'Chart Type',         value: preview.chartType,            cls: 'text-slate-300' },
-              { label: 'executionStatus',    value: preview.executionStatus,      cls: 'text-amber-400 font-bold' },
-              { label: 'dispatchAllowed',    value: String(preview.dispatchAllowed), cls: 'text-destructive font-bold' },
-              { label: 'tradingAllowed',     value: String(preview.tradingAllowed),  cls: 'text-destructive font-bold' },
-              { label: 'brokerConnection',   value: preview.brokerConnection,     cls: 'text-destructive font-bold' },
-              { label: 'moneyMovement',      value: preview.moneyMovement,        cls: 'text-destructive font-bold' },
-              { label: 'credentialAccess',   value: preview.credentialAccess,     cls: 'text-destructive font-bold' },
-              { label: 'approvalStatus',     value: preview.approvalStatus,
+              { label: 'Current Symbol',   value: preview.currentSymbol,           cls: 'text-slate-300' },
+              { label: 'Requested Symbol', value: preview.requestedSymbol,         cls: 'text-primary font-bold' },
+              { label: 'Requested TF',     value: preview.requestedTimeframe,      cls: 'text-primary font-bold' },
+              { label: 'Chart Type',       value: preview.chartType,               cls: 'text-slate-300' },
+              { label: 'executionStatus',  value: preview.executionStatus,         cls: 'text-amber-400 font-bold' },
+              { label: 'dispatchAllowed',  value: String(preview.dispatchAllowed), cls: 'text-destructive font-bold' },
+              { label: 'tradingAllowed',   value: String(preview.tradingAllowed),  cls: 'text-destructive font-bold' },
+              { label: 'brokerConnection', value: preview.brokerConnection,        cls: 'text-destructive font-bold' },
+              { label: 'moneyMovement',    value: preview.moneyMovement,           cls: 'text-destructive font-bold' },
+              { label: 'credentialAccess', value: preview.credentialAccess,        cls: 'text-destructive font-bold' },
+              { label: 'approvalStatus',   value: preview.approvalStatus,
                 cls: preview.approvalStatus === 'LOCALLY_APPROVED' ? 'text-primary font-bold' : 'text-amber-400 font-bold' },
-              { label: 'previewId',          value: preview.previewId,            cls: 'text-slate-500 text-[7px]' },
+              { label: 'previewId',        value: preview.previewId,               cls: 'text-slate-500 text-[7px]' },
             ].map(f => (
               <div key={f.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
                 <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{f.label}</div>
@@ -195,7 +246,6 @@ export default function TvMcpChartControlPanel({ checks }) {
             ))}
           </div>
 
-          {/* Reason / note */}
           {(preview.reason || preview.operatorNote) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {preview.reason && (
@@ -213,28 +263,83 @@ export default function TvMcpChartControlPanel({ checks }) {
             </div>
           )}
 
-          {/* Approve button */}
+          {/* Step 2: Approve */}
           {preview.approvalStatus === 'PENDING' && (
-            <button
-              type="button"
-              onClick={approvePreview}
-              className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 border border-primary/30 text-primary text-[9px] font-bold rounded-sm hover:bg-primary/20 transition-colors"
-            >
+            <button type="button" onClick={approvePreview}
+              className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 border border-primary/30 text-primary text-[9px] font-bold rounded-sm hover:bg-primary/20 transition-colors">
               <CheckCircle2 className="w-3 h-3" /> Approve Chart Switch Preview
             </button>
           )}
 
-          {preview.approvalStatus === 'LOCALLY_APPROVED' && (
+          {preview.approvalStatus === 'LOCALLY_APPROVED' && !navResult && (
             <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-sm">
               <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
               <span className="text-[8px] text-primary font-bold">
-                Locally approved at {new Date(preview.approvedAt).toLocaleString()} — stored as local evidence only. No command sent.
+                Locally approved at {new Date(preview.approvedAt).toLocaleString()} — preview evidence stored.
               </span>
             </div>
           )}
 
+          {/* Step 3: Execute */}
+          {preview.approvalStatus === 'LOCALLY_APPROVED' && !navResult && (
+            <button type="button" onClick={executeNavigation} disabled={navLoading}
+              className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 border border-primary/30 text-primary text-[9px] font-bold rounded-sm hover:bg-primary/20 disabled:opacity-40 transition-colors">
+              {navLoading
+                ? <><RefreshCw className="w-3 h-3 animate-spin" /> Sending Navigation Request…</>
+                : <><Navigation className="w-3 h-3" /> Execute Governed Chart Navigation</>}
+            </button>
+          )}
+
+          {/* Navigation result */}
+          {navResult && (
+            <div className={`border rounded-sm p-3 space-y-3 ${navSuccess ? 'border-primary/30 bg-primary/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
+              <div className="flex items-center gap-2">
+                {navSuccess
+                  ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  : <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />}
+                <span className={`text-[10px] font-bold font-mono ${navSuccess ? 'text-primary' : 'text-amber-400'}`}>
+                  {navResult.status}
+                </span>
+                <span className="ml-auto text-[7px] font-mono text-slate-500">{navResult.auditId}</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { label: 'executionStatus',        value: navResult.executionStatus,                cls: 'text-amber-400 font-bold' },
+                  { label: 'riskClass',               value: navResult.riskClass,                     cls: 'text-primary font-bold' },
+                  { label: 'tradingAttempted',        value: String(navResult.tradingAttempted),       cls: 'text-destructive font-bold' },
+                  { label: 'brokerActionsAttempted',  value: String(navResult.brokerActionsAttempted), cls: 'text-destructive font-bold' },
+                  { label: 'moneyMovementAttempted',  value: String(navResult.moneyMovementAttempted), cls: 'text-destructive font-bold' },
+                  { label: 'credentialExposed',       value: String(navResult.credentialExposed),      cls: 'text-destructive font-bold' },
+                  { label: 'liveTrading',             value: navResult.liveTrading,                    cls: 'text-destructive font-bold' },
+                  { label: 'brokerConnection',        value: navResult.brokerConnection,               cls: 'text-destructive font-bold' },
+                ].map(f => (
+                  <div key={f.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
+                    <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{f.label}</div>
+                    <div className={`text-[8px] font-mono break-all ${f.cls}`}>{f.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {navResult.error && (
+                <div className="text-[8px] text-amber-400 font-mono px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-sm">
+                  {navResult.error}
+                </div>
+              )}
+
+              {/* Step 4 — Post-navigation instruction */}
+              <div className="flex items-start gap-2 px-3 py-2.5 bg-primary/5 border border-primary/20 rounded-sm">
+                <Navigation className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <div className="text-[8px] text-primary leading-relaxed">
+                  <span className="font-bold">Next step:</span> Run a <span className="font-bold">Status</span> check and then a <span className="font-bold">Quote</span> check
+                  in the monitoring console above to verify the chart has updated and capture fresh evidence.
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="text-[7px] text-slate-600 font-mono">
-            Generated: {new Date(preview.createdAt).toLocaleString()} · Storage key: {PREVIEW_STORAGE_KEY} · Records stored: {previews.length}
+            Preview key: {PREVIEW_STORAGE_KEY} · Nav history key: {NAV_STORAGE_KEY} · Nav records: {navHistory.length}
           </div>
         </div>
       )}
@@ -242,7 +347,7 @@ export default function TvMcpChartControlPanel({ checks }) {
       {/* Safety footer */}
       <div className="px-4 py-2 border-t border-border/20 flex items-center gap-2 text-[7px] text-slate-600 font-mono">
         <Shield className="w-2.5 h-2.5 text-amber-500/60 shrink-0" />
-        Approval stores local evidence only. No relay call. No broker order. No trade. No credential. No money movement.
+        BROWSER_NAVIGATION_ONLY · riskClass: SAFE_BROWSER_NAVIGATION · No trade · No broker · No credential · No money movement
       </div>
     </div>
   );
