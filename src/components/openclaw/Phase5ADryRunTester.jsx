@@ -18,12 +18,23 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     );
   }
 
-  // Prerequisites check
+  // HTTPS normalization helper
+  const normalizeHttpsTarget = (value) => {
+    if (!value) return "";
+    const raw = String(value).trim();
+
+    if (raw.startsWith("https://")) return raw;
+    if (raw.startsWith("http://")) return raw.replace("http://", "https://");
+    if (raw.startsWith("/")) return `https://openclaw.veridancore.com${raw}`;
+
+    return `https://${raw}`;
+  };
+
+  // Prerequisites check with HTTPS normalization
   const hasProposalId = signedRequest?.proposalId && typeof signedRequest.proposalId === 'string' && signedRequest.proposalId.trim().length > 0;
-  const targetUrl = signedRequest?.targetUrl || signedRequest?.requestedTarget;
-  const hasTargetUrl = targetUrl && typeof targetUrl === 'string' && targetUrl.trim().length > 0;
-  const requestedTarget = signedRequest?.requestedTarget || signedRequest?.targetUrl;
-  const hasRequestedTarget = requestedTarget && typeof requestedTarget === 'string' && requestedTarget.trim().length > 0;
+  const rawTarget = signedRequest?.targetUrl || signedRequest?.requestedTarget || signedRequest?.target || signedRequest?.url || "";
+  const normalizedTarget = normalizeHttpsTarget(rawTarget);
+  const hasValidHttpsTarget = normalizedTarget && normalizedTarget.startsWith("https://");
 
   // Simple deterministic hash helper for previewHash generation
   const generatePreviewHash = (obj) => {
@@ -51,11 +62,11 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     }
 
     try {
-      // Build full bridgeRequest with all required Phase 5 fields
+      // Build full bridgeRequest with all required Phase 5 fields and normalized HTTPS targets
       const fullBridgeRequest = {
         ...signedRequest,
-        targetUrl: signedRequest?.targetUrl || signedRequest?.requestedTarget,
-        requestedTarget: signedRequest?.requestedTarget || signedRequest?.targetUrl,
+        targetUrl: normalizedTarget,
+        requestedTarget: normalizedTarget,
         dryRun: true,
         liveExecution: false,
         governanceMode: 'SAFE_REQUIRES_APPROVAL',
@@ -144,21 +155,21 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
             )}
             <span>proposalId: {hasProposalId ? 'PRESENT' : 'MISSING'}</span>
           </div>
-          <div className={`flex items-center gap-2 text-[8px] ${hasTargetUrl ? 'text-primary' : 'text-destructive'}`}>
-            {hasTargetUrl ? (
+          <div className={`flex items-center gap-2 text-[8px] ${hasValidHttpsTarget ? 'text-primary' : 'text-destructive'}`}>
+            {hasValidHttpsTarget ? (
               <CheckCircle2 className="w-3 h-3" />
             ) : (
               <XCircle className="w-3 h-3" />
             )}
-            <span>targetUrl: {hasTargetUrl ? 'PRESENT' : 'MISSING'}</span>
+            <span>targetUrl: {hasValidHttpsTarget ? 'HTTPS PRESENT' : 'MISSING/INVALID HTTPS'}</span>
           </div>
-          <div className={`flex items-center gap-2 text-[8px] ${hasRequestedTarget ? 'text-primary' : 'text-destructive'}`}>
-            {hasRequestedTarget ? (
+          <div className={`flex items-center gap-2 text-[8px] ${hasValidHttpsTarget ? 'text-primary' : 'text-destructive'}`}>
+            {hasValidHttpsTarget ? (
               <CheckCircle2 className="w-3 h-3" />
             ) : (
               <XCircle className="w-3 h-3" />
             )}
-            <span>requestedTarget: {hasRequestedTarget ? 'PRESENT' : 'MISSING'}</span>
+            <span>requestedTarget: {hasValidHttpsTarget ? 'HTTPS PRESENT' : 'MISSING/INVALID HTTPS'}</span>
           </div>
           <div className="text-[7px] text-slate-500">
             Requires an APPROVED OpenClawProposal with matching commandType, targetUrl, riskTier, and operatorId.
@@ -174,7 +185,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         {/* Test Button */}
         <Button
           onClick={handleTest}
-          disabled={loading || !hasProposalId || !hasTargetUrl || !hasRequestedTarget}
+          disabled={loading || !hasProposalId || !hasValidHttpsTarget}
           className="w-full bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
