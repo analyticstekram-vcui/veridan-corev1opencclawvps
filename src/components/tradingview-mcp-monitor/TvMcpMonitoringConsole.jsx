@@ -1151,6 +1151,39 @@ export default function TvMcpMonitoringConsole() {
                   </div>
                 ))}
               </div>
+
+              {/* Resolver Winner */}
+              {(() => {
+                const winCmd       = evidence.lastCommand ?? null;
+                const winSource    = evidence.lastCommandSource ?? null;
+                const winTimestamp = evidence.lastCommandAt ?? null;
+                const hasWinner    = isValidCommand(winCmd);
+
+                return (
+                  <div className={`border rounded-sm px-3 py-2 ${hasWinner ? 'border-primary/30 bg-primary/5' : 'border-border/20 bg-secondary/10'}`}>
+                    <div className="text-[7px] uppercase text-slate-500 font-bold mb-1.5">Resolver Winner</div>
+                    {hasWinner ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        {[
+                          { label: 'command',   value: formatCommandLabel(winCmd),                           cls: 'text-primary font-bold' },
+                          { label: 'raw',       value: winCmd,                                               cls: 'text-slate-400 font-mono text-[7px]' },
+                          { label: 'source',    value: SOURCE_LABELS[winSource] ?? winSource ?? 'unknown',   cls: 'text-slate-300 font-mono text-[7px]' },
+                          { label: 'timestamp', value: winTimestamp ? new Date(winTimestamp).toLocaleTimeString() : 'N/A', cls: 'text-slate-300' },
+                          { label: 'rank',      value: '1',                                                  cls: 'text-primary font-bold' },
+                          { label: 'sort',      value: 'newest-first',                                       cls: 'text-slate-500 text-[7px]' },
+                        ].map(f => (
+                          <div key={f.label} className="bg-secondary/20 border border-border/10 rounded-sm px-2 py-1">
+                            <div className="text-[6px] uppercase text-slate-600 font-bold mb-0.5">{f.label}</div>
+                            <div className={`text-[8px] font-mono break-all ${f.cls}`}>{f.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[8px] font-mono text-slate-600">No resolver winner.</span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         );
