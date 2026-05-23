@@ -40,6 +40,8 @@ function isValidCommand(v) {
 function formatCommandLabel(cmd) {
   if (!cmd || typeof cmd !== 'string') return 'none';
   const lower = cmd.toLowerCase().trim();
+  // Edge-case placeholders → 'none'
+  if (!lower || lower === 'unknown' || lower === 'n/a' || lower === 'null' || lower === 'undefined') return 'none';
   const lookup = {
     'get /health': 'Health Check',
     'get /status': 'Status Check',
@@ -56,7 +58,7 @@ function formatCommandLabel(cmd) {
     'read': 'Read',
     'verify': 'Verify',
   };
-  return lookup[lower] ?? (cmd.trim() || 'none');
+  return lookup[lower] ?? cmd.trim();
 }
 
 function formatRawCommandDebugValue(cmd) {
