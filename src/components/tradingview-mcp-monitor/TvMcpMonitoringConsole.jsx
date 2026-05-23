@@ -901,6 +901,7 @@ export default function TvMcpMonitoringConsole() {
               { label: 'Safety Passes',         value: evidence.safetyPassCount,         cls: 'text-primary font-bold' },
               { label: 'Safety Failures',       value: evidence.safetyFailCount,         cls: evidence.safetyFailCount > 0 ? 'text-destructive font-bold' : 'text-primary font-bold' },
               { label: 'Last Command',          value: evidence.lastCommand ?? 'N/A', cls: evidence.lastCommand && evidence.lastCommand !== 'unknown' ? 'text-primary font-bold' : 'text-slate-400' },
+              { label: 'Last Event Source',     value: evidence.lastCommandSource ?? 'none', cls: evidence.lastCommandSource ? 'text-slate-300 font-mono text-[7px]' : 'text-slate-500' },
               { label: 'Last Success At',       value: evidence.lastSuccessfulCheckAt ? new Date(evidence.lastSuccessfulCheckAt).toLocaleTimeString() : 'N/A' },
               { label: 'Last Accepted Alert',   value: evidence.lastAcceptedAlertAt ? new Date(evidence.lastAcceptedAlertAt).toLocaleTimeString() : 'N/A', cls: 'text-primary' },
               { label: 'Last Rejected Alert',   value: evidence.lastRejectedAlertAt ? new Date(evidence.lastRejectedAlertAt).toLocaleTimeString() : 'N/A', cls: 'text-amber-400' },
