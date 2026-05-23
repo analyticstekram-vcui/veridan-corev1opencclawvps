@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, Zap, CheckCircle2, XCircle, Loader2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Phase5ApprovalBindingTestCases from './Phase5ApprovalBindingTestCases';
 
 export default function Phase5ADryRunTester({ signedRequest, proposalId, operatorId }) {
   const [loading, setLoading] = useState(false);
@@ -45,6 +46,9 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
       </div>
 
       <div className="px-4 py-3 space-y-3">
+        {/* Approval Binding Test Cases */}
+        <Phase5ApprovalBindingTestCases />
+
         {/* Warning */}
         <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] text-amber-600">
           <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
