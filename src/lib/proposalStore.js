@@ -255,13 +255,13 @@ export function saveSyncEntry(localId, entry) {
   return map;
 }
 
-// Map local commandType → OpenClawProposal commandType enum
+// Map local commandType → backend allowlist (READ, NAVIGATE, EXTRACT, VERIFY)
 export function mapCommandType(localType) {
   const map = {
-    STATUS_CHECK:   'READ',
+    STATUS_CHECK:   'VERIFY',
     READ_PAGE:      'READ',
-    INSPECT_PAGE:   'READ',
-    SUMMARIZE_PAGE: 'NAVIGATE_READ_ONLY',
+    INSPECT_PAGE:   'EXTRACT',
+    SUMMARIZE_PAGE: 'EXTRACT',
     CHECK_WEBHOOK:  'VERIFY',
   };
   return map[localType] || 'READ';
