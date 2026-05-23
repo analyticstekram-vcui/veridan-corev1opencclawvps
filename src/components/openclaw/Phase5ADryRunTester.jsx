@@ -199,14 +199,24 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         expirationAt,
       };
 
-      // Validate signature is present before calling preview
-      if (!normalizedSignedRequest.signature) {
-        setError('Signer succeeded but returned no signature field');
+      // Hard guard: Validate signature is present in normalizedSignedRequest before preview
+      if (!normalizedSignedRequest?.signature) {
+        setResult({
+          signer: 'SUCCESS',
+          preview: 'BLOCKED',
+          error: 'Signer succeeded but normalizedSignedRequest.signature is missing',
+          submissionDebug: {
+            signaturePresent: false,
+            normalizedSignedRequestKeys: Object.keys(normalizedSignedRequest || {}),
+            previewPayloadWouldHaveSignature: false,
+            sanitizedSignerResponse: sanitizeSignerResponse(signerResponse),
+          },
+        });
         setLoading(false);
         return;
       }
 
-      // Step 2: Send signed packet to openclawBridgePreview using normalized signer output
+      // Step 2: Build preview payload with normalized signed request
       const previewPayload = {
         bridgeRequest: fullBridgeRequest,
         signedRequest: normalizedSignedRequest,
@@ -216,6 +226,24 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         expirationAt,
       };
 
+      // Hard guard: Verify signature is in previewPayload.signedRequest before backend call
+      if (!previewPayload?.signedRequest?.signature) {
+        setResult({
+          signer: 'SUCCESS',
+          preview: 'BLOCKED',
+          error: 'Preview payload missing signedRequest.signature before backend call',
+          submissionDebug: {
+            previewPayloadKeys: Object.keys(previewPayload || {}),
+            signedRequestKeys: Object.keys(previewPayload?.signedRequest || {}),
+            signaturePresent: Boolean(previewPayload?.signedRequest?.signature),
+            signatureLength: previewPayload?.signedRequest?.signature?.length || 0,
+          },
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Send preview request to backend
       const previewResponse = await base44.functions.invoke('openclawBridgePreview', previewPayload);
       const resultData = previewResponse.data || {};
       
@@ -230,6 +258,10 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         signatureLength: extractedSignature?.length || 0,
         signingVersion: normalizedSignedRequest.signingVersion,
         signedAt: normalizedSignedRequest.signedAt,
+        previewPayloadHasSignedRequest: Boolean(previewPayload.signedRequest),
+        previewPayloadSignaturePresent: Boolean(previewPayload.signedRequest?.signature),
+        previewPayloadSignatureLength: previewPayload.signedRequest?.signature?.length || 0,
+        signedRequestKeys: Object.keys(previewPayload.signedRequest || {}),
         sanitizedSignerResponse: sanitizeSignerResponse(signerResponse),
         signerCandidateCount: signerCandidates.length,
         candidateKeys: signerCandidates.map((candidate, index) => ({
