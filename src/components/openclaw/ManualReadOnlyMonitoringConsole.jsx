@@ -26,6 +26,122 @@ const ALLOWED_ENDPOINTS = [
   '/capabilities',
 ];
 
+// ─── Command evidence helpers (display-only, read-only, no fetch) ─────────────
+
+const INVALID_COMMANDS = new Set([
+  '', 'unknown', 'n/a', 'null', 'undefined',
+]);
+
+function isValidCommand(v) {
+  if (!v || typeof v !== 'string') return false;
+  return !INVALID_COMMANDS.has(v.trim().toLowerCase());
+}
+
+function formatCommandLabel(cmd) {
+  if (!cmd || typeof cmd !== 'string') return 'none';
+  const lower = cmd.toLowerCase().trim();
+  const lookup = {
+    'get /health': 'Health Check',
+    'get /status': 'Status Check',
+    'get /version': 'Version Check',
+    'get /capabilities': 'Capabilities Check',
+    '/health': 'Health Check',
+    '/status': 'Status Check',
+    '/version': 'Version Check',
+    '/capabilities': 'Capabilities Check',
+    'health': 'Health Check',
+    'status': 'Status Check',
+    'version': 'Version Check',
+    'capabilities': 'Capabilities Check',
+    'read': 'Read',
+    'verify': 'Verify',
+  };
+  return lookup[lower] ?? (cmd.trim() || 'none');
+}
+
+function formatRawCommandDebugValue(cmd) {
+  if (!cmd || typeof cmd !== 'string') return 'none';
+  const trimmed = cmd.trim();
+  if (!trimmed) return 'none';
+  const lower = trimmed.toLowerCase();
+  if (lower === 'unknown' || lower === 'n/a' || lower === 'null' || lower === 'undefined') return 'none';
+  return trimmed;
+}
+
+function getCommandEvidenceCoherence(evidence) {
+  const cmd = evidence?.lastCommand;
+  const src = evidence?.lastCommandSource;
+  const ts  = evidence?.lastCommandAt;
+  const hasCmd = cmd && typeof cmd === 'string' && cmd.trim() &&
+    !['unknown', 'none', 'n/a', 'null', 'undefined'].includes(cmd.trim().toLowerCase());
+  const hasSrc = src && typeof src === 'string' && src.trim();
+  const hasTs  = ts  && typeof ts  === 'string' && ts.trim();
+  if (!hasCmd && !hasSrc && !hasTs) return 'NONE';
+  if (hasCmd && hasSrc && hasTs)   return 'COHERENT';
+  return 'REVIEW';
+}
+
+function getCommandEvidenceCoherenceReason(evidence) {
+  const cmd = evidence?.lastCommand;
+  const src = evidence?.lastCommandSource;
+  const ts  = evidence?.lastCommandAt;
+  const hasCmd = cmd && typeof cmd === 'string' && cmd.trim() &&
+    !['unknown', 'none', 'n/a', 'null', 'undefined'].includes(cmd.trim().toLowerCase());
+  const hasSrc = src && typeof src === 'string' && src.trim();
+  const hasTs  = ts  && typeof ts  === 'string' && ts.trim();
+  if (!hasCmd && !hasSrc && !hasTs) return 'No valid command evidence found.';
+  if (hasCmd && hasSrc && hasTs)   return 'Command, source, and timestamp are aligned.';
+  const missing = [];
+  if (hasCmd && !hasSrc) missing.push('source');
+  if (hasCmd && !hasTs)  missing.push('timestamp');
+  if (!hasCmd && (hasSrc || hasTs)) return 'Source or timestamp exists without a valid command.';
+  if (missing.length > 0) return `Command evidence is incomplete: missing ${missing.join(' and ')}.`;
+  return 'Command evidence is incomplete.';
+}
+
+/**
+ * Resolve the newest valid command from stored check records (newest-first).
+ * Returns { lastCommand, lastCommandSource, lastCommandAt }.
+ * Pure read from localStorage — no fetch, no mutation, no dispatch.
+ */
+function resolveCommandEvidence() {
+  try {
+    const raw = localStorage.getItem(CHECKS_KEY);
+    if (!raw) return { lastCommand: null, lastCommandSource: null, lastCommandAt: null };
+    const checks = JSON.parse(raw);
+    if (!Array.isArray(checks) || checks.length === 0) return { lastCommand: null, lastCommandSource: null, lastCommandAt: null };
+
+    // Sort newest-first by createdAt
+    const sorted = [...checks].sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
+
+    for (const c of sorted) {
+      const cmd = c.endpoint ?? c.command ?? c.lastCommand ?? null;
+      if (isValidCommand(cmd)) {
+        return {
+          lastCommand:       cmd.trim(),
+          lastCommandSource: CHECKS_KEY,
+          lastCommandAt:     c.createdAt ?? null,
+        };
+      }
+    }
+    return { lastCommand: null, lastCommandSource: null, lastCommandAt: null };
+  } catch { return { lastCommand: null, lastCommandSource: null, lastCommandAt: null }; }
+}
+
+/** Load checks array from localStorage safely. */
+function loadStoredChecks() {
+  try {
+    const raw = localStorage.getItem(CHECKS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+
 function loadJSON(key, fallback = []) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
 }
@@ -118,12 +234,25 @@ export default function ManualReadOnlyMonitoringConsole() {
   const [latestCheck, setLatestCheck] = useState(null);
   const [loading, setLoading] = useState(false);
   const [checkCount, setCheckCount] = useState(0);
+  const [cmdEvidence, setCmdEvidence] = useState(null);
+  const [showEvidence, setShowEvidence] = useState(false);
+
+  const refreshEvidence = useCallback(() => {
+    const checks = loadStoredChecks();
+    setCheckCount(checks.length);
+    const resolved = resolveCommandEvidence();
+    if (resolved.lastCommand) {
+      setCmdEvidence(resolved);
+      setShowEvidence(true);
+    } else {
+      setCmdEvidence(resolved);
+    }
+  }, []);
 
   // Load check count on mount
   useEffect(() => {
-    const checks = loadJSON(CHECKS_KEY, []);
-    setCheckCount(checks.length);
-  }, []);
+    refreshEvidence();
+  }, [refreshEvidence]);
 
   const handleRunCheck = async () => {
     if (!selectedEndpoint) return;
@@ -156,8 +285,7 @@ export default function ManualReadOnlyMonitoringConsole() {
       saveCheck(record);
       setLatestCheck(record);
 
-      const checks = loadJSON(CHECKS_KEY, []);
-      setCheckCount(checks.length);
+      refreshEvidence();
 
       const auditStatus = record.status === 'SUCCESS' ? 'manual_check_success' : 'manual_check_hold';
       appendAuditLog({
@@ -182,8 +310,7 @@ export default function ManualReadOnlyMonitoringConsole() {
       saveCheck(record);
       setLatestCheck(record);
 
-      const checks = loadJSON(CHECKS_KEY, []);
-      setCheckCount(checks.length);
+      refreshEvidence();
 
       appendAuditLog({
         eventType: 'manual_check_error',
@@ -218,9 +345,11 @@ export default function ManualReadOnlyMonitoringConsole() {
   const handleClearChecks = () => {
     if (window.confirm('Clear all local monitoring checks? This removes only the check records.')) {
       try {
-        localStorage.removeItem(CHECKS_KEY);
-        setLatestCheck(null);
-        setCheckCount(0);
+      localStorage.removeItem(CHECKS_KEY);
+      setLatestCheck(null);
+      setCmdEvidence(null);
+      setShowEvidence(false);
+      setCheckCount(0);
         appendAuditLog({
           eventType: 'local_checks_cleared',
           component: 'ManualReadOnlyMonitoringConsole',
@@ -393,6 +522,195 @@ export default function ManualReadOnlyMonitoringConsole() {
           No checks recorded yet. Select an endpoint and click "Run Check" to generate monitoring evidence.
         </div>
       )}
+
+      {/* ── Event Source Coverage ── */}
+      {(cmdEvidence !== null) && (() => {
+        const allChecks = loadStoredChecks();
+        const totalCandidates = allChecks.length;
+
+        // Use the same isValidCommand helper — endpoint field is the command for this console
+        const coverageCmds = allChecks.map(c => c.endpoint ?? c.command ?? c.lastCommand ?? null);
+        const validCount   = coverageCmds.filter(cmd => isValidCommand(cmd)).length;
+        const ignoredCount = coverageCmds.length - validCount;
+
+        let statusMsg;
+        if (totalCandidates === 0) {
+          statusMsg = 'No event candidates available.';
+        } else if (validCount === 0) {
+          statusMsg = 'Candidates found, but no valid command-bearing event.';
+        } else {
+          statusMsg = 'Valid command candidates available.';
+        }
+
+        // Rank candidates: sort newest-first, same as resolver
+        const rankCandidates = [...allChecks]
+          .sort((a, b) => {
+            const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return tb - ta;
+          })
+          .map(c => ({
+            cmd: c.endpoint ?? c.command ?? c.lastCommand ?? null,
+            ts:  c.createdAt ? new Date(c.createdAt).getTime() : 0,
+          }));
+
+        const winCmd       = cmdEvidence.lastCommand ?? null;
+        const winSource    = cmdEvidence.lastCommandSource ?? null;
+        const winTimestamp = cmdEvidence.lastCommandAt ?? null;
+        const hasWinner    = isValidCommand(winCmd);
+
+        let overallRank = null;
+        let validRank   = null;
+        if (hasWinner) {
+          const winTs = winTimestamp ? new Date(winTimestamp).getTime() : 0;
+          let ov = 0, vr = 0;
+          for (const c of rankCandidates) {
+            ov++;
+            if (isValidCommand(c.cmd)) vr++;
+            if (isValidCommand(c.cmd) && c.cmd.trim() === winCmd.trim() && Math.abs(c.ts - winTs) <= 1000) {
+              overallRank = ov;
+              validRank   = vr;
+              break;
+            }
+          }
+        }
+
+        return (
+          <div className="bg-card border border-border/40 rounded-sm overflow-hidden">
+            <div className="px-4 py-2 bg-secondary/20 border-b border-border/40 flex items-center gap-2">
+              <span className="text-[8px] font-bold uppercase text-slate-400">Event Source Coverage</span>
+              <span className="ml-2 text-[7px] font-mono text-slate-600">display-only · read-only · no fetch · no dispatch</span>
+              <span className={`ml-auto text-[7px] font-bold font-mono px-2 py-0.5 rounded-sm border ${
+                validCount > 0 ? 'text-primary border-primary/30 bg-primary/5'
+                : totalCandidates > 0 ? 'text-amber-400 border-amber-400/30 bg-amber-400/5'
+                : 'text-slate-500 border-border/30 bg-secondary/20'
+              }`}>{statusMsg}</span>
+            </div>
+            <div className="p-3 space-y-2">
+              {/* Count summary */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Total Candidates',    value: totalCandidates, cls: 'text-foreground font-bold' },
+                  { label: 'Valid (cmd-bearing)',  value: validCount,      cls: validCount > 0 ? 'text-primary font-bold' : 'text-slate-500' },
+                  { label: 'Ignored / Synthetic', value: ignoredCount,    cls: 'text-slate-400' },
+                ].map(c => (
+                  <div key={c.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
+                    <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{c.label}</div>
+                    <div className={`text-[9px] font-mono ${c.cls}`}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Source present */}
+              <div className="bg-secondary/20 border border-border/20 rounded-sm px-3 py-2">
+                <div className="text-[7px] uppercase text-slate-500 font-bold mb-1.5">Sources Present</div>
+                {totalCandidates === 0 ? (
+                  <span className="text-[7px] font-mono text-slate-600">none</span>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={`text-[7px] font-mono px-2 py-0.5 rounded-sm border ${
+                      validCount > 0 ? 'text-primary border-primary/30 bg-primary/5' : 'text-slate-400 border-border/20 bg-secondary/30'
+                    }`}>monitoring_checks ({totalCandidates} rec)</span>
+                  </div>
+                )}
+              </div>
+              {/* Resolver Winner */}
+              <div className={`border rounded-sm px-3 py-2 ${hasWinner ? 'border-primary/30 bg-primary/5' : 'border-border/20 bg-secondary/10'}`}>
+                <div className="text-[7px] uppercase text-slate-500 font-bold mb-1.5">Resolver Winner</div>
+                {hasWinner ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {[
+                      { label: 'command',     value: formatCommandLabel(winCmd),                                        cls: 'text-primary font-bold' },
+                      { label: 'raw',         value: winCmd,                                                            cls: 'text-slate-400 font-mono text-[7px]' },
+                      { label: 'source',      value: winSource === CHECKS_KEY ? 'monitoring_checks' : (winSource ?? 'unknown'), cls: 'text-slate-300 font-mono text-[7px]' },
+                      { label: 'timestamp',   value: winTimestamp ? new Date(winTimestamp).toLocaleTimeString() : 'N/A', cls: 'text-slate-300' },
+                      { label: 'validRank',   value: validRank   != null ? String(validRank)   : 'N/A',                 cls: 'text-primary font-bold' },
+                      { label: 'overallRank', value: overallRank != null ? String(overallRank) : 'N/A',                 cls: 'text-slate-300 font-bold' },
+                      { label: 'sort',        value: 'newest-first',                                                    cls: 'text-slate-500 text-[7px]' },
+                      { label: 'totalSorted', value: String(rankCandidates.length),                                     cls: 'text-slate-400' },
+                    ].map(f => (
+                      <div key={f.label} className="bg-secondary/20 border border-border/10 rounded-sm px-2 py-1">
+                        <div className="text-[6px] uppercase text-slate-600 font-bold mb-0.5">{f.label}</div>
+                        <div className={`text-[8px] font-mono break-all ${f.cls}`}>{f.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[8px] font-mono text-slate-600">No resolver winner.</span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Command Evidence Verification ── */}
+      {(cmdEvidence !== null) && (() => {
+        const coherence  = getCommandEvidenceCoherence(cmdEvidence);
+        const reason     = getCommandEvidenceCoherenceReason(cmdEvidence);
+        const rawCmd     = cmdEvidence.lastCommand;
+        const labelCmd   = formatCommandLabel(rawCmd);
+        const rawDebug   = formatRawCommandDebugValue(rawCmd);
+
+        const coherencePass   = coherence === 'COHERENT' || coherence === 'NONE';
+        const coherenceStatus = coherencePass ? 'PASS' : 'REVIEW';
+        const coherenceText   = `${coherence} — ${reason}`;
+
+        const labelClaimsCmd = labelCmd && labelCmd !== 'none';
+        const rawPresent     = rawCmd && typeof rawCmd === 'string' && rawCmd.trim() !== '';
+        const rawPass        = rawPresent || !labelClaimsCmd;
+        const rawStatus      = rawPass ? 'PASS' : 'REVIEW';
+        const rawText        = rawPass
+          ? `raw: "${rawDebug}" · label: "${labelCmd}" · raw field untouched`
+          : 'Label claims command exists but raw lastCommand is absent';
+
+        const invalidInput  = formatCommandLabel(null) === 'none' && formatCommandLabel('unknown') === 'none' && formatCommandLabel('') === 'none';
+        const labelStatus   = invalidInput ? 'PASS' : 'REVIEW';
+        const labelSafeText = invalidInput
+          ? 'null/unknown/empty → "none" · valid commands display as labels only'
+          : 'formatCommandLabel edge-case mismatch detected';
+
+        const rows = [
+          { label: 'Resolver Coherence', status: coherenceStatus, detail: coherenceText },
+          { label: 'Raw Preservation',   status: rawStatus,       detail: rawText },
+          { label: 'Label Safety',       status: labelStatus,     detail: labelSafeText },
+          { label: 'Execution Boundary', status: 'PASS',          detail: 'Display-only verification. No fetch, dispatch, broker, or OpenClaw call.' },
+        ];
+
+        const statusCls = (s) => s === 'PASS'
+          ? 'text-primary border-primary/30 bg-primary/5'
+          : 'text-amber-400 border-amber-400/30 bg-amber-400/5';
+
+        // Coherence badge for header
+        const coherenceBadgeStyles = {
+          COHERENT: 'bg-primary/10 border-primary/30 text-primary',
+          REVIEW:   'bg-amber-500/10 border-amber-500/30 text-amber-400',
+          NONE:     'bg-secondary/30 border-border/30 text-slate-500',
+        };
+
+        return (
+          <div className="bg-card border border-border/40 rounded-sm overflow-hidden">
+            <div className="px-4 py-2 bg-secondary/20 border-b border-border/40 flex items-center gap-2 flex-wrap">
+              <span className="text-[8px] font-bold uppercase text-slate-400">Command Evidence Verification</span>
+              <span className="ml-1 text-[7px] font-mono text-slate-600">display-only · read-only · no fetch · no dispatch</span>
+              <span className={`ml-auto px-2 py-0.5 rounded-sm border text-[7px] font-bold font-mono uppercase ${coherenceBadgeStyles[coherence] ?? coherenceBadgeStyles.NONE}`}
+                title={reason}>
+                CMD EVIDENCE: {coherence}
+              </span>
+            </div>
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {rows.map(r => (
+                <div key={r.label} className={`border rounded-sm px-3 py-2 ${statusCls(r.status)}`}>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className={`text-[7px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-sm border ${statusCls(r.status)}`}>{r.status}</span>
+                    <span className="text-[7px] font-bold uppercase text-slate-400">{r.label}</span>
+                  </div>
+                  <div className="text-[7px] font-mono text-slate-500 break-all">{r.detail}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Safety Footer */}
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded text-[8px] text-primary/80 font-semibold">
