@@ -5,10 +5,16 @@
  * No trading · No broker · No orders · No credentials · No money movement · No scheduler
  */
 import React, { useState, useEffect } from 'react';
-import { Shield, FileText, Trash2, CheckCircle2, XCircle, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Shield, FileText, Trash2, CheckCircle2, XCircle, ChevronDown, ChevronRight, AlertTriangle, Info } from 'lucide-react';
 
-const ALERT_ACCEPTED_KEY  = 'veridanTradingViewAlertIntakeRecords';
 const PROPOSAL_STORAGE_KEY = 'veridanTradingViewSignalProposalPreviews';
+
+// Primary key + fallback keys to check for accepted alerts
+const ALERT_SOURCE_KEYS = [
+  'veridanTradingViewAlertIntakeRecords',
+  'veridanTradingViewAlertAcceptedRecords',
+  'veridanTradingViewAlertRecords',
+];
 
 function safeArray(key) {
   try {
@@ -28,24 +34,68 @@ function genId() {
   return 'prop-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
 }
 
+/** Return true if a record counts as an accepted alert regardless of shape. */
+function isAccepted(r) {
+  if (!r || typeof r !== 'object') return false;
+  return (
+    r.status === 'ACCEPTED' ||
+    r.intakeStatus === 'ACCEPTED' ||
+    r.accepted === true ||
+    r.success === true ||
+    r.result === 'ACCEPTED'
+  );
+}
+
+/** Best timestamp from a record for sorting. */
+function bestTimestamp(r) {
+  const v = r.validatedAt ?? r.receivedAt ?? r.timestamp ?? r.createdAt ?? null;
+  if (!v) return 0;
+  try { const d = new Date(v); return isNaN(d.getTime()) ? 0 : d.getTime(); } catch { return 0; }
+}
+
+/**
+ * Load the latest accepted alert across all source keys.
+ * Returns { alert, sourceKey } or { alert: null, sourceKey: null }.
+ */
+function loadLatestAcceptedAlert() {
+  let best = null;
+  let bestKey = null;
+  let bestTs = -1;
+
+  for (const key of ALERT_SOURCE_KEYS) {
+    const arr = safeArray(key);
+    for (const r of arr) {
+      if (!isAccepted(r)) continue;
+      const ts = bestTimestamp(r);
+      if (ts > bestTs) {
+        best = r;
+        bestKey = key;
+        bestTs = ts;
+      }
+    }
+  }
+  return { alert: best, sourceKey: bestKey };
+}
+
 const SAFETY_ASSERTIONS = [
-  { key: 'sourceAlertAccepted',   value: true  },
-  { key: 'rejectedAlertIgnored',  value: true  },
+  { key: 'sourceAlertAccepted',   value: true },
+  { key: 'rejectedAlertIgnored',  value: true },
   { key: 'executionStatus',       value: 'NOT_EXECUTED' },
+  { key: 'approvalStatus',        value: 'NOT_APPROVED' },
   { key: 'brokerConnection',      value: 'DISABLED' },
   { key: 'liveTrading',           value: 'DISABLED' },
   { key: 'moneyMovement',         value: 'DISABLED' },
   { key: 'credentialAccess',      value: 'DISABLED' },
-  { key: 'approvalStatus',        value: 'NOT_APPROVED' },
   { key: 'dispatchAllowed',       value: false },
+  { key: 'executionAllowed',      value: false },
   { key: 'tradeAttempted',        value: false },
   { key: 'orderAttempted',        value: false },
   { key: 'schedulerActive',       value: false },
   { key: 'pollingLoopActive',     value: false },
 ];
 
-function buildProposal(alert) {
-  // Safely extract fields from any alert record shape
+function buildProposal(alert, sourceKey) {
+  // Defensively extract nested payload from any shape
   const payload = (() => {
     try {
       if (alert.parsedPayload && typeof alert.parsedPayload === 'object') return alert.parsedPayload;
@@ -55,61 +105,66 @@ function buildProposal(alert) {
     return {};
   })();
 
-  const symbol       = safeStr(payload.symbol       ?? alert.symbol       ?? payload.ticker ?? alert.ticker, 'UNKNOWN');
-  const timeframe    = safeStr(payload.timeframe     ?? alert.timeframe    ?? payload.interval, 'N/A');
+  const symbol       = safeStr(payload.symbol       ?? alert.symbol       ?? payload.ticker  ?? alert.ticker,   'UNKNOWN');
+  const timeframe    = safeStr(payload.timeframe     ?? alert.timeframe    ?? payload.interval ?? alert.interval, 'N/A');
   const strategyName = safeStr(payload.strategy      ?? payload.strategyName ?? alert.strategyName, 'N/A');
-  const signalType   = safeStr(payload.signal        ?? payload.signalType   ?? alert.signalType, 'N/A');
-  const side         = safeStr(payload.side          ?? payload.direction     ?? alert.side, 'N/A');
-  const price        = safeStr(payload.price         ?? payload.close         ?? alert.price, 'N/A');
-  const alertMessage = safeStr(payload.message       ?? payload.alertMessage  ?? alert.alertMessage ?? alert.message, 'N/A');
-  const riskProfile  = safeStr(payload.riskProfile   ?? payload.risk          ?? alert.riskProfile, 'LOW');
-  const sourceTs     = alert.receivedAt ?? alert.validatedAt ?? alert.createdAt ?? alert.timestamp ?? new Date().toISOString();
+  const signalType   = safeStr(payload.signal        ?? payload.signalType   ?? alert.signalType,   'N/A');
+  const side         = safeStr(payload.side          ?? payload.direction     ?? alert.side,         'N/A');
+  const price        = safeStr(payload.price         ?? payload.close         ?? alert.price,        'N/A');
+  const alertMessage = safeStr(payload.message ?? payload.alertMessage ?? alert.alertMessage ?? alert.message, 'N/A');
+  const riskProfile  = safeStr(payload.riskProfile   ?? payload.risk          ?? alert.riskProfile,  'LOW');
+  const alertTs      = alert.validatedAt ?? alert.receivedAt ?? alert.timestamp ?? alert.createdAt ?? new Date().toISOString();
 
   return {
-    proposalId:       genId(),
-    sourceAlertId:    safeStr(alert.alertId ?? alert.id, 'unknown'),
+    proposalId:        genId(),
+    sourceAlertId:     safeStr(alert.alertId ?? alert.id, 'unknown'),
+    sourceKey,
+    phase:             'PHASE_3_SIGNAL_TO_PROPOSAL_PREVIEW',
     symbol,
     timeframe,
     strategyName,
     signalType,
     side,
     price,
-    timestamp:        new Date().toISOString(),
-    alertTimestamp:   sourceTs,
+    timestamp:         new Date().toISOString(),
+    alertTimestamp:    alertTs,
     alertMessage,
     riskProfile,
-    proposalStatus:   'PROPOSAL_PREVIEW_ONLY',
-    executionStatus:  'NOT_EXECUTED',
-    approvalStatus:   'NOT_APPROVED',
-    brokerConnection: 'DISABLED',
-    liveTrading:      'DISABLED',
-    moneyMovement:    'DISABLED',
-    credentialAccess: 'DISABLED',
-    dispatchAllowed:  false,
-    tradeAttempted:   false,
-    orderAttempted:   false,
-    schedulerActive:  false,
+    proposalStatus:    'PROPOSAL_PREVIEW_ONLY',
+    executionStatus:   'NOT_EXECUTED',
+    approvalStatus:    'NOT_APPROVED',
+    brokerConnection:  'DISABLED',
+    liveTrading:       'DISABLED',
+    moneyMovement:     'DISABLED',
+    credentialAccess:  'DISABLED',
+    dispatchAllowed:   false,
+    executionAllowed:  false,
+    tradeAttempted:    false,
+    orderAttempted:    false,
+    schedulerActive:   false,
     pollingLoopActive: false,
-    riskClass:        'TRADE_PROPOSAL_PREVIEW_ONLY',
-    safetyAssertions: SAFETY_ASSERTIONS,
-    safetyPassCount:  SAFETY_ASSERTIONS.length,
-    safetyFailCount:  0,
-    sourceComponent:  'TvSignalProposalPanel',
+    riskClass:         'TRADE_PROPOSAL_PREVIEW_ONLY',
+    safetyAssertions:  SAFETY_ASSERTIONS,
+    safetyPassCount:   SAFETY_ASSERTIONS.length,
+    safetyFailCount:   0,
+    sourceComponent:   'TvSignalProposalPanel',
   };
 }
 
 export default function TvSignalProposalPanel() {
   const [proposals,    setProposals]    = useState([]);
   const [latestAlert,  setLatestAlert]  = useState(null);
+  const [alertSourceKey, setAlertSourceKey] = useState(null);
   const [lastProposal, setLastProposal] = useState(null);
   const [error,        setError]        = useState(null);
   const [expanded,     setExpanded]     = useState({});
 
   useEffect(() => {
     try {
-      const alerts    = safeArray(ALERT_ACCEPTED_KEY);
-      const stored    = safeArray(PROPOSAL_STORAGE_KEY);
-      setLatestAlert(alerts[0] ?? null);
+      const { alert, sourceKey } = loadLatestAcceptedAlert();
+      const stored = safeArray(PROPOSAL_STORAGE_KEY);
+      setLatestAlert(alert);
+      setAlertSourceKey(sourceKey);
       setProposals(stored);
       setLastProposal(stored[0] ?? null);
     } catch (err) {
@@ -120,17 +175,24 @@ export default function TvSignalProposalPanel() {
   const generate = () => {
     setError(null);
     try {
-      const alerts = safeArray(ALERT_ACCEPTED_KEY);
-      if (!alerts || alerts.length === 0) {
-        setError('No accepted alert records found. Accept an alert in Phase 2 first.');
+      const { alert, sourceKey } = loadLatestAcceptedAlert();
+
+      if (!alert) {
+        // Show diagnostic: what keys exist and how many records each has
+        const diagnostics = ALERT_SOURCE_KEYS.map(k => {
+          const arr = safeArray(k);
+          return `${k}: ${arr.length} record(s), ${arr.filter(isAccepted).length} accepted`;
+        }).join(' | ');
+        setError(`No accepted alert records found across all source keys. ${diagnostics}. Accept an alert in Phase 2 first.`);
         return;
       }
-      const alert    = alerts[0];
-      const proposal = buildProposal(alert);
+
+      const proposal = buildProposal(alert, sourceKey);
       const updated  = [proposal, ...proposals].slice(0, 50);
       setProposals(updated);
       setLastProposal(proposal);
       setLatestAlert(alert);
+      setAlertSourceKey(sourceKey);
       try { localStorage.setItem(PROPOSAL_STORAGE_KEY, JSON.stringify(updated)); } catch {}
     } catch (err) {
       console.error('[TvSignalProposalPanel] generate error:', err);
@@ -174,18 +236,48 @@ export default function TvSignalProposalPanel() {
         </span>
       </div>
 
-      {/* Latest accepted alert context */}
-      <div className="px-4 py-2.5 border-b border-border/20 bg-secondary/10">
-        <span className="text-[7px] uppercase text-slate-500 font-bold">Source: Latest Accepted Alert · Key: </span>
-        <span className="text-[7px] font-mono text-slate-500">{ALERT_ACCEPTED_KEY}</span>
-        {latestAlert && (
-          <span className="ml-3 text-[7px] font-mono text-primary">
-            alertId: {safeStr(latestAlert.alertId ?? latestAlert.id, '?')} · {safeStr(latestAlert.receivedAt ?? latestAlert.createdAt, '—')}
-          </span>
+      {/* Alert source context */}
+      <div className="px-4 py-2.5 border-b border-border/20 bg-secondary/10 space-y-1">
+        <div className="flex flex-wrap items-center gap-2 text-[7px] font-mono">
+          <span className="uppercase text-slate-500 font-bold">Source Keys Scanned:</span>
+          {ALERT_SOURCE_KEYS.map(k => (
+            <span key={k} className={`px-1.5 py-0.5 rounded-sm border ${k === alertSourceKey ? 'border-primary/40 bg-primary/10 text-primary font-bold' : 'border-border/30 text-slate-600'}`}>
+              {k}
+            </span>
+          ))}
+        </div>
+        {latestAlert ? (
+          <div className="flex flex-wrap items-center gap-2 text-[7px] font-mono">
+            <span className="text-primary font-bold">✓ Accepted alert found</span>
+            <span className="text-slate-500">in</span>
+            <span className="text-primary">{alertSourceKey}</span>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-400">id: {safeStr(latestAlert.alertId ?? latestAlert.id, '?')}</span>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-400">{safeStr(latestAlert.validatedAt ?? latestAlert.receivedAt ?? latestAlert.createdAt, '—')}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 text-[7px] font-mono text-amber-400">
+            <AlertTriangle className="w-3 h-3 shrink-0" />
+            No accepted alerts found in any source key. Accept an alert in Phase 2 first.
+          </div>
         )}
-        {!latestAlert && (
-          <span className="ml-3 text-[7px] font-mono text-amber-400">No accepted alerts yet — use Phase 2 to accept an alert first.</span>
-        )}
+      </div>
+
+      {/* Diagnostic: key presence summary */}
+      <div className="px-4 py-2 border-b border-border/20 bg-secondary/5">
+        <div className="flex flex-wrap gap-3 text-[7px] font-mono text-slate-600">
+          <span className="flex items-center gap-1"><Info className="w-2.5 h-2.5" /> Key diagnostics:</span>
+          {ALERT_SOURCE_KEYS.map(k => {
+            const arr = safeArray(k);
+            const accepted = arr.filter(isAccepted).length;
+            return (
+              <span key={k} className={accepted > 0 ? 'text-primary' : 'text-slate-700'}>
+                {k.replace('veridanTradingView', '…')}={arr.length}rec/{accepted}acc
+              </span>
+            );
+          })}
+        </div>
       </div>
 
       {/* Action buttons */}
@@ -208,11 +300,11 @@ export default function TvSignalProposalPanel() {
         )}
       </div>
 
-      {/* Error */}
+      {/* Error panel */}
       {error && (
-        <div className="mx-4 mt-3 flex items-start gap-2 px-3 py-2 bg-destructive/5 border border-destructive/30 rounded-sm text-[9px] text-destructive">
-          <XCircle className="w-3 h-3 shrink-0 mt-0.5" />
-          <span>{error}</span>
+        <div className="mx-4 mt-3 flex items-start gap-2 px-3 py-2.5 bg-destructive/5 border border-destructive/30 rounded-sm text-[9px] text-destructive">
+          <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span className="break-all">{error}</span>
         </div>
       )}
 
@@ -223,7 +315,10 @@ export default function TvSignalProposalPanel() {
             <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
             <div>
               <div className="text-[10px] font-bold font-mono text-blue-400">PROPOSAL_PREVIEW_CREATED</div>
-              <div className="text-[7px] text-slate-500 mt-0.5">{lastProposal.proposalId} · {new Date(lastProposal.timestamp).toLocaleString()}</div>
+              <div className="text-[7px] text-slate-500 mt-0.5">
+                {lastProposal.proposalId} · {new Date(lastProposal.timestamp).toLocaleString()}
+                {lastProposal.sourceKey && <span className="ml-2 text-slate-600">src: {lastProposal.sourceKey}</span>}
+              </div>
             </div>
           </div>
 
@@ -231,22 +326,24 @@ export default function TvSignalProposalPanel() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {fieldCard('proposalId',       lastProposal.proposalId,      'text-slate-400 text-[7px]')}
             {fieldCard('sourceAlertId',    lastProposal.sourceAlertId,   'text-slate-400 text-[7px]')}
-            {fieldCard('symbol',           lastProposal.symbol,           'text-primary font-bold')}
-            {fieldCard('timeframe',        lastProposal.timeframe,        'text-primary font-bold')}
+            {fieldCard('symbol',           lastProposal.symbol,          'text-primary font-bold')}
+            {fieldCard('timeframe',        lastProposal.timeframe,       'text-primary font-bold')}
             {fieldCard('strategyName',     lastProposal.strategyName)}
             {fieldCard('signalType',       lastProposal.signalType)}
-            {fieldCard('side',             lastProposal.side,             'text-amber-400 font-bold')}
-            {fieldCard('price',            lastProposal.price,            'text-primary')}
-            {fieldCard('riskProfile',      lastProposal.riskProfile,      'text-amber-400')}
-            {fieldCard('proposalStatus',   lastProposal.proposalStatus,   'text-blue-400 font-bold')}
-            {fieldCard('executionStatus',  lastProposal.executionStatus,  'text-destructive font-bold')}
-            {fieldCard('approvalStatus',   lastProposal.approvalStatus,   'text-destructive font-bold')}
-            {fieldCard('brokerConnection', lastProposal.brokerConnection, 'text-destructive font-bold')}
-            {fieldCard('liveTrading',      lastProposal.liveTrading,      'text-destructive font-bold')}
-            {fieldCard('moneyMovement',    lastProposal.moneyMovement,    'text-destructive font-bold')}
-            {fieldCard('credentialAccess', lastProposal.credentialAccess, 'text-destructive font-bold')}
-            {fieldCard('riskClass',        lastProposal.riskClass,        'text-amber-400 font-bold')}
+            {fieldCard('side',             lastProposal.side,            'text-amber-400 font-bold')}
+            {fieldCard('price',            lastProposal.price,           'text-primary')}
+            {fieldCard('riskProfile',      lastProposal.riskProfile,     'text-amber-400')}
+            {fieldCard('phase',            lastProposal.phase,           'text-blue-400 text-[7px]')}
+            {fieldCard('proposalStatus',   lastProposal.proposalStatus,  'text-blue-400 font-bold')}
+            {fieldCard('executionStatus',  lastProposal.executionStatus, 'text-destructive font-bold')}
+            {fieldCard('approvalStatus',   lastProposal.approvalStatus,  'text-destructive font-bold')}
+            {fieldCard('brokerConnection', lastProposal.brokerConnection,'text-destructive font-bold')}
+            {fieldCard('liveTrading',      lastProposal.liveTrading,     'text-destructive font-bold')}
+            {fieldCard('moneyMovement',    lastProposal.moneyMovement,   'text-destructive font-bold')}
+            {fieldCard('credentialAccess', lastProposal.credentialAccess,'text-destructive font-bold')}
+            {fieldCard('riskClass',        lastProposal.riskClass,       'text-amber-400 font-bold')}
             {fieldCard('dispatchAllowed',  String(lastProposal.dispatchAllowed),  'text-destructive font-bold')}
+            {fieldCard('executionAllowed', String(lastProposal.executionAllowed), 'text-destructive font-bold')}
             {fieldCard('tradeAttempted',   String(lastProposal.tradeAttempted),   'text-destructive font-bold')}
             {fieldCard('orderAttempted',   String(lastProposal.orderAttempted),   'text-destructive font-bold')}
           </div>
@@ -271,7 +368,9 @@ export default function TvSignalProposalPanel() {
               {(lastProposal.safetyAssertions ?? []).map(a => (
                 <div key={a.key} className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
-                  <span className="font-mono text-[7px] text-slate-500">{a.key}: <span className="text-slate-400">{String(a.value)}</span></span>
+                  <span className="font-mono text-[7px] text-slate-500">
+                    {a.key}: <span className="text-slate-400">{String(a.value)}</span>
+                  </span>
                 </div>
               ))}
             </div>
@@ -310,6 +409,7 @@ export default function TvSignalProposalPanel() {
                     {[
                       ['proposalId',      p.proposalId,      'text-slate-500 text-[7px]'],
                       ['sourceAlertId',   p.sourceAlertId,   'text-slate-500 text-[7px]'],
+                      ['sourceKey',       p.sourceKey,       'text-slate-500 text-[7px]'],
                       ['symbol',          p.symbol,          'text-primary font-bold'],
                       ['timeframe',       p.timeframe],
                       ['strategyName',    p.strategyName],
