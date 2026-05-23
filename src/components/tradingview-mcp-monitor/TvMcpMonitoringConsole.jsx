@@ -1045,6 +1045,69 @@ export default function TvMcpMonitoringConsole() {
         </div>
       )}
 
+      {/* Command Evidence Verification block */}
+      {(evidence && showEvidence) && (() => {
+        const coherence   = getCommandEvidenceCoherence(evidence);
+        const reason      = getCommandEvidenceCoherenceReason(evidence);
+        const rawCmd      = evidence.lastCommand;
+        const labelCmd    = formatCommandLabel(rawCmd);
+        const rawDebug    = formatRawCommandDebugValue(rawCmd);
+
+        // Row 1: Resolver Coherence
+        const coherencePass = coherence === 'COHERENT' || coherence === 'NONE';
+        const coherenceStatus = coherencePass ? 'PASS' : 'REVIEW';
+        const coherenceText  = `${coherence} — ${reason}`;
+
+        // Row 2: Raw Preservation
+        // PASS when rawCmd is accessible; REVIEW only if label claims a command but raw is absent
+        const labelClaimsCmd = labelCmd && labelCmd !== 'none';
+        const rawPresent     = rawCmd && typeof rawCmd === 'string' && rawCmd.trim() !== '';
+        const rawPass        = rawPresent || !labelClaimsCmd;
+        const rawStatus      = rawPass ? 'PASS' : 'REVIEW';
+        const rawText        = rawPass
+          ? `raw: "${rawDebug}" · label: "${labelCmd}" · raw field untouched`
+          : `Label claims command exists but raw lastCommand is absent`;
+
+        // Row 3: Label Safety
+        const invalidInput  = formatCommandLabel(null) === 'none' && formatCommandLabel('unknown') === 'none' && formatCommandLabel('') === 'none';
+        const labelSafeText = invalidInput
+          ? 'null/unknown/empty → "none" · valid commands display as labels only'
+          : 'formatCommandLabel edge-case mismatch detected';
+        const labelStatus   = invalidInput ? 'PASS' : 'REVIEW';
+
+        // Row 4: Execution Boundary — always PASS
+        const rows = [
+          { label: 'Resolver Coherence', status: coherenceStatus, detail: coherenceText },
+          { label: 'Raw Preservation',   status: rawStatus,       detail: rawText },
+          { label: 'Label Safety',        status: labelStatus,     detail: labelSafeText },
+          { label: 'Execution Boundary',  status: 'PASS',          detail: 'Display-only verification. No fetch, dispatch, broker, or OpenClaw call.' },
+        ];
+
+        const statusCls = (s) => s === 'PASS'
+          ? 'text-primary border-primary/30 bg-primary/5'
+          : 'text-amber-400 border-amber-400/30 bg-amber-400/5';
+
+        return (
+          <div className="bg-card border border-border/40 rounded-sm overflow-hidden">
+            <div className="px-4 py-2 bg-secondary/20 border-b border-border/40">
+              <span className="text-[8px] font-bold uppercase text-slate-400">Command Evidence Verification</span>
+              <span className="ml-2 text-[7px] font-mono text-slate-600">display-only · read-only · no fetch · no dispatch</span>
+            </div>
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {rows.map(r => (
+                <div key={r.label} className={`border rounded-sm px-3 py-2 ${statusCls(r.status)}`}>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className={`text-[7px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-sm border ${statusCls(r.status)}`}>{r.status}</span>
+                    <span className="text-[7px] font-bold uppercase text-slate-400">{r.label}</span>
+                  </div>
+                  <div className="text-[7px] font-mono text-slate-500 break-all">{r.detail}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Safety footer */}
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-sm text-[8px] text-primary/80 font-bold">
         <CheckCircle2 className="w-3 h-3 shrink-0" />
