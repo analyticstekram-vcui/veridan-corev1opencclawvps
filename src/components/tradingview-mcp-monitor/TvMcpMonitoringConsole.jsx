@@ -228,6 +228,25 @@ function formatCommandLabel(cmd) {
 }
 
 /**
+ * Derive a display-only coherence badge for the command evidence tile.
+ * Does not mutate evidence. Pure classification based on field presence.
+ */
+function getCommandEvidenceCoherence(evidence) {
+  const cmd = evidence?.lastCommand;
+  const src = evidence?.lastCommandSource;
+  const ts  = evidence?.lastCommandAt;
+
+  const hasCmd = cmd && typeof cmd === 'string' && cmd.trim() &&
+    !['unknown', 'none', 'n/a', 'null', 'undefined'].includes(cmd.trim().toLowerCase());
+  const hasSrc = src && typeof src === 'string' && src.trim();
+  const hasTs  = ts  && typeof ts  === 'string' && ts.trim();
+
+  if (!hasCmd && !hasSrc && !hasTs) return 'NONE';
+  if (hasCmd && hasSrc && hasTs)   return 'COHERENT';
+  return 'REVIEW';
+}
+
+/**
  * Format raw command value for debug/secondary display.
  * Handles edge cases: null, undefined, empty, whitespace, placeholders.
  * Display-only; does not mutate evidence.lastCommand.
@@ -921,9 +940,22 @@ export default function TvMcpMonitoringConsole() {
       {/* Evidence chain */}
       {(evidence && showEvidence) && (
         <div className="bg-card border border-primary/20 rounded-sm overflow-hidden">
-          <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/20">
+          <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/20 flex items-center gap-3 flex-wrap">
             <span className="text-[9px] font-bold uppercase text-primary">MCP Evidence Chain</span>
-            <span className="ml-2 text-[7px] text-slate-500 font-mono">sources: mcpChecks · navHistory · previews · alertAccepted · alertRejected · proposals · approvals</span>
+            <span className="text-[7px] text-slate-500 font-mono">sources: mcpChecks · navHistory · previews · alertAccepted · alertRejected · proposals · approvals</span>
+            {(() => {
+              const coherence = getCommandEvidenceCoherence(evidence);
+              const styles = {
+                COHERENT: 'bg-primary/10 border-primary/30 text-primary',
+                REVIEW:   'bg-amber-500/10 border-amber-500/30 text-amber-400',
+                NONE:     'bg-secondary/30 border-border/30 text-slate-500',
+              };
+              return (
+                <span className={`ml-auto px-2 py-0.5 rounded-sm border text-[7px] font-bold font-mono uppercase ${styles[coherence]}`}>
+                  CMD EVIDENCE: {coherence}
+                </span>
+              );
+            })()}
           </div>
           <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
