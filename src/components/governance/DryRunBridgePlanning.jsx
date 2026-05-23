@@ -463,9 +463,82 @@ const BLOCKED_CAPABILITIES = [
 
 export default function DryRunBridgePlanning() {
   const [builderForm, setBuilderForm] = useState(BUILDER_PREVIEW_DEFAULTS);
+  const [createdProposalId, setCreatedProposalId] = useState(null);
+  const [proposalCreationLoading, setProposalCreationLoading] = useState(false);
+  const [proposalCreationError, setProposalCreationError] = useState(null);
 
   const handleBuilderFieldChange = (field, value) => {
     setBuilderForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Validate builder form before creating proposal
+  const validateBuilderForm = () => {
+    const { operatorId, commandType, requestedTarget, riskTier, requestedAction, targetSystem } = builderForm;
+    
+    const errors = [];
+    
+    if (!operatorId || operatorId.trim().length === 0) errors.push('operatorId is required');
+    if (!BUILDER_COMMAND_TYPES.includes(commandType)) errors.push(`commandType must be one of: ${BUILDER_COMMAND_TYPES.join(', ')}`);
+    if (!BUILDER_RISK_TIERS.includes(riskTier)) errors.push(`riskTier must be one of: ${BUILDER_RISK_TIERS.join(', ')}`);
+    if (!requestedTarget || requestedTarget.trim().length === 0) errors.push('requestedTarget is required');
+    if (!requestedAction || requestedAction.trim().length === 0) errors.push('requestedAction is required');
+    if (!targetSystem || targetSystem.trim().length === 0) errors.push('targetSystem is required');
+    
+    // Check for blocked keywords in requestedTarget
+    const blockedKeywords = ['trade', 'order', 'execute', 'delete', 'withdraw', 'transfer', 'password', 'api-key', 'billing', 'checkout'];
+    const targetLower = requestedTarget.toLowerCase();
+    for (const keyword of blockedKeywords) {
+      if (targetLower.includes(keyword)) {
+        errors.push(`requestedTarget contains blocked keyword: ${keyword}`);
+        break;
+      }
+    }
+    
+    return errors;
+  };
+
+  // Create approved preview proposal
+  const handleCreateProposal = async () => {
+    setProposalCreationError(null);
+    
+    const validationErrors = validateBuilderForm();
+    if (validationErrors.length > 0) {
+      setProposalCreationError(`Validation failed: ${validationErrors.join('; ')}`);
+      return;
+    }
+    
+    setProposalCreationLoading(true);
+    try {
+      const { base44 } = await import('@/api/base44Client');
+      
+      const proposalData = {
+        requestId: generateRequestId(),
+        proposedBy: builderForm.operatorId,
+        commandType: builderForm.commandType,
+        target: builderForm.targetSystem,
+        url: builderForm.requestedTarget,
+        payloadPreview: {
+          commandType: builderForm.commandType,
+          targetSystem: builderForm.targetSystem,
+          requestedAction: builderForm.requestedAction,
+          requestedTarget: builderForm.requestedTarget,
+          riskTier: builderForm.riskTier,
+          operatorId: builderForm.operatorId,
+        },
+        riskTier: builderForm.riskTier,
+        status: 'APPROVED',
+        policyGate: 'PASS',
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+      };
+      
+      const created = await base44.entities.OpenClawProposal.create(proposalData);
+      setCreatedProposalId(created.requestId);
+    } catch (err) {
+      setProposalCreationError(`Failed to create proposal: ${err.message}`);
+    } finally {
+      setProposalCreationLoading(false);
+    }
   };
 
   const builderPreviewObject = {
@@ -920,11 +993,49 @@ export default function DryRunBridgePlanning() {
                     </pre>
                   </div>
 
+                  {/* Create Approved Proposal Button */}
+                  <div className="bg-primary/5 border border-primary/20 rounded-sm overflow-hidden">
+                    <div className="px-4 py-3 bg-primary/10 border-b border-primary/20 flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={handleCreateProposal}
+                        disabled={proposalCreationLoading || !!createdProposalId}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-primary/10 border border-primary/40 text-primary hover:bg-primary/20 transition-colors rounded-sm font-semibold text-[11px] font-mono uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {proposalCreationLoading ? (
+                          <>
+                            <span className="animate-spin">⏳</span>
+                            Creating...
+                          </>
+                        ) : createdProposalId ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            Proposal Created
+                          </>
+                        ) : (
+                          'Create Approved Preview Proposal'
+                        )}
+                      </button>
+                    </div>
+                    {createdProposalId && (
+                      <div className="px-4 py-3 bg-primary/5 border-t border-primary/20 space-y-1">
+                        <div className="text-[9px] font-mono font-bold text-primary uppercase">Proposal Created</div>
+                        <div className="text-[8px] text-slate-300">Proposal ID: <span className="text-primary font-mono font-bold">{createdProposalId}</span></div>
+                        <div className="text-[8px] text-slate-400">Status: APPROVED · Phase5ADryRunTester is now enabled</div>
+                      </div>
+                    )}
+                    {proposalCreationError && (
+                      <div className="px-4 py-3 bg-destructive/5 border-t border-destructive/20">
+                        <div className="text-[8px] text-destructive font-mono">{proposalCreationError}</div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Warning Note */}
                   <div className="bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 rounded-sm">
-                    <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Local Preview Only</div>
+                    <div className="text-[8px] font-mono font-bold text-amber-400/80 mb-1 uppercase">Local Preview + Proposal Creation</div>
                     <p className="text-[9px] text-slate-300">
-                      This builder creates a local preview object only. It does not save, validate, approve, send, or execute bridge requests.
+                      This builder creates a local preview object and can persist an APPROVED OpenClawProposal for Phase 5 testing. It does not execute bridge requests.
                     </p>
                   </div>
                   </div>
@@ -932,16 +1043,19 @@ export default function DryRunBridgePlanning() {
 
                   {/* Phase 5A Signed Dry-Run Tester */}
                   <div className="bg-card border border-border/50 rounded-sm overflow-hidden">
-                  <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
-                  <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Phase 5A: Signed Dry-Run Tester</h2>
-                  </div>
-                  <div className="p-4">
-                  <Phase5ADryRunTester 
-                    signedRequest={builderPreviewObject} 
-                    proposalId={builderPreviewObject.requestId}
-                    operatorId={builderForm.operatorId}
-                  />
-                  </div>
+                    <div className="px-4 py-3 bg-secondary/30 border-b border-border/40">
+                      <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Phase 5A: Signed Dry-Run Tester</h2>
+                    </div>
+                    <div className="p-4">
+                      <Phase5ADryRunTester 
+                        signedRequest={{
+                          ...builderPreviewObject,
+                          proposalId: createdProposalId || builderPreviewObject.requestId,
+                        }}
+                        proposalId={createdProposalId || builderPreviewObject.requestId}
+                        operatorId={builderForm.operatorId}
+                      />
+                    </div>
                   </div>
 
                   {/* Section J: Local Validation Preview */}
