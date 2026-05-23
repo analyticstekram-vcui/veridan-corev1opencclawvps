@@ -109,16 +109,52 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         return;
       }
 
-      // Step 2: Send signed packet to openclawBridgePreview using signer output
+      // Normalize signer response to extract signature from common response shapes
+      const rawSignerResult = signerResponse?.data || signerResponse?.result || signerResponse?.signedRequest || signerResponse || {};
+      const sigerResponseKeys = Object.keys(signerResponse || {}).join(', ');
+      const rawSignerResultKeys = Object.keys(rawSignerResult).join(', ');
+      
+      const normalizedSignedRequest = {
+        ...rawSignerResult,
+        signature:
+          rawSignerResult.signature ||
+          rawSignerResult.signedSignature ||
+          rawSignerResult.bridgeSignature ||
+          signerResponse?.signature ||
+          signerResponse?.data?.signature ||
+          signerResponse?.result?.signature ||
+          "",
+        signingVersion:
+          rawSignerResult.signingVersion ||
+          rawSignerResult.version ||
+          "OPENCLAW_BRIDGE_V1",
+        signedAt:
+          rawSignerResult.signedAt ||
+          rawSignerResult.timestamp ||
+          submittedAt,
+        operatorId:
+          rawSignerResult.operatorId ||
+          fullBridgeRequest.operatorId ||
+          operatorId,
+        previewHash,
+        expirationAt,
+      };
+
+      // Validate signature is present before calling preview
+      if (!normalizedSignedRequest.signature) {
+        setError('Signer succeeded but returned no signature field');
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Send signed packet to openclawBridgePreview using normalized signer output
       const previewPayload = {
         bridgeRequest: fullBridgeRequest,
+        signedRequest: normalizedSignedRequest,
         previewHash,
         operatorId: fullBridgeRequest.operatorId || operatorId,
         submittedAt,
         expirationAt,
-        signature: signerData.signature,
-        signingVersion: 'OPENCLAW_BRIDGE_V1',
-        signedAt: signerData.signedAt,
       };
 
       const previewResponse = await base44.functions.invoke('openclawBridgePreview', previewPayload);
@@ -129,6 +165,11 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         submittedAt,
         expirationAt,
         expiresInMinutes: 5,
+        signerResponseKeys: sigerResponseKeys,
+        rawSignerResultKeys,
+        signaturePresent: !!normalizedSignedRequest.signature,
+        signingVersion: normalizedSignedRequest.signingVersion,
+        signedAt: normalizedSignedRequest.signedAt,
       };
       
       setResult(resultData);
@@ -281,6 +322,10 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
               {/* Validation Results */}
               <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5">
                 <div className="flex items-center gap-2">
+                  {result.submissionDebug?.signaturePresent ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                  <span>Signature is present before preview: {result.submissionDebug?.signaturePresent ? 'PASS' : 'FAIL'}</span>
+                </div>
+                <div className="flex items-center gap-2">
                   {result.policyGateResult === 'PASS' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
                   <span>Policy Gate: {result.policyGateResult}</span>
                   {result.policyGateMessages?.length > 0 && <span className="text-[7px]">({result.policyGateMessages.join(', ')})</span>}
@@ -305,6 +350,11 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                   <div>Submitted At: <span className="text-slate-300 font-mono">{result.submissionDebug.submittedAt}</span></div>
                   <div>Expiration At: <span className="text-slate-300 font-mono">{result.submissionDebug.expirationAt}</span></div>
                   <div>Expires In: <span className="text-slate-300 font-semibold">{result.submissionDebug.expiresInMinutes} minutes</span></div>
+                  <div>Signature Present: <span className="text-slate-300 font-semibold">{result.submissionDebug.signaturePresent ? 'YES' : 'NO'}</span></div>
+                  <div>Signing Version: <span className="text-slate-300 font-mono">{result.submissionDebug.signingVersion}</span></div>
+                  <div>Signed At: <span className="text-slate-300 font-mono">{result.submissionDebug.signedAt}</span></div>
+                  <div className="text-[6px] text-slate-600 mt-1">Signer Response Keys: {result.submissionDebug.signerResponseKeys}</div>
+                  <div className="text-[6px] text-slate-600">Raw Signer Result Keys: {result.submissionDebug.rawSignerResultKeys}</div>
                 </div>
               )}
             </div>
