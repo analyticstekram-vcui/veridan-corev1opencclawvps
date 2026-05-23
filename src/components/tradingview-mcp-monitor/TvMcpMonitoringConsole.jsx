@@ -189,8 +189,9 @@ function safeArray(key) {
 /** Derive a canonical ISO timestamp from any record shape. Never throws. */
 function safeTimestamp(r) {
   if (!r || typeof r !== 'object') return null;
-  const v = r.createdAt ?? r.receivedAt ?? r.validatedAt ?? r.timestamp ??
-            r.generatedAt ?? r.auditTimestamp ?? r.updatedAt ?? r.invokedAt ?? null;
+  const v = r.approvedAt ?? r.reviewedAt ?? r.createdAt ?? r.receivedAt ??
+            r.validatedAt ?? r.timestamp ?? r.generatedAt ?? r.auditTimestamp ??
+            r.updatedAt ?? r.invokedAt ?? null;
   if (!v) return null;
   try {
     const d = new Date(v);
@@ -385,20 +386,23 @@ function buildEvidenceChain(rawChecks) {
     const lastProposal = proposals[0] ?? null;
 
     // Approval-specific aggregates — read directly from localStorage (always fresh)
-    const rawApprovals   = safeArray(APPROVAL_KEY);
-    // Sort newest first by createdAt / approvedAt / timestamp
+    const rawApprovals = safeArray(APPROVAL_KEY);
+    // Sort newest first — cover all timestamp field names Phase 4 may write
     rawApprovals.sort((a, b) => {
-      const ta = new Date(a.approvedAt ?? a.createdAt ?? a.timestamp ?? 0).getTime();
-      const tb = new Date(b.approvedAt ?? b.createdAt ?? b.timestamp ?? 0).getTime();
+      const ta = new Date(a.approvedAt ?? a.reviewedAt ?? a.createdAt ?? a.timestamp ?? 0).getTime();
+      const tb = new Date(b.approvedAt ?? b.reviewedAt ?? b.createdAt ?? b.timestamp ?? 0).getTime();
       return tb - ta;
     });
-    const lastApproval       = rawApprovals[0] ?? null;
-    const approvedCount      = rawApprovals.filter(a => a.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW').length;
-    const lastApprovalAt     = lastApproval?.approvedAt ?? lastApproval?.createdAt ?? lastApproval?.timestamp ?? null;
-    const lastApprovalStatus = lastApproval?.approvalStatus ?? null;
-    const lastApproved       = rawApprovals.find(a => a.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW') ?? null;
-    const lastApprovedSymbol = lastApproved?.symbol ?? null;
-    const lastApprovedSide   = lastApproved?.side   ?? null;
+    const lastApproval        = rawApprovals[0] ?? null;
+    const approvedCount       = rawApprovals.filter(a => a.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW').length;
+    const rejectedCount       = rawApprovals.filter(a => a.approvalStatus === 'REJECTED_BY_OPERATOR').length;
+    const needsReviewCount    = rawApprovals.filter(a => a.approvalStatus === 'NEEDS_REVIEW').length;
+    const lastApprovalAt      = lastApproval?.approvedAt ?? lastApproval?.reviewedAt ?? lastApproval?.createdAt ?? lastApproval?.timestamp ?? null;
+    const lastApprovalStatus  = lastApproval?.approvalStatus ?? null;
+    // Find most recent APPROVED record for symbol/side/paperTrade fields
+    const lastApproved        = rawApprovals.find(a => a.approvalStatus === 'APPROVED_FOR_PAPER_TRADE_PREVIEW') ?? null;
+    const lastApprovedSymbol  = lastApproved?.symbol ?? null;
+    const lastApprovedSide    = lastApproved?.side   ?? null;
     const paperTradePreviewAllowed =
       (lastApproved?.paperTradePreviewAllowed === true) ||
       (lastApproved?.paperTradePreview === true) ||
@@ -443,6 +447,8 @@ function buildEvidenceChain(rawChecks) {
       generatedAt:            new Date().toISOString(),
       proposalApprovalCount:       rawApprovals.length,
       proposalApprovedCount:       approvedCount,
+      proposalRejectedCount:       rejectedCount,
+      proposalNeedsReviewCount:    needsReviewCount,
       lastProposalApprovalAt:      lastApprovalAt,
       lastProposalApprovalStatus:  lastApprovalStatus,
       lastApprovedProposalSymbol:  lastApprovedSymbol,
@@ -500,9 +506,11 @@ export default function TvMcpMonitoringConsole() {
     refreshEvidence();
     const events = [
       'veridanTradingViewProposalApprovalRecordsUpdated',
+      'veridanTradingViewProposalApprovalsUpdated',
       'veridanTradingViewProposalPreviewsUpdated',
       'veridanTradingViewSignalProposalPreviewsUpdated',
       'veridanTradingViewAlertRecordsUpdated',
+      'veridanTradingViewAlertIntakeRecordsUpdated',
       'storage',
     ];
     events.forEach(e => window.addEventListener(e, refreshEvidence));
@@ -803,7 +811,7 @@ export default function TvMcpMonitoringConsole() {
         <div className="bg-card border border-primary/20 rounded-sm overflow-hidden">
           <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/20">
             <span className="text-[9px] font-bold uppercase text-primary">MCP Evidence Chain</span>
-            <span className="ml-2 text-[7px] text-slate-500 font-mono">sources: mcpChecks · navHistory · previews · alertAccepted · alertRejected · proposals</span>
+            <span className="ml-2 text-[7px] text-slate-500 font-mono">sources: mcpChecks · navHistory · previews · alertAccepted · alertRejected · proposals · approvals</span>
           </div>
           <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
@@ -830,6 +838,8 @@ export default function TvMcpMonitoringConsole() {
               { label: 'Last Proposal Risk',      value: evidence.lastProposalRiskProfile ?? 'N/A', cls: 'text-amber-400' },
               { label: 'Proposal Approvals',      value: evidence.proposalApprovalCount ?? 0,       cls: 'text-purple-400 font-bold' },
               { label: 'Approved Count',          value: evidence.proposalApprovedCount ?? 0,       cls: 'text-primary font-bold' },
+              { label: 'Rejected Count',          value: evidence.proposalRejectedCount ?? 0,       cls: evidence.proposalRejectedCount > 0 ? 'text-destructive font-bold' : 'text-slate-400' },
+              { label: 'Needs Review Count',      value: evidence.proposalNeedsReviewCount ?? 0,    cls: 'text-amber-400 font-bold' },
               { label: 'Last Approval At',        value: evidence.lastProposalApprovalAt ? new Date(evidence.lastProposalApprovalAt).toLocaleTimeString() : 'N/A', cls: 'text-purple-400' },
               { label: 'Last Approval Status',    value: evidence.lastProposalApprovalStatus ?? 'N/A', cls: 'text-purple-400 font-bold' },
               { label: 'Last Approved Symbol',    value: evidence.lastApprovedProposalSymbol ?? 'N/A', cls: 'text-primary font-mono' },
