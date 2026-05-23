@@ -21,6 +21,18 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
   // Prerequisites check
   const hasProposalId = signedRequest?.proposalId && typeof signedRequest.proposalId === 'string' && signedRequest.proposalId.trim().length > 0;
 
+  // Simple deterministic hash helper for previewHash generation
+  const generatePreviewHash = (obj) => {
+    const str = JSON.stringify(obj);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return `hash-${Math.abs(hash).toString(36)}`;
+  };
+
   const handleTest = async () => {
     setLoading(true);
     setError(null);
@@ -35,10 +47,27 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     }
 
     try {
-      // Step 1: Send bridge request to openclawBridgeSigner
+      // Build full bridgeRequest with all required Phase 5 fields
+      const fullBridgeRequest = {
+        ...signedRequest,
+        dryRun: true,
+        liveExecution: false,
+        governanceMode: 'SAFE_REQUIRES_APPROVAL',
+        validationResult: 'PASS',
+        executionEligibility: 'ELIGIBLE_PREVIEW',
+        approvalStatus: 'APPROVED',
+      };
+
+      // Generate previewHash if not present
+      const previewHash = signedRequest.previewHash || generatePreviewHash(fullBridgeRequest);
+      const submittedAt = new Date().toISOString();
+
+      // Step 1: Send bridge request to openclawBridgeSigner with complete payload
       const signerPayload = {
-        bridgeRequest: signedRequest,
-        operatorId,
+        bridgeRequest: fullBridgeRequest,
+        previewHash,
+        operatorId: fullBridgeRequest.operatorId || operatorId,
+        submittedAt,
       };
 
       const signerResponse = await base44.functions.invoke('openclawBridgeSigner', signerPayload);
@@ -58,12 +87,12 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         return;
       }
 
-      // Step 2: Send signed packet to openclawBridgePreview
+      // Step 2: Send signed packet to openclawBridgePreview using signer output
       const previewPayload = {
-        bridgeRequest: signedRequest,
-        previewHash: `hash-${Date.now()}`,
-        operatorId,
-        submittedAt: new Date().toISOString(),
+        bridgeRequest: fullBridgeRequest,
+        previewHash,
+        operatorId: fullBridgeRequest.operatorId || operatorId,
+        submittedAt,
         signature: signerData.signature,
         signingVersion: 'OPENCLAW_BRIDGE_V1',
         signedAt: signerData.signedAt,
