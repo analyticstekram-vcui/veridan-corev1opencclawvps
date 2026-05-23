@@ -4,21 +4,23 @@
  * PREVIEW_ONLY / NOT_EXECUTED / NOT_APPROVED
  * No trading · No broker · No orders · No credentials · No money movement · No scheduler
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Shield, FileText, Trash2, CheckCircle2, XCircle, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 
 const PROPOSAL_STORAGE_KEY = 'veridanTradingViewSignalProposalPreviews';
 
-// Ordered source priority — evidence/proposal keys excluded
-const ALERT_SOURCE_KEYS = [
-  'veridanTradingViewAlertIntakeRecords',
-  'veridanTradingViewAlertAcceptedRecords',
-  'veridanTradingViewMcpChecks', // only used if record has usable signal fields
-];
+// Phase 2 writes accepted alerts to this key with fields nested under record.fields
+const INTAKE_KEY    = 'veridanTradingViewAlertIntakeRecords';
+const ACCEPTED_KEY  = 'veridanTradingViewAlertAcceptedRecords';
+const MCP_CHECKS_KEY = 'veridanTradingViewMcpChecks';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function safeArray(key) {
+function readRaw(key) {
+  return localStorage.getItem(key) ?? null;
+}
+
+function readArray(key) {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return [];
@@ -38,137 +40,149 @@ function genId() {
   return 'prop-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
 }
 
-/** Best timestamp (ms) from a record. */
 function bestTs(r) {
   const v = r.receivedAt ?? r.validatedAt ?? r.timestamp ?? r.sourceTimestamp ?? r.createdAt ?? null;
   if (!v) return 0;
   try { const d = new Date(v); return isNaN(d.getTime()) ? 0 : d.getTime(); } catch { return 0; }
 }
 
-/** Extract nested payload object from a record. */
-function getPayload(r) {
-  try {
-    if (r.parsedPayload && typeof r.parsedPayload === 'object') return r.parsedPayload;
-    if (typeof r.rawPayload === 'string') return JSON.parse(r.rawPayload);
-    if (r.payload && typeof r.payload === 'object') return r.payload;
-  } catch {}
-  return {};
+/**
+ * Normalise a record to a flat signal shape.
+ * Phase 2 (TvAlertIntakePanel) stores: { validationStatus, fields: { symbol, signalType, ... } }
+ * Other sources may store top-level fields directly.
+ */
+function normalise(r) {
+  if (!r || typeof r !== 'object') return null;
+  // Phase 2 shape: fields nested under r.fields
+  const f = (r.fields && typeof r.fields === 'object') ? r.fields : r;
+  return {
+    symbol:       f.symbol       ?? r.symbol       ?? null,
+    timeframe:    f.timeframe    ?? r.timeframe     ?? null,
+    strategyName: f.strategyName ?? r.strategyName  ?? null,
+    signalType:   f.signalType   ?? r.signalType    ?? null,
+    side:         f.side         ?? r.side          ?? null,
+    price:        f.price        ?? r.price         ?? null,
+    alertMessage: f.alertMessage ?? r.alertMessage  ?? r.message ?? null,
+    riskProfile:  f.riskProfile  ?? r.riskProfile   ?? r.riskClass ?? null,
+    timestamp:    r.receivedAt   ?? r.validatedAt   ?? r.timestamp ?? r.createdAt ?? null,
+    alertId:      r.alertId      ?? r.id            ?? null,
+  };
 }
 
-/** A record is "accepted" if any acceptance flag is set. */
+/** A record is accepted if any acceptance flag is true. */
 function isAccepted(r) {
   if (!r || typeof r !== 'object') return false;
-  if (r.status === 'ACCEPTED' || r.intakeStatus === 'ACCEPTED' || r.resultStatus === 'ACCEPTED') return true;
+  if (r.validationStatus === 'ACCEPTED') return true;
+  if (r.status === 'ACCEPTED' || r.intakeStatus === 'ACCEPTED') return true;
   if (r.accepted === true || r.isAccepted === true || r.success === true) return true;
-  if (r.phase === 'PHASE_2_ALERT_INTAKE_PREVIEW') return true;
   return false;
 }
 
-/**
- * A record is "proposal-eligible" if it has at least symbol, signalType, side, and timeframe
- * (checking top-level AND nested payload).
- */
-function isEligible(r) {
-  const p = getPayload(r);
-  const has = (a, b) => !!(a || b);
-  return (
-    has(r.symbol,      p.symbol)      &&
-    has(r.signalType,  p.signalType)  &&
-    has(r.side,        p.side)        &&
-    has(r.timeframe,   p.timeframe)
-  );
+/** A normalised signal is eligible if it has all four required fields. */
+function isEligible(norm) {
+  return !!(norm.symbol && norm.signalType && norm.side && norm.timeframe);
 }
 
-/** Load all candidates, returning per-key stats and the sorted eligible list. */
-function loadCandidates() {
+/**
+ * Scan all source keys and return:
+ *   stats[]  — per-key { key, rawLen, parsed, accepted, eligible }
+ *   eligible — sorted list of { norm, sourceKey, sourceRecord }
+ */
+function scanSources() {
   const stats = [];
   const eligible = [];
 
-  for (const key of ALERT_SOURCE_KEYS) {
-    const arr = safeArray(key);
-    let accepted = 0, elig = 0;
+  // ── Key 1 & 2: Phase 2 alert intake keys ──
+  for (const key of [INTAKE_KEY, ACCEPTED_KEY]) {
+    const rawStr = readRaw(key);
+    const arr    = readArray(key);
+    let acc = 0, elig = 0;
     for (const r of arr) {
       if (!isAccepted(r)) continue;
-      accepted++;
-      if (!isEligible(r)) continue;
+      acc++;
+      const norm = normalise(r);
+      if (!norm || !isEligible(norm)) continue;
       elig++;
-      eligible.push({ ...r, _sourceKey: key });
+      eligible.push({ norm, sourceKey: key, sourceRecord: r });
     }
-    stats.push({ key, total: arr.length, accepted, eligible: elig });
+    stats.push({ key, rawLen: rawStr?.length ?? 0, parsed: arr.length, accepted: acc, eligible: elig });
+  }
+
+  // ── Key 3: MCP checks — only if real signal fields present ──
+  {
+    const arr = readArray(MCP_CHECKS_KEY);
+    let acc = 0, elig = 0;
+    for (const r of arr) {
+      if (!isAccepted(r)) continue;
+      acc++;
+      const norm = normalise(r);
+      if (!norm || !isEligible(norm)) continue;
+      elig++;
+      eligible.push({ norm, sourceKey: MCP_CHECKS_KEY, sourceRecord: r });
+    }
+    stats.push({ key: MCP_CHECKS_KEY, rawLen: readRaw(MCP_CHECKS_KEY)?.length ?? 0, parsed: arr.length, accepted: acc, eligible: elig });
   }
 
   // Sort newest first
-  eligible.sort((a, b) => bestTs(b) - bestTs(a));
-  return { eligible, stats };
+  eligible.sort((a, b) => bestTs(b.sourceRecord) - bestTs(a.sourceRecord));
+  return { stats, eligible };
 }
 
 // ─── Safety assertions ────────────────────────────────────────────────────────
 
 const SAFETY_ASSERTIONS = [
-  { key: 'sourceAlertAccepted',        value: true },
-  { key: 'executionStatus',            value: 'NOT_EXECUTED' },
-  { key: 'approvalStatus',             value: 'NOT_APPROVED' },
-  { key: 'brokerConnection',           value: 'DISABLED' },
-  { key: 'liveTrading',                value: 'DISABLED' },
-  { key: 'moneyMovement',              value: 'DISABLED' },
-  { key: 'credentialAccess',           value: 'DISABLED' },
-  { key: 'dispatchAllowed',            value: false },
-  { key: 'executionAllowed',           value: false },
-  { key: 'tradeAttempted',             value: false },
-  { key: 'orderAttempted',             value: false },
-  { key: 'schedulerActive',            value: false },
-  { key: 'pollingLoopActive',          value: false },
+  { key: 'sourceAlertAccepted',   value: true },
+  { key: 'executionStatus',       value: 'NOT_EXECUTED' },
+  { key: 'approvalStatus',        value: 'NOT_APPROVED' },
+  { key: 'brokerConnection',      value: 'DISABLED' },
+  { key: 'liveTrading',           value: 'DISABLED' },
+  { key: 'moneyMovement',         value: 'DISABLED' },
+  { key: 'credentialAccess',      value: 'DISABLED' },
+  { key: 'dispatchAllowed',       value: false },
+  { key: 'executionAllowed',      value: false },
+  { key: 'tradeAttempted',        value: false },
+  { key: 'orderAttempted',        value: false },
+  { key: 'schedulerActive',       value: false },
+  { key: 'pollingLoopActive',     value: false },
 ];
 
 // ─── Proposal builder ─────────────────────────────────────────────────────────
 
-function buildProposal(alert) {
-  const p = getPayload(alert);
-
-  const symbol       = safeStr(alert.symbol       ?? p.symbol,                                        'UNKNOWN');
-  const timeframe    = safeStr(alert.timeframe     ?? p.timeframe   ?? alert.tf ?? p.interval,        'N/A');
-  const strategyName = safeStr(alert.strategyName  ?? p.strategyName ?? alert.strategy ?? p.strategy, 'N/A');
-  const signalType   = safeStr(alert.signalType    ?? p.signalType  ?? alert.signal ?? p.signal,      'N/A');
-  const side         = safeStr(alert.side          ?? p.side        ?? alert.direction ?? p.direction,'N/A');
-  const price        = safeStr(alert.price         ?? p.price       ?? alert.last ?? p.last ?? alert.close ?? p.close, 'N/A');
-  const alertMessage = safeStr(alert.alertMessage  ?? p.alertMessage ?? alert.message ?? p.message,   'N/A');
-  const riskProfile  = safeStr(alert.riskProfile   ?? p.riskProfile ?? alert.riskClass ?? p.riskClass,'SIGNAL_INTAKE_ONLY');
-  const sourceTimestamp = alert.timestamp ?? alert.receivedAt ?? alert.validatedAt ?? alert.sourceTimestamp ?? alert.createdAt ?? new Date().toISOString();
-
+function buildProposal({ norm, sourceKey, sourceRecord }) {
   return {
-    proposalId:              genId(),
-    sourceAlertId:           safeStr(alert.alertId ?? alert.id ?? alert.checkId, 'unknown'),
-    sourceKey:               alert._sourceKey ?? 'unknown',
-    createdAt:               new Date().toISOString(),
-    sourceTimestamp,
-    phase:                   'PHASE_3_SIGNAL_TO_PROPOSAL_PREVIEW',
-    status:                  'PROPOSAL_PREVIEW_CREATED',
-    proposalStatus:          'PROPOSAL_PREVIEW_ONLY',
-    executionStatus:         'NOT_EXECUTED',
-    approvalStatus:          'NOT_APPROVED',
-    riskClass:               'TRADE_PROPOSAL_PREVIEW_ONLY',
-    symbol,
-    timeframe,
-    strategyName,
-    signalType,
-    side,
-    price,
-    alertMessage,
-    riskProfile,
-    liveTrading:             'DISABLED',
-    brokerConnection:        'DISABLED',
-    moneyMovement:           'DISABLED',
-    credentialAccess:        'DISABLED',
-    dispatchAllowed:         false,
-    executionAllowed:        false,
-    tradeAttempted:          false,
-    orderAttempted:          false,
-    schedulerActive:         false,
-    pollingLoopActive:       false,
-    safetyAssertions:        SAFETY_ASSERTIONS,
-    safetyPassCount:         SAFETY_ASSERTIONS.length,
-    safetyFailCount:         0,
-    sourceComponent:         'TvSignalProposalPanel',
+    proposalId:        genId(),
+    sourceAlertId:     safeStr(norm.alertId, 'unknown'),
+    sourceKey,
+    createdAt:         new Date().toISOString(),
+    sourceTimestamp:   norm.timestamp ?? new Date().toISOString(),
+    phase:             'PHASE_3_SIGNAL_TO_PROPOSAL_PREVIEW',
+    status:            'PROPOSAL_PREVIEW_CREATED',
+    proposalStatus:    'PROPOSAL_PREVIEW_ONLY',
+    executionStatus:   'NOT_EXECUTED',
+    approvalStatus:    'NOT_APPROVED',
+    riskClass:         'TRADE_PROPOSAL_PREVIEW_ONLY',
+    symbol:            safeStr(norm.symbol,       'UNKNOWN'),
+    timeframe:         safeStr(norm.timeframe,    'N/A'),
+    strategyName:      safeStr(norm.strategyName, 'N/A'),
+    signalType:        safeStr(norm.signalType,   'N/A'),
+    side:              safeStr(norm.side,         'N/A'),
+    price:             safeStr(norm.price,        'N/A'),
+    alertMessage:      safeStr(norm.alertMessage, 'N/A'),
+    riskProfile:       safeStr(norm.riskProfile,  'SIGNAL_INTAKE_ONLY'),
+    liveTrading:       'DISABLED',
+    brokerConnection:  'DISABLED',
+    moneyMovement:     'DISABLED',
+    credentialAccess:  'DISABLED',
+    dispatchAllowed:   false,
+    executionAllowed:  false,
+    tradeAttempted:    false,
+    orderAttempted:    false,
+    schedulerActive:   false,
+    pollingLoopActive: false,
+    safetyAssertions:  SAFETY_ASSERTIONS,
+    safetyPassCount:   SAFETY_ASSERTIONS.length,
+    safetyFailCount:   0,
+    sourceComponent:   'TvSignalProposalPanel',
   };
 }
 
@@ -177,43 +191,45 @@ function buildProposal(alert) {
 export default function TvSignalProposalPanel() {
   const [proposals,    setProposals]    = useState([]);
   const [lastProposal, setLastProposal] = useState(null);
-  const [diag,         setDiag]        = useState({ eligible: [], stats: [] });
+  const [scan,         setScan]        = useState({ stats: [], eligible: [] });
   const [error,        setError]       = useState(null);
   const [expanded,     setExpanded]    = useState({});
 
-  useEffect(() => {
-    try {
-      setDiag(loadCandidates());
-      const stored = safeArray(PROPOSAL_STORAGE_KEY);
-      setProposals(stored);
-      setLastProposal(stored[0] ?? null);
-    } catch (err) {
-      console.error('[TvSignalProposalPanel] mount error:', err);
-    }
+  const refresh = useCallback(() => {
+    setScan(scanSources());
   }, []);
+
+  useEffect(() => {
+    refresh();
+    const stored = readArray(PROPOSAL_STORAGE_KEY);
+    setProposals(stored);
+    setLastProposal(stored[0] ?? null);
+
+    // Listen for same-tab dispatch from Phase 2
+    window.addEventListener('veridanTradingViewAlertRecordsUpdated', refresh);
+    // Listen for cross-tab storage events
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('veridanTradingViewAlertRecordsUpdated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [refresh]);
 
   const generate = () => {
     setError(null);
-    try {
-      const result = loadCandidates();
-      setDiag(result);
+    const result = scanSources();
+    setScan(result);
 
-      if (result.eligible.length === 0) {
-        setError(
-          'No proposal-eligible accepted alert found. Accept a Phase 2 alert with symbol, signalType, side, and timeframe first.'
-        );
-        return;
-      }
-
-      const proposal = buildProposal(result.eligible[0]);
-      const updated  = [proposal, ...proposals].slice(0, 50);
-      setProposals(updated);
-      setLastProposal(proposal);
-      try { localStorage.setItem(PROPOSAL_STORAGE_KEY, JSON.stringify(updated)); } catch {}
-    } catch (err) {
-      console.error('[TvSignalProposalPanel] generate error:', err);
-      setError(err?.message || 'Unknown error generating proposal preview.');
+    if (result.eligible.length === 0) {
+      setError('No proposal-eligible accepted alert found. Accept a Phase 2 alert with symbol, signalType, side, and timeframe first.');
+      return;
     }
+
+    const proposal = buildProposal(result.eligible[0]);
+    const updated  = [proposal, ...proposals].slice(0, 50);
+    setProposals(updated);
+    setLastProposal(proposal);
+    try { localStorage.setItem(PROPOSAL_STORAGE_KEY, JSON.stringify(updated)); } catch {}
   };
 
   const clearProposals = () => {
@@ -232,11 +248,13 @@ export default function TvSignalProposalPanel() {
     </div>
   );
 
-  // Diagnostics summary
-  const totalScanned  = diag.stats.reduce((s, x) => s + x.total, 0);
-  const totalAccepted = diag.stats.reduce((s, x) => s + x.accepted, 0);
-  const totalEligible = diag.eligible.length;
-  const latestElig    = diag.eligible[0] ?? null;
+  const latestElig  = scan.eligible[0] ?? null;
+  const totalParsed = scan.stats.reduce((s, x) => s + x.parsed, 0);
+  const totalAcc    = scan.stats.reduce((s, x) => s + x.accepted, 0);
+  const totalElig   = scan.eligible.length;
+
+  // Debug values for primary key
+  const intakeStat = scan.stats.find(s => s.key === INTAKE_KEY);
 
   return (
     <div className="bg-card border border-blue-500/20 rounded-sm overflow-hidden">
@@ -261,26 +279,38 @@ export default function TvSignalProposalPanel() {
       <div className="px-4 py-2.5 border-b border-border/20 bg-secondary/10 space-y-1.5">
         <div className="flex flex-wrap items-center gap-3 text-[7px] font-mono">
           <span className="text-slate-500 font-bold uppercase">Source Scan:</span>
-          <span className="text-slate-400">Scanned: <span className="text-foreground font-bold">{totalScanned}</span></span>
-          <span className="text-slate-400">Accepted: <span className={totalAccepted > 0 ? 'text-amber-400 font-bold' : 'text-slate-600'}>{totalAccepted}</span></span>
-          <span className="text-slate-400">Eligible: <span className={totalEligible > 0 ? 'text-primary font-bold' : 'text-amber-400 font-bold'}>{totalEligible}</span></span>
+          <span className="text-slate-400">Parsed: <span className="text-foreground font-bold">{totalParsed}</span></span>
+          <span className="text-slate-400">Accepted: <span className={totalAcc > 0 ? 'text-amber-400 font-bold' : 'text-slate-600'}>{totalAcc}</span></span>
+          <span className="text-slate-400">Eligible: <span className={totalElig > 0 ? 'text-primary font-bold' : 'text-amber-400 font-bold'}>{totalElig}</span></span>
           {latestElig && <>
-            <span className="text-slate-400">Source: <span className="text-primary">{latestElig._sourceKey}</span></span>
-            <span className="text-slate-400">ID: <span className="text-slate-300">{safeStr(latestElig.alertId ?? latestElig.id, '?')}</span></span>
-            <span className="text-slate-400">Symbol: <span className="text-primary font-bold">{safeStr(latestElig.symbol ?? latestElig.payload?.symbol, '?')}</span></span>
-            <span className="text-slate-400">At: <span className="text-slate-300">{(() => { const ts = bestTs(latestElig); return ts ? new Date(ts).toLocaleString() : 'N/A'; })()}</span></span>
+            <span className="text-slate-400">Source: <span className="text-primary">{latestElig.sourceKey}</span></span>
+            <span className="text-slate-400">ID: <span className="text-slate-300">{safeStr(latestElig.norm.alertId, '?')}</span></span>
+            <span className="text-slate-400">Symbol: <span className="text-primary font-bold">{safeStr(latestElig.norm.symbol, '?')}</span></span>
+            <span className="text-slate-400">At: <span className="text-slate-300">{(() => { const ts = bestTs(latestElig.sourceRecord); return ts ? new Date(ts).toLocaleString() : 'N/A'; })()}</span></span>
           </>}
           {!latestElig && <span className="text-amber-400">⚠ No eligible alerts — accept a Phase 2 alert with symbol/signalType/side/timeframe.</span>}
+          <button type="button" onClick={refresh}
+            className="px-1.5 py-0.5 rounded-sm border border-border/20 text-slate-600 hover:text-slate-400 hover:bg-secondary/30 transition-colors">
+            ↻ refresh
+          </button>
         </div>
 
         {/* Per-key breakdown */}
         <div className="flex flex-wrap gap-2">
-          {diag.stats.map(s => (
+          {scan.stats.map(s => (
             <span key={s.key} className={`text-[6.5px] font-mono px-1.5 py-0.5 rounded-sm border ${s.eligible > 0 ? 'border-primary/30 bg-primary/5 text-primary' : s.accepted > 0 ? 'border-amber-500/30 text-amber-500' : 'border-border/20 text-slate-700'}`}>
-              {s.key.replace('veridanTradingView', '…')} {s.total}rec/{s.accepted}acc/{s.eligible}elig
+              {s.key.replace('veridanTradingView', '…')} raw:{s.rawLen}b / {s.parsed}rec / {s.accepted}acc / {s.eligible}elig
             </span>
           ))}
         </div>
+
+        {/* Debug line for primary intake key */}
+        {intakeStat && (
+          <div className="text-[6.5px] font-mono text-slate-700">
+            debug {INTAKE_KEY}: rawLen={intakeStat.rawLen} parsed={intakeStat.parsed} accepted={intakeStat.accepted} eligible={intakeStat.eligible}
+            {latestElig?.sourceKey === INTAKE_KEY && <> · symbol={latestElig.norm.symbol} side={latestElig.norm.side} id={latestElig.norm.alertId}</>}
+          </div>
+        )}
       </div>
 
       {/* Action buttons */}
@@ -311,7 +341,7 @@ export default function TvSignalProposalPanel() {
         </div>
       )}
 
-      {/* Latest proposal result card */}
+      {/* Latest proposal */}
       {lastProposal && (
         <div className="p-4 space-y-3">
           <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/30 rounded-sm">
@@ -325,33 +355,31 @@ export default function TvSignalProposalPanel() {
             </div>
           </div>
 
-          {/* Fields grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {fieldCard('proposalId',             lastProposal.proposalId,              'text-slate-400 text-[7px]')}
-            {fieldCard('sourceAlertId',          lastProposal.sourceAlertId,           'text-slate-400 text-[7px]')}
-            {fieldCard('symbol',                 lastProposal.symbol,                  'text-primary font-bold')}
-            {fieldCard('timeframe',              lastProposal.timeframe,               'text-primary font-bold')}
-            {fieldCard('strategyName',           lastProposal.strategyName)}
-            {fieldCard('signalType',             lastProposal.signalType)}
-            {fieldCard('side',                   lastProposal.side,                    'text-amber-400 font-bold')}
-            {fieldCard('price',                  lastProposal.price,                   'text-primary')}
-            {fieldCard('riskProfile',            lastProposal.riskProfile,             'text-amber-400')}
-            {fieldCard('phase',                  lastProposal.phase,                   'text-blue-400 text-[7px]')}
-            {fieldCard('status',                 lastProposal.status,                  'text-blue-400 font-bold')}
-            {fieldCard('executionStatus',        lastProposal.executionStatus,         'text-destructive font-bold')}
-            {fieldCard('approvalStatus',         lastProposal.approvalStatus,          'text-destructive font-bold')}
-            {fieldCard('riskClass',              lastProposal.riskClass,               'text-amber-400 font-bold')}
-            {fieldCard('liveTrading',            lastProposal.liveTrading,             'text-destructive font-bold')}
-            {fieldCard('brokerConnection',       lastProposal.brokerConnection,        'text-destructive font-bold')}
-            {fieldCard('moneyMovement',          lastProposal.moneyMovement,           'text-destructive font-bold')}
-            {fieldCard('credentialAccess',       lastProposal.credentialAccess,        'text-destructive font-bold')}
-            {fieldCard('dispatchAllowed',        String(lastProposal.dispatchAllowed),        'text-destructive font-bold')}
-            {fieldCard('executionAllowed',       String(lastProposal.executionAllowed),       'text-destructive font-bold')}
-            {fieldCard('tradeAttempted',         String(lastProposal.tradeAttempted),         'text-destructive font-bold')}
-            {fieldCard('orderAttempted',         String(lastProposal.orderAttempted),         'text-destructive font-bold')}
+            {fieldCard('symbol',           lastProposal.symbol,          'text-primary font-bold')}
+            {fieldCard('timeframe',        lastProposal.timeframe,       'text-primary font-bold')}
+            {fieldCard('side',             lastProposal.side,            'text-amber-400 font-bold')}
+            {fieldCard('price',            lastProposal.price,           'text-primary')}
+            {fieldCard('signalType',       lastProposal.signalType)}
+            {fieldCard('strategyName',     lastProposal.strategyName)}
+            {fieldCard('riskProfile',      lastProposal.riskProfile,     'text-amber-400')}
+            {fieldCard('phase',            lastProposal.phase,           'text-blue-400 text-[7px]')}
+            {fieldCard('status',           lastProposal.status,          'text-blue-400 font-bold')}
+            {fieldCard('executionStatus',  lastProposal.executionStatus, 'text-destructive font-bold')}
+            {fieldCard('approvalStatus',   lastProposal.approvalStatus,  'text-destructive font-bold')}
+            {fieldCard('riskClass',        lastProposal.riskClass,       'text-amber-400 font-bold')}
+            {fieldCard('liveTrading',      lastProposal.liveTrading,     'text-destructive font-bold')}
+            {fieldCard('brokerConnection', lastProposal.brokerConnection,'text-destructive font-bold')}
+            {fieldCard('moneyMovement',    lastProposal.moneyMovement,   'text-destructive font-bold')}
+            {fieldCard('credentialAccess', lastProposal.credentialAccess,'text-destructive font-bold')}
+            {fieldCard('dispatchAllowed',  String(lastProposal.dispatchAllowed), 'text-destructive font-bold')}
+            {fieldCard('executionAllowed', String(lastProposal.executionAllowed),'text-destructive font-bold')}
+            {fieldCard('tradeAttempted',   String(lastProposal.tradeAttempted),  'text-destructive font-bold')}
+            {fieldCard('orderAttempted',   String(lastProposal.orderAttempted),  'text-destructive font-bold')}
+            {fieldCard('sourceAlertId',    lastProposal.sourceAlertId,   'text-slate-400 text-[7px]')}
+            {fieldCard('proposalId',       lastProposal.proposalId,      'text-slate-400 text-[7px]')}
           </div>
 
-          {/* Alert message */}
           {lastProposal.alertMessage && lastProposal.alertMessage !== 'N/A' && (
             <div className="bg-secondary/20 border border-border/20 rounded-sm px-3 py-2">
               <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">alertMessage</div>
@@ -359,7 +387,6 @@ export default function TvSignalProposalPanel() {
             </div>
           )}
 
-          {/* Safety assertions */}
           <div className="bg-card border border-border/40 rounded-sm overflow-hidden">
             <div className="px-3 py-2 bg-secondary/20 border-b border-border/40 flex items-center justify-between">
               <span className="text-[8px] font-bold uppercase text-slate-400">Safety Assertions</span>
@@ -390,11 +417,8 @@ export default function TvSignalProposalPanel() {
           <div className="divide-y divide-border/20">
             {proposals.map((p, i) => (
               <div key={p.proposalId ?? i}>
-                <button
-                  type="button"
-                  onClick={() => toggle(p.proposalId ?? i)}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-secondary/20 transition-colors text-left"
-                >
+                <button type="button" onClick={() => toggle(p.proposalId ?? i)}
+                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-secondary/20 transition-colors text-left">
                   {expanded[p.proposalId ?? i]
                     ? <ChevronDown className="w-3 h-3 text-slate-500 shrink-0" />
                     : <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />}
@@ -404,7 +428,7 @@ export default function TvSignalProposalPanel() {
                   <span className="ml-auto text-[7px] font-mono text-slate-600">
                     {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
                   </span>
-                  <span className="text-[7px] font-mono text-blue-400 font-bold">{safeStr(p.status ?? p.proposalStatus)}</span>
+                  <span className="text-[7px] font-mono text-blue-400 font-bold">{safeStr(p.status)}</span>
                 </button>
                 {expanded[p.proposalId ?? i] && (
                   <div className="px-4 pb-3 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -418,7 +442,6 @@ export default function TvSignalProposalPanel() {
                       ['riskProfile',     p.riskProfile,     'text-amber-400'],
                       ['sourceKey',       p.sourceKey,       'text-slate-500 text-[7px]'],
                       ['sourceAlertId',   p.sourceAlertId,   'text-slate-500 text-[7px]'],
-                      ['status',          p.status,          'text-blue-400 font-bold'],
                       ['executionStatus', p.executionStatus, 'text-destructive font-bold'],
                       ['approvalStatus',  p.approvalStatus,  'text-destructive font-bold'],
                       ['riskClass',       p.riskClass,       'text-amber-400'],
@@ -446,7 +469,7 @@ export default function TvSignalProposalPanel() {
       {/* Footer */}
       <div className="px-4 py-2 border-t border-border/20 flex items-center gap-2 text-[7px] text-slate-600 font-mono">
         <Shield className="w-2.5 h-2.5 text-blue-500/60 shrink-0" />
-        PROPOSAL_PREVIEW_ONLY · riskClass: TRADE_PROPOSAL_PREVIEW_ONLY · No trade · No broker · No order · No credential · No money movement
+        PROPOSAL_PREVIEW_ONLY · NOT_EXECUTED · NOT_APPROVED · No trade · No broker · No credential · No money movement
       </div>
     </div>
   );

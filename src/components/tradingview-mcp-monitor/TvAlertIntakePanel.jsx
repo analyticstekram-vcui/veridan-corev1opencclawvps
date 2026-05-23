@@ -132,6 +132,8 @@ export default function TvAlertIntakePanel() {
       const updated = [record, ...accepted];
       setAccepted(updated);
       writeStorage(ACCEPTED_KEY, updated);
+      // Notify same-tab listeners (Phase 3)
+      try { window.dispatchEvent(new CustomEvent('veridanTradingViewAlertRecordsUpdated')); } catch {}
     } else {
       const updated = [record, ...rejected];
       setRejected(updated);
