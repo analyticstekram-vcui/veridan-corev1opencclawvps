@@ -30,11 +30,12 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     return `https://${raw}`;
   };
 
-  // Prerequisites check with HTTPS normalization
+  // Prerequisites check with HTTPS normalization and expiration
   const hasProposalId = signedRequest?.proposalId && typeof signedRequest.proposalId === 'string' && signedRequest.proposalId.trim().length > 0;
   const rawTarget = signedRequest?.targetUrl || signedRequest?.requestedTarget || signedRequest?.target || signedRequest?.url || "";
   const normalizedTarget = normalizeHttpsTarget(rawTarget);
   const hasValidHttpsTarget = normalizedTarget && normalizedTarget.startsWith("https://");
+  const hasExpirationAt = signedRequest?.expirationAt && typeof signedRequest.expirationAt === 'string' && signedRequest.expirationAt.trim().length > 0;
 
   // Simple deterministic hash helper for previewHash generation
   const generatePreviewHash = (obj) => {
@@ -62,11 +63,16 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     }
 
     try {
+      // Create timestamp pair for submission and expiration
+      const submittedAt = new Date().toISOString();
+      const expirationAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
       // Build full bridgeRequest with all required Phase 5 fields and normalized HTTPS targets
       const fullBridgeRequest = {
         ...signedRequest,
         targetUrl: normalizedTarget,
         requestedTarget: normalizedTarget,
+        expirationAt,
         dryRun: true,
         liveExecution: false,
         governanceMode: 'SAFE_REQUIRES_APPROVAL',
@@ -77,7 +83,6 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
 
       // Generate previewHash if not present
       const previewHash = signedRequest.previewHash || generatePreviewHash(fullBridgeRequest);
-      const submittedAt = new Date().toISOString();
 
       // Step 1: Send bridge request to openclawBridgeSigner with complete payload
       const signerPayload = {
@@ -85,6 +90,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         previewHash,
         operatorId: fullBridgeRequest.operatorId || operatorId,
         submittedAt,
+        expirationAt,
       };
 
       const signerResponse = await base44.functions.invoke('openclawBridgeSigner', signerPayload);
@@ -110,6 +116,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         previewHash,
         operatorId: fullBridgeRequest.operatorId || operatorId,
         submittedAt,
+        expirationAt,
         signature: signerData.signature,
         signingVersion: 'OPENCLAW_BRIDGE_V1',
         signedAt: signerData.signedAt,
@@ -171,6 +178,14 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
             )}
             <span>requestedTarget: {hasValidHttpsTarget ? 'HTTPS PRESENT' : 'MISSING/INVALID HTTPS'}</span>
           </div>
+          <div className={`flex items-center gap-2 text-[8px] ${hasExpirationAt ? 'text-primary' : 'text-destructive'}`}>
+            {hasExpirationAt ? (
+              <CheckCircle2 className="w-3 h-3" />
+            ) : (
+              <XCircle className="w-3 h-3" />
+            )}
+            <span>expirationAt: {hasExpirationAt ? 'PRESENT' : 'MISSING'}</span>
+          </div>
           <div className="text-[7px] text-slate-500">
             Requires an APPROVED OpenClawProposal with matching commandType, targetUrl, riskTier, and operatorId.
           </div>
@@ -185,7 +200,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         {/* Test Button */}
         <Button
           onClick={handleTest}
-          disabled={loading || !hasProposalId || !hasValidHttpsTarget}
+          disabled={loading || !hasProposalId || !hasValidHttpsTarget || !hasExpirationAt}
           className="w-full bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
