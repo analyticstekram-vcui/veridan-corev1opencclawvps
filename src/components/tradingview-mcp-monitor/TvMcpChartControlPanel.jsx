@@ -13,6 +13,9 @@ import { FilePlus, CheckCircle2, XCircle, Shield, Navigation, AlertTriangle, Ref
 
 const PREVIEW_STORAGE_KEY  = 'veridanTvMcpChartControlPreviews';
 const NAV_STORAGE_KEY      = 'veridanTvMcpChartNavHistory';
+const MCP_CHECKS_KEY       = 'veridanTradingViewMcpChecks';
+
+const SUCCESS_STATUSES = ['SUCCESS', 'CONNECTED_READ_ONLY', 'QUOTE_CONNECTED'];
 
 const CHART_TYPES = ['candlestick', 'bars', 'line'];
 const TIMEFRAMES  = ['1', '5', '15', '30', '60', '240', 'D', 'W'];
@@ -57,8 +60,8 @@ export default function TvMcpChartControlPanel({ checks }) {
   const [navResult,    setNavResult]    = useState(null);
   const [navHistory,   setNavHistory]   = useState(() => loadFromStorage(NAV_STORAGE_KEY));
 
-  // Current symbol from latest successful status check
-  const currentSymbol = checks?.find(c => c.command === 'status' && c.status === 'SUCCESS')?.chartSymbol ?? null;
+  // Current symbol from latest successful status check (any success variant)
+  const currentSymbol = checks?.find(c => c.command === 'status' && SUCCESS_STATUSES.includes(c.status))?.chartSymbol ?? null;
 
   const generatePreview = () => {
     if (!symbol.trim()) return;
@@ -99,6 +102,43 @@ export default function TvMcpChartControlPanel({ checks }) {
       const updated = [record, ...navHistory];
       setNavHistory(updated);
       saveToStorage(NAV_STORAGE_KEY, updated);
+
+      // Also write status + quote verification results into the main MCP evidence chain
+      if (SUCCESS_STATUSES.includes(result.status)) {
+        const now = new Date().toISOString();
+        const existingChecks = loadFromStorage(MCP_CHECKS_KEY);
+        const checkEntries = [];
+        if (result.statusOk) {
+          checkEntries.push({
+            checkId: 'mcp-' + Date.now().toString(36) + '-nav-s',
+            createdAt: now,
+            command: 'status',
+            status: 'CONNECTED_READ_ONLY',
+            relayReachable: true,
+            chartSymbol: result.chartSymbol ?? null,
+            chartResolution: result.chartResolution ?? null,
+            executionLock: 'LOCKED', dispatchAllowed: false, executionAllowed: false,
+            liveTrading: 'DISABLED', brokerConnection: 'DISABLED', credentialAccess: 'DISABLED', moneyMovement: 'DISABLED',
+            sourceComponent: 'TvMcpChartControlPanel',
+          });
+        }
+        if (result.quoteOk) {
+          checkEntries.push({
+            checkId: 'mcp-' + (Date.now() + 1).toString(36) + '-nav-q',
+            createdAt: now,
+            command: 'quote',
+            status: 'QUOTE_CONNECTED',
+            relayReachable: true,
+            chartSymbol: result.chartSymbol ?? null,
+            quoteSymbol: result.quoteData?.symbol ?? null,
+            quoteLast: result.quoteData?.last ?? null,
+            executionLock: 'LOCKED', dispatchAllowed: false, executionAllowed: false,
+            liveTrading: 'DISABLED', brokerConnection: 'DISABLED', credentialAccess: 'DISABLED', moneyMovement: 'DISABLED',
+            sourceComponent: 'TvMcpChartControlPanel',
+          });
+        }
+        saveToStorage(MCP_CHECKS_KEY, [...checkEntries, ...existingChecks]);
+      }
     } catch (err) {
       setNavResult({
         status: 'HOLD_FOR_MCP_RELAY',
@@ -130,7 +170,7 @@ export default function TvMcpChartControlPanel({ checks }) {
   const inputCls = 'w-full px-3 py-2 bg-secondary/20 border border-border/40 text-foreground text-[9px] font-mono rounded-sm focus:outline-none focus:border-primary/50';
   const labelCls = 'text-[7px] uppercase tracking-widest text-slate-500 font-bold mb-1 block';
 
-  const navSuccess = navResult?.status === 'SUCCESS';
+  const navSuccess = SUCCESS_STATUSES.includes(navResult?.status);
 
   return (
     <div className="bg-card border border-amber-500/20 rounded-sm overflow-hidden">
@@ -285,8 +325,8 @@ export default function TvMcpChartControlPanel({ checks }) {
             <button type="button" onClick={executeNavigation} disabled={navLoading}
               className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 border border-primary/30 text-primary text-[9px] font-bold rounded-sm hover:bg-primary/20 disabled:opacity-40 transition-colors">
               {navLoading
-                ? <><RefreshCw className="w-3 h-3 animate-spin" /> Sending Navigation Request…</>
-                : <><Navigation className="w-3 h-3" /> Execute Governed Chart Navigation</>}
+                ? <><RefreshCw className="w-3 h-3 animate-spin" /> Running Verification…</>
+                : <><Navigation className="w-3 h-3" /> Run Read-Only Chart Verification</>}
             </button>
           )}
 
@@ -321,20 +361,43 @@ export default function TvMcpChartControlPanel({ checks }) {
                 ))}
               </div>
 
+              {/* Sub-step results */}
+              {(navResult.healthOk !== undefined || navResult.statusOk !== undefined || navResult.quoteOk !== undefined) && (
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: '/health',               ok: navResult.healthOk },
+                    { label: '/relay?command=status', ok: navResult.statusOk },
+                    { label: '/relay?command=quote',  ok: navResult.quoteOk  },
+                  ].map(s => (
+                    <span key={s.label} className={`text-[7px] font-mono px-2 py-1 rounded-sm border ${s.ok ? 'border-primary/30 bg-primary/5 text-primary' : 'border-amber-500/30 bg-amber-500/5 text-amber-400'}`}>
+                      {s.ok ? '✓' : '⚠'} {s.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {navResult.chartSymbol && (
+                <div className="text-[8px] font-mono text-primary px-2 py-1.5 bg-primary/5 border border-primary/20 rounded-sm">
+                  Chart symbol confirmed: <span className="font-bold">{navResult.chartSymbol}</span>
+                  {navResult.chartResolution && <span className="ml-2 text-slate-400">· TF: {navResult.chartResolution}</span>}
+                </div>
+              )}
+
               {navResult.error && (
                 <div className="text-[8px] text-amber-400 font-mono px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-sm">
                   {navResult.error}
                 </div>
               )}
 
-              {/* Step 4 — Post-navigation instruction */}
-              <div className="flex items-start gap-2 px-3 py-2.5 bg-primary/5 border border-primary/20 rounded-sm">
-                <Navigation className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                <div className="text-[8px] text-primary leading-relaxed">
-                  <span className="font-bold">Next step:</span> Run a <span className="font-bold">Status</span> check and then a <span className="font-bold">Quote</span> check
-                  in the monitoring console above to verify the chart has updated and capture fresh evidence.
+              {navSuccess && (
+                <div className="flex items-start gap-2 px-3 py-2.5 bg-primary/5 border border-primary/20 rounded-sm">
+                  <Navigation className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                  <div className="text-[8px] text-primary leading-relaxed">
+                    <span className="font-bold">Verification complete.</span> Status and Quote checks passed.
+                    To change the chart on VPS, perform the change manually in the TradingView browser, then run another verification here to capture fresh evidence.
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
