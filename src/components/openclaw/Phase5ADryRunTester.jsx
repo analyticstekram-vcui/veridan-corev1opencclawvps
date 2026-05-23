@@ -93,9 +93,13 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
       const submittedAt = new Date().toISOString();
       const expirationAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
+      // Generate unique requestId to avoid replay check DUPLICATE_REQUEST_ID
+      const uniqueRequestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
       // Build full bridgeRequest with all required Phase 5 fields and normalized HTTPS targets
       const fullBridgeRequest = {
         ...signedRequest,
+        requestId: uniqueRequestId,
         targetUrl: normalizedTarget,
         requestedTarget: normalizedTarget,
         expirationAt,
