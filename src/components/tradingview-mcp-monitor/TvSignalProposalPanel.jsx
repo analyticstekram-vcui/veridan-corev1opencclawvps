@@ -336,9 +336,13 @@ export default function TvSignalProposalPanel() {
         {/* Detailed debug line for primary intake key */}
         <div className="text-[6.5px] font-mono text-slate-600 space-y-0.5">
           <div>
-            debug {INTAKE_KEY}: rawLen={intakeStat?.rawLen ?? 0} parsed={intakeStat?.parsed ?? 0} accepted={intakeStat?.accepted ?? 0} eligible={intakeStat?.eligible ?? 0}
+            debug localStorage key: {INTAKE_KEY} ·
+            raw: {intakeStat?.rawLen ?? 0}b ·
+            stored: {intakeStat?.parsed ?? 0} ·
+            accepted: {intakeStat?.accepted ?? 0} ·
+            eligible: {intakeStat?.eligible ?? 0}
             {latestElig?.sourceKey === INTAKE_KEY && (
-              <> · symbol={latestElig.norm.symbol} side={latestElig.norm.side} signalType={latestElig.norm.signalType} tf={latestElig.norm.timeframe} id={latestElig.norm.alertId}</>
+              <> · latest id={latestElig.norm.alertId} · symbol={latestElig.norm.symbol} · side={latestElig.norm.side}</>
             )}
           </div>
           {latestElig && (

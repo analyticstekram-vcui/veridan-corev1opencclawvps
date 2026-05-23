@@ -116,24 +116,57 @@ export default function TvAlertIntakePanel() {
   const handleSubmit = () => {
     if (!raw.trim()) return;
     const { valid, reason, parsed } = validatePayload(raw.trim());
+    const now = new Date().toISOString();
+    const alertId = makeId();
+
+    // Build the extracted fields object (or null if rejected)
+    const extractedFields = valid ? extractFields(parsed) : null;
+
+    // Base record — both old shape (validationStatus/alertId) and new shape (id/status)
+    // plus ALL signal fields promoted to top level so Phase 3 can read either path.
     const record = {
-      alertId:         makeId(),
-      receivedAt:      new Date().toISOString(),
-      phase:           PHASE,
-      executionStatus: EXECUTION_STATUS,
-      riskClass:       RISK_CLASS,
+      // Identity — both conventions so any reader can find them
+      id:               alertId,
+      alertId,
+      receivedAt:       now,
+      sourceTimestamp:  extractedFields?.timestamp ?? now,
+      // Status — both conventions
+      status:           valid ? 'ACCEPTED' : 'REJECTED',
       validationStatus: valid ? 'ACCEPTED' : 'REJECTED',
-      rejectionReason: reason ?? null,
-      fields:          valid ? extractFields(parsed) : null,
-      rawLength:       raw.trim().length,
+      // Governance metadata
+      phase:            PHASE,
+      executionStatus:  EXECUTION_STATUS,
+      riskClass:        RISK_CLASS,
+      rejectionReason:  reason ?? null,
+      rawLength:        raw.trim().length,
+      // Nested fields object (original shape)
+      fields:           extractedFields,
+      // Top-level signal fields promoted for Phase 3 direct access
+      symbol:           extractedFields?.symbol      ?? null,
+      timeframe:        extractedFields?.timeframe   ?? null,
+      signalType:       extractedFields?.signalType  ?? null,
+      side:             extractedFields?.side        ?? null,
+      price:            extractedFields?.price       ?? null,
+      strategyName:     extractedFields?.strategyName  ?? null,
+      alertMessage:     extractedFields?.alertMessage  ?? null,
+      riskProfile:      extractedFields?.riskProfile   ?? null,
+      timestamp:        extractedFields?.timestamp     ?? now,
     };
 
     if (valid) {
       const updated = [record, ...accepted];
-      setAccepted(updated);
+      // Write localStorage FIRST, then update state, then dispatch event
       writeStorage(ACCEPTED_KEY, updated);
-      // Notify same-tab listeners (Phase 3)
-      try { window.dispatchEvent(new CustomEvent('veridanTradingViewAlertRecordsUpdated')); } catch {}
+      setAccepted(updated);
+      try {
+        window.dispatchEvent(new CustomEvent('veridanTradingViewAlertRecordsUpdated', {
+          detail: {
+            sourceKey: ACCEPTED_KEY,
+            recordId:  alertId,
+            status:    'ACCEPTED',
+          },
+        }));
+      } catch {}
     } else {
       const updated = [record, ...rejected];
       setRejected(updated);
@@ -266,6 +299,18 @@ export default function TvAlertIntakePanel() {
           </div>
         </div>
       )}
+
+      {/* Phase 2 localStorage debug line */}
+      <div className="px-4 py-1.5 border-t border-border/20 bg-secondary/5">
+        <div className="text-[6.5px] font-mono text-slate-700">
+          debug localStorage key: {ACCEPTED_KEY} ·
+          raw: {(() => { try { return (localStorage.getItem(ACCEPTED_KEY) ?? '').length; } catch { return 0; } })()}b ·
+          stored: {accepted.length} ·
+          latest id: {accepted[0]?.alertId ?? 'none'} ·
+          latest symbol: {accepted[0]?.symbol ?? accepted[0]?.fields?.symbol ?? 'none'} ·
+          latest side: {accepted[0]?.side ?? accepted[0]?.fields?.side ?? 'none'}
+        </div>
+      </div>
 
       {/* Alert history (collapsible) */}
       {(accepted.length > 0 || rejected.length > 0) && (
