@@ -11,12 +11,14 @@ import TvMcpEvidenceSummary from './TvMcpEvidenceSummary';
 import TvMcpManualChartInstructions from './TvMcpManualChartInstructions';
 import TvMcpChartControlPanel from './TvMcpChartControlPanel';
 import TvAlertIntakePanel from './TvAlertIntakePanel';
+import TvSignalProposalPanel from './TvSignalProposalPanel';
 
 const STORAGE_KEY       = 'veridanTradingViewMcpChecks';
 const NAV_HISTORY_KEY   = 'veridanTvMcpChartNavHistory';
 const PREVIEWS_KEY      = 'veridanTvMcpChartControlPreviews';
 const ALERT_ACCEPTED_KEY = 'veridanTradingViewAlertIntakeRecords';
-const ALERT_REJECTED_KEY = 'veridanTradingViewAlertRejectedRecords';
+const ALERT_REJECTED_KEY  = 'veridanTradingViewAlertRejectedRecords';
+const PROPOSAL_KEY        = 'veridanTradingViewSignalProposalPreviews';
 
 const SUCCESS_STATUSES = ['SUCCESS', 'CONNECTED_READ_ONLY', 'QUOTE_CONNECTED', 'HEALTH_CONNECTED', 'STATUS_CONNECTED', 'READ_ONLY_CHECK_ONLY', 'VERIFIED', 'PASSED', 'READ_ONLY_VERIFIED'];
 
@@ -270,6 +272,22 @@ function normalizeEvidenceRecord(r, sourceKey) {
       };
     }
 
+    // Proposal preview records
+    if (sourceKey === PROPOSAL_KEY) {
+      return {
+        sourceKey, id: safeString(r.proposalId ?? r.id, 'prop-' + Math.random().toString(36).slice(2)),
+        command: 'proposal_preview', status: 'PROPOSAL_PREVIEW_ONLY',
+        timestamp, success: true, blocked: false,
+        isAlert: false, isRejectedAlert: false, isProposal: true,
+        rejectionReason: null, blockedTerm: null,
+        symbol: safeString(r.symbol, null),
+        side: safeString(r.side, null),
+        riskProfile: safeString(r.riskProfile, null),
+        safetyPassCount: typeof r.safetyPassCount === 'number' ? r.safetyPassCount : 0,
+        safetyFailCount: 0,
+      };
+    }
+
     // MCP checks / nav history / previews
     const isBlocked = (
       r.blocked === true || r.rejected === true ||
@@ -299,7 +317,7 @@ function normalizeEvidenceRecord(r, sourceKey) {
   } catch { return null; }
 }
 
-/** Safely load and normalize all 5 storage keys into unified records. */
+/** Safely load and normalize all 6 storage keys into unified records. */
 function loadAllNormalizedRecords() {
   const sources = [
     { key: STORAGE_KEY,        arr: safeArray(STORAGE_KEY) },
@@ -307,6 +325,7 @@ function loadAllNormalizedRecords() {
     { key: PREVIEWS_KEY,       arr: safeArray(PREVIEWS_KEY) },
     { key: ALERT_ACCEPTED_KEY, arr: safeArray(ALERT_ACCEPTED_KEY) },
     { key: ALERT_REJECTED_KEY, arr: safeArray(ALERT_REJECTED_KEY) },
+    { key: PROPOSAL_KEY,       arr: safeArray(PROPOSAL_KEY) },
   ];
 
   const all = [];
@@ -358,6 +377,10 @@ function buildEvidenceChain(rawChecks) {
     const lastBlockReason   = lastRejectedAlert?.rejectionReason ?? null;
     const lastBlockTerm     = lastRejectedAlert?.blockedTerm ?? null;
 
+    // Proposal-specific aggregates
+    const proposals        = records.filter(r => r.isProposal);
+    const lastProposal     = proposals[0] ?? null;
+
     // Safety counts — sum across all records; rejected alerts contribute 0 failures (intentional policy)
     let totalSafetyPass = 0;
     let totalSafetyFail = 0;
@@ -378,6 +401,11 @@ function buildEvidenceChain(rawChecks) {
       lastRejectedAlertAt:    lastRejectedAlert?.timestamp ?? null,
       lastSafetyBlockReason:  lastBlockReason,
       lastSafetyBlockTerm:    lastBlockTerm,
+      proposalPreviewCount:   proposals.length,
+      lastProposalPreviewAt:  lastProposal?.timestamp ?? null,
+      lastProposalSymbol:     lastProposal?.symbol    ?? null,
+      lastProposalSide:       lastProposal?.side      ?? null,
+      lastProposalRiskProfile:lastProposal?.riskProfile ?? null,
       safetyPassCount:        totalSafetyPass,
       safetyFailCount:        totalSafetyFail,
       lockStatus:             'LOCKED',
@@ -390,7 +418,7 @@ function buildEvidenceChain(rawChecks) {
       liveTrading:            'DISABLED',
       brokerConnection:       'DISABLED',
       generatedAt:            new Date().toISOString(),
-      sourceKeys:             [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY, ALERT_ACCEPTED_KEY, ALERT_REJECTED_KEY],
+      sourceKeys:             [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY, ALERT_ACCEPTED_KEY, ALERT_REJECTED_KEY, PROPOSAL_KEY],
     };
 
     try { localStorage.setItem(EVIDENCE_SUMMARY_KEY, JSON.stringify(chain)); } catch {}
@@ -700,6 +728,9 @@ export default function TvMcpMonitoringConsole() {
       {/* Phase 2 — Alert Intake */}
       <TvAlertIntakePanel />
 
+      {/* Phase 3 — Signal to Proposal Preview */}
+      <TvSignalProposalPanel />
+
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={copyLatest} disabled={!latestCheck}
@@ -729,7 +760,7 @@ export default function TvMcpMonitoringConsole() {
         <div className="bg-card border border-primary/20 rounded-sm overflow-hidden">
           <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/20">
             <span className="text-[9px] font-bold uppercase text-primary">MCP Evidence Chain</span>
-            <span className="ml-2 text-[7px] text-slate-500 font-mono">sources: mcpChecks · navHistory · previews · alertAccepted · alertRejected</span>
+            <span className="ml-2 text-[7px] text-slate-500 font-mono">sources: mcpChecks · navHistory · previews · alertAccepted · alertRejected · proposals</span>
           </div>
           <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
@@ -747,8 +778,13 @@ export default function TvMcpMonitoringConsole() {
               { label: 'Last Success At',       value: evidence.lastSuccessfulCheckAt ? new Date(evidence.lastSuccessfulCheckAt).toLocaleTimeString() : 'N/A' },
               { label: 'Last Accepted Alert',   value: evidence.lastAcceptedAlertAt ? new Date(evidence.lastAcceptedAlertAt).toLocaleTimeString() : 'N/A', cls: 'text-primary' },
               { label: 'Last Rejected Alert',   value: evidence.lastRejectedAlertAt ? new Date(evidence.lastRejectedAlertAt).toLocaleTimeString() : 'N/A', cls: 'text-amber-400' },
-              { label: 'Last Block Reason',     value: evidence.lastSafetyBlockReason ?? 'N/A',  cls: 'text-slate-400 text-[7px]' },
-              { label: 'Last Block Term',       value: evidence.lastSafetyBlockTerm   ?? 'N/A',  cls: 'text-slate-400 font-mono text-[7px]' },
+              { label: 'Last Block Reason',       value: evidence.lastSafetyBlockReason ?? 'N/A',  cls: 'text-slate-400 text-[7px]' },
+              { label: 'Last Block Term',         value: evidence.lastSafetyBlockTerm   ?? 'N/A',  cls: 'text-slate-400 font-mono text-[7px]' },
+              { label: 'Proposal Previews',       value: evidence.proposalPreviewCount ?? 0,        cls: 'text-blue-400 font-bold' },
+              { label: 'Last Proposal Preview',   value: evidence.lastProposalPreviewAt ? new Date(evidence.lastProposalPreviewAt).toLocaleTimeString() : 'N/A', cls: 'text-blue-400' },
+              { label: 'Last Proposal Symbol',    value: evidence.lastProposalSymbol    ?? 'N/A',   cls: 'text-primary font-mono' },
+              { label: 'Last Proposal Side',      value: evidence.lastProposalSide      ?? 'N/A',   cls: 'text-amber-400 font-bold' },
+              { label: 'Last Proposal Risk',      value: evidence.lastProposalRiskProfile ?? 'N/A', cls: 'text-amber-400' },
             ].map(c => (
               <div key={c.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
                 <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{c.label}</div>
