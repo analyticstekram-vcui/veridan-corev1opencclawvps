@@ -8,11 +8,12 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [signerStatus, setSignerStatus] = useState(null);
 
   if (!signedRequest) {
     return (
       <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg p-4 text-[9px] text-amber-600">
-        ⚠️ No signed request available. Use Phase 4C Signer first to generate a signature.
+        ⚠️ No bridge request available. Use Phase 4 to build a bridge request first.
       </div>
     );
   }
@@ -21,18 +22,47 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     setLoading(true);
     setError(null);
     setResult(null);
+    setSignerStatus(null);
 
     try {
-      const payload = {
-        signedRequest,
+      // Step 1: Send bridge request to openclawBridgeSigner
+      const signerPayload = {
+        bridgeRequest: signedRequest,
         operatorId,
-        submittedAt: new Date().toISOString(),
       };
 
-      const response = await base44.functions.invoke('openclawBridgeDryRun', payload);
-      setResult(response.data);
+      const signerResponse = await base44.functions.invoke('openclawBridgeSigner', signerPayload);
+      const signerData = signerResponse.data || {};
+      
+      setSignerStatus({
+        success: signerData.signingAllowed,
+        signature: signerData.signature,
+        signedAt: signerData.signedAt,
+        message: signerData.signingAllowed ? 'Signature generated successfully' : signerData.rejectedReason || 'Signing rejected',
+      });
+
+      // If signer failed, stop here
+      if (!signerData.signingAllowed) {
+        setError(`Signer rejected: ${signerData.rejectedReason || 'Unknown reason'}`);
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Send signed packet to openclawBridgePreview
+      const previewPayload = {
+        bridgeRequest: signedRequest,
+        previewHash: `hash-${Date.now()}`,
+        operatorId,
+        submittedAt: new Date().toISOString(),
+        signature: signerData.signature,
+        signingVersion: 'OPENCLAW_BRIDGE_V1',
+        signedAt: signerData.signedAt,
+      };
+
+      const previewResponse = await base44.functions.invoke('openclawBridgePreview', previewPayload);
+      setResult(previewResponse.data);
     } catch (err) {
-      setError(err.message || 'Failed to invoke dry-run bridge');
+      setError(err.message || 'Failed to invoke signer or preview');
     } finally {
       setLoading(false);
     }
@@ -64,15 +94,39 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
           {loading ? (
             <>
               <Loader2 className="w-3 h-3 animate-spin mr-2" />
-              Testing...
+              Testing (Signer → Preview)...
             </>
           ) : (
             <>
               <Zap className="w-3 h-3 mr-2" />
-              Submit to Dry-Run Bridge
+              Sign & Submit to Dry-Run Bridge
             </>
           )}
         </Button>
+
+        {/* Signer Status */}
+        {signerStatus && (
+          <div className={`border rounded p-3 text-[8px] ${
+            signerStatus.success
+              ? 'bg-primary/10 border-primary/30'
+              : 'bg-destructive/10 border-destructive/30'
+          }`}>
+            <div className="flex items-center gap-2 mb-1">
+              {signerStatus.success ? (
+                <CheckCircle2 className="w-3 h-3 text-primary" />
+              ) : (
+                <XCircle className="w-3 h-3 text-destructive" />
+              )}
+              <span className={signerStatus.success ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
+                {signerStatus.success ? 'SIGNER: SUCCESS' : 'SIGNER: FAILED'}
+              </span>
+            </div>
+            <div className="text-[7px] text-slate-400">{signerStatus.message}</div>
+            {signerStatus.signedAt && (
+              <div className="text-[7px] text-slate-500 mt-1">Signed At: {new Date(signerStatus.signedAt).toLocaleTimeString()}</div>
+            )}
+          </div>
+        )}
 
         {/* Error */}
         {error && (
@@ -96,7 +150,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                   <XCircle className="w-4 h-4 text-destructive" />
                 )}
                 <span className={result.acceptedForDryRun ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
-                  {result.acceptedForDryRun ? 'ACCEPTED FOR DRY-RUN' : 'REJECTED'}
+                  PREVIEW: {result.acceptedForDryRun ? 'ACCEPTED FOR DRY-RUN' : 'REJECTED'}
                 </span>
               </div>
 
