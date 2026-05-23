@@ -18,11 +18,21 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     );
   }
 
+  // Prerequisites check
+  const hasProposalId = signedRequest?.proposalId && typeof signedRequest.proposalId === 'string' && signedRequest.proposalId.trim().length > 0;
+
   const handleTest = async () => {
     setLoading(true);
     setError(null);
     setResult(null);
     setSignerStatus(null);
+
+    // Check prerequisite before calling signer
+    if (!hasProposalId) {
+      setError('Missing proposalId: create or select an APPROVED OpenClawProposal before running Phase 5.');
+      setLoading(false);
+      return;
+    }
 
     try {
       // Step 1: Send bridge request to openclawBridgeSigner
@@ -62,7 +72,16 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
       const previewResponse = await base44.functions.invoke('openclawBridgePreview', previewPayload);
       setResult(previewResponse.data);
     } catch (err) {
-      setError(err.message || 'Failed to invoke signer or preview');
+      // Try to extract backend error details from response
+      let errorMsg = err.message || 'Failed to invoke signer or preview';
+      if (err.response?.data?.rejectedReason) {
+        errorMsg = `Backend Error: ${err.response.data.rejectedReason}`;
+      } else if (err.response?.data?.message) {
+        errorMsg = `Backend Error: ${err.response.data.message}`;
+      } else if (err.response?.statusText) {
+        errorMsg = `Backend Error (${err.response.status}): ${err.response.statusText}`;
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -79,6 +98,22 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         {/* Approval Binding Test Cases */}
         <Phase5ApprovalBindingTestCases />
 
+        {/* Prerequisites Check */}
+        <div className="bg-card border border-border/40 rounded p-3 space-y-2">
+          <div className="text-[9px] font-bold uppercase text-slate-300 mb-2">Phase 5A Prerequisites</div>
+          <div className={`flex items-center gap-2 text-[8px] ${hasProposalId ? 'text-primary' : 'text-destructive'}`}>
+            {hasProposalId ? (
+              <CheckCircle2 className="w-3 h-3" />
+            ) : (
+              <XCircle className="w-3 h-3" />
+            )}
+            <span>proposalId: {hasProposalId ? 'PRESENT' : 'MISSING'}</span>
+          </div>
+          <div className="text-[7px] text-slate-500">
+            Requires an APPROVED OpenClawProposal with matching commandType, targetUrl, riskTier, and operatorId.
+          </div>
+        </div>
+
         {/* Warning */}
         <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] text-amber-600">
           <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
@@ -88,8 +123,8 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         {/* Test Button */}
         <Button
           onClick={handleTest}
-          disabled={loading}
-          className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+          disabled={loading || !hasProposalId}
+          className="w-full bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <>
