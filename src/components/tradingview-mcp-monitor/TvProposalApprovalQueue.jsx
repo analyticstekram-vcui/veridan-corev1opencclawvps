@@ -112,12 +112,12 @@ export default function TvProposalApprovalQueue() {
 
   useEffect(() => {
     load();
-    window.addEventListener('veridanTradingViewSignalProposalPreviews', load);
-    window.addEventListener('veridanTradingViewAlertRecordsUpdated', load);
+    window.addEventListener('veridanTradingViewSignalProposalPreviewsUpdated', load);
+    window.addEventListener('veridanTradingViewProposalApprovalRecordsUpdated', load);
     window.addEventListener('storage', load);
     return () => {
-      window.removeEventListener('veridanTradingViewSignalProposalPreviews', load);
-      window.removeEventListener('veridanTradingViewAlertRecordsUpdated', load);
+      window.removeEventListener('veridanTradingViewSignalProposalPreviewsUpdated', load);
+      window.removeEventListener('veridanTradingViewProposalApprovalRecordsUpdated', load);
       window.removeEventListener('storage', load);
     };
   }, [load]);
