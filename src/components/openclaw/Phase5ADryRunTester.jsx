@@ -20,6 +20,10 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
 
   // Prerequisites check
   const hasProposalId = signedRequest?.proposalId && typeof signedRequest.proposalId === 'string' && signedRequest.proposalId.trim().length > 0;
+  const targetUrl = signedRequest?.targetUrl || signedRequest?.requestedTarget;
+  const hasTargetUrl = targetUrl && typeof targetUrl === 'string' && targetUrl.trim().length > 0;
+  const requestedTarget = signedRequest?.requestedTarget || signedRequest?.targetUrl;
+  const hasRequestedTarget = requestedTarget && typeof requestedTarget === 'string' && requestedTarget.trim().length > 0;
 
   // Simple deterministic hash helper for previewHash generation
   const generatePreviewHash = (obj) => {
@@ -50,6 +54,8 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
       // Build full bridgeRequest with all required Phase 5 fields
       const fullBridgeRequest = {
         ...signedRequest,
+        targetUrl: signedRequest?.targetUrl || signedRequest?.requestedTarget,
+        requestedTarget: signedRequest?.requestedTarget || signedRequest?.targetUrl,
         dryRun: true,
         liveExecution: false,
         governanceMode: 'SAFE_REQUIRES_APPROVAL',
@@ -138,6 +144,22 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
             )}
             <span>proposalId: {hasProposalId ? 'PRESENT' : 'MISSING'}</span>
           </div>
+          <div className={`flex items-center gap-2 text-[8px] ${hasTargetUrl ? 'text-primary' : 'text-destructive'}`}>
+            {hasTargetUrl ? (
+              <CheckCircle2 className="w-3 h-3" />
+            ) : (
+              <XCircle className="w-3 h-3" />
+            )}
+            <span>targetUrl: {hasTargetUrl ? 'PRESENT' : 'MISSING'}</span>
+          </div>
+          <div className={`flex items-center gap-2 text-[8px] ${hasRequestedTarget ? 'text-primary' : 'text-destructive'}`}>
+            {hasRequestedTarget ? (
+              <CheckCircle2 className="w-3 h-3" />
+            ) : (
+              <XCircle className="w-3 h-3" />
+            )}
+            <span>requestedTarget: {hasRequestedTarget ? 'PRESENT' : 'MISSING'}</span>
+          </div>
           <div className="text-[7px] text-slate-500">
             Requires an APPROVED OpenClawProposal with matching commandType, targetUrl, riskTier, and operatorId.
           </div>
@@ -152,7 +174,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         {/* Test Button */}
         <Button
           onClick={handleTest}
-          disabled={loading || !hasProposalId}
+          disabled={loading || !hasProposalId || !hasTargetUrl || !hasRequestedTarget}
           className="w-full bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
