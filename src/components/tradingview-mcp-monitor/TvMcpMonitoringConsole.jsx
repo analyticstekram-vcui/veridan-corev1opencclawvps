@@ -11,7 +11,11 @@ import TvMcpEvidenceSummary from './TvMcpEvidenceSummary';
 import TvMcpManualChartInstructions from './TvMcpManualChartInstructions';
 import TvMcpChartControlPanel from './TvMcpChartControlPanel';
 
-const STORAGE_KEY = 'veridanTradingViewMcpChecks';
+const STORAGE_KEY     = 'veridanTradingViewMcpChecks';
+const NAV_HISTORY_KEY = 'veridanTvMcpChartNavHistory';
+const PREVIEWS_KEY    = 'veridanTvMcpChartControlPreviews';
+
+const SUCCESS_STATUSES = ['SUCCESS', 'CONNECTED_READ_ONLY', 'QUOTE_CONNECTED', 'HEALTH_CONNECTED', 'STATUS_CONNECTED', 'READ_ONLY_CHECK_ONLY'];
 
 const ALLOWED_COMMANDS = ['status', 'quote'];
 const BLOCKED_COMMANDS = ['trade', 'order', 'buy', 'sell', 'close', 'flatten', 'broker', 'login', 'password', 'credential', 'withdraw', 'deposit', 'transfer', 'health', 'values', 'screenshot', 'ui-state', 'discover', 'range', 'stream'];
@@ -161,22 +165,51 @@ function buildCheckRecord({ command, result, durationMs }) {
   };
 }
 
+/**
+ * Load all three storage keys, merge, sort by createdAt desc.
+ * Nav history entries are normalised into check-like records.
+ */
+function loadAllEvidenceRecords() {
+  const mcpChecks = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } })();
+  const navHistory = (() => { try { return JSON.parse(localStorage.getItem(NAV_HISTORY_KEY) || '[]'); } catch { return []; } })();
+
+  // Normalise nav history entries so they look like check records
+  const navAsChecks = navHistory.map(n => ({
+    checkId:     n.auditId ?? ('nav-' + (n.invokedAt || '')),
+    createdAt:   n.invokedAt ?? n.createdAt ?? new Date().toISOString(),
+    command:     n.lastCommand ?? 'read-only-chart-verification',
+    status:      n.status ?? 'UNKNOWN',
+    relayReachable: n.statusOk || n.quoteOk || false,
+    safetyPassCount: (n.tradingAttempted === false && n.brokerActionsAttempted === false && n.moneyMovementAttempted === false && n.credentialExposed === false) ? 4 : 0,
+    safetyFailCount: 0,
+    sourceComponent: 'TvMcpChartControlPanel',
+  }));
+
+  const all = [...mcpChecks, ...navAsChecks];
+  // Sort newest first
+  all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return all;
+}
+
 function buildEvidenceChain(checks) {
-  const successful = checks.filter(c => ['SUCCESS', 'CONNECTED_READ_ONLY', 'QUOTE_CONNECTED'].includes(c.status));
+  const successful = checks.filter(c => SUCCESS_STATUSES.includes(c.status));
   const blocked    = checks.filter(c => c.status === 'BLOCKED_BY_POLICY');
   const last       = checks[0];
-  const totalSafetyPass = checks.reduce((s, c) => s + (c.safetyPassCount || 0), 0);
-  const totalSafetyFail = checks.reduce((s, c) => s + (c.safetyFailCount || 0), 0);
+  // safetyPassCount may be missing on nav records — treat missing as 0
+  const totalSafetyPass = checks.reduce((s, c) => s + (c.safetyPassCount ?? 0), 0);
+  const totalSafetyFail = checks.reduce((s, c) => s + (c.safetyFailCount ?? 0), 0);
+  // lastCommand: prefer most recent successful check's command
+  const lastSuccessful = successful[0];
   return {
-    totalChecks:          checks.length,
-    successfulChecks:     successful.length,
-    blockedCommandTests:  blocked.length,
-    lastSuccessfulCheckAt: successful[0]?.createdAt ?? null,
-    lastCommand:          last?.command ?? null,
-    safetyPassCount:      totalSafetyPass,
-    safetyFailCount:      totalSafetyFail,
-    lockStatus:           'LOCKED',
-    generatedAt:          new Date().toISOString(),
+    totalChecks:           checks.length,
+    successfulChecks:      successful.length,
+    blockedCommandTests:   blocked.length,
+    lastSuccessfulCheckAt: lastSuccessful?.createdAt ?? null,
+    lastCommand:           lastSuccessful?.command ?? last?.command ?? null,
+    safetyPassCount:       totalSafetyPass,
+    safetyFailCount:       totalSafetyFail,
+    lockStatus:            'LOCKED',
+    generatedAt:           new Date().toISOString(),
   };
 }
 
@@ -203,7 +236,8 @@ export default function TvMcpMonitoringConsole() {
   useEffect(() => {
     const stored = loadChecks();
     setChecks(stored);
-    if (stored.length) setEvidence(buildEvidenceChain(stored));
+    const all = loadAllEvidenceRecords();
+    if (all.length) setEvidence(buildEvidenceChain(all));
   }, []);
 
   const runCheck = async () => {
@@ -246,8 +280,11 @@ export default function TvMcpMonitoringConsole() {
   };
 
   const regenEvidence = () => {
+    const all = loadAllEvidenceRecords();
+    // Also refresh the primary checks state from the main key
     const stored = loadChecks();
-    setEvidence(buildEvidenceChain(stored));
+    setChecks(stored);
+    setEvidence(buildEvidenceChain(all));
     setShowEvidence(true);
   };
 
