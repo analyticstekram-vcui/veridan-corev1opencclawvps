@@ -1072,17 +1072,24 @@ export default function TvMcpMonitoringConsole() {
 
         const totalCandidates = Object.values(sourceCountMap).reduce((s, n) => s + n, 0);
 
-        // Valid = source has at least one record and the evidence resolver found a command from it
         const resolvedSource = evidence.lastCommandSource ?? null;
         const sourcesPresent = Object.entries(sourceCountMap)
           .filter(([, cnt]) => cnt > 0)
           .map(([key]) => SOURCE_LABELS[key] ?? key);
 
-        // Valid command-bearing count: sum of records from sources that carry real commands
-        // (STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY — alerts/proposals carry synthetic commands)
-        const cmdSources = [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY];
-        const validCount   = cmdSources.reduce((s, k) => s + (sourceCountMap[k] ?? 0), 0);
-        const ignoredCount = totalCandidates - validCount;
+        // Build the same candidate list as buildEvidenceChain and apply the same
+        // isValidCommand helper used by resolveLastCommandFromEvents.
+        const rawMcpChecks  = safeArray(STORAGE_KEY);
+        const rawNavHistory = safeArray(NAV_HISTORY_KEY);
+        const rawPreviews   = safeArray(PREVIEWS_KEY);
+        const coverageCandidates = [
+          ...loadAllNormalizedRecords().map(r => r.command ?? null),
+          ...rawMcpChecks.map(r  => r.command ?? r.lastCommand ?? r.commandType ?? null),
+          ...rawNavHistory.map(r => r.command ?? r.lastCommand ?? r.commandType ?? null),
+          ...rawPreviews.map(r   => r.command ?? r.lastCommand ?? r.commandType ?? null),
+        ];
+        const validCount   = coverageCandidates.filter(cmd => isValidCommand(cmd)).length;
+        const ignoredCount = coverageCandidates.length - validCount;
 
         let statusMsg;
         if (totalCandidates === 0) {
