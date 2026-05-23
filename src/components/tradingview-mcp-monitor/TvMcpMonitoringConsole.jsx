@@ -170,188 +170,240 @@ function buildCheckRecord({ command, result, durationMs }) {
   };
 }
 
-function readStorage(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+// ─── Defensive helpers ────────────────────────────────────────────────────────
+
+/** Safely load a localStorage key as an array. Never throws. */
+function safeArray(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
 }
 
-const SAFE_EXECUTION_STATUSES = new Set(['NOT_EXECUTED', 'READ_ONLY_CHECK_ONLY', 'BROWSER_NAVIGATION_ONLY', 'PREVIEW_ONLY', undefined, null]);
-
-/** A record is successful if its status or flags indicate a clean pass */
-function isSuccessRecord(r) {
-  if (!r) return false;
-  if (SUCCESS_STATUSES.includes(r.status)) return true;
-  if (r.status === 'ACCEPTED') return true;
-  if (r.accepted === true || r.success === true) return true;
-  if (r.quoteOk === true || r.statusOk === true || r.healthOk === true) return true;
-  if (r.statusOk && r.quoteOk) return true;
-  return false;
+/** Derive a canonical ISO timestamp from any record shape. Never throws. */
+function safeTimestamp(r) {
+  if (!r || typeof r !== 'object') return null;
+  const v = r.createdAt ?? r.receivedAt ?? r.validatedAt ?? r.timestamp ??
+            r.generatedAt ?? r.auditTimestamp ?? r.updatedAt ?? r.invokedAt ?? null;
+  if (!v) return null;
+  try {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  } catch { return null; }
 }
 
-/** A record is blocked if it was explicitly rejected/blocked */
-function isBlockedRecord(r) {
-  if (!r) return false;
-  if (r.status === 'BLOCKED_BY_POLICY' || r.status === 'REJECTED') return true;
-  if (r.blocked === true || r.rejected === true) return true;
-  if (typeof r.rejectionReason === 'string' && r.rejectionReason.toLowerCase().includes('blocked term')) return true;
-  return false;
+function safeString(v, fallback = 'N/A') {
+  if (v === null || v === undefined) return fallback;
+  return String(v);
 }
 
-/** A record passes safety unless it shows a violation */
-function isSafeRecord(r) {
-  if (!r) return true;
-  if (r.tradingAttempted === true) return false;
-  if (r.brokerActionsAttempted === true || r.brokerActionAttempted === true) return false;
-  if (r.credentialExposed === true) return false;
-  if (r.moneyMovementAttempted === true) return false;
-  if (r.dispatchAllowed === true) return false;
-  if (r.executionAllowed === true) return false;
-  if (r.executionStatus !== undefined && r.executionStatus !== null && !SAFE_EXECUTION_STATUSES.has(r.executionStatus)) return false;
-  if (r.liveTrading !== undefined && r.liveTrading !== null && r.liveTrading !== 'DISABLED' && r.liveTrading !== false) return false;
-  if (r.brokerConnection !== undefined && r.brokerConnection !== null && r.brokerConnection !== 'DISABLED' && r.brokerConnection !== false) return false;
-  return true;
-}
+function safeBool(v) { return v === true; }
 
-/** Derive a canonical timestamp from a record regardless of field name */
-function recordTimestamp(r) {
-  if (!r) return null;
-  return r.createdAt ?? r.receivedAt ?? r.validatedAt ?? r.invokedAt ?? r.timestamp ?? null;
+const SUCCESS_STATUS_SET = new Set([
+  'SUCCESS', 'CONNECTED_READ_ONLY', 'QUOTE_CONNECTED', 'HEALTH_CONNECTED',
+  'STATUS_CONNECTED', 'READ_ONLY_CHECK_ONLY', 'VERIFIED', 'PASSED',
+  'READ_ONLY_VERIFIED', 'CONNECTED', 'ACCEPTED', 'LOCALLY_APPROVED',
+]);
+
+/**
+ * Derive safety pass/fail counts from a raw record.
+ * Never counts a missing safety field as a failure.
+ */
+function deriveSafetyCounts(r) {
+  // Explicit numeric fields take priority
+  if (typeof r.safetyPassCount === 'number' && typeof r.safetyFailCount === 'number') {
+    return { pass: r.safetyPassCount, fail: r.safetyFailCount };
+  }
+  // safetyAssertions array
+  if (Array.isArray(r.safetyAssertions) && r.safetyAssertions.length > 0) {
+    let pass = 0, fail = 0;
+    for (const a of r.safetyAssertions) {
+      if (a && typeof a === 'object') { a.pass === false ? fail++ : pass++; }
+    }
+    return { pass, fail };
+  }
+  // violationFlags object — each truthy flag is a failure
+  if (r.violationFlags && typeof r.violationFlags === 'object') {
+    let fail = 0;
+    for (const v of Object.values(r.violationFlags)) { if (v === true) fail++; }
+    return { pass: 0, fail };
+  }
+  // No safety data — default 0/0, not assumed pass or fail
+  return { pass: 0, fail: 0 };
 }
 
 /**
- * Load all five storage keys, normalise, merge, sort newest first.
+ * Normalise any raw record from any of the 5 storage keys into a
+ * unified shape used only for evidence chain aggregation.
  */
-function loadAllEvidenceRecords() {
-  const mcpChecks       = readStorage(STORAGE_KEY);
-  const navHistory      = readStorage(NAV_HISTORY_KEY);
-  const previews        = readStorage(PREVIEWS_KEY);
-  const alertAccepted   = readStorage(ALERT_ACCEPTED_KEY);
-  const alertRejected   = readStorage(ALERT_REJECTED_KEY);
+function normalizeEvidenceRecord(r, sourceKey) {
+  if (!r || typeof r !== 'object') return null;
+  try {
+    const status    = safeString(r.status, 'UNKNOWN');
+    const timestamp = safeTimestamp(r);
+    const { pass, fail } = deriveSafetyCounts(r);
 
-  const navAsChecks = navHistory.map(n => ({
-    checkId:               n.auditId ?? ('nav-' + (recordTimestamp(n) || Date.now())),
-    createdAt:             recordTimestamp(n) ?? new Date().toISOString(),
-    command:               n.lastCommand ?? n.command ?? 'read_only_chart_verification',
-    status:                n.status ?? (n.statusOk && n.quoteOk ? 'QUOTE_CONNECTED' : 'UNKNOWN'),
-    relayReachable:        !!(n.statusOk || n.quoteOk),
-    statusOk:              n.statusOk ?? false,
-    quoteOk:               n.quoteOk  ?? false,
-    tradingAttempted:      n.tradingAttempted       ?? false,
-    brokerActionsAttempted:n.brokerActionsAttempted ?? false,
-    moneyMovementAttempted:n.moneyMovementAttempted ?? false,
-    credentialExposed:     n.credentialExposed      ?? false,
-    liveTrading:           n.liveTrading    ?? 'DISABLED',
-    brokerConnection:      n.brokerConnection ?? 'DISABLED',
-    safetyPassCount:       null,
-    safetyFailCount:       null,
-    sourceComponent:       'TvMcpChartControlPanel',
-  }));
+    // Alert-accepted records
+    if (sourceKey === ALERT_ACCEPTED_KEY) {
+      return {
+        sourceKey, id: safeString(r.alertId ?? r.id, 'alert-acc-' + Math.random().toString(36).slice(2)),
+        command: 'alert_accepted', status: 'ACCEPTED',
+        timestamp, success: true, blocked: false,
+        isAlert: true, isRejectedAlert: false,
+        rejectionReason: null, blockedTerm: null,
+        safetyPassCount: pass, safetyFailCount: 0, // intentional policy block = not a safety fail
+      };
+    }
 
-  const approvedPreviews = previews
-    .filter(p => p.approvalStatus === 'LOCALLY_APPROVED')
-    .map(p => ({
-      checkId:               p.previewId ?? ('preview-' + (recordTimestamp(p) || '')),
-      createdAt:             p.approvedAt ?? recordTimestamp(p) ?? new Date().toISOString(),
-      command:               'chart_preview_approval',
-      status:                'LOCALLY_APPROVED',
-      tradingAttempted:      false, brokerActionsAttempted: false,
-      moneyMovementAttempted:false, credentialExposed: false,
-      liveTrading:           'DISABLED', brokerConnection: 'DISABLED',
-      safetyPassCount:       null, safetyFailCount: null,
-      sourceComponent:       'TvMcpChartControlPanel',
-    }));
+    // Alert-rejected records
+    if (sourceKey === ALERT_REJECTED_KEY) {
+      return {
+        sourceKey, id: safeString(r.alertId ?? r.id, 'alert-rej-' + Math.random().toString(36).slice(2)),
+        command: 'alert_rejected', status: 'REJECTED',
+        timestamp, success: false, blocked: true,
+        isAlert: true, isRejectedAlert: true,
+        rejectionReason: safeString(r.rejectionReason, null),
+        blockedTerm: safeString(r.blockedTerm ?? r.matchedTerm, null),
+        safetyPassCount: pass, safetyFailCount: 0, // intentional policy block = not a safety fail
+      };
+    }
 
-  // Normalise accepted alert records
-  const acceptedAsChecks = alertAccepted.map(a => ({
-    checkId:               a.alertId ?? ('alert-acc-' + (recordTimestamp(a) || Date.now())),
-    createdAt:             recordTimestamp(a) ?? new Date().toISOString(),
-    command:               'alert_intake',
-    status:                'ACCEPTED',
-    executionStatus:       a.executionStatus ?? 'NOT_EXECUTED',
-    riskClass:             a.riskClass ?? 'SIGNAL_INTAKE_ONLY',
-    tradingAttempted:      false,
-    brokerActionsAttempted:false,
-    moneyMovementAttempted:false,
-    credentialExposed:     false,
-    dispatchAllowed:       false,
-    executionAllowed:      false,
-    liveTrading:           'DISABLED',
-    brokerConnection:      'DISABLED',
-    safetyPassCount:       null,
-    safetyFailCount:       null,
-    sourceComponent:       'TvAlertIntakePanel',
-  }));
+    // MCP checks / nav history / previews
+    const isBlocked = (
+      r.blocked === true || r.rejected === true ||
+      status === 'BLOCKED_BY_POLICY' || status === 'REJECTED' || status === 'BLOCKED'
+    );
+    const isSuccess = !isBlocked && (
+      SUCCESS_STATUS_SET.has(status) ||
+      safeBool(r.success) || safeBool(r.statusOk) ||
+      safeBool(r.quoteOk) || safeBool(r.healthOk) || safeBool(r.accepted)
+    );
 
-  // Normalise rejected alert records
-  const rejectedAsChecks = alertRejected.map(a => ({
-    checkId:               a.alertId ?? ('alert-rej-' + (recordTimestamp(a) || Date.now())),
-    createdAt:             recordTimestamp(a) ?? new Date().toISOString(),
-    command:               'alert_rejected',
-    status:                'REJECTED',
-    blocked:               true,
-    rejectionReason:       a.rejectionReason ?? null,
-    executionStatus:       a.executionStatus ?? 'NOT_EXECUTED',
-    riskClass:             a.riskClass ?? 'SIGNAL_INTAKE_ONLY',
-    tradingAttempted:      false,
-    brokerActionsAttempted:false,
-    moneyMovementAttempted:false,
-    credentialExposed:     false,
-    dispatchAllowed:       false,
-    executionAllowed:      false,
-    liveTrading:           'DISABLED',
-    brokerConnection:      'DISABLED',
-    safetyPassCount:       null,
-    safetyFailCount:       null,
-    sourceComponent:       'TvAlertIntakePanel',
-  }));
-
-  const all = [...mcpChecks, ...navAsChecks, ...approvedPreviews, ...acceptedAsChecks, ...rejectedAsChecks];
-  all.sort((a, b) => new Date(recordTimestamp(b) ?? 0) - new Date(recordTimestamp(a) ?? 0));
-  return all;
+    return {
+      sourceKey,
+      id: safeString(r.checkId ?? r.auditId ?? r.previewId ?? r.id, sourceKey + '-' + Math.random().toString(36).slice(2)),
+      command: safeString(r.command ?? r.lastCommand, 'unknown'),
+      status,
+      timestamp,
+      success: isSuccess,
+      blocked: isBlocked,
+      isAlert: false,
+      isRejectedAlert: false,
+      rejectionReason: null,
+      blockedTerm: null,
+      safetyPassCount: pass,
+      safetyFailCount: fail,
+    };
+  } catch { return null; }
 }
 
-function buildEvidenceChain(checks) {
-  if (!checks || checks.length === 0) return null;
+/** Safely load and normalize all 5 storage keys into unified records. */
+function loadAllNormalizedRecords() {
+  const sources = [
+    { key: STORAGE_KEY,        arr: safeArray(STORAGE_KEY) },
+    { key: NAV_HISTORY_KEY,    arr: safeArray(NAV_HISTORY_KEY) },
+    { key: PREVIEWS_KEY,       arr: safeArray(PREVIEWS_KEY) },
+    { key: ALERT_ACCEPTED_KEY, arr: safeArray(ALERT_ACCEPTED_KEY) },
+    { key: ALERT_REJECTED_KEY, arr: safeArray(ALERT_REJECTED_KEY) },
+  ];
 
-  const successful     = checks.filter(isSuccessRecord);
-  const blocked        = checks.filter(isBlockedRecord);
-  const last           = checks[0];
-  const lastSuccessful = successful[0] ?? null;
-
-  let totalSafetyPass = 0;
-  let totalSafetyFail = 0;
-  for (const c of checks) {
-    if (c.safetyPassCount != null) {
-      totalSafetyPass += c.safetyPassCount;
-      totalSafetyFail += c.safetyFailCount ?? 0;
-    } else {
-      if (isSafeRecord(c)) totalSafetyPass += 1;
-      else totalSafetyFail += 1;
+  const all = [];
+  for (const { key, arr } of sources) {
+    for (const r of arr) {
+      const norm = normalizeEvidenceRecord(r, key);
+      if (norm) all.push(norm);
     }
   }
 
-  // Latest timestamp — any field
-  const lastSuccessAt = lastSuccessful ? (recordTimestamp(lastSuccessful) ?? null) : null;
-  const lastCommand   = last?.command ?? null;
+  // Sort newest first — records without timestamp go last
+  all.sort((a, b) => {
+    const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return tb - ta;
+  });
+  return all;
+}
 
-  return {
-    totalChecks:            checks.length,
-    successfulChecks:       successful.length,
-    blockedCommandTests:    blocked.length,
-    lastSuccessfulCheckAt:  lastSuccessAt,
-    lastCommand,
-    safetyPassCount:        totalSafetyPass,
-    safetyFailCount:        totalSafetyFail,
-    lockStatus:             'LOCKED',
-    executionStatus:        'NOT_EXECUTED',
-    tradingAttempted:       false,
-    brokerActionAttempted:  false,
-    moneyMovementAttempted: false,
-    credentialExposed:      false,
-    liveTrading:            'DISABLED',
-    brokerConnection:       'DISABLED',
-    generatedAt:            new Date().toISOString(),
-    sourceKeys:             [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY, ALERT_ACCEPTED_KEY, ALERT_REJECTED_KEY],
-  };
+/** Build the full evidence chain summary from normalized records. */
+function buildEvidenceChain(rawChecks) {
+  try {
+    // Accept either raw check records (from runCheck) or already normalized
+    // When called from runCheck, rawChecks is the raw checks array — reload all storage
+    const records = loadAllNormalizedRecords();
+
+    if (records.length === 0 && (!rawChecks || rawChecks.length === 0)) return null;
+
+    const successful = records.filter(r => r.success);
+    const blocked    = records.filter(r => r.blocked);
+
+    // Last successful record that is NOT a rejected alert
+    const lastSuccessRecord = successful[0] ?? null;
+
+    // Last command: prefer non-rejected-alert if the latest record is a rejected alert
+    const lastRecord = records[0] ?? null;
+    let lastCommand = safeString(lastRecord?.command, 'N/A');
+    // If the absolute latest is a rejected alert but there's a newer non-alert success, prefer that label
+    if (lastRecord?.isRejectedAlert) {
+      const lastNonRejected = records.find(r => !r.isRejectedAlert);
+      if (lastNonRejected) lastCommand = safeString(lastNonRejected.command, 'N/A');
+    }
+
+    // Alert-specific aggregates
+    const acceptedAlerts = records.filter(r => r.isAlert && !r.isRejectedAlert);
+    const rejectedAlerts = records.filter(r => r.isRejectedAlert);
+    const lastAcceptedAlert = acceptedAlerts[0] ?? null;
+    const lastRejectedAlert = rejectedAlerts[0] ?? null;
+    const lastBlockReason   = lastRejectedAlert?.rejectionReason ?? null;
+    const lastBlockTerm     = lastRejectedAlert?.blockedTerm ?? null;
+
+    // Safety counts — sum across all records; rejected alerts contribute 0 failures (intentional policy)
+    let totalSafetyPass = 0;
+    let totalSafetyFail = 0;
+    for (const r of records) {
+      totalSafetyPass += r.safetyPassCount ?? 0;
+      totalSafetyFail += r.safetyFailCount ?? 0;
+    }
+
+    const chain = {
+      totalChecks:            records.length,
+      successfulChecks:       successful.length,
+      blockedCommandTests:    blocked.length,
+      acceptedAlertCount:     acceptedAlerts.length,
+      rejectedAlertCount:     rejectedAlerts.length,
+      lastSuccessfulCheckAt:  lastSuccessRecord?.timestamp ?? null,
+      lastCommand,
+      lastAcceptedAlertAt:    lastAcceptedAlert?.timestamp ?? null,
+      lastRejectedAlertAt:    lastRejectedAlert?.timestamp ?? null,
+      lastSafetyBlockReason:  lastBlockReason,
+      lastSafetyBlockTerm:    lastBlockTerm,
+      safetyPassCount:        totalSafetyPass,
+      safetyFailCount:        totalSafetyFail,
+      lockStatus:             'LOCKED',
+      executionStatus:        'NOT_EXECUTED',
+      riskClass:              'SIGNAL_INTAKE_ONLY',
+      tradingAttempted:       false,
+      brokerActionAttempted:  false,
+      moneyMovementAttempted: false,
+      credentialExposed:      false,
+      liveTrading:            'DISABLED',
+      brokerConnection:       'DISABLED',
+      generatedAt:            new Date().toISOString(),
+      sourceKeys:             [STORAGE_KEY, NAV_HISTORY_KEY, PREVIEWS_KEY, ALERT_ACCEPTED_KEY, ALERT_REJECTED_KEY],
+    };
+
+    try { localStorage.setItem(EVIDENCE_SUMMARY_KEY, JSON.stringify(chain)); } catch {}
+    return chain;
+  } catch (err) {
+    console.error('[TvMcpMonitoringConsole] buildEvidenceChain error:', err);
+    return null;
+  }
+}
+
+// Keep legacy loadChecks helper for the runCheck flow
+function readStorage(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
 }
 
 const STATUS_STYLE = {
@@ -373,16 +425,16 @@ export default function TvMcpMonitoringConsole() {
   const [checks,        setChecks]        = useState([]);
   const [evidence,      setEvidence]      = useState(null);
   const [showEvidence,  setShowEvidence]  = useState(false);
+  const [evidenceError, setEvidenceError] = useState(null);
 
   useEffect(() => {
-    const stored = loadChecks();
-    setChecks(stored);
-    const all = loadAllEvidenceRecords();
-    if (all.length) {
-      const chain = buildEvidenceChain(all);
-      setEvidence(chain);
-      setShowEvidence(true);
-      try { localStorage.setItem(EVIDENCE_SUMMARY_KEY, JSON.stringify(chain)); } catch {}
+    try {
+      const stored = loadChecks();
+      setChecks(stored);
+      const chain = buildEvidenceChain(stored);
+      if (chain) { setEvidence(chain); setShowEvidence(true); }
+    } catch (err) {
+      console.error('[TvMcpMonitoringConsole] useEffect evidence error:', err);
     }
   }, []);
 
@@ -426,14 +478,17 @@ export default function TvMcpMonitoringConsole() {
   };
 
   const regenEvidence = () => {
-    const all = loadAllEvidenceRecords();
-    const stored = loadChecks();
-    setChecks(stored);
-    const chain = buildEvidenceChain(all);
-    // Persist the summary for external consumers
-    try { localStorage.setItem(EVIDENCE_SUMMARY_KEY, JSON.stringify(chain)); } catch {}
-    setEvidence(chain);
-    setShowEvidence(true);
+    setEvidenceError(null);
+    try {
+      const stored = loadChecks();
+      setChecks(stored);
+      const chain = buildEvidenceChain(stored);
+      setEvidence(chain);
+      setShowEvidence(true);
+    } catch (err) {
+      console.error('[TvMcpMonitoringConsole] regenEvidence error:', err);
+      setEvidenceError(err?.message || 'Unknown error regenerating evidence chain.');
+    }
   };
 
   const ss = latestCheck ? statusStyle(latestCheck.status) : null;
@@ -661,6 +716,14 @@ export default function TvMcpMonitoringConsole() {
         </button>
       </div>
 
+      {/* Evidence chain error */}
+      {evidenceError && (
+        <div className="flex items-start gap-2 px-4 py-3 bg-destructive/5 border border-destructive/30 rounded-sm text-[9px] text-destructive">
+          <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span><span className="font-bold">Evidence chain error:</span> {evidenceError} — check console for details.</span>
+        </div>
+      )}
+
       {/* Evidence chain */}
       {(evidence && showEvidence) && (
         <div className="bg-card border border-primary/20 rounded-sm overflow-hidden">
@@ -670,18 +733,26 @@ export default function TvMcpMonitoringConsole() {
           </div>
           <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
-              { label: 'Total Checks',        value: evidence.totalChecks },
-              { label: 'Successful',          value: evidence.successfulChecks,    cls: 'text-primary font-bold' },
-              { label: 'Blocked Tests',       value: evidence.blockedCommandTests, cls: 'text-destructive font-bold' },
-              { label: 'Lock Status',         value: evidence.lockStatus,          cls: 'text-destructive font-bold' },
-              { label: 'Safety Passes',       value: evidence.safetyPassCount,     cls: 'text-primary font-bold' },
-              { label: 'Safety Failures',     value: evidence.safetyFailCount,     cls: evidence.safetyFailCount > 0 ? 'text-destructive font-bold' : 'text-primary font-bold' },
-              { label: 'Last Command',        value: evidence.lastCommand ?? 'N/A' },
-              { label: 'Last Success At',     value: evidence.lastSuccessfulCheckAt ? new Date(evidence.lastSuccessfulCheckAt).toLocaleTimeString() : 'N/A' },
+              { label: 'Total Checks',          value: evidence.totalChecks },
+              { label: 'Successful',            value: evidence.successfulChecks,        cls: 'text-primary font-bold' },
+              { label: 'Blocked Tests',         value: evidence.blockedCommandTests,     cls: 'text-destructive font-bold' },
+              { label: 'Accepted Alerts',       value: evidence.acceptedAlertCount ?? 0, cls: 'text-primary font-bold' },
+              { label: 'Rejected Alerts',       value: evidence.rejectedAlertCount ?? 0, cls: 'text-amber-400 font-bold' },
+              { label: 'Lock Status',           value: evidence.lockStatus,              cls: 'text-destructive font-bold' },
+              { label: 'Execution Status',      value: evidence.executionStatus,         cls: 'text-destructive font-bold' },
+              { label: 'Risk Class',            value: evidence.riskClass,               cls: 'text-amber-400 font-bold' },
+              { label: 'Safety Passes',         value: evidence.safetyPassCount,         cls: 'text-primary font-bold' },
+              { label: 'Safety Failures',       value: evidence.safetyFailCount,         cls: evidence.safetyFailCount > 0 ? 'text-destructive font-bold' : 'text-primary font-bold' },
+              { label: 'Last Command',          value: evidence.lastCommand ?? 'N/A' },
+              { label: 'Last Success At',       value: evidence.lastSuccessfulCheckAt ? new Date(evidence.lastSuccessfulCheckAt).toLocaleTimeString() : 'N/A' },
+              { label: 'Last Accepted Alert',   value: evidence.lastAcceptedAlertAt ? new Date(evidence.lastAcceptedAlertAt).toLocaleTimeString() : 'N/A', cls: 'text-primary' },
+              { label: 'Last Rejected Alert',   value: evidence.lastRejectedAlertAt ? new Date(evidence.lastRejectedAlertAt).toLocaleTimeString() : 'N/A', cls: 'text-amber-400' },
+              { label: 'Last Block Reason',     value: evidence.lastSafetyBlockReason ?? 'N/A',  cls: 'text-slate-400 text-[7px]' },
+              { label: 'Last Block Term',       value: evidence.lastSafetyBlockTerm   ?? 'N/A',  cls: 'text-slate-400 font-mono text-[7px]' },
             ].map(c => (
               <div key={c.label} className="bg-secondary/20 border border-border/20 rounded-sm px-2.5 py-2">
                 <div className="text-[7px] uppercase text-slate-500 font-bold mb-0.5">{c.label}</div>
-                <div className={`text-[9px] font-mono font-bold ${c.cls || 'text-slate-300'}`}>{String(c.value)}</div>
+                <div className={`text-[9px] font-mono font-bold break-all ${c.cls || 'text-slate-300'}`}>{String(c.value)}</div>
               </div>
             ))}
           </div>
