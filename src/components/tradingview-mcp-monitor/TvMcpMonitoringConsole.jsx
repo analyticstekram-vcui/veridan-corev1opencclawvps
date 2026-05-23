@@ -1159,18 +1159,60 @@ export default function TvMcpMonitoringConsole() {
                 const winTimestamp = evidence.lastCommandAt ?? null;
                 const hasWinner    = isValidCommand(winCmd);
 
+                // Compute ranks from the same candidate list + same sort used by the resolver.
+                // Each candidate carries { cmd, ts } so we can sort newest-first and count positions.
+                const rankCandidates = [
+                  ...loadAllNormalizedRecords().map(r => ({
+                    cmd: r.command ?? null,
+                    ts:  r.timestamp ? new Date(r.timestamp).getTime() : 0,
+                  })),
+                  ...rawMcpChecks.map(r => ({
+                    cmd: r.command ?? r.lastCommand ?? r.commandType ?? null,
+                    ts:  r.createdAt ? new Date(r.createdAt).getTime() : r.timestamp ? new Date(r.timestamp).getTime() : 0,
+                  })),
+                  ...rawNavHistory.map(r => ({
+                    cmd: r.command ?? r.lastCommand ?? r.commandType ?? null,
+                    ts:  r.createdAt ? new Date(r.createdAt).getTime() : r.timestamp ? new Date(r.timestamp).getTime() : 0,
+                  })),
+                  ...rawPreviews.map(r => ({
+                    cmd: r.command ?? r.lastCommand ?? r.commandType ?? null,
+                    ts:  r.createdAt ? new Date(r.createdAt).getTime() : r.timestamp ? new Date(r.timestamp).getTime() : 0,
+                  })),
+                ].sort((a, b) => b.ts - a.ts); // newest-first, mirrors resolveLastCommandFromEvents
+
+                // overallRank: 1-based position of the winner in the full sorted list
+                // validRank:   1-based position among only the valid command-bearing entries
+                let overallRank = null;
+                let validRank   = null;
+                if (hasWinner) {
+                  const winTs = winTimestamp ? new Date(winTimestamp).getTime() : 0;
+                  let ov = 0, vr = 0;
+                  for (const c of rankCandidates) {
+                    ov++;
+                    if (isValidCommand(c.cmd)) vr++;
+                    // Match on cmd value AND timestamp proximity (within 1s to tolerate rounding)
+                    if (isValidCommand(c.cmd) && c.cmd.trim() === winCmd.trim() && Math.abs(c.ts - winTs) <= 1000) {
+                      overallRank = ov;
+                      validRank   = vr;
+                      break;
+                    }
+                  }
+                }
+
                 return (
                   <div className={`border rounded-sm px-3 py-2 ${hasWinner ? 'border-primary/30 bg-primary/5' : 'border-border/20 bg-secondary/10'}`}>
                     <div className="text-[7px] uppercase text-slate-500 font-bold mb-1.5">Resolver Winner</div>
                     {hasWinner ? (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                         {[
-                          { label: 'command',   value: formatCommandLabel(winCmd),                           cls: 'text-primary font-bold' },
-                          { label: 'raw',       value: winCmd,                                               cls: 'text-slate-400 font-mono text-[7px]' },
-                          { label: 'source',    value: SOURCE_LABELS[winSource] ?? winSource ?? 'unknown',   cls: 'text-slate-300 font-mono text-[7px]' },
-                          { label: 'timestamp', value: winTimestamp ? new Date(winTimestamp).toLocaleTimeString() : 'N/A', cls: 'text-slate-300' },
-                          { label: 'rank',      value: '1',                                                  cls: 'text-primary font-bold' },
-                          { label: 'sort',      value: 'newest-first',                                       cls: 'text-slate-500 text-[7px]' },
+                          { label: 'command',      value: formatCommandLabel(winCmd),                           cls: 'text-primary font-bold' },
+                          { label: 'raw',          value: winCmd,                                               cls: 'text-slate-400 font-mono text-[7px]' },
+                          { label: 'source',       value: SOURCE_LABELS[winSource] ?? winSource ?? 'unknown',   cls: 'text-slate-300 font-mono text-[7px]' },
+                          { label: 'timestamp',    value: winTimestamp ? new Date(winTimestamp).toLocaleTimeString() : 'N/A', cls: 'text-slate-300' },
+                          { label: 'validRank',    value: validRank   != null ? String(validRank)   : 'N/A',    cls: 'text-primary font-bold' },
+                          { label: 'overallRank',  value: overallRank != null ? String(overallRank) : 'N/A',    cls: 'text-slate-300 font-bold' },
+                          { label: 'sort',         value: 'newest-first',                                       cls: 'text-slate-500 text-[7px]' },
+                          { label: 'totalSorted',  value: String(rankCandidates.length),                        cls: 'text-slate-400' },
                         ].map(f => (
                           <div key={f.label} className="bg-secondary/20 border border-border/10 rounded-sm px-2 py-1">
                             <div className="text-[6px] uppercase text-slate-600 font-bold mb-0.5">{f.label}</div>
