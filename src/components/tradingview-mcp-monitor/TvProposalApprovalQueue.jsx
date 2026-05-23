@@ -106,28 +106,30 @@ export default function TvProposalApprovalQueue() {
   const [expanded,   setExpanded]   = useState({});
 
   const load = useCallback(() => {
-    setProposals(readArray(PROPOSAL_KEY));
-    setApprovals(readArray(APPROVAL_KEY));
+    const props = readArray(PROPOSAL_KEY);
+    const apprs = readArray(APPROVAL_KEY);
+    setProposals(props);
+    setApprovals(apprs);
+    // Always reset to latest proposal when list changes
+    if (props.length > 0) {
+      setSelected(props[0].proposalId ?? null);
+    }
   }, []);
 
   useEffect(() => {
     load();
+    // All event names Phase 3 may dispatch
+    window.addEventListener('veridanTradingViewProposalPreviewsUpdated',       load);
     window.addEventListener('veridanTradingViewSignalProposalPreviewsUpdated', load);
     window.addEventListener('veridanTradingViewProposalApprovalRecordsUpdated', load);
     window.addEventListener('storage', load);
     return () => {
+      window.removeEventListener('veridanTradingViewProposalPreviewsUpdated',       load);
       window.removeEventListener('veridanTradingViewSignalProposalPreviewsUpdated', load);
       window.removeEventListener('veridanTradingViewProposalApprovalRecordsUpdated', load);
       window.removeEventListener('storage', load);
     };
   }, [load]);
-
-  // Auto-select the latest proposal
-  useEffect(() => {
-    if (proposals.length > 0 && !selected) {
-      setSelected(proposals[0].proposalId);
-    }
-  }, [proposals, selected]);
 
   const activeProposal = proposals.find(p => p.proposalId === selected) ?? proposals[0] ?? null;
 
@@ -169,6 +171,18 @@ export default function TvProposalApprovalQueue() {
           No trade · No broker · No order · No API call · No credential · No money movement · No scheduler · No dispatch.
           Approval = paper trade preview permission only — does NOT place any order.
         </span>
+      </div>
+
+      {/* Phase 4 debug line */}
+      <div className="px-4 py-1.5 border-b border-border/20 bg-secondary/5">
+        <div className="text-[6.5px] font-mono text-slate-700">
+          debug proposalKey: {PROPOSAL_KEY} ·
+          raw: {(() => { try { return (localStorage.getItem(PROPOSAL_KEY) ?? '').length; } catch { return 0; } })()}b ·
+          parsed: {proposals.length} ·
+          latest id: {proposals[0]?.proposalId ?? 'none'} ·
+          latest symbol: {proposals[0]?.symbol ?? 'none'} ·
+          {' '}<button type="button" onClick={load} className="underline hover:text-slate-400">↻ refresh</button>
+        </div>
       </div>
 
       {/* Stats strip */}

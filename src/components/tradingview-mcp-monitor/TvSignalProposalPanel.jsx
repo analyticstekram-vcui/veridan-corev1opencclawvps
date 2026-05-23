@@ -256,7 +256,9 @@ export default function TvSignalProposalPanel() {
     setLastProposal(proposal);
     try {
       localStorage.setItem(PROPOSAL_STORAGE_KEY, JSON.stringify(updated));
+      // Dispatch both event names so all listeners are covered
       window.dispatchEvent(new CustomEvent('veridanTradingViewSignalProposalPreviewsUpdated'));
+      window.dispatchEvent(new Event('veridanTradingViewProposalPreviewsUpdated'));
     } catch {}
   };
 
