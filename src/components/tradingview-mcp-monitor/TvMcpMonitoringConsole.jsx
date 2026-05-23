@@ -10,6 +10,7 @@ import { Shield, Play, Copy, Trash2, RefreshCw, CheckCircle2, XCircle, AlertTria
 import TvMcpEvidenceSummary from './TvMcpEvidenceSummary';
 import TvMcpManualChartInstructions from './TvMcpManualChartInstructions';
 import TvMcpChartControlPanel from './TvMcpChartControlPanel';
+import TvAlertIntakePanel from './TvAlertIntakePanel';
 
 const STORAGE_KEY     = 'veridanTradingViewMcpChecks';
 const NAV_HISTORY_KEY = 'veridanTvMcpChartNavHistory';
@@ -576,6 +577,9 @@ export default function TvMcpMonitoringConsole() {
 
       {/* Governed Chart Control — Preview Only */}
       <TvMcpChartControlPanel checks={checks} />
+
+      {/* Phase 2 — Alert Intake */}
+      <TvAlertIntakePanel />
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
