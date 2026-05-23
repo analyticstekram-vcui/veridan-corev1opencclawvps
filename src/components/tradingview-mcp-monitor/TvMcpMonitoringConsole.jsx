@@ -272,7 +272,7 @@ function buildEvidenceChain(checks) {
     totalChecks:           checks.length,
     successfulChecks:      successful.length,
     blockedCommandTests:   blocked.length,
-    lastSuccessfulCheckAt: recordTimestamp(lastSuccessful) ?? null,
+    lastSuccessfulCheckAt: lastSuccessful ? (recordTimestamp(lastSuccessful) ?? null) : null,
     lastCommand:           lastSuccessful?.command ?? last?.command ?? null,
     safetyPassCount:       totalSafetyPass,
     safetyFailCount:       totalSafetyFail,
