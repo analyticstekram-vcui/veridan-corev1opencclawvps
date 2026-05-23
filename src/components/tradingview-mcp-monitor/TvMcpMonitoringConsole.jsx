@@ -349,6 +349,49 @@ function loadAllNormalizedRecords() {
   return all;
 }
 
+/**
+ * Resolve the newest valid operator command from all available event sources.
+ * Scans candidates sorted by timestamp descending and returns the first one
+ * with a meaningful command value. Never returns "unknown" unless nothing valid exists.
+ *
+ * Returns { lastCommand, source, timestamp }
+ *
+ * Verification:
+ *   [1] newest command-bearing event wins — candidates sorted newest-first
+ *   [2] newer empty/synthetic event does not erase older valid command — INVALID_COMMANDS filter
+ *   [3] "unknown" only when no valid command found — explicit fallback at end
+ *   [4] no execution/dispatch — pure read from in-memory arrays, no side effects
+ */
+const INVALID_COMMANDS = new Set([
+  '', 'unknown', 'n/a', 'null', 'undefined',
+  'alert_accepted', 'alert_rejected',
+  'proposal_preview', 'approval_governance',
+]);
+
+function isValidCommand(v) {
+  if (!v || typeof v !== 'string') return false;
+  return !INVALID_COMMANDS.has(v.trim().toLowerCase());
+}
+
+function resolveLastCommandFromEvents(events) {
+  // events: array of { command, commandType, timestamp, source }
+  // Sort newest-first by timestamp
+  const sorted = [...events].sort((a, b) => {
+    const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return tb - ta;
+  });
+
+  for (const e of sorted) {
+    // Prefer explicit command, fall back to commandType
+    const cmd = e.command ?? e.commandType ?? null;
+    if (isValidCommand(cmd)) {
+      return { lastCommand: cmd.trim(), source: e.source ?? 'unknown-source', timestamp: e.timestamp ?? null };
+    }
+  }
+  return { lastCommand: 'unknown', source: null, timestamp: null };
+}
+
 /** Build the full evidence chain summary from normalized records. */
 function buildEvidenceChain(rawChecks) {
   try {
@@ -364,14 +407,44 @@ function buildEvidenceChain(rawChecks) {
     // Last successful record that is NOT a rejected alert
     const lastSuccessRecord = successful[0] ?? null;
 
-    // Last command: prefer non-rejected-alert if the latest record is a rejected alert
-    const lastRecord = records[0] ?? null;
-    let lastCommand = safeString(lastRecord?.command, 'N/A');
-    // If the absolute latest is a rejected alert but there's a newer non-alert success, prefer that label
-    if (lastRecord?.isRejectedAlert) {
-      const lastNonRejected = records.find(r => !r.isRejectedAlert);
-      if (lastNonRejected) lastCommand = safeString(lastNonRejected.command, 'N/A');
-    }
+    // Resolve lastCommand from all event sources — newest valid command wins.
+    // Build candidates from: normalized records + raw MCP checks + nav history + previews
+    const rawMcpChecks  = safeArray(STORAGE_KEY);
+    const rawNavHistory = safeArray(NAV_HISTORY_KEY);
+    const rawPreviews   = safeArray(PREVIEWS_KEY);
+
+    const commandCandidates = [
+      // Normalized records (alerts/proposals carry synthetic commands — filtered by isValidCommand)
+      ...records.map(r => ({
+        command:   r.command,
+        timestamp: r.timestamp,
+        source:    r.sourceKey,
+      })),
+      // Raw MCP checks — may have richer command fields
+      ...rawMcpChecks.map(r => ({
+        command:     r.command ?? r.lastCommand,
+        commandType: r.commandType,
+        timestamp:   r.createdAt ?? r.timestamp,
+        source:      STORAGE_KEY,
+      })),
+      // Nav history
+      ...rawNavHistory.map(r => ({
+        command:     r.command ?? r.lastCommand,
+        commandType: r.commandType,
+        timestamp:   r.createdAt ?? r.timestamp,
+        source:      NAV_HISTORY_KEY,
+      })),
+      // Control panel previews
+      ...rawPreviews.map(r => ({
+        command:     r.command ?? r.lastCommand,
+        commandType: r.commandType,
+        timestamp:   r.createdAt ?? r.timestamp,
+        source:      PREVIEWS_KEY,
+      })),
+    ];
+
+    const { lastCommand, source: lastCommandSource, timestamp: lastCommandAt } =
+      resolveLastCommandFromEvents(commandCandidates);
 
     // Alert-specific aggregates
     const acceptedAlerts = records.filter(r => r.isAlert && !r.isRejectedAlert);
@@ -424,6 +497,8 @@ function buildEvidenceChain(rawChecks) {
       rejectedAlertCount:     rejectedAlerts.length,
       lastSuccessfulCheckAt:  lastSuccessRecord?.timestamp ?? null,
       lastCommand,
+      lastCommandSource,
+      lastCommandAt,
       lastAcceptedAlertAt:    lastAcceptedAlert?.timestamp ?? null,
       lastRejectedAlertAt:    lastRejectedAlert?.timestamp ?? null,
       lastSafetyBlockReason:  lastBlockReason,
@@ -825,7 +900,7 @@ export default function TvMcpMonitoringConsole() {
               { label: 'Risk Class',            value: evidence.riskClass,               cls: 'text-amber-400 font-bold' },
               { label: 'Safety Passes',         value: evidence.safetyPassCount,         cls: 'text-primary font-bold' },
               { label: 'Safety Failures',       value: evidence.safetyFailCount,         cls: evidence.safetyFailCount > 0 ? 'text-destructive font-bold' : 'text-primary font-bold' },
-              { label: 'Last Command',          value: evidence.lastCommand ?? 'N/A' },
+              { label: 'Last Command',          value: evidence.lastCommand ?? 'N/A', cls: evidence.lastCommand && evidence.lastCommand !== 'unknown' ? 'text-primary font-bold' : 'text-slate-400' },
               { label: 'Last Success At',       value: evidence.lastSuccessfulCheckAt ? new Date(evidence.lastSuccessfulCheckAt).toLocaleTimeString() : 'N/A' },
               { label: 'Last Accepted Alert',   value: evidence.lastAcceptedAlertAt ? new Date(evidence.lastAcceptedAlertAt).toLocaleTimeString() : 'N/A', cls: 'text-primary' },
               { label: 'Last Rejected Alert',   value: evidence.lastRejectedAlertAt ? new Date(evidence.lastRejectedAlertAt).toLocaleTimeString() : 'N/A', cls: 'text-amber-400' },
