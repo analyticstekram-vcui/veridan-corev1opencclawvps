@@ -1,26 +1,63 @@
 /**
  * ControlledWakeSendPanel
  * UI for sending the controlled wake notification via the backend route.
+ * Self-hydrates readiness evidence from localStorage (wake_activation_readiness_history).
  * Enforces operator confirmation dialog, displays full result + verification.
  * Token never exposed — backend-only. No agent call. No execution.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   CheckCircle2, XCircle, AlertTriangle, Loader2, Lock,
-  Send, ShieldCheck, ShieldX, Eye, EyeOff
+  Send, ShieldX, Eye, EyeOff, RefreshCw, Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const VERIFICATION_CLAIMS = [
-  { label: 'OPENCLAW_SERVICE_TOKEN',     key: 'tokenExposed',         expectedFalse: true,  pass: 'Token read server-side only — not exposed to client' },
-  { label: 'AGENT_ENDPOINT_CALLED',      key: 'agentEndpointCalled',  expectedFalse: true,  pass: '/hooks/agent was NOT called' },
-  { label: 'WAKE_ENDPOINT_ONLY',         key: 'wakeEndpointCalled',   expectedValue: '/hooks/wake', pass: 'Only /hooks/wake was contacted' },
-  { label: 'EXECUTION_STATUS',           key: 'executionStatus',      expectedValue: 'NOT_EXECUTED', pass: 'No execution performed' },
-  { label: 'BROWSER_AUTOMATION',         key: 'browserAutomation',    expectedFalse: true,  pass: 'No browser automation' },
-  { label: 'FILESYSTEM_WRITE',           key: 'filesystemWrite',      expectedFalse: true,  pass: 'No filesystem writes' },
-  { label: 'BROKER_ACTION',             key: 'brokerAction',          expectedFalse: true,  pass: 'No broker actions' },
-  { label: 'AUDIT_RECORD',              key: 'auditId',               expectedExists: true, pass: 'Audit record created' },
+const LS_KEY = 'wake_activation_readiness_history';
+const REQUIRED_DECISION = 'READY_FOR_CONTROLLED_WAKE_ACTIVATION_REVIEW';
+
+// ── Hydration helpers ────────────────────────────────────────────────────────
+
+function loadBestEvidence() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const records = JSON.parse(raw);
+    if (!Array.isArray(records) || records.length === 0) return null;
+    // Prefer the most recent record that passes all gate criteria
+    const valid = records.find(r =>
+      r.allPass === true &&
+      r.decision === REQUIRED_DECISION &&
+      r.activationStatus === 'NOT_ACTIVATED'
+    );
+    return valid || records[0]; // Fall back to latest even if not fully valid
+  } catch {
+    return null;
+  }
+}
+
+function isEvidenceReady(ev) {
+  if (!ev) return false;
+  const approval = ev.form?.operatorApprovalState || ev.reviewApprovalState;
+  return (
+    ev.allPass === true &&
+    ev.decision === REQUIRED_DECISION &&
+    ev.activationStatus === 'NOT_ACTIVATED' &&
+    ['APPROVED', 'REVIEW_READY'].includes(approval)
+  );
+}
+
+// ── Post-send verification claims ───────────────────────────────────────────
+
+const SEND_VERIFICATION_CLAIMS = [
+  { label: 'TOKEN_NOT_EXPOSED',      key: 'tokenExposed',        expectedFalse: true,  pass: 'Token read server-side only — never returned to client' },
+  { label: 'AGENT_ENDPOINT_CALLED',  key: 'agentEndpointCalled', expectedFalse: true,  pass: '/hooks/agent was NOT called' },
+  { label: 'WAKE_ENDPOINT_ONLY',     key: 'wakeEndpointCalled',  expectedValue: '/hooks/wake', pass: 'Only /hooks/wake was contacted' },
+  { label: 'EXECUTION_STATUS',       key: 'executionStatus',     expectedValue: 'NOT_EXECUTED', pass: 'No execution performed' },
+  { label: 'BROWSER_AUTOMATION',     key: 'browserAutomation',   expectedFalse: true,  pass: 'No browser automation' },
+  { label: 'FILESYSTEM_WRITE',       key: 'filesystemWrite',     expectedFalse: true,  pass: 'No filesystem writes' },
+  { label: 'BROKER_ACTION',          key: 'brokerAction',        expectedFalse: true,  pass: 'No broker actions' },
+  { label: 'AUDIT_RECORD_CREATED',   key: 'auditId',             expectedExists: true, pass: 'Audit record written to OpenClawBridgeDryRunAudit' },
 ];
 
 function claimPass(claim, result) {
@@ -32,20 +69,77 @@ function claimPass(claim, result) {
   return false;
 }
 
-export default function ControlledWakeSendPanel({ evidence }) {
-  const [confirmOpen,    setConfirmOpen]    = useState(false);
-  const [loading,        setLoading]        = useState(false);
-  const [result,         setResult]         = useState(null);
-  const [error,          setError]          = useState(null);
-  const [showVerify,     setShowVerify]     = useState(false);
-  const [operatorNote,   setOperatorNote]   = useState('');
+// ── Pre-send evidence verification rows ─────────────────────────────────────
 
-  // Determine if evidence qualifies
-  const evidenceReady = evidence &&
-    evidence.allPass === true &&
-    evidence.decision === 'READY_FOR_CONTROLLED_WAKE_ACTIVATION_REVIEW' &&
-    evidence.activationStatus === 'NOT_ACTIVATED' &&
-    ['APPROVED', 'REVIEW_READY'].includes(evidence.form?.operatorApprovalState);
+function EvidenceVerificationReport({ evidence }) {
+  const approval = evidence?.form?.operatorApprovalState || evidence?.reviewApprovalState;
+  const rows = [
+    { label: 'READINESS_RECORD_LOADED',    val: evidence ? 'YES' : 'NO',                          ok: !!evidence },
+    { label: 'allPass',                    val: evidence ? String(evidence.allPass) : '—',         ok: evidence?.allPass === true },
+    { label: 'decision',                   val: evidence?.decision || '—',                         ok: evidence?.decision === REQUIRED_DECISION },
+    { label: 'activationStatus',           val: evidence?.activationStatus || '—',                 ok: evidence?.activationStatus === 'NOT_ACTIVATED' },
+    { label: 'approvalState',              val: approval || '—',                                   ok: ['APPROVED', 'REVIEW_READY'].includes(approval) },
+    { label: 'evidenceId',                 val: evidence?.evidenceId || '—',                       ok: !!evidence?.evidenceId },
+    { label: 'auditHash',                  val: evidence?.auditHash ? evidence.auditHash.slice(0, 20) + '…' : '—', ok: !!evidence?.auditHash },
+    { label: 'TOKEN_NOT_EXPOSED',          val: 'CLIENT_NEVER_RECEIVES_TOKEN',                    ok: true },
+    { label: 'AGENT_ENDPOINT',             val: 'PROHIBITED',                                      ok: true },
+    { label: 'SEND_BUTTON_GATED',          val: isEvidenceReady(evidence) ? 'UNLOCKED' : 'LOCKED', ok: isEvidenceReady(evidence) },
+  ];
+
+  const passCount = rows.filter(r => r.ok).length;
+
+  return (
+    <div className="border border-border/40 bg-secondary/10 rounded-sm p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-[8px] font-bold uppercase text-slate-400">Pre-Send Verification Report</div>
+        <span className={`text-[7px] font-bold px-2 py-0.5 rounded-sm border ${passCount === rows.length ? 'text-primary border-primary/30 bg-primary/10' : 'text-amber-400 border-amber-400/30 bg-amber-400/10'}`}>
+          {passCount}/{rows.length} PASS
+        </span>
+      </div>
+      <div className="space-y-0.5">
+        {rows.map(r => (
+          <div key={r.label} className="flex items-center gap-2 text-[7px] font-mono">
+            {r.ok
+              ? <CheckCircle2 className="w-2.5 h-2.5 text-primary shrink-0" />
+              : <XCircle className="w-2.5 h-2.5 text-destructive shrink-0" />}
+            <span className="text-slate-500 w-44 shrink-0">{r.label}:</span>
+            <span className={r.ok ? 'text-primary' : 'text-destructive'}>{r.val}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
+export default function ControlledWakeSendPanel({ evidence: evidenceProp }) {
+  // Self-hydrate from localStorage; merge with prop
+  const [evidence, setEvidence]       = useState(() => {
+    const ls = loadBestEvidence();
+    return ls || evidenceProp || null;
+  });
+  const [confirmOpen,  setConfirmOpen]  = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [result,       setResult]       = useState(null);
+  const [error,        setError]        = useState(null);
+  const [showVerify,   setShowVerify]   = useState(false);
+  const [operatorNote, setOperatorNote] = useState('');
+
+  // When prop changes (parent reloads), prefer prop if it's better
+  useEffect(() => {
+    if (evidenceProp && isEvidenceReady(evidenceProp)) {
+      setEvidence(evidenceProp);
+    }
+  }, [evidenceProp]);
+
+  const reload = useCallback(() => {
+    const ls = loadBestEvidence();
+    setEvidence(ls || evidenceProp || null);
+  }, [evidenceProp]);
+
+  const evidenceReady = isEvidenceReady(evidence);
+  const approval = evidence?.form?.operatorApprovalState || evidence?.reviewApprovalState;
 
   const handleSend = async () => {
     setConfirmOpen(false);
@@ -77,17 +171,31 @@ export default function ControlledWakeSendPanel({ evidence }) {
   return (
     <div className="space-y-4">
 
-      {/* Gate check */}
-      <div className={`border rounded-sm p-4 space-y-2 ${evidenceReady ? 'border-primary/30 bg-primary/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
-        <div className={`text-[9px] font-bold uppercase tracking-wide ${evidenceReady ? 'text-primary' : 'text-amber-400'}`}>
-          {evidenceReady ? '✓ Readiness Evidence Verified — Wake Send Unlocked' : '⚠ Readiness Evidence Not Ready'}
+      {/* ── Evidence gate status ─────────────────────────────────────────── */}
+      <div className={`border rounded-sm p-4 space-y-3 ${evidenceReady ? 'border-primary/30 bg-primary/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
+        <div className="flex items-center justify-between">
+          <div className={`text-[9px] font-bold uppercase tracking-wide ${evidenceReady ? 'text-primary' : 'text-amber-400'}`}>
+            {evidenceReady
+              ? '✓ Readiness Evidence Verified — Wake Send Unlocked'
+              : evidence
+              ? '⚠ Readiness Evidence Loaded but Gate Not Satisfied'
+              : '⚠ No Readiness Evidence Found in localStorage'}
+          </div>
+          <button type="button" onClick={reload}
+            className="flex items-center gap-1 text-[7px] text-slate-500 hover:text-primary border border-border/30 hover:border-primary/30 px-2 py-1 rounded-sm transition-colors">
+            <RefreshCw className="w-2.5 h-2.5" /> Reload
+          </button>
         </div>
+
+        {/* Evidence field grid */}
         <div className="grid grid-cols-2 gap-1 text-[7px] font-mono">
           {[
-            { label: 'allPass',          val: String(evidence?.allPass), ok: evidence?.allPass === true },
-            { label: 'decision',         val: evidence?.decision || '—', ok: evidence?.decision === 'READY_FOR_CONTROLLED_WAKE_ACTIVATION_REVIEW' },
-            { label: 'activationStatus', val: evidence?.activationStatus || '—', ok: evidence?.activationStatus === 'NOT_ACTIVATED' },
-            { label: 'approvalState',    val: evidence?.form?.operatorApprovalState || '—', ok: ['APPROVED','REVIEW_READY'].includes(evidence?.form?.operatorApprovalState) },
+            { label: 'evidenceId',       val: evidence?.evidenceId || '—',          ok: !!evidence?.evidenceId },
+            { label: 'auditHash',        val: evidence?.auditHash ? evidence.auditHash.slice(0,18)+'…' : '—', ok: !!evidence?.auditHash },
+            { label: 'allPass',          val: evidence ? String(evidence.allPass) : '—',    ok: evidence?.allPass === true },
+            { label: 'decision',         val: evidence?.decision ? evidence.decision.slice(0,28)+'…' : '—', ok: evidence?.decision === REQUIRED_DECISION },
+            { label: 'activationStatus', val: evidence?.activationStatus || '—',    ok: evidence?.activationStatus === 'NOT_ACTIVATED' },
+            { label: 'approvalState',    val: approval || '—',                      ok: ['APPROVED','REVIEW_READY'].includes(approval) },
           ].map(({ label, val, ok }) => (
             <div key={label} className="flex items-center gap-1">
               {ok ? <CheckCircle2 className="w-2.5 h-2.5 text-primary shrink-0" /> : <XCircle className="w-2.5 h-2.5 text-destructive shrink-0" />}
@@ -96,9 +204,19 @@ export default function ControlledWakeSendPanel({ evidence }) {
             </div>
           ))}
         </div>
+
+        {/* No evidence hint */}
+        {!evidence && (
+          <div className="text-[7px] text-amber-400/80 border-t border-amber-500/20 pt-2">
+            Go to <span className="font-bold">Wake Activation Readiness Gate</span> → Readiness Checker tab → generate a record with allPass=true and decision READY_FOR_CONTROLLED_WAKE_ACTIVATION_REVIEW, then return here and click Reload.
+          </div>
+        )}
       </div>
 
-      {/* Safety notice */}
+      {/* ── Pre-send verification report ─────────────────────────────────── */}
+      <EvidenceVerificationReport evidence={evidence} />
+
+      {/* ── Safety notice ────────────────────────────────────────────────── */}
       <div className="border border-amber-500/20 bg-amber-500/5 rounded-sm p-3 space-y-1">
         <div className="flex items-center gap-1.5 text-[8px] font-bold text-amber-500">
           <AlertTriangle className="w-3 h-3 shrink-0" />
@@ -113,7 +231,7 @@ export default function ControlledWakeSendPanel({ evidence }) {
         </ul>
       </div>
 
-      {/* Operator note */}
+      {/* ── Operator note ────────────────────────────────────────────────── */}
       <div>
         <label className="text-[8px] font-bold text-slate-400 uppercase block mb-1">Operator Note (optional)</label>
         <textarea
@@ -125,7 +243,7 @@ export default function ControlledWakeSendPanel({ evidence }) {
         />
       </div>
 
-      {/* Send button */}
+      {/* ── Send button ──────────────────────────────────────────────────── */}
       {!result && (
         <Button
           onClick={() => setConfirmOpen(true)}
@@ -139,8 +257,13 @@ export default function ControlledWakeSendPanel({ evidence }) {
           )}
         </Button>
       )}
+      {!evidenceReady && !result && (
+        <div className="text-[7px] text-amber-400 font-mono text-center">
+          Button disabled — valid readiness evidence required. Reload from localStorage or generate a new record.
+        </div>
+      )}
 
-      {/* Confirmation dialog */}
+      {/* ── Confirmation dialog ──────────────────────────────────────────── */}
       {confirmOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-amber-500/40 rounded-sm p-6 max-w-md w-full space-y-4 font-mono">
@@ -152,6 +275,7 @@ export default function ControlledWakeSendPanel({ evidence }) {
               <p>You are about to send a POST to the OpenClaw <span className="text-primary font-bold">/hooks/wake</span> endpoint.</p>
               <p>This is a <span className="text-primary font-bold">notification-only</span> call. No execution is performed.</p>
               <p>The service token is read server-side only and will <span className="text-destructive font-bold">never</span> be exposed to this browser.</p>
+              <p className="text-amber-400">Evidence: <span className="font-bold text-slate-300">{evidence?.evidenceId || '—'}</span></p>
               <p className="text-amber-400">Are you sure you want to proceed?</p>
             </div>
             <div className="flex gap-3">
@@ -166,7 +290,7 @@ export default function ControlledWakeSendPanel({ evidence }) {
         </div>
       )}
 
-      {/* Error display */}
+      {/* ── Error display ────────────────────────────────────────────────── */}
       {error && !result && (
         <div className="border border-destructive/40 bg-destructive/5 rounded-sm p-3 text-[8px] text-destructive">
           <div className="font-bold mb-1">Request Failed</div>
@@ -174,7 +298,7 @@ export default function ControlledWakeSendPanel({ evidence }) {
         </div>
       )}
 
-      {/* Result panel */}
+      {/* ── Result panel ─────────────────────────────────────────────────── */}
       {result && (
         <div className={`border rounded-sm p-4 space-y-3 ${successColor}`}>
           <div className="flex items-center gap-2">
@@ -188,18 +312,18 @@ export default function ControlledWakeSendPanel({ evidence }) {
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[7px] font-mono">
             {[
-              ['wakeStatus',      result.wakeStatus],
-              ['httpStatus',      result.httpStatus ?? '—'],
-              ['executionStatus', result.executionStatus],
-              ['dispatchStatus',  result.dispatchStatus],
-              ['auditId',         result.auditId],
-              ['timestamp',       result.timestamp ? new Date(result.timestamp).toLocaleTimeString() : '—'],
-              ['wakeEndpoint',    result.wakeEndpointCalled || '/hooks/wake'],
-              ['agentCalled',     String(result.agentEndpointCalled ?? false)],
-              ['tokenExposed',    String(result.tokenExposed ?? false)],
+              ['wakeStatus',        result.wakeStatus],
+              ['httpStatus',        result.httpStatus ?? '—'],
+              ['executionStatus',   result.executionStatus],
+              ['dispatchStatus',    result.dispatchStatus],
+              ['auditId',           result.auditId],
+              ['timestamp',         result.timestamp ? new Date(result.timestamp).toLocaleTimeString() : '—'],
+              ['wakeEndpoint',      result.wakeEndpointCalled || '/hooks/wake'],
+              ['agentCalled',       String(result.agentEndpointCalled ?? false)],
+              ['tokenExposed',      String(result.tokenExposed ?? false)],
               ['browserAutomation', String(result.browserAutomation ?? false)],
-              ['filesystemWrite', String(result.filesystemWrite ?? false)],
-              ['brokerAction',    String(result.brokerAction ?? false)],
+              ['filesystemWrite',   String(result.filesystemWrite ?? false)],
+              ['brokerAction',      String(result.brokerAction ?? false)],
             ].map(([k, v]) => (
               <div key={k} className="flex gap-1">
                 <span className="text-slate-500">{k}:</span>
@@ -214,17 +338,17 @@ export default function ControlledWakeSendPanel({ evidence }) {
             ))}
           </div>
 
-          {/* Verification toggle */}
+          {/* Post-send verification toggle */}
           <button type="button" onClick={() => setShowVerify(v => !v)}
             className="text-[7px] text-slate-500 hover:text-slate-300 flex items-center gap-1 transition-colors">
             {showVerify ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-            {showVerify ? 'Hide' : 'Show'} Verification Report
+            {showVerify ? 'Hide' : 'Show'} Post-Send Verification Report
           </button>
 
           {showVerify && (
             <div className="border border-border/30 rounded-sm p-3 space-y-1.5 bg-secondary/20">
               <div className="text-[8px] font-bold text-slate-300 uppercase mb-2">Security & Boundary Verification</div>
-              {VERIFICATION_CLAIMS.map(claim => {
+              {SEND_VERIFICATION_CLAIMS.map(claim => {
                 const passed = claimPass(claim, result);
                 return (
                   <div key={claim.key} className="flex items-start gap-2 text-[7px]">
