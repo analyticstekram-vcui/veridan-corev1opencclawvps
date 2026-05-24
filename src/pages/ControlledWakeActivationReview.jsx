@@ -13,6 +13,7 @@ import ControlledWakeReviewForm from '../components/controlled-wake-review/Contr
 import ControlledWakeReviewHistory from '../components/controlled-wake-review/ControlledWakeReviewHistory';
 import ControlledWakeVerificationPanel from '../components/controlled-wake-review/ControlledWakeVerificationPanel';
 import { FIXED_SAFETY_STATUSES, REVIEW_GUARDRAILS, loadReviewPackets } from '../components/controlled-wake-review/controlledWakeReviewContracts';
+import ControlledWakeSendPanel from '../components/controlled-wake-review/ControlledWakeSendPanel';
 
 const LS_READINESS_KEY_PREFIX = 'VWAR-';
 
@@ -31,6 +32,7 @@ function loadLatestReadinessEvidence() {
 
 const TABS = [
   { id: 'review',   label: 'Controlled Review' },
+  { id: 'send',     label: 'Send Wake Notification' },
   { id: 'history',  label: 'Review History' },
   { id: 'verify',   label: 'Verification Report' },
 ];
@@ -80,11 +82,11 @@ export default function ControlledWakeActivationReview() {
             <span className="px-2 py-1 bg-destructive/10 border border-destructive/30 text-destructive text-[8px] font-bold uppercase rounded-sm">
               ACTIVATION_STATUS: NOT_ACTIVATED
             </span>
-            <span className="px-2 py-1 bg-destructive/10 border border-destructive/30 text-destructive text-[8px] font-bold uppercase rounded-sm">
-              NETWORK_REQUEST: NOT_SENT
+            <span className="px-2 py-1 bg-primary/10 border border-primary/30 text-primary text-[8px] font-bold uppercase rounded-sm">
+              WAKE_ROUTE: /hooks/wake ONLY
             </span>
             <span className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[8px] font-bold uppercase rounded-sm">
-              ROUTE_MODE: CONTROLLED_REVIEW_ONLY
+              ROUTE_MODE: CONTROLLED_WAKE_NOTIFICATION
             </span>
           </div>
         </div>
@@ -167,6 +169,18 @@ export default function ControlledWakeActivationReview() {
                 record={evidence}
                 onPacketGenerated={handlePacketGenerated}
               />
+            </div>
+          </div>
+        )}
+
+        {/* ── Send tab ── */}
+        {activeTab === 'send' && (
+          <div className="space-y-4">
+            <div className="border border-border/40 bg-card rounded-sm p-4">
+              <div className="text-[9px] font-bold uppercase text-slate-400 mb-3">
+                Send Controlled Wake Notification — Notification Only, No Execution
+              </div>
+              <ControlledWakeSendPanel evidence={evidence} />
             </div>
           </div>
         )}
