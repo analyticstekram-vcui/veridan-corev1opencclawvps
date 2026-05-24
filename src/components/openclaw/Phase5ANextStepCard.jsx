@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { CheckCircle2, XCircle, Loader2, Heart, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckCircle2, XCircle, Loader2, Heart, Eye, ExternalLink } from 'lucide-react';
 
 /**
  * Phase5ANextStepCard
@@ -68,9 +69,18 @@ export default function Phase5ANextStepCard() {
   return (
     <div className="mt-4 border border-primary/20 bg-primary/5 rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-primary/20 bg-primary/10">
-        <div className="text-[10px] font-bold text-primary uppercase tracking-wide">Next: OpenClaw Read-Only Command Center</div>
-        <div className="text-[8px] text-slate-400 mt-0.5">All actions below are read-only or preview-only. No execution.</div>
+      <div className="px-4 py-3 border-b border-primary/20 bg-primary/10 flex items-center justify-between">
+        <div>
+          <div className="text-[10px] font-bold text-primary uppercase tracking-wide">Next: OpenClaw Read-Only Command Center</div>
+          <div className="text-[8px] text-slate-400 mt-0.5">All actions below are read-only or preview-only. No execution.</div>
+        </div>
+        <Link
+          to="/openclaw-readonly-command-center"
+          className="flex items-center gap-1 text-[7px] font-mono text-primary border border-primary/30 hover:bg-primary/10 px-2 py-1 rounded transition-colors"
+        >
+          <ExternalLink className="w-2.5 h-2.5" />
+          Open
+        </Link>
       </div>
 
       <div className="p-4 space-y-3">
