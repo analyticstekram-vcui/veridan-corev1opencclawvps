@@ -30,9 +30,10 @@ const STATUS_COLOR = (v) => {
 };
 
 export default function WakeActivationReadiness() {
-  const [activeTab, setActiveTab] = useState('flow');
-  const [history,   setHistory]   = useState([]);
-  const [selected,  setSelected]  = useState(null);
+  const [activeTab,          setActiveTab]          = useState('flow');
+  const [history,            setHistory]            = useState([]);
+  const [selected,           setSelected]           = useState(null);
+  const [orchestratorResult, setOrchestratorResult] = useState(null);
 
   const handleResult = (record) => {
     setHistory(prev => [record, ...prev]);
@@ -41,6 +42,7 @@ export default function WakeActivationReadiness() {
 
   const handleOrchestratorEvidence = (rec) => {
     setHistory(prev => [rec, ...prev]);
+    setOrchestratorResult(rec);
   };
 
   return (
@@ -185,7 +187,7 @@ export default function WakeActivationReadiness() {
             <div className="text-[9px] font-bold uppercase text-slate-400 mb-3">
               Wake Activation Readiness Checker — No Activation Performed
             </div>
-            <WakeActivationForm onResult={handleResult} />
+            <WakeActivationForm onResult={handleResult} orchestratorResult={orchestratorResult} />
           </div>
         )}
 
