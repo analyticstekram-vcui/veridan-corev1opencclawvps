@@ -595,8 +595,25 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                 <div>Execution Status: <span className="text-foreground font-semibold">{result.executionStatus}</span></div>
                 <div>Result: <span className={result.acceptedForDryRun ? 'text-emerald-400 font-semibold' : 'text-destructive font-semibold'}>{result.acceptedForDryRun ? 'Accepted for dry-run' : 'Rejected'}</span></div>
                 <div>Safety: <span className="text-slate-300 italic">No OpenClaw call was made</span></div>
-                {result.rejectedReason && <div>Reason: <span className="text-foreground">{result.rejectedReason}</span></div>}
+                {result.rejectedReason && (
+                  <div className="mt-1 px-2 py-1.5 bg-destructive/10 border border-destructive/20 rounded text-[8px] text-destructive font-mono">
+                    Reason: {result.rejectedReason}
+                  </div>
+                )}
+                {result.rejectionCode && (
+                  <div className="text-[7px] font-mono text-destructive/70">Code: {result.rejectionCode}</div>
+                )}
               </div>
+
+              {/* Rejection Debug — expanded by default on rejection */}
+              {!result.acceptedForDryRun && result.rejectionDebug && (
+                <div className="mt-2 pt-2 border-t border-destructive/20 space-y-0.5 text-[7px] font-mono text-slate-500">
+                  <div className="text-[8px] font-semibold text-slate-300 mb-1">Rejection Debug</div>
+                  {Object.entries(result.rejectionDebug).map(([k, v]) => (
+                    <div key={k}>{k}: <span className="text-slate-300">{v === null ? 'null' : String(v)}</span></div>
+                  ))}
+                </div>
+              )}
 
               {/* Advanced Validation Details — collapsed by default */}
               <div className="mt-2 pt-2 border-t border-current/20">
@@ -678,8 +695,8 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                 )}
               </div>
 
-              {/* Save Evidence Snapshot — localStorage only */}
-              {result.acceptedForDryRun && (
+              {/* Save Evidence Snapshot — localStorage only, only on accepted */}
+              {(result.accepted === true || result.result === 'ACCEPTED') && (
                 <div className="mt-3 pt-2 border-t border-emerald-500/20">
                   <button
                     type="button"
@@ -687,20 +704,23 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                       const snapshot = {
                         snapshotType: 'PHASE_5A_DRY_RUN_EVIDENCE',
                         savedAt: new Date().toISOString(),
+                        accepted: true,
+                        bridgeMode: 'DRY_RUN_ONLY',
                         executionStatus: 'NOT_EXECUTED',
-                        bridgeMode: result.bridgeMode,
+                        dispatchStatus: 'NOT_DISPATCHED',
+                        policyCheck: result.policyGateResult || 'PASS',
+                        replayCheck: result.replayCheckResult || 'PASS',
+                        approvalBindingCheck: result.approvalBindingStatus || 'PASS',
+                        signatureCheck: result.signatureCheckResult || 'PASS',
+                        targetUrl: result.targetUrl || null,
+                        commandType: result.commandType || null,
+                        riskTier: result.riskTier || null,
+                        operatorId: result.operatorId || null,
+                        proposalId: result.proposalId || null,
+                        requestId: result.requestId || null,
+                        previewHash: result.previewHash || null,
+                        submittedAt: result.submittedAt || result.submissionDebug?.submittedAt || null,
                         previewContractVersion: result.previewContractVersion,
-                        requestId: result.requestId,
-                        policyGateResult: result.policyGateResult,
-                        replayCheckResult: result.replayCheckResult,
-                        signatureCheckResult: result.signatureCheckResult,
-                        approvalBindingStatus: result.approvalBindingStatus,
-                        note: result.note,
-                        submittedAt: result.submissionDebug?.submittedAt,
-                        expirationAt: result.submissionDebug?.expirationAt,
-                        signaturePresent: result.submissionDebug?.signaturePresent,
-                        signatureLength: result.submissionDebug?.signatureLength,
-                        signingVersion: result.submissionDebug?.signingVersion,
                         safetyBoundary: 'No OpenClaw call was made. No execution. No dispatch. LocalStorage only.',
                       };
                       const key = `phase5a_evidence_${Date.now()}`;

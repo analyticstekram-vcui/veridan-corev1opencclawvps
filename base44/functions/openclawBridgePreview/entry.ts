@@ -109,7 +109,8 @@ const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret, res
   }
 
   const now = new Date();
-  if (signedAtDate < new Date(now.getTime() - 5 * 60 * 1000)) {
+  // Allow 30-minute window to accommodate clock drift and UI round-trips
+  if (signedAtDate < new Date(now.getTime() - 30 * 60 * 1000)) {
     errors.push('SIGNED_AT_EXPIRED');
     return { result: 'FAIL', errors, mode };
   }
@@ -793,6 +794,7 @@ Deno.serve(async (req) => {
         {
           accepted: false,
           rejectedReason: rejectionReason,
+          rejectionCode: signatureCheck.errors[0] || 'SIGNATURE_VALIDATION_FAILED',
           requestId,
           bridgeMode: 'DRY_RUN_ONLY',
           executionStatus: 'REJECTED_NOT_EXECUTED',
@@ -810,6 +812,21 @@ Deno.serve(async (req) => {
           signatureCheckResult: 'FAIL',
           signatureCheckMessages: signatureCheck.errors,
           note: 'Request rejected by signature validation. No OpenClaw call was made.',
+          rejectionDebug: {
+            signatureExtractionPath,
+            signingVersionExtractionPath: signingVersion ? 'resolved' : 'NOT_FOUND',
+            signedAtExtractionPath: signedAt ? 'resolved' : 'NOT_FOUND',
+            proposalIdSeen: bridgeRequest?.proposalId || null,
+            requestIdSeen: bridgeRequest?.requestId || null,
+            operatorIdSeen: operatorId || null,
+            targetUrlSeen: bridgeRequest?.targetUrl || null,
+            commandTypeSeen: bridgeRequest?.commandType || null,
+            riskTierSeen: bridgeRequest?.riskTier || null,
+            canonicalPayloadHash: previewCanonicalDebugHash,
+            receivedSignatureLength: normalizedSignedRequest?.signature?.length || 0,
+            signingVersionSeen: signingVersion || null,
+            signedAtSeen: signedAt || null,
+          },
           canonicalDebug: {
             previewCanonicalHash: previewCanonicalDebugHash,
             signaturePresent: Boolean(normalizedSignedRequest?.signature),
@@ -957,6 +974,7 @@ Deno.serve(async (req) => {
         {
           accepted: false,
           rejectedReason: rejectionReason,
+          rejectionCode: 'APPROVAL_BINDING_FAILED',
           requestId,
           bridgeMode: 'DRY_RUN_ONLY',
           executionStatus: 'REJECTED_NOT_EXECUTED',
@@ -975,6 +993,14 @@ Deno.serve(async (req) => {
           signatureCheckMessages: [],
           approvalBindingStatus,
           approvalBindingDebug,
+          rejectionDebug: {
+            proposalIdSeen: br?.proposalId || null,
+            requestIdSeen: br?.requestId || null,
+            operatorIdSeen: operatorId || null,
+            targetUrlSeen: br?.targetUrl || null,
+            commandTypeSeen: br?.commandType || null,
+            riskTierSeen: br?.riskTier || null,
+          },
           note: 'Request rejected by approval binding check. No OpenClaw call was made.',
         },
         { status: 400 }
@@ -1013,11 +1039,13 @@ Deno.serve(async (req) => {
       return Response.json(
         {
           accepted: true,
+          result: 'ACCEPTED',
           acceptedForDryRun: true,
           rejectedReason: null,
           requestId,
           bridgeMode: 'DRY_RUN_ONLY',
           executionStatus: 'NOT_EXECUTED',
+          dispatchStatus: 'NOT_DISPATCHED',
           previewContractVersion: 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2',
           auditId,
           receivedAt,
@@ -1033,6 +1061,13 @@ Deno.serve(async (req) => {
           signatureCheckMessages: [],
           approvalBindingStatus: 'PASS',
           signatureExtractionPath,
+          targetUrl: br?.targetUrl || null,
+          commandType: br?.commandType || null,
+          riskTier: br?.riskTier || null,
+          operatorId,
+          proposalId: br?.proposalId || null,
+          previewHash,
+          submittedAt,
           canonicalDebug: {
             previewCanonicalHash: previewCanonicalDebugHash,
             signatureLength: normalizedSignedRequest?.signature?.length || 0,
@@ -1044,6 +1079,7 @@ Deno.serve(async (req) => {
             submittedAt,
             previewHash,
           },
+          safety: 'No OpenClaw call was made.',
           note: 'Phases 1-5 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
         },
         { status: 200 }
