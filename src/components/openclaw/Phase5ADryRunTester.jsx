@@ -22,6 +22,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
   const [signerStatus, setSignerStatus] = useState(null);
   const [baseline, setBaseline] = useState(null);
   const [baselineStorageStatus, setBaselineStorageStatus] = useState(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Write compact baseline lock to localStorage on mount and read it back
   useEffect(() => {
@@ -460,10 +461,17 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
           </div>
         </div>
 
+        {/* Mode Explanation Card */}
+        <div className="bg-secondary/30 border border-border/40 rounded p-3 space-y-1 text-[8px]">
+          <div className="flex items-center gap-2"><span className="text-blue-400 font-semibold w-28">READ MODE</span><span className="text-slate-400">no approval required</span></div>
+          <div className="flex items-center gap-2"><span className="text-emerald-400 font-semibold w-28">DRY-RUN MODE</span><span className="text-slate-400">no execution, no approval required</span></div>
+          <div className="flex items-center gap-2"><span className="text-amber-400 font-semibold w-28">ACTION MODE</span><span className="text-slate-400">approval required before external action</span></div>
+        </div>
+
         {/* Warning */}
         <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] text-amber-600">
           <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
-          <span>Dry-run preview only. No OpenClaw action is executed.</span>
+          <span>Dry-run mode — no execution, no external action.</span>
         </div>
 
         {/* Test Button */}
@@ -532,83 +540,93 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                 ) : (
                   <XCircle className="w-5 h-5 text-destructive shrink-0" />
                 )}
-                <div>
-                  <div className={`text-[11px] font-bold uppercase tracking-wide ${result.acceptedForDryRun ? 'text-emerald-400' : 'text-destructive'}`}>
-                    {result.acceptedForDryRun ? 'PHASE 5A ACCEPTED FOR DRY-RUN' : 'PHASE 5A REJECTED'}
-                  </div>
-                  <div className="text-[7px] text-slate-400 mt-0.5 italic">{result.note}</div>
+                <div className={`text-[11px] font-bold uppercase tracking-wide ${result.acceptedForDryRun ? 'text-emerald-400' : 'text-destructive'}`}>
+                  {result.acceptedForDryRun ? 'PHASE 5A DRY-RUN READY' : 'PHASE 5A REJECTED'}
                 </div>
               </div>
 
-              {/* Core Fields */}
+              {/* Simple summary — always visible */}
               <div className="space-y-0.5 text-slate-400 mb-2">
-                {result.requestId && <div>Request ID: <span className="text-foreground font-mono text-[7px]">{result.requestId}</span></div>}
                 <div>Bridge Mode: <span className="text-foreground font-semibold">{result.bridgeMode}</span></div>
                 <div>Execution Status: <span className="text-foreground font-semibold">{result.executionStatus}</span></div>
+                <div>Result: <span className={result.acceptedForDryRun ? 'text-emerald-400 font-semibold' : 'text-destructive font-semibold'}>{result.acceptedForDryRun ? 'Accepted for dry-run' : 'Rejected'}</span></div>
+                <div>Safety: <span className="text-slate-300 italic">No OpenClaw call was made</span></div>
                 {result.rejectedReason && <div>Reason: <span className="text-foreground">{result.rejectedReason}</span></div>}
               </div>
 
-              {/* Validation Gate Results — only show "Signature present" row when backend didn't already pass sig check */}
-              <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5">
-                {result.signatureCheckResult !== 'PASS' && (
-                  <div className="flex items-center gap-2">
-                    {result.submissionDebug?.signaturePresent ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
-                    <span>Signature present before preview: {result.submissionDebug?.signaturePresent ? 'PASS' : 'FAIL'}</span>
+              {/* Advanced Validation Details — collapsed by default */}
+              <div className="mt-2 pt-2 border-t border-current/20">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(v => !v)}
+                  className="text-[7px] font-mono text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1"
+                >
+                  <span>{showAdvanced ? '▾' : '▸'}</span>
+                  Advanced Validation Details
+                </button>
+
+                {showAdvanced && (
+                  <div className="mt-2 space-y-1 text-[7px]">
+                    {/* Validation gates */}
+                    <div className="space-y-0.5 text-slate-400">
+                      {result.signatureCheckResult !== 'PASS' && (
+                        <div className="flex items-center gap-2">
+                          {result.submissionDebug?.signaturePresent ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                          <span>Signature present: {result.submissionDebug?.signaturePresent ? 'PASS' : 'FAIL'}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        {result.policyGateResult === 'PASS' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                        <span>Policy Gate: {result.policyGateResult}</span>
+                        {result.policyGateMessages?.length > 0 && <span>({result.policyGateMessages.join(', ')})</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {result.replayCheckResult === 'PASS' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                        <span>Replay Check: {result.replayCheckResult}</span>
+                        {result.replayCheckMessages?.length > 0 && <span>({result.replayCheckMessages.join(', ')})</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {result.signatureCheckResult === 'PASS' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                        <span>Signature Check: {result.signatureCheckResult}</span>
+                        {result.signatureCheckMessages?.length > 0 && <span>({result.signatureCheckMessages.join(', ')})</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {result.approvalBindingStatus === 'PASS' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                        <span>Request Match Check: {result.approvalBindingStatus}</span>
+                      </div>
+                    </div>
+
+                    {/* Contract version */}
+                    <div className="pt-1 text-slate-500">
+                      <span>previewContractVersion: </span>
+                      <span className={result.previewContractVersion === 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2' ? 'text-emerald-400 font-mono' : 'text-amber-400 font-mono'}>
+                        {result.previewContractVersion || '⚠ NOT PRESENT'}
+                      </span>
+                    </div>
+
+                    {/* Submission timing */}
+                    {result.submissionDebug && (
+                      <div className="pt-1 space-y-0.5 text-slate-500">
+                        <div>submittedAt: <span className="text-slate-400 font-mono">{result.submissionDebug.submittedAt}</span></div>
+                        <div>expirationAt: <span className="text-slate-400 font-mono">{result.submissionDebug.expirationAt}</span></div>
+                        <div>expiresInMinutes: <span className="text-slate-400">{result.submissionDebug.expiresInMinutes}</span></div>
+                        <div>signatureLength: <span className="text-slate-400">{result.submissionDebug.signatureLength} chars</span></div>
+                        <div>signingVersion: <span className="text-slate-400 font-mono">{result.submissionDebug.signingVersion}</span></div>
+                      </div>
+                    )}
+
+                    {/* Backend debug (error only) */}
+                    {result.debug && (
+                      <div className="pt-1 space-y-0.5 text-slate-500">
+                        <div>signaturePresent: <span className={result.debug.signaturePresent ? 'text-emerald-400' : 'text-destructive'}>{String(result.debug.signaturePresent)}</span></div>
+                        <div>signatureLength: <span className="text-slate-400">{result.debug.signatureLength}</span></div>
+                        <div>signaturePathResolved: <span className={result.debug.signaturePathResolved ? 'text-emerald-400' : 'text-destructive'}>{String(result.debug.signaturePathResolved)}</span></div>
+                        <div className="text-[6px] text-slate-600">receivedTopLevelKeys: {(result.debug.receivedTopLevelKeys || []).join(', ') || 'none'}</div>
+                      </div>
+                    )}
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  {result.policyGateResult === 'PASS' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
-                  <span>Policy Gate: {result.policyGateResult}</span>
-                  {result.policyGateMessages?.length > 0 && <span className="text-[7px]">({result.policyGateMessages.join(', ')})</span>}
-                </div>
-                <div className="flex items-center gap-2">
-                  {result.replayCheckResult === 'PASS' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
-                  <span>Replay Check: {result.replayCheckResult}</span>
-                  {result.replayCheckMessages?.length > 0 && <span className="text-[7px]">({result.replayCheckMessages.join(', ')})</span>}
-                </div>
-                <div className="flex items-center gap-2">
-                  {result.signatureCheckResult === 'PASS' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
-                  <span>Signature Check: {result.signatureCheckResult}</span>
-                  {result.signatureCheckMessages?.length > 0 && <span className="text-[7px]">({result.signatureCheckMessages.join(', ')})</span>}
-                </div>
               </div>
-
-              {/* Backend Contract Version */}
-              <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px]">
-                <div className="font-semibold text-slate-300 uppercase mb-1">Backend Contract</div>
-                <div>
-                  previewContractVersion:{" "}
-                  <span className={result.previewContractVersion === 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2' ? 'text-emerald-400 font-mono font-bold' : 'text-amber-400 font-mono'}>
-                    {result.previewContractVersion || '⚠ NOT PRESENT — old backend may still be deployed'}
-                  </span>
-                </div>
-                <div>previewFunctionInvoked: <span className="text-slate-300 font-mono">openclawBridgePreview</span></div>
-              </div>
-
-              {/* Submission Debug Fields */}
-              {result.submissionDebug && (
-                <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px] text-slate-500">
-                  <div className="font-semibold text-slate-300 uppercase mb-1">Submission Debug</div>
-                  <div>submittedAt: <span className="text-slate-300 font-mono">{result.submissionDebug.submittedAt}</span></div>
-                  <div>expirationAt: <span className="text-slate-300 font-mono">{result.submissionDebug.expirationAt}</span></div>
-                  <div>expiresInMinutes: <span className="text-slate-300 font-semibold">{result.submissionDebug.expiresInMinutes}</span></div>
-                  <div>signaturePresent: <span className={result.submissionDebug.signaturePresent ? 'text-emerald-400 font-semibold' : 'text-destructive font-semibold'}>{result.submissionDebug.signaturePresent ? 'YES' : 'NO'}</span></div>
-                  <div>signatureLength: <span className="text-slate-300">{result.submissionDebug.signatureLength} chars</span></div>
-                  <div>signingVersion: <span className="text-slate-300 font-mono">{result.submissionDebug.signingVersion}</span></div>
-                  <div>signedAt: <span className="text-slate-300 font-mono">{result.submissionDebug.signedAt}</span></div>
-                </div>
-              )}
-
-              {/* Backend Debug Fields (error responses only) */}
-              {result.debug && (
-                <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px] text-slate-500">
-                  <div className="font-semibold text-slate-300 uppercase mb-1">Backend Debug Fields</div>
-                  <div>signaturePresent: <span className={result.debug.signaturePresent ? 'text-emerald-400' : 'text-destructive'}>{String(result.debug.signaturePresent)}</span></div>
-                  <div>signatureLength: <span className="text-slate-300">{result.debug.signatureLength}</span></div>
-                  <div>signaturePathResolved: <span className={result.debug.signaturePathResolved ? 'text-emerald-400' : 'text-destructive'}>{String(result.debug.signaturePathResolved)}</span></div>
-                  <div className="text-[6px] text-slate-600">receivedTopLevelKeys: {(result.debug.receivedTopLevelKeys || []).join(', ') || 'none'}</div>
-                </div>
-              )}
 
               {/* Save Evidence Snapshot — localStorage only */}
               {result.acceptedForDryRun && (
@@ -630,21 +648,19 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                         note: result.note,
                         submittedAt: result.submissionDebug?.submittedAt,
                         expirationAt: result.submissionDebug?.expirationAt,
-                        expiresInMinutes: result.submissionDebug?.expiresInMinutes,
                         signaturePresent: result.submissionDebug?.signaturePresent,
                         signatureLength: result.submissionDebug?.signatureLength,
                         signingVersion: result.submissionDebug?.signingVersion,
-                        signedAt: result.submissionDebug?.signedAt,
                         safetyBoundary: 'No OpenClaw call was made. No execution. No dispatch. LocalStorage only.',
                       };
                       const key = `phase5a_evidence_${Date.now()}`;
-                      localStorage.setItem(key, JSON.stringify(snapshot, null, 2));
-                      alert(`Phase 5A evidence snapshot saved to localStorage key: ${key}`);
+                      try { localStorage.setItem(key, JSON.stringify(snapshot)); } catch { /* quota full */ }
+                      alert(`Action Release Packet saved to localStorage key: ${key}`);
                     }}
                     className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors rounded text-[8px] font-semibold font-mono uppercase"
                   >
                     <Save className="w-3 h-3" />
-                    Save Phase 5A Evidence Snapshot
+                    Save Action Release Packet
                   </button>
                   <div className="text-[6px] text-slate-500 text-center mt-1 italic">Saves to localStorage only · No backend write · No execution</div>
                 </div>
