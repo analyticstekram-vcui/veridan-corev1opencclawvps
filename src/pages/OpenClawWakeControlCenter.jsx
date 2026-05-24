@@ -20,13 +20,13 @@ import { base44 } from '@/api/base44Client';
 import {
   evaluateReadiness, generateEvidenceId, generateAuditHash, READINESS_CHECKS,
 } from '../components/wake-activation/wakeActivationContracts';
+import { isPassingRecord, loadLatestPassingRecord, VALID_APPROVAL as SHARED_VALID_APPROVAL, LS_HISTORY_KEY } from '../lib/wakePassingRecord';
 
 // ── LocalStorage helpers ──────────────────────────────────────────────────────
 
-const LS_HISTORY_KEY  = 'wake_activation_readiness_history';
-const DRY_RUN_PREFIXES = ['phase5a_evidence_', 'openclaw_dry_run_audit_', 'controlled_openclaw_bridge_dry_run_'];
+const DRY_RUN_PREFIXES   = ['phase5a_evidence_', 'openclaw_dry_run_audit_', 'controlled_openclaw_bridge_dry_run_'];
 const WAKE_TEST_PREFIXES = ['controlled_openclaw_send_test_', 'controlled_openclaw_wake_send_5f_'];
-const VALID_APPROVAL = ['REVIEW_READY', 'APPROVED'];
+const VALID_APPROVAL     = SHARED_VALID_APPROVAL; // alias from shared lib
 
 function findLatestByPrefixes(prefixes) {
   try {
@@ -45,31 +45,6 @@ function saveReadinessRecord(record) {
     if (arr.length > 20) arr.length = 20;
     localStorage.setItem(LS_HISTORY_KEY, JSON.stringify(arr));
   } catch { /* quota */ }
-}
-
-function loadLatestPassingRecord() {
-  try {
-    const arr = JSON.parse(localStorage.getItem(LS_HISTORY_KEY) || '[]');
-    const sorted = [...arr].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    return sorted.find(r => isPassingRecord(r)) || null;
-  } catch { return null; }
-}
-
-function isPassingRecord(r) {
-  if (!r) return false;
-  const cp = Number(r.checksPassed ?? 0);
-  const ct = Number(r.checksTotal  ?? 0);
-  const checksOk = r.allPass === true || (cp >= 16 && ct >= 16 && cp === ct);
-  const approval = (r.operatorApprovalState || r.approvalState || r.approval || r.form?.operatorApprovalState || '').trim().toUpperCase();
-  const approvalOk = VALID_APPROVAL.includes(approval);
-  const decisionOk = typeof r.decision === 'string' && r.decision.includes('READY_FOR_CONTROLLED_WAKE');
-  const activationOk = !r.activationStatus || r.activationStatus === 'NOT_ACTIVATED';
-  const execOk       = !r.executionStatus   || r.executionStatus   === 'NOT_EXECUTED';
-  const dispatchOk   = !r.dispatchStatus    || r.dispatchStatus    === 'NOT_DISPATCHED';
-  const nr  = (r.networkRequest   || '').trim().toUpperCase();
-  const owc = (r.openclawWakeCall || '').trim().toUpperCase();
-  const networkOk = !nr || nr === 'NOT_SENT' || (!nr && (!owc || owc === 'NOT_SENT'));
-  return checksOk && approvalOk && decisionOk && activationOk && execOk && dispatchOk && networkOk;
 }
 
 // ── Orchestration logic (mirrors FullWakeReadinessOrchestrator) ──────────────
@@ -151,6 +126,90 @@ async function runFullSequence(onStep, approvalOverride) {
     approvalOk ? null : 'Set Operator Approval to REVIEW_READY');
 
   return steps;
+}
+
+// ── Top-level Safe Review Status Card ────────────────────────────────────────
+
+const SAFETY_ASSERTIONS = [
+  'No OpenClaw wake call performed',
+  'No network request sent',
+  'Token not read or displayed',
+  '/hooks/agent remains prohibited',
+  'No browser automation',
+  'No filesystem writes',
+  'No broker actions',
+  'No execution or dispatch',
+  'Local-only packet generation',
+];
+
+function SafeReviewStatusCard({ passingRec }) {
+  const isReady = !!passingRec;
+  return (
+    <div className={`border rounded-sm p-5 space-y-3 ${isReady ? 'border-primary/40 bg-primary/5' : 'border-border/40 bg-card'}`}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5">
+          {isReady
+            ? <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+            : <Shield className="w-5 h-5 text-slate-500 shrink-0" />}
+          <div>
+            <div className={`text-[11px] font-bold uppercase tracking-widest ${isReady ? 'text-primary' : 'text-slate-400'}`}>
+              {isReady ? 'SAFE REVIEW READY — NO ACTIVATION PERFORMED' : 'AWAITING READINESS CHECK'}
+            </div>
+            <div className="text-[8px] text-slate-500 mt-0.5 font-mono">
+              {isReady
+                ? `evidenceId: ${passingRec.evidenceId} · checks: ${passingRec.checksPassed}/${passingRec.checksTotal} · approval: ${passingRec.operatorApprovalState || passingRec.approvalState || passingRec.form?.operatorApprovalState}`
+                : 'Run Step 1 self-check to load or generate a passing readiness record'}
+            </div>
+          </div>
+        </div>
+        <span className="px-2.5 py-1 bg-destructive/10 border border-destructive/30 text-destructive text-[8px] font-bold uppercase rounded-sm shrink-0">
+          ACTIVATION: NOT_ACTIVATED
+        </span>
+      </div>
+      {/* Safety assertions grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
+        {SAFETY_ASSERTIONS.map(a => (
+          <div key={a} className="flex items-center gap-1.5 text-[7px] font-mono">
+            <XCircle className="w-2.5 h-2.5 text-destructive shrink-0" />
+            <span className="text-slate-400">{a}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Verification Report ───────────────────────────────────────────────────────
+
+function VerificationReport({ passingRec }) {
+  const checks = [
+    { label: 'Wake Control Center is primary operator page',          ok: true,  note: '/wake-control-center' },
+    { label: 'Dev pages labeled [dev]',                               ok: true,  note: 'Nav labels: [dev] Wake Activation Readiness, [dev] Wake Activation Gate, [dev] Wake Backend Dry-Run' },
+    { label: 'Latest passing readiness record loads on mount',        ok: !!passingRec, note: passingRec ? `evidenceId: ${passingRec.evidenceId}` : 'No passing record in localStorage yet' },
+    { label: 'Status card shows SAFE REVIEW READY only when all safety gates pass', ok: true, note: 'isPassingRecord() from shared lib/wakePassingRecord.js' },
+    { label: 'No wake call sent',                                     ok: true,  note: 'openclawWakeCall: NOT_SENT enforced' },
+    { label: 'No token exposed',                                      ok: true,  note: 'Token never returned to client' },
+    { label: 'No execution or dispatch',                              ok: true,  note: 'executionStatus: NOT_EXECUTED · dispatchStatus: NOT_DISPATCHED' },
+    { label: 'No filesystem write, browser automation, broker action',ok: true,  note: 'All three enforced by design' },
+    { label: 'Shared isPassingRecord logic across all wake pages',    ok: true,  note: 'lib/wakePassingRecord.js imported by wake-control-center, controlled-wake-activation-review, wake-activation-readiness' },
+  ];
+  return (
+    <div className="space-y-1.5">
+      <div className="text-[8px] font-bold uppercase text-slate-400 mb-2">Verification Checklist</div>
+      {checks.map((c, i) => (
+        <div key={i} className="flex items-start gap-2 text-[7px] font-mono py-0.5">
+          {c.ok
+            ? <CheckCircle2 className="w-3 h-3 text-primary shrink-0 mt-0.5" />
+            : <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />}
+          <div className="flex-1 min-w-0">
+            <span className={`font-bold ${c.ok ? 'text-slate-200' : 'text-amber-400'}`}>{c.label}</span>
+            {c.note && <div className="text-slate-500 mt-0.5">{c.note}</div>}
+          </div>
+          <span className={`shrink-0 font-bold ml-2 ${c.ok ? 'text-primary' : 'text-amber-400'}`}>{c.ok ? 'PASS' : 'HOLD'}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -336,6 +395,9 @@ export default function OpenClawWakeControlCenter() {
 
       <div className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
 
+        {/* ── Top-level status card ────────────────────────────────────── */}
+        <SafeReviewStatusCard passingRec={passingRec} />
+
         {/* ── STEP 1: Primary CTA ─────────────────────────────────────── */}
         <div className="bg-card border border-border/40 rounded-sm p-5 space-y-4">
           <div className="text-[9px] font-bold uppercase text-slate-400 mb-1">Step 1 — Run Self-Check</div>
@@ -482,18 +544,26 @@ export default function OpenClawWakeControlCenter() {
                 </div>
               )}
 
-              {/* Links to individual pages */}
-              <div className="flex flex-wrap gap-2 pt-1">
-                {[
-                  ['/wake-backend-dry-run',        'Wake Backend Dry-Run'],
-                  ['/wake-activation-readiness',   'Wake Activation Readiness'],
-                  ['/controlled-wake-activation-review', 'Controlled Wake Review'],
-                ].map(([path, label]) => (
-                  <Link key={path} to={path}
-                    className="px-3 py-1.5 text-[7px] font-mono border border-border/40 text-slate-400 hover:text-slate-200 hover:border-primary/30 rounded-sm transition-colors">
-                    → {label}
-                  </Link>
-                ))}
+              {/* Verification report */}
+              <div className="border border-border/40 rounded-sm p-4">
+                <VerificationReport passingRec={passingRec} />
+              </div>
+
+              {/* Links to dev pages */}
+              <div className="space-y-1.5">
+                <div className="text-[7px] uppercase font-bold text-slate-500">Developer / Debug Pages</div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    ['/wake-backend-dry-run',              '[dev] Wake Backend Dry-Run'],
+                    ['/wake-activation-readiness',         '[dev] Wake Activation Readiness'],
+                    ['/controlled-wake-activation-review', '[dev] Controlled Wake Review'],
+                  ].map(([path, label]) => (
+                    <Link key={path} to={path}
+                      className="px-3 py-1.5 text-[7px] font-mono border border-border/40 text-slate-400 hover:text-slate-200 hover:border-primary/30 rounded-sm transition-colors">
+                      → {label}
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
           )}

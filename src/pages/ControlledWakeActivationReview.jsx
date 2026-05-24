@@ -6,6 +6,7 @@
  */
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { isPassingRecord as sharedIsPassingRecord, loadLatestPassingRecord as sharedLoadLatest, VALID_APPROVAL as SHARED_VALID_APPROVAL } from '../lib/wakePassingRecord';
 import {
   ArrowLeft, Shield, AlertTriangle, ChevronDown, ChevronUp,
   Activity, Bell, ClipboardList, CheckCircle2, XCircle, RefreshCw,
@@ -21,48 +22,29 @@ import FullWakeReadinessOrchestrator from '../components/wake-activation/FullWak
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const VALID_APPROVAL = ['REVIEW_READY', 'APPROVED'];
-
-function isPassingRecord(r) {
-  if (!r) return false;
-  const cp = Number(r.checksPassed ?? 0);
-  const ct = Number(r.checksTotal  ?? 0);
-  const checksOk   = r.allPass === true || (cp >= 16 && ct >= 16 && cp === ct);
-  const approval   = (r.operatorApprovalState || r.approvalState || r.approval || r.form?.operatorApprovalState || '').trim().toUpperCase();
-  const approvalOk = VALID_APPROVAL.includes(approval);
-  const decisionOk = typeof r.decision === 'string' && r.decision.includes('READY_FOR_CONTROLLED_WAKE');
-  const activationOk = !r.activationStatus || r.activationStatus === 'NOT_ACTIVATED';
-  const execOk       = !r.executionStatus   || r.executionStatus   === 'NOT_EXECUTED';
-  const dispatchOk   = !r.dispatchStatus    || r.dispatchStatus    === 'NOT_DISPATCHED';
-  const nr  = (r.networkRequest   || '').trim().toUpperCase();
-  const owc = (r.openclawWakeCall || '').trim().toUpperCase();
-  const networkOk = !nr || nr === 'NOT_SENT' || (!nr && (!owc || owc === 'NOT_SENT'));
-  return checksOk && approvalOk && decisionOk && activationOk && execOk && dispatchOk && networkOk;
-}
+const VALID_APPROVAL = SHARED_VALID_APPROVAL;
+const isPassingRecord = sharedIsPassingRecord;
 
 function loadLatestReadinessEvidence() {
-  // 1. Read wake_activation_readiness_history — sort by createdAt desc — pick newest PASSING record
+  // Use shared helper for primary passing record lookup
+  const passing = sharedLoadLatest();
+  if (passing) return { ...passing, _loadedFrom: 'wake_activation_readiness_history', _isPassing: true };
+
+  // Fall back to newest non-passing history record so caller can show status
   try {
     const raw = localStorage.getItem('wake_activation_readiness_history');
     if (raw) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr) && arr.length > 0) {
-        const sorted = [...arr].sort((a, b) =>
-          new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-        );
-        const passing = sorted.find(isPassingRecord);
-        if (passing) return { ...passing, _loadedFrom: 'wake_activation_readiness_history', _isPassing: true };
-        // History exists but no passing record — return newest so caller can show status
-        return { ...sorted[0], _loadedFrom: 'wake_activation_readiness_history', _isPassing: false };
+        const sorted = [...arr].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        if (sorted[0]) return { ...sorted[0], _loadedFrom: 'wake_activation_readiness_history', _isPassing: false };
       }
     }
   } catch { /* ignore */ }
 
-  // 2. Only fall back to phase5a_evidence_* if no history key exists at all
+  // Last resort: phase5a_evidence_* keys
   try {
-    const keys = Object.keys(localStorage)
-      .filter(k => k.startsWith('phase5a_evidence_'))
-      .sort().reverse();
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('phase5a_evidence_')).sort().reverse();
     if (keys.length > 0) {
       const rec = JSON.parse(localStorage.getItem(keys[0]));
       if (rec) return { ...rec, _loadedFrom: 'phase5a_evidence', _isPassing: isPassingRecord(rec) };
