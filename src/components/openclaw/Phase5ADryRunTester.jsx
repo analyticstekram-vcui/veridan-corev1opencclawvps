@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { AlertTriangle, Zap, CheckCircle2, XCircle, Loader2, Save, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Phase5ApprovalBindingTestCases from './Phase5ApprovalBindingTestCases';
+import Phase5ANextStepCard from './Phase5ANextStepCard';
 
 const PHASE_5A_BASELINE = {
   phase: 'Phase 5A',
@@ -523,6 +524,9 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
             {error}
           </div>
         )}
+
+        {/* Next Step Card — always visible once Phase 5A is locked */}
+        <Phase5ANextStepCard />
 
         {/* Result */}
         {result && (
