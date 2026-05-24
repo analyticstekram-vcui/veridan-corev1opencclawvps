@@ -324,6 +324,158 @@ function VerificationBlock() {
   );
 }
 
+// ─── Next Action Queue ────────────────────────────────────────────────────────
+
+const QUEUE_TASKS = [
+  {
+    key: 'obsidian',
+    title: 'Obsidian File Task',
+    description: 'Preview a future Obsidian file read/write request.',
+    buttonLabel: 'Preview Obsidian Task',
+    taskType: 'OBSIDIAN_FILE_TASK',
+    requestedAction: 'Preview Obsidian vault file operation',
+    riskLevel: 'LOW',
+  },
+  {
+    key: 'browser',
+    title: 'Browser Task',
+    description: 'Preview a future browser automation request.',
+    buttonLabel: 'Preview Browser Task',
+    taskType: 'BROWSER_TASK',
+    requestedAction: 'Preview browser read operation',
+    riskLevel: 'LOW',
+  },
+  {
+    key: 'tradingview',
+    title: 'TradingView Task',
+    description: 'Preview a future TradingView chart or alert task.',
+    buttonLabel: 'Preview TradingView Task',
+    taskType: 'TRADINGVIEW_TASK',
+    requestedAction: 'Preview TradingView chart or alert operation',
+    riskLevel: 'LOW',
+  },
+  {
+    key: 'system',
+    title: 'System Task',
+    description: 'Preview a future system check or OpenClaw command.',
+    buttonLabel: 'Preview System Task',
+    taskType: 'SYSTEM_TASK',
+    requestedAction: 'Preview OpenClaw system check or read command',
+    riskLevel: 'LOW',
+  },
+];
+
+const PACKET_FIXED = {
+  requiresApproval: true,
+  executionStatus: 'NOT_EXECUTED',
+  dispatchStatus: 'NOT_DISPATCHED',
+  browserAutomation: 'DISABLED',
+  fileWrite: 'DISABLED',
+  credentialUse: 'DISABLED',
+  brokerAction: 'DISABLED',
+};
+
+function buildPacket(task) {
+  return {
+    taskType: task.taskType,
+    requestedAction: task.requestedAction,
+    riskLevel: task.riskLevel,
+    ...PACKET_FIXED,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function LockedActionCard({ task, onPreview }) {
+  return (
+    <div className="border border-border/40 bg-card rounded-lg overflow-hidden flex flex-col">
+      <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Lock className="w-3 h-3 text-amber-500 shrink-0" />
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-300">{task.title}</span>
+        </div>
+        <span className="text-[7px] font-mono font-bold text-amber-500 border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 rounded-sm">LOCKED</span>
+      </div>
+      <div className="px-4 py-3 flex-1 text-[8px] text-slate-400">{task.description}</div>
+      <div className="px-4 pb-4">
+        <button
+          type="button"
+          onClick={() => onPreview(task)}
+          className="w-full text-[8px] font-semibold px-3 py-2 bg-secondary/40 border border-border/40 text-slate-300 hover:border-primary/40 hover:text-primary rounded transition-colors flex items-center justify-center gap-1.5"
+        >
+          <Eye className="w-3 h-3" />
+          {task.buttonLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function NextActionQueue() {
+  const [activePacket, setActivePacket] = useState(null);
+  const [saved, setSaved] = useState(false);
+
+  const handlePreview = (task) => {
+    setSaved(false);
+    setActivePacket(buildPacket(task));
+  };
+
+  const handleSave = () => {
+    try {
+      const key = `next_action_queue_packet_${Date.now()}`;
+      localStorage.setItem(key, JSON.stringify(activePacket));
+      setSaved(true);
+    } catch { /* quota */ }
+  };
+
+  return (
+    <section className="space-y-3">
+      <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 border-b border-border/30 pb-1">
+        Next Action Queue
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {QUEUE_TASKS.map(task => (
+          <LockedActionCard key={task.key} task={task} onPreview={handlePreview} />
+        ))}
+      </div>
+
+      {activePacket && (
+        <div className="border border-border/40 bg-card rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-300">Preview Packet</span>
+            <span className="text-[7px] font-mono text-slate-500">Local-only — no execution</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-[7px] font-mono">
+            {Object.entries(activePacket).map(([k, v]) => (
+              <div key={k} className="flex gap-1 flex-wrap">
+                <span className="text-slate-500 shrink-0">{k}:</span>
+                <span className={
+                  v === 'NOT_EXECUTED' || v === 'NOT_DISPATCHED' || v === 'DISABLED'
+                    ? 'text-destructive font-bold'
+                    : k === 'taskType' || k === 'riskLevel'
+                    ? 'text-amber-400'
+                    : 'text-slate-200'
+                }>{String(v)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saved}
+              className="flex items-center gap-1.5 text-[8px] font-semibold px-3 py-2 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 rounded transition-colors disabled:opacity-50"
+            >
+              {saved ? <CheckCircle2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+              {saved ? 'Saved to localStorage' : 'Save Preview Packet'}
+            </button>
+            {saved && <span className="text-[7px] text-slate-500 font-mono">Saved to localStorage — no backend call.</span>}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function OpenClawReadOnlyCommandCenter() {
   const [statusCards, setStatusCards] = useState({
@@ -424,7 +576,7 @@ export default function OpenClawReadOnlyCommandCenter() {
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <Lock className="w-4 h-4 text-primary" />
-          <h1 className="text-sm font-bold uppercase tracking-widest text-foreground">OpenClaw Read-Only Command Center</h1>
+          <h1 className="text-sm font-bold uppercase tracking-widest text-foreground">OpenClaw Command Center</h1>
         </div>
         <p className="text-[8px] text-slate-500">Veridan Core · Phase 5A locked · Read-only inspection and preview only.</p>
       </div>
@@ -517,6 +669,9 @@ export default function OpenClawReadOnlyCommandCenter() {
         </div>
         <LastDryRunCard record={lastDryRun} onLoad={handleLoadDryRun} />
       </section>
+
+      {/* ── Next Action Queue ─────────────────────────────────────────────── */}
+      <NextActionQueue />
 
       {/* Preview Task Cards */}
       <section className="space-y-3">
