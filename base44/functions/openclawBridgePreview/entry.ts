@@ -74,7 +74,7 @@ const generateHmacSignature = async (canonical, secret) => {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret) => {
+const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret, resolvedBridgeRequest) => {
   const errors = [];
 
   // Check signature field existence
@@ -139,19 +139,19 @@ const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret) => 
   }
 
   // ALL TIMESTAMP VALIDATION COMPLETE - now proceed to HMAC verification
-  // Build canonical payload for signature verification
-  const br = body.bridgeRequest;
+  // Build canonical payload — use resolvedBridgeRequest for bridge fields, body for sig fields
+  const br = resolvedBridgeRequest || body.bridgeRequest || body;
   const canonical = buildCanonicalPayload(
-    body.bridgeRequest.requestId,
-    body.bridgeRequest.proposalId,
-    body.previewHash,
-    body.operatorId,
-    body.submittedAt,
-    body.signedAt,
-    br.commandType,
-    br.targetUrl,
-    br.riskTier,
-    br.governanceMode,
+    br.requestId || "",
+    br.proposalId || "",
+    body.previewHash || "",
+    body.operatorId || "",
+    body.submittedAt || "",
+    body.signedAt || "",
+    br.commandType || "",
+    br.targetUrl || "",
+    br.riskTier || "",
+    br.governanceMode || "",
     br.dryRun,
     br.liveExecution
   );
@@ -440,14 +440,45 @@ Deno.serve(async (req) => {
 
     const signature =
       signedRequest.signature ||
+      payload.signedBridgeRequest?.signature ||
       payload.signature ||
       incoming.signature ||
+      body?.signedBridgeRequest?.signature ||
       body?.signature ||
+      "";
+
+    const signatureExtractionPath =
+      signedRequest.signature ? 'signedRequest.signature' :
+      payload.signedBridgeRequest?.signature ? 'payload.signedBridgeRequest.signature' :
+      payload.signature ? 'payload.signature' :
+      incoming.signature ? 'incoming.signature' :
+      body?.signedBridgeRequest?.signature ? 'body.signedBridgeRequest.signature' :
+      body?.signature ? 'body.signature' :
+      'NOT_FOUND';
+
+    const signingVersion =
+      signedRequest.signingVersion ||
+      payload.signedBridgeRequest?.signingVersion ||
+      payload.signingVersion ||
+      incoming.signingVersion ||
+      body?.signedBridgeRequest?.signingVersion ||
+      body?.signingVersion ||
+      "";
+
+    const signedAt =
+      signedRequest.signedAt ||
+      payload.signedBridgeRequest?.signedAt ||
+      payload.signedAt ||
+      incoming.signedAt ||
+      body?.signedBridgeRequest?.signedAt ||
+      body?.signedAt ||
       "";
 
     const normalizedSignedRequest = {
       ...signedRequest,
       signature,
+      signingVersion,
+      signedAt,
     };
 
     const previewHash =
@@ -736,7 +767,7 @@ Deno.serve(async (req) => {
 
     // Phase 3-4B: Signed request validation (Phase 4B: Real HMAC if secret configured)
     const hmacSecret = Deno.env.get('OPENCLAW_BRIDGE_HMAC_SECRET');
-    const signatureCheck = await validateSignedRequest(normalizedSignedRequest, hmacSecretCheck.configured, hmacSecret);
+    const signatureCheck = await validateSignedRequest(normalizedSignedRequest, hmacSecretCheck.configured, hmacSecret, bridgeRequest);
 
     if (signatureCheck.result === 'FAIL') {
       const validatedAt = new Date().toISOString();
@@ -800,6 +831,9 @@ Deno.serve(async (req) => {
             signaturePresent: Boolean(normalizedSignedRequest?.signature),
             signatureLength: normalizedSignedRequest?.signature?.length || 0,
             signaturePathResolved: Boolean(signature),
+            signatureExtractionPath,
+            signingVersionSeen: signingVersion,
+            signedAtSeen: signedAt,
           },
         },
         { status: 400 }
@@ -1010,6 +1044,7 @@ Deno.serve(async (req) => {
           signatureCheckResult: 'PASS',
           signatureCheckMessages: [],
           approvalBindingStatus: 'PASS',
+          signatureExtractionPath,
           note: 'Phases 1-5 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
         },
         { status: 200 }
