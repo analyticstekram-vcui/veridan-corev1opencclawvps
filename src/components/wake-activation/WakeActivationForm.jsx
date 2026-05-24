@@ -45,7 +45,7 @@ const DEFAULT_FORM = {
   operatorApprovalState: '',
 };
 
-const FIELD_DEFS = [
+const TEXT_FIELDS = [
   { name: 'dryRunDecision',         label: 'Dry-Run Decision',          placeholder: 'SERVER_DRY_RUN_VALIDATED' },
   { name: 'localWakeTestStatus',    label: 'Local Wake Test Status',    placeholder: 'HTTP_200_CONFIRMED' },
   { name: 'openClawServiceStatus',  label: 'OpenClaw Service Status',   placeholder: 'ACTIVE' },
@@ -57,7 +57,6 @@ const FIELD_DEFS = [
   { name: 'auditLoggingStatus',     label: 'Audit Logging Status',      placeholder: 'PLANNED or ENABLED' },
   { name: 'killSwitchStatus',       label: 'Kill Switch Status',        placeholder: 'DEFINED or PLANNED' },
   { name: 'rollbackPlanStatus',     label: 'Rollback Plan Status',      placeholder: 'DEFINED or PLANNED' },
-  { name: 'operatorApprovalState',  label: 'Operator Approval State',   placeholder: 'REVIEW_READY or APPROVED', highlight: true },
 ];
 
 export default function WakeActivationForm({ onResult, orchestratorResult }) {
@@ -109,16 +108,20 @@ export default function WakeActivationForm({ onResult, orchestratorResult }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Dedicated handler for the approval dropdown — guarantees exact value
+  const handleApprovalChange = (e) => {
+    const val = e.target.value;
+    setFormData(prev => ({ ...prev, operatorApprovalState: val }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      // Normalise the approval state — trim whitespace and uppercase
-      const approvalRaw   = (formData.operatorApprovalState || '').trim().toUpperCase();
-      const approvalValid = VALID_APPROVAL_STATES.includes(approvalRaw);
-      const approvalFinal = approvalRaw || 'PENDING';
+      // Read directly from state — no parsing needed since it's a controlled select
+      const approvalFinal = formData.operatorApprovalState || 'PENDING';
 
       // Build the canonical form object that evaluateReadiness expects
       const canonicalForm = {
@@ -138,18 +141,21 @@ export default function WakeActivationForm({ onResult, orchestratorResult }) {
       const record = {
         evidenceId,
         auditHash,
-        generatedAt:      ts,
-        createdAt:        ts,
+        generatedAt:          ts,
+        createdAt:            ts,
         allPass,
         decision,
-        activationStatus: 'NOT_ACTIVATED',
-        executionStatus:  'NOT_EXECUTED',
-        dispatchStatus:   'NOT_DISPATCHED',
-        validationResults: checks,
+        activationStatus:     'NOT_ACTIVATED',
+        executionStatus:      'NOT_EXECUTED',
+        dispatchStatus:       'NOT_DISPATCHED',
+        validationResults:    checks,
         checksPassed,
         checksTotal,
-        approvalState:    approvalFinal,
-        form:             canonicalForm,
+        // Store approval in every field path the orchestrator / history table may read
+        operatorApprovalState: approvalFinal,
+        approvalState:         approvalFinal,
+        approval:              approvalFinal,
+        form:                  canonicalForm,
       };
 
       saveReadinessRecord(record);
@@ -160,43 +166,52 @@ export default function WakeActivationForm({ onResult, orchestratorResult }) {
     }
   };
 
-  const approvalInput = (formData.operatorApprovalState || '').trim().toUpperCase();
-  const approvalOk    = VALID_APPROVAL_STATES.includes(approvalInput);
+  const approvalOk = VALID_APPROVAL_STATES.includes(formData.operatorApprovalState);
 
   return (
     <div className="space-y-4">
       {!submitted ? (
         <form onSubmit={handleSubmit} className="space-y-2">
-          {FIELD_DEFS.map(field => (
+          {TEXT_FIELDS.map(field => (
             <div key={field.name}>
-              <label className={`text-[8px] font-bold uppercase mb-1 block ${field.highlight ? 'text-amber-400' : 'text-slate-400'}`}>
-                {field.label}
-                {field.highlight && <span className="ml-1 text-amber-500">← required for 16/16</span>}
-              </label>
+              <label className="text-[8px] font-bold uppercase mb-1 block text-slate-400">{field.label}</label>
               <input
                 type="text"
                 name={field.name}
                 value={formData[field.name]}
                 onChange={handleChange}
                 placeholder={field.placeholder}
-                className={`w-full bg-secondary/40 border rounded-sm px-3 py-2 text-[8px] font-mono text-foreground focus:outline-none transition-colors ${
-                  field.highlight
-                    ? approvalOk
-                      ? 'border-primary/60 focus:border-primary'
-                      : 'border-amber-500/50 focus:border-amber-400'
-                    : 'border-border/40 focus:border-primary/40'
-                }`}
+                className="w-full bg-secondary/40 border border-border/40 rounded-sm px-3 py-2 text-[8px] font-mono text-foreground focus:outline-none focus:border-primary/40"
               />
-              {field.highlight && !approvalOk && formData.operatorApprovalState && (
-                <div className="text-[7px] text-amber-400 mt-0.5 font-mono">
-                  Must be REVIEW_READY or APPROVED to pass check 16/16
-                </div>
-              )}
-              {field.highlight && approvalOk && (
-                <div className="text-[7px] text-primary mt-0.5 font-mono">✓ Valid — check 16/16 will PASS</div>
-              )}
             </div>
           ))}
+
+          {/* ── Operator Approval State — controlled dropdown, not free text ── */}
+          <div className="pt-1">
+            <label className="text-[8px] font-bold uppercase mb-1 block text-amber-400">
+              Operator Approval State <span className="text-amber-500">← required for 16/16</span>
+            </label>
+            <select
+              value={formData.operatorApprovalState}
+              onChange={handleApprovalChange}
+              className={`w-full bg-secondary/40 border rounded-sm px-3 py-2 text-[8px] font-mono text-foreground focus:outline-none transition-colors ${
+                approvalOk ? 'border-primary/60' : 'border-amber-500/50'
+              }`}
+            >
+              <option value="PENDING">PENDING</option>
+              <option value="REVIEW_READY">REVIEW_READY</option>
+              <option value="APPROVED">APPROVED</option>
+            </select>
+            {/* Debug line — always visible */}
+            <div className="text-[7px] font-mono mt-1">
+              <span className="text-slate-500">Current selected approval state: </span>
+              <span className={approvalOk ? 'text-primary font-bold' : 'text-amber-400 font-bold'}>
+                {formData.operatorApprovalState}
+              </span>
+              {approvalOk && <span className="text-primary ml-2">✓ check 16/16 will PASS</span>}
+              {!approvalOk && <span className="text-amber-400 ml-2">→ select REVIEW_READY or APPROVED to pass</span>}
+            </div>
+          </div>
 
           <Button
             type="submit"

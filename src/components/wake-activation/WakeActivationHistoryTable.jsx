@@ -10,7 +10,10 @@ export default function WakeActivationHistoryTable({ history, onSelect }) {
   const filtered = history.filter(r => {
     if (fDry      !== 'all' && r.form?.dryRunDecision      !== fDry)      return false;
     if (fWake     !== 'all' && r.form?.localWakeTestStatus !== fWake)     return false;
-    if (fApproval !== 'all' && r.form?.operatorApprovalState !== fApproval) return false;
+    if (fApproval !== 'all') {
+      const rApproval = r.operatorApprovalState || r.approvalState || r.approval || r.form?.operatorApprovalState || 'PENDING';
+      if (rApproval !== fApproval) return false;
+    }
     if (fDecision !== 'all' && r.decision                  !== fDecision) return false;
     return true;
   });
@@ -69,7 +72,9 @@ export default function WakeActivationHistoryTable({ history, onSelect }) {
                     <td className="px-3 py-2 font-mono text-primary whitespace-nowrap">{r.evidenceId}</td>
                     <td className="px-3 py-2 text-slate-300 whitespace-nowrap text-[7px]">{r.form?.dryRunDecision}</td>
                     <td className="px-3 py-2 text-amber-400 whitespace-nowrap text-[7px]">{r.form?.localWakeTestStatus}</td>
-                    <td className="px-3 py-2 text-slate-300 whitespace-nowrap text-[7px]">{r.form?.operatorApprovalState}</td>
+                    <td className="px-3 py-2 text-slate-300 whitespace-nowrap text-[7px]">
+                      {r.operatorApprovalState || r.approvalState || r.approval || r.form?.operatorApprovalState || 'PENDING'}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={`px-1.5 py-0.5 border rounded-sm text-[6px] font-bold ${dm.text} ${dm.bg} ${dm.border}`}>
                         {r.decision?.replace(/BLOCKED_|READY_FOR_/g, '').slice(0, 28)}…
