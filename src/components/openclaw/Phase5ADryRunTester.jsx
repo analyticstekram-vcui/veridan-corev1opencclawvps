@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, Zap, CheckCircle2, XCircle, Loader2, Save, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,39 @@ const PHASE_5A_BASELINE = {
 };
 
 const BASELINE_LS_KEY = 'phase5a_baseline_lock';
+
+function PayloadShapeDebug({ debug }) {
+  const [open, setOpen] = React.useState(false);
+  const rows = [
+    { label: 'topLevelSignaturePresent', value: debug.topLevelSignaturePresent },
+    { label: 'signedRequestSignaturePresent', value: debug.signedRequestSignaturePresent },
+    { label: 'signedBridgeRequestSignaturePresent', value: debug.signedBridgeRequestSignaturePresent },
+    { label: 'bridgeRequestSignaturePresent', value: debug.bridgeRequestSignaturePresent },
+  ];
+  return (
+    <div className="pt-1 border-t border-border/20 mt-1">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="text-[6px] font-mono text-slate-600 hover:text-slate-400 flex items-center gap-1 transition-colors"
+      >
+        <span>{open ? '▾' : '▸'}</span>
+        Preview Payload Shape Debug
+      </button>
+      {open && (
+        <div className="mt-1 space-y-0.5 text-[6px] font-mono text-slate-500">
+          {rows.map(r => (
+            <div key={r.label}>
+              {r.label}: <span className={r.value ? 'text-emerald-400' : 'text-destructive'}>{r.value ? 'YES' : 'NO'}</span>
+            </div>
+          ))}
+          <div>signatureLength: <span className="text-slate-400">{debug.signatureLength ?? 0}</span></div>
+          <div>signingVersion: <span className="text-slate-400">{debug.signingVersion}</span></div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Phase5ADryRunTester({ signedRequest, proposalId, operatorId }) {
   const [loading, setLoading] = useState(false);
@@ -272,18 +305,32 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         return;
       }
 
-      // ── Step 2: Send canonical preview payload to openclawBridgePreview ──
-      // The payload includes signature at top level AND inside signedRequest.
-      const previewPayload = {
-        bridgeRequest: fullBridgeRequest,
-        signedRequest: signedBridgeRequest,
+      // ── Step 2: Build preview payload with signature in all backend-compatible locations ──
+      const sigFields = {
         signature: extractedSignature,
         signingVersion: extractedSigningVersion,
         signedAt: extractedSignedAt,
+      };
+
+      const previewPayload = {
+        // Top-level signature fields (some backends read here directly)
+        ...sigFields,
         previewHash,
         operatorId: fullBridgeRequest.operatorId || operatorId,
         submittedAt,
         expirationAt,
+        expiresInMinutes: 5,
+        proposalId: fullBridgeRequest.proposalId,
+        targetUrl: normalizedTarget,
+        requestedTarget: normalizedTarget,
+        commandType: fullBridgeRequest.commandType,
+        riskTier: fullBridgeRequest.riskTier,
+        // signedRequest path
+        signedRequest: { ...signedBridgeRequest, ...sigFields },
+        // signedBridgeRequest path (alternate key some backends check)
+        signedBridgeRequest: { ...signedBridgeRequest, ...sigFields },
+        // bridgeRequest path — include sig fields here too
+        bridgeRequest: { ...fullBridgeRequest, ...sigFields },
       };
 
       const PREVIEW_FUNCTION_INVOKED = 'openclawBridgePreview';
@@ -300,11 +347,12 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         signatureLength: extractedSignature?.length || 0,
         signingVersion: extractedSigningVersion,
         signedAt: extractedSignedAt,
-        previewPayloadHasSignedRequest: true,
-        previewPayloadSignaturePresent: Boolean(previewPayload.signedRequest?.signature),
-        previewPayloadSignatureLength: previewPayload.signedRequest?.signature?.length || 0,
+        // Multi-location shape debug
         topLevelSignaturePresent: Boolean(previewPayload.signature),
-        signedRequestKeys: Object.keys(signedBridgeRequest),
+        signedRequestSignaturePresent: Boolean(previewPayload.signedRequest?.signature),
+        signedBridgeRequestSignaturePresent: Boolean(previewPayload.signedBridgeRequest?.signature),
+        bridgeRequestSignaturePresent: Boolean(previewPayload.bridgeRequest?.signature),
+        signedRequestKeys: Object.keys(previewPayload.signedRequest || {}),
         preSubmitDebug,
         sanitizedSignerResponse: sanitizeSignerResponse(signerResponse),
       };
@@ -598,6 +646,11 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                         <div>signaturePathResolved: <span className={result.debug.signaturePathResolved ? 'text-emerald-400' : 'text-destructive'}>{String(result.debug.signaturePathResolved)}</span></div>
                         <div className="text-[6px] text-slate-600">receivedTopLevelKeys: {(result.debug.receivedTopLevelKeys || []).join(', ') || 'none'}</div>
                       </div>
+                    )}
+
+                    {/* Preview Payload Shape Debug */}
+                    {result.submissionDebug && (
+                      <PayloadShapeDebug debug={result.submissionDebug} />
                     )}
                   </div>
                 )}
