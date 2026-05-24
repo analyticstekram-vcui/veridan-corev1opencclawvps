@@ -12,6 +12,7 @@ import WakeActivationHistoryTable from '../components/wake-activation/WakeActiva
 import WakeActivationDetailDrawer from '../components/wake-activation/WakeActivationDetailDrawer';
 import { FIXED_STATUSES, GUARDRAILS, DECISION_META } from '../components/wake-activation/wakeActivationContracts';
 import FullWakeReadinessOrchestrator from '../components/wake-activation/FullWakeReadinessOrchestrator';
+import { isPassingRecord } from '../lib/wakePassingRecord';
 
 const TABS = [
   { id: 'flow',     label: 'Readiness Pipeline' },
@@ -47,8 +48,7 @@ export default function WakeActivationReadiness() {
     setLatestRecord(rec);
   };
 
-  const wakeCallReady = latestRecord?.allPass === true &&
-    ['REVIEW_READY', 'APPROVED'].includes(String(latestRecord?.approvalState || '').trim().toUpperCase());
+  const wakeCallReady = isPassingRecord(latestRecord);
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-mono">
