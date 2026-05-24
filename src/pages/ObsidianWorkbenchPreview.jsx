@@ -5,8 +5,9 @@
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, CheckCircle2, AlertTriangle, Folder, FileText, Clock, ArrowRight } from 'lucide-react';
+import { Shield, CheckCircle2, AlertTriangle, Folder, FileText, Clock, ArrowRight, Zap } from 'lucide-react';
 import ModuleNav from '../components/navigation/ModuleNav';
+import ObsidianTaskPlanVerification from '../components/obsidian-vault/ObsidianTaskPlanVerification';
 
 const VAULT_FOLDERS = [
   'Veridan Core/00_Master_Index.md',
@@ -260,6 +261,8 @@ function AuditEvidenceCard() {
 
 export default function ObsidianWorkbenchPreview() {
   const [latestPlan, setLatestPlan] = useState(null);
+  const [buildSuccess, setBuildSuccess] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
 
   // Load latest plan on mount
   useEffect(() => {
@@ -299,6 +302,61 @@ export default function ObsidianWorkbenchPreview() {
     } catch { /* quota */ }
   }, []);
 
+  const handleBuildTaskPlan = useCallback(() => {
+    const ts = new Date().toISOString();
+    const tasks = [];
+
+    // Missing SOPs as tasks
+    REQUIRED_SOPS.forEach((sop, i) => {
+      tasks.push({
+        taskId: `TASK-${Date.now().toString(36).toUpperCase()}-SOP-${i}`,
+        source: 'OBSIDIAN_WORKBENCH',
+        taskType: 'CREATE_SOP',
+        title: sop,
+        description: `Create standard operating procedure: ${sop}`,
+        targetFolder: 'Veridan Core/08_SOPs/',
+        proposedFileName: `${sop.toLowerCase().replace(/\s+/g, '_')}.md`,
+        status: 'PROPOSED_NOT_EXECUTED',
+        approvalState: 'REQUIRED',
+        executionStatus: 'NOT_EXECUTED',
+        dispatchStatus: 'NOT_DISPATCHED',
+        openclawCall: 'NOT_SENT',
+        filesystemWrite: 'DISABLED',
+        createdAt: ts,
+      });
+    });
+
+    // Pending AI tasks
+    VAULT_TASKS.forEach((task, i) => {
+      tasks.push({
+        taskId: `TASK-${Date.now().toString(36).toUpperCase()}-PLAN-${i}`,
+        source: 'OBSIDIAN_WORKBENCH',
+        taskType: 'VAULT_SETUP',
+        title: task,
+        description: `Vault setup task: ${task}`,
+        targetFolder: 'Veridan Core/',
+        proposedFileName: `${task.toLowerCase().replace(/\s+/g, '_')}.md`,
+        status: 'PROPOSED_NOT_EXECUTED',
+        approvalState: 'REQUIRED',
+        executionStatus: 'NOT_EXECUTED',
+        dispatchStatus: 'NOT_DISPATCHED',
+        openclawCall: 'NOT_SENT',
+        filesystemWrite: 'DISABLED',
+        createdAt: ts,
+      });
+    });
+
+    try {
+      const stored = localStorage.getItem('veridan_openclaw_task_queue') || '[]';
+      const allTasks = JSON.parse(stored);
+      allTasks.unshift(...tasks);
+      if (allTasks.length > 100) allTasks.length = 100;
+      localStorage.setItem('veridan_openclaw_task_queue', JSON.stringify(allTasks));
+      setBuildSuccess(true);
+      setTimeout(() => setBuildSuccess(false), 3000);
+    } catch { /* quota */ }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background flex flex-col font-mono">
       <ModuleNav />
@@ -333,14 +391,30 @@ export default function ObsidianWorkbenchPreview() {
 
       <div className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-5">
 
-        {/* Primary button */}
-        <button
-          type="button"
-          onClick={handleGenerateVaultPlan}
-          className="w-full flex items-center justify-center gap-2 px-8 py-4 bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 rounded-sm transition-colors font-bold uppercase tracking-widest text-[10px]"
-        >
-          <Clock className="w-5 h-5" /> GENERATE OBSIDIAN VAULT PLAN
-        </button>
+        {/* Primary buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={handleGenerateVaultPlan}
+            className="flex items-center justify-center gap-2 px-8 py-4 bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 rounded-sm transition-colors font-bold uppercase tracking-widest text-[10px]"
+          >
+            <Clock className="w-5 h-5" /> GENERATE OBSIDIAN VAULT PLAN
+          </button>
+          <button
+            type="button"
+            onClick={handleBuildTaskPlan}
+            className="flex items-center justify-center gap-2 px-8 py-4 bg-accent/15 border border-accent/40 text-accent hover:bg-accent/25 rounded-sm transition-colors font-bold uppercase tracking-widest text-[10px]"
+          >
+            <Zap className="w-5 h-5" /> BUILD OBSIDIAN TASK PLAN
+          </button>
+        </div>
+
+        {/* Success message */}
+        {buildSuccess && (
+          <div className="bg-primary/10 border border-primary/30 rounded-sm p-3 text-[8px] font-mono text-primary">
+            ✓ OBSIDIAN TASK PLAN CREATED — NO FILES WRITTEN
+          </div>
+        )}
 
         {/* 1. Vault Status */}
         <VaultStatusCard />
@@ -362,6 +436,26 @@ export default function ObsidianWorkbenchPreview() {
 
         {/* 6. Audit / Evidence */}
         <AuditEvidenceCard />
+
+        {/* 7. Verification Panel */}
+        <div className="border border-border/40 rounded-sm overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowVerification(v => !v)}
+            className="w-full flex items-center justify-between px-5 py-3 bg-card hover:bg-secondary/20 transition-colors"
+          >
+            <span className="text-[8px] font-bold uppercase tracking-widest text-slate-500">Verification Panel</span>
+            {showVerification
+              ? <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+              : <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>}
+          </button>
+
+          {showVerification && (
+            <div className="border-t border-border/40 bg-card p-5">
+              <ObsidianTaskPlanVerification />
+            </div>
+          )}
+        </div>
 
       </div>
     </div>

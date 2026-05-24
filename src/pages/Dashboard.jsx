@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu, Plus, CheckCircle2, Clock, Shield } from 'lucide-react';
+import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu, Plus, CheckCircle2, Clock, Shield, ArrowRight } from 'lucide-react';
 import VeridanCoreBranchDashboard from '../components/dashboard/VeridanCoreBranchDashboard';
 import CurrentBuildStateCard from '../components/governance/CurrentBuildStateCard';
 import CurrentCapabilitiesBoundary from '../components/governance/CurrentCapabilitiesBoundary';
@@ -65,6 +65,9 @@ export default function Dashboard() {
       {/* Governance Control Index */}
       <GovernanceControlIndex />
 
+      {/* Unified Status Card */}
+      <VeridanCoreUnifiedStatusCard />
+
       {/* OpenClaw Task Queue Preview */}
       <OpenClawTaskQueuePreview />
 
@@ -76,65 +79,160 @@ export default function Dashboard() {
 
 // ── OpenClaw Task Queue Preview Component ──────────────────────────────────
 
+function VeridanCoreUnifiedStatusCard() {
+  const [taskCount, setTaskCount] = useState(0);
+  const [obsidianStatus, setObsidianStatus] = useState('IDLE');
+
+  useEffect(() => {
+    try {
+      const tasks = JSON.parse(localStorage.getItem('veridan_openclaw_task_queue') || '[]');
+      setTaskCount(tasks.length);
+      const obsidianTasks = tasks.filter(t => t.source === 'OBSIDIAN_WORKBENCH');
+      setObsidianStatus(obsidianTasks.length > 0 ? 'TASKS_GENERATED' : 'IDLE');
+    } catch { /* ignore */ }
+  }, []);
+
+  return (
+    <div className="border-b border-border bg-card px-6 py-6">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* OpenClaw Safe Review */}
+        <Link to="/openclaw-control"
+          className="border border-primary/40 bg-primary/5 rounded-sm p-4 space-y-2 hover:bg-primary/10 transition-colors">
+          <div className="text-[8px] font-bold uppercase text-primary tracking-widest">OpenClaw Safe Review</div>
+          <div className="flex items-baseline gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-[9px] font-mono text-slate-300">READY</span>
+          </div>
+          <div className="text-[7px] text-slate-500">→ Control Room</div>
+        </Link>
+
+        {/* Obsidian Workbench */}
+        <Link to="/obsidian-workbench-preview"
+          className={`border rounded-sm p-4 space-y-2 hover:bg-secondary/10 transition-colors ${
+            obsidianStatus === 'TASKS_GENERATED'
+              ? 'border-accent/40 bg-accent/5'
+              : 'border-border/40 bg-card'
+          }`}>
+          <div className={`text-[8px] font-bold uppercase tracking-widest ${
+            obsidianStatus === 'TASKS_GENERATED' ? 'text-accent' : 'text-slate-400'
+          }`}>Obsidian Workbench</div>
+          <div className="flex items-baseline gap-2">
+            <Clock className={`w-3.5 h-3.5 shrink-0 ${obsidianStatus === 'TASKS_GENERATED' ? 'text-accent' : 'text-slate-400'}`} />
+            <span className="text-[9px] font-mono text-slate-300">{obsidianStatus}</span>
+          </div>
+          <div className="text-[7px] text-slate-500">→ Build Task Plan</div>
+        </Link>
+
+        {/* Task Queue */}
+        <Link to="/openclaw-control"
+          className="border border-border/40 bg-card rounded-sm p-4 space-y-2 hover:bg-secondary/10 transition-colors">
+          <div className="text-[8px] font-bold uppercase text-slate-400 tracking-widest">Task Queue</div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-mono font-bold text-primary">{taskCount}</span>
+            <span className="text-[7px] text-slate-500">tasks</span>
+          </div>
+          <div className="text-[7px] text-slate-500">→ View Queue</div>
+        </Link>
+
+        {/* Next Action */}
+        <div className="border border-amber-500/40 bg-amber-500/5 rounded-sm p-4 space-y-2">
+          <div className="text-[8px] font-bold uppercase text-amber-500 tracking-widest">Next Action</div>
+          <div className="flex items-center gap-2">
+            <ArrowRight className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span className="text-[8px] font-mono text-slate-300">
+              {taskCount === 0 ? 'Create tasks' : 'Review queue'}
+            </span>
+          </div>
+          <div className="text-[7px] text-slate-500">
+            {taskCount === 0 ? 'Start with Obsidian' : 'Then approve'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OpenClawTaskQueuePreview() {
   const [tasks, setTasks] = useState(() => {
     try {
-      const stored = localStorage.getItem('openclaw_task_queue_preview');
+      const stored = localStorage.getItem('veridan_openclaw_task_queue');
       return stored ? JSON.parse(stored) : [];
     } catch { return []; }
   });
+  const [filter, setFilter] = useState('All');
 
-  const handleCreateTask = useCallback(() => {
-    const taskId = `TASK-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    const newTask = {
-      taskId,
-      taskType: 'SAFE_PREVIEW_ONLY',
-      title: `OpenClaw Preview Task ${tasks.length + 1}`,
-      status: 'DRAFT',
-      riskLevel: 'LOW',
-      createdAt: new Date().toISOString(),
-      auditNote: 'Local preview only — no execution, no dispatch, no token access, no browser automation, no filesystem writes',
-    };
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('veridan_openclaw_task_queue') || '[]');
+        setTasks(stored);
+      } catch { /* ignore */ }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-    const updated = [newTask, ...tasks];
-    if (updated.length > 10) updated.length = 10; // cap at 10
-    setTasks(updated);
-
-    try {
-      localStorage.setItem('openclaw_task_queue_preview', JSON.stringify(updated));
-    } catch { /* quota */ }
-  }, [tasks]);
+  const filteredTasks = filter === 'All'
+    ? tasks
+    : tasks.filter(t => {
+        const source = t.source || 'OPENCLAW';
+        if (filter === 'Obsidian') return source === 'OBSIDIAN_WORKBENCH';
+        if (filter === 'Trading') return source === 'TRADING_MODULE';
+        if (filter === 'Credit') return source === 'CREDIT_MODULE';
+        if (filter === 'Business') return source === 'BUSINESS_MODULE';
+        if (filter === 'OpenClaw') return source === 'OPENCLAW';
+        return true;
+      });
 
   const statusConfig = {
+    PROPOSED_NOT_EXECUTED: { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/30' },
     DRAFT: { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/30' },
     READY_FOR_REVIEW: { icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30' },
     APPROVED_PREVIEW: { icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30' },
     REJECTED: { icon: AlertCircle, color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30' },
   };
 
+  const sourceLabel = {
+    OBSIDIAN_WORKBENCH: '🔹 Obsidian',
+    TRADING_MODULE: '📈 Trading',
+    CREDIT_MODULE: '💳 Credit',
+    BUSINESS_MODULE: '🏢 Business',
+    OPENCLAW: '🔒 OpenClaw',
+  };
+
   return (
     <div className="border-b border-border bg-card px-6 py-6">
       <div className="max-w-7xl mx-auto space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="text-[14px] font-mono font-bold uppercase text-slate-100 tracking-wide">OpenClaw Task Queue Preview</h2>
+            <h2 className="text-[14px] font-mono font-bold uppercase text-slate-100 tracking-wide">OpenClaw Task Queue</h2>
             <p className="text-[9px] text-slate-500 mt-1 font-mono">localStorage-only tasks — no execution, no dispatch, no token access</p>
           </div>
-          <button
-            type="button"
-            onClick={handleCreateTask}
-            className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 rounded-sm text-[9px] font-bold uppercase tracking-widest transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" /> CREATE SAFE OPENCLAW TASK PREVIEW
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[8px] text-slate-500">Filter:</span>
+            {['All', 'Obsidian', 'Trading', 'Credit', 'Business', 'OpenClaw'].map(f => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1 text-[8px] font-mono font-bold uppercase rounded-sm border transition-colors ${
+                  filter === f
+                    ? 'border-primary/40 bg-primary/10 text-primary'
+                    : 'border-border/40 bg-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Task list */}
-        {tasks.length > 0 ? (
+        {filteredTasks.length > 0 ? (
           <div className="grid gap-2">
-            {tasks.map((task) => {
+            {filteredTasks.map((task) => {
               const cfg = statusConfig[task.status] || statusConfig.DRAFT;
               const Icon = cfg.icon;
+              const src = sourceLabel[task.source] || 'Task';
               return (
                 <div key={task.taskId} className={`border rounded-sm p-3 ${cfg.border} ${cfg.bg} space-y-1.5`}>
                   <div className="flex items-start justify-between gap-3">
@@ -142,12 +240,12 @@ function OpenClawTaskQueuePreview() {
                       <Icon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${cfg.color}`} />
                       <div className="flex-1 min-w-0">
                         <div className="text-[9px] font-bold text-slate-100 break-words">{task.title}</div>
-                        <div className="text-[7px] text-slate-500 font-mono mt-0.5 space-x-2">
-                          <span>{task.taskId}</span>
+                        <div className="text-[7px] text-slate-500 font-mono mt-0.5 space-x-2 flex flex-wrap">
+                          <span>{src}</span>
                           <span>·</span>
                           <span className={`font-bold ${cfg.color}`}>{task.status}</span>
                           <span>·</span>
-                          <span>{task.riskLevel}</span>
+                          <span>{task.taskType || 'TASK'}</span>
                         </div>
                       </div>
                     </div>
@@ -155,8 +253,8 @@ function OpenClawTaskQueuePreview() {
                       {new Date(task.createdAt).toLocaleTimeString()}
                     </div>
                   </div>
-                  {task.auditNote && (
-                    <div className="text-[7px] text-slate-400 font-mono pl-5">{task.auditNote}</div>
+                  {task.description && (
+                    <div className="text-[7px] text-slate-400 font-mono pl-5">{task.description}</div>
                   )}
                 </div>
               );
@@ -164,7 +262,9 @@ function OpenClawTaskQueuePreview() {
           </div>
         ) : (
           <div className="border border-border/40 rounded-sm p-4 text-[8px] text-slate-400 text-center">
-            No OpenClaw preview tasks yet. Click CREATE SAFE OPENCLAW TASK PREVIEW to add one.
+            {filter === 'All'
+              ? 'No tasks yet. Go to Obsidian Workbench to build a task plan.'
+              : `No ${filter} tasks. Switch filter to view other sources.`}
           </div>
         )}
       </div>
