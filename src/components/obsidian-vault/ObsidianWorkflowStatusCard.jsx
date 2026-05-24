@@ -1,6 +1,7 @@
 /**
  * ObsidianWorkflowStatusCard
- * Compact status showing the 6-step controlled Obsidian workflow.
+ * Production operator workflow: 6-step progress card.
+ * Task Created → Task Approved → Preview Generated → Draft Approved → Vault Write Completed → Audit Saved
  * Uses localStorage keys only, no live execution, no external calls.
  */
 
@@ -8,71 +9,48 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Circle } from 'lucide-react';
 
 const WORKFLOW_STEPS = [
-  { key: 'task_created', label: 'Draft task created', storageKey: 'veridan_openclaw_task_queue' },
-  { key: 'preview_sent', label: 'Preview bridge sent', storageKey: 'veridan_obsidian_vault_plans' },
-  { key: 'draft_generated', label: 'Draft generated', storageKey: 'veridan_obsidian_drafts' },
-  { key: 'draft_approved', label: 'Draft approved', storageKey: 'veridan_obsidian_drafts' },
-  { key: 'write_attempted', label: 'Controlled write attempted', storageKey: 'veridan_obsidian_write_audits' },
-  { key: 'audit_saved', label: 'Audit record saved', storageKey: 'veridan_obsidian_write_audits' },
+  { key: 'task_created', label: 'Task Created', check: (data) => data.obsidianTask },
+  { key: 'task_approved', label: 'Task Approved', check: (data) => data.obsidianTask?.approvalStatus === 'APPROVED' },
+  { key: 'preview_generated', label: 'Preview Generated', check: (data) => data.vaultPlans.length > 0 },
+  { key: 'draft_approved', label: 'Draft Approved', check: (data) => data.drafts.some(d => d.approvalStatus === 'APPROVED') },
+  { key: 'write_completed', label: 'Vault Write Completed', check: (data) => data.writeAudits.some(a => a.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY') },
+  { key: 'audit_saved', label: 'Audit Saved', check: (data) => data.writeAudits.length > 0 },
 ];
 
-function getWorkflowState() {
-  const state = {
-    task_created: false,
-    preview_sent: false,
-    draft_generated: false,
-    draft_approved: false,
-    write_attempted: false,
-    audit_saved: false,
-  };
-
+function getWorkflowData() {
   try {
-    // 1. Task created: check task queue for OBSIDIAN tasks
     const tasks = JSON.parse(localStorage.getItem('veridan_openclaw_task_queue') || '[]');
-    if (tasks.some(t => t.source === 'OBSIDIAN_WORKBENCH')) {
-      state.task_created = true;
-    }
-
-    // 2. Preview sent: check vault plans exist
-    const plans = JSON.parse(localStorage.getItem('veridan_obsidian_vault_plans') || '[]');
-    if (plans.length > 0) {
-      state.preview_sent = true;
-    }
-
-    // 3. Draft generated: check drafts exist
+    const obsidianTask = tasks.find(t => t.source === 'OBSIDIAN_WORKBENCH');
+    const vaultPlans = JSON.parse(localStorage.getItem('veridan_obsidian_vault_plans') || '[]');
     const drafts = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
-    if (drafts.length > 0) {
-      state.draft_generated = true;
-    }
+    const writeAudits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
 
-    // 4. Draft approved: check if any draft is APPROVED
-    if (drafts.some(d => d.approvalStatus === 'APPROVED')) {
-      state.draft_approved = true;
-    }
+    return { obsidianTask, vaultPlans, drafts, writeAudits };
+  } catch {
+    return { obsidianTask: null, vaultPlans: [], drafts: [], writeAudits: [] };
+  }
+}
 
-    // 5 & 6. Write attempted and audit saved: check write audits
-    const audits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
-    if (audits.length > 0) {
-      state.write_attempted = true;
-      // Audit saved if most recent one exists
-      if (audits[0]) {
-        state.audit_saved = true;
-      }
-    }
-  } catch { /* ignore */ }
-
+function getWorkflowState(data) {
+  const state = {};
+  for (const step of WORKFLOW_STEPS) {
+    state[step.key] = step.check(data);
+  }
   return state;
 }
 
 export default function ObsidianWorkflowStatusCard() {
-  const [state, setState] = useState(getWorkflowState());
+  const [data, setData] = useState(getWorkflowData());
+  const [state, setState] = useState(() => getWorkflowState(getWorkflowData()));
 
   useEffect(() => {
-    setState(getWorkflowState());
-    // Recheck on interval
-    const interval = setInterval(() => {
-      setState(getWorkflowState());
-    }, 2000);
+    const updateState = () => {
+      const freshData = getWorkflowData();
+      setData(freshData);
+      setState(getWorkflowState(freshData));
+    };
+    updateState();
+    const interval = setInterval(updateState, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -82,7 +60,7 @@ export default function ObsidianWorkflowStatusCard() {
   return (
     <div className="border border-border/40 rounded-sm bg-card p-4 space-y-3">
       <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-        Obsidian Workflow Progress
+        Obsidian Production Workflow
       </div>
 
       {/* Progress bar */}
@@ -95,7 +73,7 @@ export default function ObsidianWorkflowStatusCard() {
 
       {/* Step list */}
       <div className="space-y-1.5">
-        {WORKFLOW_STEPS.map((step, i) => {
+        {WORKFLOW_STEPS.map((step) => {
           const isComplete = state[step.key];
           return (
             <div key={step.key} className="flex items-center gap-2">
@@ -116,7 +94,7 @@ export default function ObsidianWorkflowStatusCard() {
       <div className="text-[7px] text-slate-500 pt-2 border-t border-border/20">
         {completedCount === 0 && 'Start at Obsidian Workbench'}
         {completedCount > 0 && completedCount < 6 && `${completedCount}/6 steps complete`}
-        {completedCount === 6 && '✓ Workflow complete'}
+        {completedCount === 6 && '✓ Workflow complete — evidence audited'}
       </div>
     </div>
   );

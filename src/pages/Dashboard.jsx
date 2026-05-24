@@ -89,43 +89,46 @@ export default function Dashboard() {
 // ── OpenClaw Task Queue Preview Component ──────────────────────────────────
 
 function deriveNextActionPath() {
-  // Intelligent routing based on workflow state
+  // Production operator routing: one clear path through Obsidian workflow
   try {
-    // Check for write audits (workflow complete)
-    const audits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
-    if (audits.length > 0) return '/audit-evidence';
-
-    // Check for drafts ready to write
-    const drafts = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
-    const approvableDrafts = drafts.filter(d => d.approvalStatus === 'APPROVED' && d.riskLevel === 'LOW' && d.executionStatus === 'NOT_EXECUTED');
-    if (approvableDrafts.length > 0) return '/obsidian-draft-review';
-
-    // Check for tasks in queue
+    // 1. Check if Obsidian task exists
     const tasks = JSON.parse(localStorage.getItem('veridan_openclaw_task_queue') || '[]');
-    if (tasks.length > 0) return '/openclaw-control';
+    const obsidianTask = tasks.find(t => t.source === 'OBSIDIAN_WORKBENCH');
 
-    // Default to workbench
-    return '/obsidian-workbench-preview';
+    // 5. If draft written, go to audit
+    const writeAudits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
+    if (writeAudits.some(a => a.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY')) {
+      return { path: '/audit-evidence', label: 'Review audit evidence' };
+    }
+
+    // 4. If draft approved but not written, go to write
+    const drafts = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
+    const approvableDraft = drafts.find(d => d.approvalStatus === 'APPROVED' && d.riskLevel === 'LOW' && d.executionStatus === 'NOT_EXECUTED');
+    if (approvableDraft) {
+      return { path: '/obsidian-draft-review', label: 'Write approved draft to vault' };
+    }
+
+    // 3. If task exists but task or draft not approved, review draft
+    if (obsidianTask && (obsidianTask.approvalStatus !== 'APPROVED' || drafts.length === 0)) {
+      return { path: '/obsidian-draft-review', label: 'Review & approve draft' };
+    }
+
+    // 2. If task exists but not approved, review in queue
+    if (obsidianTask && obsidianTask.approvalStatus !== 'APPROVED') {
+      return { path: '/openclaw-control', label: 'Approve task in queue' };
+    }
+
+    // 1. Default: create task
+    return { path: '/obsidian-workbench-preview', label: 'Create Obsidian task' };
   } catch {
-    return '/obsidian-workbench-preview';
+    return { path: '/obsidian-workbench-preview', label: 'Create Obsidian task' };
   }
-}
-
-function getNextActionLabel() {
-  const path = deriveNextActionPath();
-  const labels = {
-    '/obsidian-workbench-preview': 'Create Obsidian plan',
-    '/openclaw-control': 'Review task queue',
-    '/obsidian-draft-review': 'Approve & write drafts',
-    '/audit-evidence': 'View audit evidence',
-  };
-  return labels[path] || 'Next action';
 }
 
 function VeridanCoreUnifiedStatusCard() {
   const [taskCount, setTaskCount] = useState(0);
   const [obsidianStatus, setObsidianStatus] = useState('IDLE');
-  const [nextPath, setNextPath] = useState('/obsidian-workbench-preview');
+  const [nextAction, setNextAction] = useState({ path: '/obsidian-workbench-preview', label: 'Create Obsidian task' });
 
   useEffect(() => {
     try {
@@ -133,7 +136,7 @@ function VeridanCoreUnifiedStatusCard() {
       setTaskCount(tasks.length);
       const obsidianTasks = tasks.filter(t => t.source === 'OBSIDIAN_WORKBENCH');
       setObsidianStatus(obsidianTasks.length > 0 ? 'TASKS_GENERATED' : 'IDLE');
-      setNextPath(deriveNextActionPath());
+      setNextAction(deriveNextActionPath());
     } catch { /* ignore */ }
   }, []);
 
@@ -179,14 +182,14 @@ function VeridanCoreUnifiedStatusCard() {
           <div className="text-[7px] text-slate-500">→ View Queue</div>
         </Link>
 
-        {/* Next Action - Intelligent routing */}
-        <Link to={nextPath}
-          className="border border-amber-500/40 bg-amber-500/5 rounded-sm p-4 space-y-2 hover:bg-amber-500/15 transition-colors">
-          <div className="text-[8px] font-bold uppercase text-amber-500 tracking-widest">Next Action</div>
+        {/* Next Action - Production routing */}
+        <Link to={nextAction.path}
+          className="border border-primary/40 bg-primary/5 rounded-sm p-4 space-y-2 hover:bg-primary/15 transition-colors font-bold">
+          <div className="text-[8px] font-bold uppercase text-primary tracking-widest">Next Action</div>
           <div className="flex items-center gap-2">
-            <ArrowRight className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="text-[8px] font-mono text-slate-300">
-              {getNextActionLabel()}
+            <ArrowRight className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-[8px] font-mono text-slate-200">
+              {nextAction.label}
             </span>
           </div>
           <div className="text-[7px] text-slate-500">→ Go</div>

@@ -36,6 +36,26 @@ export default function ApprovedDraftWriteButton({ draft, onSuccess }) {
       });
 
       if (response.data.success) {
+        // Save audit record
+        const auditRecord = {
+          ...response.data.auditRecord,
+          draftId: draft.id || 'unknown',
+          taskId: draft.taskId || 'unknown',
+          filePath: response.data.filePath,
+          folder: draft.targetFolder,
+          writeStatus: 'COMPLETED_APPROVED_DRAFT_ONLY',
+          executionStatus: 'NOT_EXECUTED',
+          dispatchStatus: 'NOT_DISPATCHED',
+          timestamp: new Date().toISOString(),
+        };
+
+        try {
+          const audits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
+          audits.unshift(auditRecord);
+          if (audits.length > 50) audits.length = 50;
+          localStorage.setItem('veridan_obsidian_write_audits', JSON.stringify(audits));
+        } catch { /* quota */ }
+
         setResult(response.data);
         if (onSuccess) {
           onSuccess(response.data);
