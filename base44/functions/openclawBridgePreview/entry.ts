@@ -74,79 +74,61 @@ const generateHmacSignature = async (canonical, secret) => {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret, resolvedBridgeRequest) => {
+// validateSignedRequest receives the normalizedSignedRequest (body) PLUS the top-level
+// envelope fields (previewHash, operatorId, submittedAt) explicitly so the canonical
+// payload is built with exactly the same values the signer used.
+const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret, resolvedBridgeRequest, envelopePreviewHash, envelopeOperatorId, envelopeSubmittedAt) => {
   const errors = [];
+  const mode = hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC';
 
   // Check signature field existence
   if (!body.signature) {
-  errors.push('signature field missing');
-  return {
-    result: 'FAIL',
-    errors,
-    mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
-    signatureDebug: {
-      signaturePresent: false,
-      signatureLength: 0,
-      signaturePathResolved: false,
-      signedRequestKeys: Object.keys(body || {}),
-    }
-  };
+    errors.push('signature field missing');
+    return { result: 'FAIL', errors, mode };
   }
 
   // Check signingVersion
-  if (!body.signingVersion) {
-    errors.push('signingVersion field missing');
-    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
+  if (!body.signingVersion || body.signingVersion !== 'OPENCLAW_BRIDGE_V1') {
+    errors.push(body.signingVersion ? `signingVersion must be OPENCLAW_BRIDGE_V1, got ${body.signingVersion}` : 'signingVersion field missing');
+    return { result: 'FAIL', errors, mode };
   }
 
-  if (body.signingVersion !== 'OPENCLAW_BRIDGE_V1') {
-    errors.push(`signingVersion must be OPENCLAW_BRIDGE_V1, got ${body.signingVersion}`);
-    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
-  }
-
-  // Check signedAt field existence
+  // Check signedAt
   if (!body.signedAt) {
     errors.push('signedAt field missing');
-    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
+    return { result: 'FAIL', errors, mode };
   }
 
-  // Validate signedAt is a valid ISO timestamp
   let signedAtDate;
   try {
     signedAtDate = new Date(body.signedAt);
-    if (isNaN(signedAtDate.getTime())) {
-      errors.push('signedAt is not a valid ISO timestamp');
-      return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
-    }
+    if (isNaN(signedAtDate.getTime())) throw new Error('invalid');
   } catch {
     errors.push('signedAt is not a valid ISO timestamp');
-    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
+    return { result: 'FAIL', errors, mode };
   }
 
-  // Check signedAt is not too old (older than 5 minutes) - EXPLICIT error
   const now = new Date();
-  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-  if (signedAtDate < fiveMinutesAgo) {
+  if (signedAtDate < new Date(now.getTime() - 5 * 60 * 1000)) {
     errors.push('SIGNED_AT_EXPIRED');
-    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
+    return { result: 'FAIL', errors, mode };
   }
-
-  // Check signedAt is not too far in future (more than 60 seconds) - EXPLICIT error
-  const sixtySecondsFromNow = new Date(now.getTime() + 60 * 1000);
-  if (signedAtDate > sixtySecondsFromNow) {
+  if (signedAtDate > new Date(now.getTime() + 60 * 1000)) {
     errors.push('SIGNED_AT_FUTURE');
-    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
+    return { result: 'FAIL', errors, mode };
   }
 
-  // ALL TIMESTAMP VALIDATION COMPLETE - now proceed to HMAC verification
-  // Build canonical payload — use resolvedBridgeRequest for bridge fields, body for sig fields
-  const br = resolvedBridgeRequest || body.bridgeRequest || body;
+  // Build canonical payload using EXACTLY the same field sources as openclawBridgeSigner:
+  // - br fields come from resolvedBridgeRequest (the bridgeRequest object the signer received)
+  // - envelope fields (previewHash, operatorId, submittedAt) come from the top-level payload
+  // - signedAt comes from the signed request (set by signer as new Date().toISOString())
+  const br = resolvedBridgeRequest;
   const canonical = buildCanonicalPayload(
     br.requestId || "",
     br.proposalId || "",
-    body.previewHash || "",
-    body.operatorId || "",
-    body.submittedAt || "",
+    envelopePreviewHash || "",
+    envelopeOperatorId || "",
+    envelopeSubmittedAt || "",
     body.signedAt || "",
     br.commandType || "",
     br.targetUrl || "",
@@ -156,21 +138,15 @@ const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret, res
     br.liveExecution
   );
 
-  const mode = hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC';
-
-  // Phase 4B: Real HMAC verification (if secret is configured)
-  // Only happens AFTER signedAt freshness validation passes
   if (hmacSecretConfigured && hmacSecret) {
     const expectedSignature = await generateHmacSignature(canonical, hmacSecret);
-    
-    // Timing-safe comparison to prevent timing attacks
     if (!timingSafeCompare(body.signature, expectedSignature)) {
       errors.push('HMAC_SIGNATURE_INVALID');
-      return { result: 'FAIL', errors, mode };
+      return { result: 'FAIL', errors, mode, canonical, expectedLength: expectedSignature.length };
     }
   }
 
-  return { result: 'PASS', errors: [], mode };
+  return { result: 'PASS', errors: [], mode, canonical };
 };
 
 const isUrlAllowlisted = (urlString) => {
@@ -767,7 +743,20 @@ Deno.serve(async (req) => {
 
     // Phase 3-4B: Signed request validation (Phase 4B: Real HMAC if secret configured)
     const hmacSecret = Deno.env.get('OPENCLAW_BRIDGE_HMAC_SECRET');
-    const signatureCheck = await validateSignedRequest(normalizedSignedRequest, hmacSecretCheck.configured, hmacSecret, bridgeRequest);
+    const signatureCheck = await validateSignedRequest(
+      normalizedSignedRequest,
+      hmacSecretCheck.configured,
+      hmacSecret,
+      bridgeRequest,       // resolvedBridgeRequest — same br the signer received
+      previewHash,         // top-level envelope previewHash
+      operatorId,          // top-level envelope operatorId
+      submittedAt          // top-level envelope submittedAt
+    );
+
+    // Compute preview canonical debug hash using same inputs for comparison
+    const previewCanonicalDebugHash = signatureCheck.canonical
+      ? (await generateHmacSignature(signatureCheck.canonical, 'canonical-debug-only')).slice(0, 16)
+      : null;
 
     if (signatureCheck.result === 'FAIL') {
       const validatedAt = new Date().toISOString();
@@ -821,19 +810,18 @@ Deno.serve(async (req) => {
           signatureCheckResult: 'FAIL',
           signatureCheckMessages: signatureCheck.errors,
           note: 'Request rejected by signature validation. No OpenClaw call was made.',
-          debug: {
-            receivedTopLevelKeys: Object.keys(body || {}),
-            incomingKeys: Object.keys(incoming || {}),
-            payloadKeys: Object.keys(payload || {}),
-            bridgeRequestKeys: Object.keys(bridgeRequest || {}),
-            signedRequestKeys: Object.keys(signedRequest || {}),
-            normalizedSignedRequestKeys: Object.keys(normalizedSignedRequest || {}),
+          canonicalDebug: {
+            previewCanonicalHash: previewCanonicalDebugHash,
             signaturePresent: Boolean(normalizedSignedRequest?.signature),
             signatureLength: normalizedSignedRequest?.signature?.length || 0,
-            signaturePathResolved: Boolean(signature),
             signatureExtractionPath,
-            signingVersionSeen: signingVersion,
-            signedAtSeen: signedAt,
+            signingVersion,
+            signedAt,
+            proposalId: bridgeRequest?.proposalId || "",
+            targetUrl: bridgeRequest?.targetUrl || "",
+            operatorId,
+            submittedAt,
+            previewHash,
           },
         },
         { status: 400 }
@@ -1045,6 +1033,17 @@ Deno.serve(async (req) => {
           signatureCheckMessages: [],
           approvalBindingStatus: 'PASS',
           signatureExtractionPath,
+          canonicalDebug: {
+            previewCanonicalHash: previewCanonicalDebugHash,
+            signatureLength: normalizedSignedRequest?.signature?.length || 0,
+            signingVersion,
+            signedAt,
+            proposalId: bridgeRequest?.proposalId || "",
+            targetUrl: bridgeRequest?.targetUrl || "",
+            operatorId,
+            submittedAt,
+            previewHash,
+          },
           note: 'Phases 1-5 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
         },
         { status: 200 }

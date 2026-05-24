@@ -290,6 +290,9 @@ Deno.serve(async (req) => {
 
     const signature = await generateHmacSignature(canonical, hmacSecret);
 
+    // Canonical debug hash (first 16 chars of HMAC of the canonical string itself — never the secret)
+    const canonicalDebugHash = (await generateHmacSignature(canonical, 'canonical-debug-only')).slice(0, 16);
+
     const signedRequest = {
       ...body,
       signature,
@@ -338,6 +341,22 @@ Deno.serve(async (req) => {
         signedRequest,
         signaturePresent: Boolean(signature),
         signatureLength: signature?.length || 0,
+        // Canonical debug — allows frontend to verify signer vs preview used same inputs
+        canonicalDebug: {
+          signerCanonicalHash: canonicalDebugHash,
+          requestId: br.requestId,
+          proposalId: br.proposalId,
+          previewHash: body.previewHash,
+          operatorId: body.operatorId,
+          submittedAt: body.submittedAt,
+          signedAt,
+          commandType: br.commandType,
+          targetUrl: br.targetUrl,
+          riskTier: br.riskTier,
+          governanceMode: br.governanceMode,
+          dryRun: br.dryRun,
+          liveExecution: br.liveExecution,
+        },
         note: 'Signing only. No OpenClaw call was made.',
       },
       { status: 200 }

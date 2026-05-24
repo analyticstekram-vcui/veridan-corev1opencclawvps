@@ -16,14 +16,28 @@ const PHASE_5A_BASELINE = {
 
 const BASELINE_LS_KEY = 'phase5a_baseline_lock';
 
-function PayloadShapeDebug({ debug }) {
+function CanonicalDebugBlock({ signerDebug, previewDebug }) {
   const [open, setOpen] = React.useState(false);
+  if (!signerDebug && !previewDebug) return null;
+
+  const signerHash = signerDebug?.signerCanonicalHash || signerDebug?.canonicalDebug?.signerCanonicalHash;
+  const previewHash = previewDebug?.previewCanonicalHash || previewDebug?.canonicalDebug?.previewCanonicalHash;
+  const hashesMatch = signerHash && previewHash && signerHash === previewHash;
+
   const rows = [
-    { label: 'topLevelSignaturePresent', value: debug.topLevelSignaturePresent },
-    { label: 'signedRequestSignaturePresent', value: debug.signedRequestSignaturePresent },
-    { label: 'signedBridgeRequestSignaturePresent', value: debug.signedBridgeRequestSignaturePresent },
-    { label: 'bridgeRequestSignaturePresent', value: debug.bridgeRequestSignaturePresent },
+    { label: 'signerCanonicalHash', value: signerHash || '—' },
+    { label: 'previewCanonicalHash', value: previewHash || '—' },
+    { label: 'hashesMatch', value: hashesMatch === true ? 'true' : hashesMatch === false ? 'false' : '—', color: hashesMatch ? 'text-emerald-400' : 'text-destructive' },
+    { label: 'signatureLength', value: String(signerDebug?.signatureLength ?? previewDebug?.signatureLength ?? '—') },
+    { label: 'signingVersion', value: signerDebug?.signingVersion || previewDebug?.signingVersion || '—' },
+    { label: 'signedAt', value: signerDebug?.signedAt || previewDebug?.signedAt || '—' },
+    { label: 'proposalId', value: signerDebug?.proposalId || previewDebug?.proposalId || '—' },
+    { label: 'targetUrl', value: signerDebug?.targetUrl || previewDebug?.targetUrl || '—' },
+    { label: 'operatorId', value: signerDebug?.operatorId || previewDebug?.operatorId || '—' },
+    { label: 'submittedAt', value: signerDebug?.submittedAt || previewDebug?.submittedAt || '—' },
+    { label: 'previewHash', value: signerDebug?.previewHash || previewDebug?.previewHash || '—' },
   ];
+
   return (
     <div className="pt-1 border-t border-border/20 mt-1">
       <button
@@ -32,17 +46,16 @@ function PayloadShapeDebug({ debug }) {
         className="text-[6px] font-mono text-slate-600 hover:text-slate-400 flex items-center gap-1 transition-colors"
       >
         <span>{open ? '▾' : '▸'}</span>
-        Preview Payload Shape Debug
+        Canonical Debug ({hashesMatch === true ? '✓ match' : hashesMatch === false ? '✗ mismatch' : 'pending'})
       </button>
       {open && (
         <div className="mt-1 space-y-0.5 text-[6px] font-mono text-slate-500">
           {rows.map(r => (
-            <div key={r.label}>
-              {r.label}: <span className={r.value ? 'text-emerald-400' : 'text-destructive'}>{r.value ? 'YES' : 'NO'}</span>
+            <div key={r.label} className="flex gap-1 flex-wrap">
+              <span>{r.label}:</span>
+              <span className={r.color || 'text-slate-400'}>{r.value}</span>
             </div>
           ))}
-          <div>signatureLength: <span className="text-slate-400">{debug.signatureLength ?? 0}</span></div>
-          <div>signingVersion: <span className="text-slate-400">{debug.signingVersion}</span></div>
         </div>
       )}
     </div>
@@ -54,6 +67,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [signerStatus, setSignerStatus] = useState(null);
+  const [signerCanonicalDebug, setSignerCanonicalDebug] = useState(null);
   const [baseline, setBaseline] = useState(null);
   const [baselineStorageStatus, setBaselineStorageStatus] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -177,6 +191,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     setError(null);
     setResult(null);
     setSignerStatus(null);
+    setSignerCanonicalDebug(null);
 
     // Check prerequisite before calling signer
     if (!hasProposalId) {
@@ -235,6 +250,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         signingVersion: signerData.signingVersion || signerData.signedRequest?.signingVersion || 'OPENCLAW_BRIDGE_V1',
         message: signerData.signingAllowed ? 'Signature generated successfully' : signerData.rejectedReason || 'Signing rejected',
       });
+      if (signerData.canonicalDebug) setSignerCanonicalDebug(signerData.canonicalDebug);
 
       // If signer failed, stop here
       if (!signerData.signingAllowed) {
@@ -653,10 +669,11 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                       </div>
                     )}
 
-                    {/* Preview Payload Shape Debug */}
-                    {result.submissionDebug && (
-                      <PayloadShapeDebug debug={result.submissionDebug} />
-                    )}
+                    {/* Canonical Debug */}
+                    <CanonicalDebugBlock
+                      signerDebug={signerCanonicalDebug}
+                      previewDebug={result.canonicalDebug}
+                    />
                   </div>
                 )}
               </div>
