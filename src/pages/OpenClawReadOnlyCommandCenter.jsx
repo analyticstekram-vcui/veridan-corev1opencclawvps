@@ -4,8 +4,9 @@ import { Link } from 'react-router-dom';
 import {
   Heart, Eye, Shield, AlertTriangle, CheckCircle2, XCircle,
   Loader2, ArrowLeft, Lock, Zap, FileText, Globe, RefreshCw,
-  PlayCircle, Trash2, Activity
+  PlayCircle, Trash2, Activity, ChevronRight
 } from 'lucide-react';
+import Phase5BReadOnlyDispatchPreview from '@/components/openclaw/Phase5BReadOnlyDispatchPreview';
 
 // ============================================================================
 // SAFETY BOUNDARY
@@ -537,6 +538,16 @@ export default function OpenClawReadOnlyCommandCenter() {
 
       {/* Verification Block */}
       <VerificationBlock />
+
+      {/* Phase 5B Section */}
+      <section className="space-y-3">
+        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 border-b border-border/30 pb-1 flex items-center gap-1">
+          Phase 5B
+          <ChevronRight className="w-3 h-3 text-slate-600" />
+          Read-Only Dispatch Preview
+        </div>
+        <Phase5BReadOnlyDispatchPreview />
+      </section>
 
       {/* Footer */}
       <div className="text-[6px] text-slate-700 italic text-center pt-4 border-t border-border/20">
