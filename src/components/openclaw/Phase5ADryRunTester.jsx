@@ -461,6 +461,19 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
 
               <div className="mt-2 pt-2 border-t border-current/20 text-[7px] text-slate-400 italic">{result.note}</div>
 
+              {/* Approval Binding Debug */}
+              {result.approvalBindingDebug && (
+                <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px] text-slate-500">
+                  <div className="font-semibold text-slate-300 uppercase mb-1">Approval Binding Debug</div>
+                  <div>targetsMatch: <span className={result.approvalBindingDebug.targetsMatch ? 'text-primary' : 'text-destructive'}>{String(result.approvalBindingDebug.targetsMatch)}</span></div>
+                  <div className="text-[6px] text-slate-600">proposalTargetRaw: {result.approvalBindingDebug.proposalTargetRaw || 'none'}</div>
+                  <div className="text-[6px] text-slate-600">bridgeTargetRaw: {result.approvalBindingDebug.bridgeTargetRaw || 'none'}</div>
+                  <div className="text-[6px] text-slate-600">proposalTargetNormalized: {result.approvalBindingDebug.proposalTargetNormalized}</div>
+                  <div className="text-[6px] text-slate-600">bridgeTargetNormalized: {result.approvalBindingDebug.bridgeTargetNormalized}</div>
+                  <div>requestedTargetsMatch: <span className={result.approvalBindingDebug.requestedTargetsMatch ? 'text-primary' : 'text-destructive'}>{String(result.approvalBindingDebug.requestedTargetsMatch)}</span></div>
+                </div>
+              )}
+
               {/* Backend Contract Version — deployment verification marker */}
               <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px]">
                 <div className="font-semibold text-slate-300 uppercase mb-1">Backend Contract</div>

@@ -810,12 +810,22 @@ Deno.serve(async (req) => {
     // PHASE 5: APPROVAL BINDING — SERVER-SIDE VERIFICATION
     // Verify proposalId exists in DB with status=APPROVED and fields match
     // ========================================================================
+    const normalizeHttpsTarget = (value) => {
+      if (!value) return "";
+      const raw = String(value).trim();
+      if (raw.startsWith("https://")) return raw;
+      if (raw.startsWith("http://")) return raw.replace("http://", "https://");
+      if (raw.startsWith("/")) return `https://openclaw.veridancore.com${raw}`;
+      return `https://${raw}`;
+    };
+
     const br = bridgeRequest;
     const proposalId = br?.proposalId;
     const validatedAt = new Date().toISOString();
-    
+
     let approvalBindingStatus = 'PASS';
     let approvalBindingReason = null;
+    let approvalBindingDebug = null;
 
     if (!proposalId) {
       approvalBindingStatus = 'FAIL';
@@ -834,6 +844,31 @@ Deno.serve(async (req) => {
         } else {
           const proposal = proposals[0];
 
+          // Normalize targets for comparison
+          const proposalTargetNormalized = normalizeHttpsTarget(
+            proposal.targetUrl || proposal.requestedTarget || proposal.target || proposal.url || ""
+          );
+          const bridgeTargetNormalized = normalizeHttpsTarget(
+            br.targetUrl || br.requestedTarget || br.target || br.url || ""
+          );
+          const proposalRequestedTargetNormalized = normalizeHttpsTarget(
+            proposal.requestedTarget || proposal.targetUrl || proposal.target || proposal.url || ""
+          );
+          const bridgeRequestedTargetNormalized = normalizeHttpsTarget(
+            br.requestedTarget || br.targetUrl || br.target || br.url || ""
+          );
+
+          approvalBindingDebug = {
+            proposalTargetRaw: proposal.targetUrl || proposal.requestedTarget || null,
+            bridgeTargetRaw: br.targetUrl || br.requestedTarget || null,
+            proposalTargetNormalized,
+            bridgeTargetNormalized,
+            targetsMatch: proposalTargetNormalized === bridgeTargetNormalized,
+            proposalRequestedTargetNormalized,
+            bridgeRequestedTargetNormalized,
+            requestedTargetsMatch: proposalRequestedTargetNormalized === bridgeRequestedTargetNormalized,
+          };
+
           // Check proposal status
           if (proposal.status !== 'APPROVED') {
             approvalBindingStatus = 'FAIL';
@@ -844,10 +879,10 @@ Deno.serve(async (req) => {
             approvalBindingStatus = 'FAIL';
             approvalBindingReason = `Proposal commandType ${proposal.commandType} does not match bridgeRequest ${br.commandType}`;
           }
-          // Check targetUrl match
-          else if (proposal.url && proposal.url !== br.targetUrl && proposal.target !== br.targetUrl) {
+          // Check targetUrl match (normalized)
+          else if (proposalTargetNormalized && proposalTargetNormalized !== bridgeTargetNormalized) {
             approvalBindingStatus = 'FAIL';
-            approvalBindingReason = `Proposal targetUrl does not match bridgeRequest targetUrl`;
+            approvalBindingReason = `Proposal targetUrl does not match bridgeRequest targetUrl (normalized)`;
           }
           // Check riskTier match
           else if (proposal.riskTier !== br.riskTier) {
@@ -873,8 +908,8 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.OpenClawBridgeDryRunAudit.create({
           dryRunAuditId: auditId,
           requestId,
-          previewHash: body.previewHash || null,
-          operatorId: body.operatorId || null,
+          previewHash: previewHash || null,
+          operatorId: operatorId || null,
           acceptedForDryRun: false,
           rejectedReason: rejectionReason,
           bridgeMode: 'DRY_RUN_ONLY',
@@ -904,6 +939,7 @@ Deno.serve(async (req) => {
           requestId,
           bridgeMode: 'DRY_RUN_ONLY',
           executionStatus: 'REJECTED_NOT_EXECUTED',
+          previewContractVersion: 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2',
           auditId,
           receivedAt,
           validatedAt,
@@ -917,6 +953,7 @@ Deno.serve(async (req) => {
           signatureCheckResult: 'PASS',
           signatureCheckMessages: [],
           approvalBindingStatus,
+          approvalBindingDebug,
           note: 'Request rejected by approval binding check. No OpenClaw call was made.',
         },
         { status: 400 }
