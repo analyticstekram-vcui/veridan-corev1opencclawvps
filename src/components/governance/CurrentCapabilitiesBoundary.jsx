@@ -20,25 +20,23 @@ import React from 'react';
 import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 
 const CAN_DO_NOW = [
-  'Display governance and safety status',
-  'Navigate to audit, evidence, baseline, system map, and monitoring pages',
-  'Export local baseline JSON manifests',
-  'Review local-only readiness and verification records',
-  'Show read-only OpenClaw monitoring sections',
-  'Organize proof records before execution phases',
+  'Wake readiness review',
+  'Obsidian vault planning',
+  'Local task queue',
+  'OpenClaw preview/draft bridge',
+  'Draft review and approval',
+  'Local audit records',
 ];
 
 const CANNOT_DO_YET = [
-  'Execute OpenClaw commands',
-  'Run SafeBridge actions',
-  'Use MCP tools',
-  'Automate browser actions',
-  'Place trades',
-  'Move money',
-  'Pull credit bureau data',
-  'Store credentials',
-  'Upload or parse documents',
-  'Write to backend or database',
+  'Live execution',
+  'File writes',
+  'Browser automation',
+  'Trading',
+  'Money movement',
+  'Broker/bank/bureau integrations',
+  'Credential storage',
+  'Unrestricted OpenClaw agent actions',
 ];
 
 export default function CurrentCapabilitiesBoundary() {

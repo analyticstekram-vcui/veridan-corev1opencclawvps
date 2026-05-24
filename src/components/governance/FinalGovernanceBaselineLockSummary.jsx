@@ -53,13 +53,13 @@ export default function FinalGovernanceBaselineLockSummary() {
     const snapshot = {
       snapshotType: 'FINAL_GOVERNANCE_BASELINE_LOCK',
       generatedAt: new Date().toISOString(),
-      phase: 'Governance / Baseline / Evidence Locking',
+      phase: 'Governance / Preview Operations / AI Task Planning',
       mode: 'Preview + Read-Only',
       statusRows: STATUS_ROWS.map(({ label, value }) => ({ label, value })),
       executionBoundary: 'Locked — No execution until separate approval',
-      nextPhaseReadiness: 'Ready for dry-run bridge planning only — not live execution',
+      nextPhaseReadiness: 'Ready for task planning, preview bridge, and draft review — not live execution',
       forbiddenLogicClaims: FORBIDDEN_CLAIMS,
-      summary: 'This baseline confirms Veridan Core is locked in non-execution governance mode before any dry-run bridge, credential vault, API connector, browser automation, trading, banking, bureau, payment, upload, parsing, or AI-indexing layer is enabled.',
+      summary: 'This baseline confirms Veridan Core is in preview operations mode with task planning and OpenClaw preview bridge active, while execution, file writes, browser automation, trading, banking, bureau, payment, and credential storage remain disabled.',
     };
 
     const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
@@ -96,7 +96,7 @@ export default function FinalGovernanceBaselineLockSummary() {
         {/* Summary */}
         <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
           <p className="text-[10px] font-mono text-slate-300 leading-relaxed">
-            This baseline confirms Veridan Core is locked in non-execution governance mode before any dry-run bridge, credential vault, API connector, browser automation, trading, banking, bureau, payment, upload, parsing, or AI-indexing layer is enabled.
+            This baseline confirms Veridan Core is in preview operations mode with task planning and OpenClaw preview bridge active, while execution, file writes, browser automation, trading, banking, bureau, payment, and credential storage remain disabled.
           </p>
         </div>
 
@@ -104,7 +104,7 @@ export default function FinalGovernanceBaselineLockSummary() {
         <div className="bg-amber-500/5 border border-amber-500/20 rounded-sm px-4 py-3">
           <div className="text-[9px] font-mono font-bold uppercase text-amber-400/80 mb-1">Next Phase Readiness</div>
           <p className="text-[10px] font-mono text-slate-300">
-            Ready for dry-run bridge planning only — not live execution.
+            Ready for task planning, preview bridge, and draft review — not live execution.
           </p>
         </div>
 

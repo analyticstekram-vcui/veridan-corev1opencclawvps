@@ -20,11 +20,11 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 
 const STATE_ITEMS = [
-  { label: 'Phase', value: 'Governance / Baseline / Evidence Locking' },
+  { label: 'Phase', value: 'Governance / Preview Operations / AI Task Planning' },
   { label: 'Mode', value: 'Preview + Read-Only' },
   { label: 'Execution', value: 'Disabled' },
-  { label: 'OpenClaw', value: 'Monitoring Only' },
-  { label: 'SafeBridge', value: 'Not Active' },
+  { label: 'OpenClaw', value: 'Safe Review + Preview Bridge Only' },
+  { label: 'SafeBridge', value: 'Preview Bridge Active / No Execution' },
   { label: 'MCP', value: 'Not Active' },
   { label: 'Backend Writes', value: 'Disabled' },
   { label: 'Database Writes', value: 'Disabled' },
@@ -58,7 +58,7 @@ export default function CurrentBuildStateCard() {
         {/* Description */}
         <div className="bg-amber-500/5 border border-amber-500/20 rounded-sm px-4 py-3">
           <p className="text-[10px] font-mono text-slate-300 leading-relaxed">
-            Veridan Core is currently in governance and evidence-locking mode. It can review, organize, and export proof records, but it cannot execute live actions.
+            Veridan Core is in preview operations and AI task planning mode. It can create task plans, send preview tasks to the OpenClaw Preview Bridge, and review generated drafts — all locally without execution or file writes.
           </p>
         </div>
 
@@ -66,7 +66,7 @@ export default function CurrentBuildStateCard() {
         <div className="bg-primary/5 border border-primary/20 rounded-sm px-4 py-3">
           <div className="text-[9px] font-mono font-bold uppercase text-primary/80 mb-1">Next Safe Action</div>
           <p className="text-[10px] font-mono text-slate-300">
-            Continue UI clarity, evidence consolidation, and read-only verification before any execution bridge is enabled.
+            Create Obsidian task plan, send approved low-risk preview tasks to OpenClaw Preview Bridge, review generated drafts, and keep all writes/execution disabled.
           </p>
         </div>
       </div>
