@@ -186,6 +186,33 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
     return clone;
   };
 
+  // Map rejection codes to detailed error info
+  const getRejectionDetails = (rejectionReason, rejectionCode) => {
+    const codeMap = {
+      'previewContractVersion_NOT_PRESENT': {
+        missingField: 'previewContractVersion',
+        failedCheck: 'Contract Version Validation',
+        nextFix: 'Add previewContractVersion: "PHASE_5A_DRY_RUN_V1" to the signed bridge request before signer and preview submit.',
+      },
+      'SIGNATURE_VALIDATION_FAILED': {
+        missingField: null,
+        failedCheck: 'HMAC Signature Check',
+        nextFix: 'Verify OPENCLAW_BRIDGE_HMAC_SECRET is configured. Check that signature was generated correctly.',
+      },
+      'HMAC_SECRET_NOT_CONFIGURED': {
+        missingField: 'OPENCLAW_BRIDGE_HMAC_SECRET',
+        failedCheck: 'Secret Configuration',
+        nextFix: 'Set OPENCLAW_BRIDGE_HMAC_SECRET in the app environment variables.',
+      },
+      'APPROVAL_BINDING_FAILED': {
+        missingField: null,
+        failedCheck: 'Approval Binding',
+        nextFix: 'Ensure the proposal exists with matching commandType, targetUrl, riskTier, and operatorId.',
+      },
+    };
+    return codeMap[rejectionCode] || { missingField: null, failedCheck: 'Unknown', nextFix: rejectionReason };
+  };
+
   const handleTest = async () => {
     setLoading(true);
     setError(null);
@@ -580,16 +607,46 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                 : 'bg-destructive/10 border-destructive/30'
             }`}>
 
-              {/* Rejection reason — highly visible at top, only on rejection */}
-              {!result.acceptedForDryRun && result.rejectedReason && (
-                <div className="mb-3 px-3 py-2 bg-destructive/20 border border-destructive/40 rounded font-mono">
-                  <div className="text-[8px] font-bold text-destructive uppercase tracking-wider mb-0.5">REJECTION REASON</div>
-                  <div className="text-[9px] text-destructive font-semibold">{result.rejectedReason}</div>
-                  {result.rejectionCode && (
-                    <div className="text-[7px] text-destructive/70 mt-0.5">Code: {result.rejectionCode}</div>
-                  )}
-                </div>
-              )}
+              {/* Large Rejection Summary Box — only on rejection */}
+              {!result.acceptedForDryRun && result.rejectedReason && (() => {
+                const details = getRejectionDetails(result.rejectedReason, result.rejectionCode);
+                return (
+                  <div className="mb-4 px-4 py-3 bg-destructive/20 border-2 border-destructive/50 rounded-lg space-y-2">
+                    <div className="text-[10px] font-bold text-destructive uppercase tracking-widest">Phase 5A Rejection Summary</div>
+                    
+                    <div className="space-y-1.5 text-[9px]">
+                      {result.rejectionCode && (
+                        <div className="flex gap-2">
+                          <span className="text-destructive/70 font-semibold min-w-24">Rejection Code:</span>
+                          <span className="text-destructive font-mono font-bold">{result.rejectionCode}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        <span className="text-destructive/70 font-semibold min-w-24">Rejection Reason:</span>
+                        <span className="text-destructive font-semibold">{result.rejectedReason}</span>
+                      </div>
+                      
+                      {details.missingField && (
+                        <div className="flex gap-2">
+                          <span className="text-destructive/70 font-semibold min-w-24">Missing Field:</span>
+                          <span className="text-destructive font-mono font-bold">{details.missingField}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        <span className="text-destructive/70 font-semibold min-w-24">Failed Check:</span>
+                        <span className="text-destructive font-semibold">{details.failedCheck}</span>
+                      </div>
+                      
+                      <div className="mt-2 pt-2 border-t border-destructive/30">
+                        <div className="text-destructive/70 font-semibold text-[8px] mb-1 uppercase">Next Fix:</div>
+                        <div className="text-destructive text-[9px] leading-tight">{details.nextFix}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Status Header */}
               <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${result.acceptedForDryRun ? 'border-emerald-500/20' : 'border-destructive/20'}`}>
