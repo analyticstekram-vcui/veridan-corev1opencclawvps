@@ -7,6 +7,7 @@ import CurrentBuildStateCard from '../components/governance/CurrentBuildStateCar
 import CurrentCapabilitiesBoundary from '../components/governance/CurrentCapabilitiesBoundary';
 import FinalGovernanceBaselineLockSummary from '../components/governance/FinalGovernanceBaselineLockSummary';
 import GovernanceControlIndex from '../components/governance/GovernanceControlIndex';
+import ObsidianWorkflowStatusCard from '../components/obsidian-vault/ObsidianWorkflowStatusCard';
 
 export default function Dashboard() {
   const navItems = [
@@ -69,6 +70,13 @@ export default function Dashboard() {
       {/* Unified Status Card */}
       <VeridanCoreUnifiedStatusCard />
 
+      {/* Obsidian Workflow Status */}
+      <div className="border-b border-border bg-card px-6 py-6">
+        <div className="max-w-7xl mx-auto">
+          <ObsidianWorkflowStatusCard />
+        </div>
+      </div>
+
       {/* OpenClaw Task Queue Preview */}
       <OpenClawTaskQueuePreview />
 
@@ -80,9 +88,44 @@ export default function Dashboard() {
 
 // ── OpenClaw Task Queue Preview Component ──────────────────────────────────
 
+function deriveNextActionPath() {
+  // Intelligent routing based on workflow state
+  try {
+    // Check for write audits (workflow complete)
+    const audits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
+    if (audits.length > 0) return '/audit-evidence';
+
+    // Check for drafts ready to write
+    const drafts = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
+    const approvableDrafts = drafts.filter(d => d.approvalStatus === 'APPROVED' && d.riskLevel === 'LOW' && d.executionStatus === 'NOT_EXECUTED');
+    if (approvableDrafts.length > 0) return '/obsidian-draft-review';
+
+    // Check for tasks in queue
+    const tasks = JSON.parse(localStorage.getItem('veridan_openclaw_task_queue') || '[]');
+    if (tasks.length > 0) return '/openclaw-control';
+
+    // Default to workbench
+    return '/obsidian-workbench-preview';
+  } catch {
+    return '/obsidian-workbench-preview';
+  }
+}
+
+function getNextActionLabel() {
+  const path = deriveNextActionPath();
+  const labels = {
+    '/obsidian-workbench-preview': 'Create Obsidian plan',
+    '/openclaw-control': 'Review task queue',
+    '/obsidian-draft-review': 'Approve & write drafts',
+    '/audit-evidence': 'View audit evidence',
+  };
+  return labels[path] || 'Next action';
+}
+
 function VeridanCoreUnifiedStatusCard() {
   const [taskCount, setTaskCount] = useState(0);
   const [obsidianStatus, setObsidianStatus] = useState('IDLE');
+  const [nextPath, setNextPath] = useState('/obsidian-workbench-preview');
 
   useEffect(() => {
     try {
@@ -90,6 +133,7 @@ function VeridanCoreUnifiedStatusCard() {
       setTaskCount(tasks.length);
       const obsidianTasks = tasks.filter(t => t.source === 'OBSIDIAN_WORKBENCH');
       setObsidianStatus(obsidianTasks.length > 0 ? 'TASKS_GENERATED' : 'IDLE');
+      setNextPath(deriveNextActionPath());
     } catch { /* ignore */ }
   }, []);
 
@@ -135,19 +179,18 @@ function VeridanCoreUnifiedStatusCard() {
           <div className="text-[7px] text-slate-500">→ View Queue</div>
         </Link>
 
-        {/* Next Action */}
-        <div className="border border-amber-500/40 bg-amber-500/5 rounded-sm p-4 space-y-2">
+        {/* Next Action - Intelligent routing */}
+        <Link to={nextPath}
+          className="border border-amber-500/40 bg-amber-500/5 rounded-sm p-4 space-y-2 hover:bg-amber-500/15 transition-colors">
           <div className="text-[8px] font-bold uppercase text-amber-500 tracking-widest">Next Action</div>
           <div className="flex items-center gap-2">
             <ArrowRight className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <span className="text-[8px] font-mono text-slate-300">
-              {taskCount === 0 ? 'Create tasks' : 'Review queue'}
+              {getNextActionLabel()}
             </span>
           </div>
-          <div className="text-[7px] text-slate-500">
-            {taskCount === 0 ? 'Start with Obsidian' : 'Then approve'}
-          </div>
-        </div>
+          <div className="text-[7px] text-slate-500">→ Go</div>
+        </Link>
       </div>
     </div>
   );
