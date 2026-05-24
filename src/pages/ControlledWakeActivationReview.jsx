@@ -25,21 +25,32 @@ const VALID_APPROVAL = ['REVIEW_READY', 'APPROVED'];
 
 function isPassingRecord(r) {
   if (!r) return false;
-  const checksOk = r.allPass === true || (r.checksPassed != null && r.checksTotal != null && r.checksPassed === r.checksTotal);
+  // checks: allPass=true OR (checksPassed === checksTotal AND checksTotal >= 16)
+  const checksOk = r.allPass === true ||
+    (r.checksPassed != null && r.checksTotal != null &&
+     r.checksPassed === r.checksTotal && Number(r.checksTotal) >= 16);
+  // approval: normalize all known field paths
   const approval = (
     r.operatorApprovalState || r.approvalState || r.approval || r.form?.operatorApprovalState || ''
   ).trim().toUpperCase();
   const approvalOk = VALID_APPROVAL.includes(approval);
-  const decisionOk = typeof r.decision === 'string' && r.decision.includes('READY_FOR_CONTROLLED_WAKE');
+  // decision: must include READY_FOR_CONTROLLED_WAKE
+  const decisionOk = typeof r.decision === 'string' &&
+    (r.decision.includes('READY_FOR_CONTROLLED_WAKE_ACTIVATION_REVIEW') ||
+     r.decision.includes('READY_FOR_CONTROLLED_WAKE_REVIEW') ||
+     r.decision.includes('READY_FOR_CONTROLLED_WAKE'));
   const activationOk = !r.activationStatus || r.activationStatus === 'NOT_ACTIVATED';
-  const execOk = !r.executionStatus || r.executionStatus === 'NOT_EXECUTED';
-  const networkOk = !r.openclawWakeCall || r.openclawWakeCall === 'NOT_SENT';
+  const execOk       = !r.executionStatus   || r.executionStatus   === 'NOT_EXECUTED';
+  // networkRequest: treat missing/blank as NOT_SENT when openclawWakeCall is also NOT_SENT
+  const nr  = (r.networkRequest   || '').trim().toUpperCase();
+  const owc = (r.openclawWakeCall || '').trim().toUpperCase();
+  const networkOk = !nr || nr === 'NOT_SENT' || (!nr && (owc === 'NOT_SENT' || !owc));
   return checksOk && approvalOk && decisionOk && activationOk && execOk && networkOk;
 }
 
 function loadLatestReadinessEvidence() {
+  // 1. Read wake_activation_readiness_history — sort by createdAt desc — pick newest PASSING record
   try {
-    // 1. Scan wake_activation_readiness_history first — sort by createdAt desc, pick newest passing
     const raw = localStorage.getItem('wake_activation_readiness_history');
     if (raw) {
       const arr = JSON.parse(raw);
@@ -48,22 +59,21 @@ function loadLatestReadinessEvidence() {
           new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
         );
         const passing = sorted.find(isPassingRecord);
-        if (passing) return { ...passing, _loadedFrom: 'wake_activation_readiness_history' };
-        // No passing record — return newest anyway (caller can show status)
-        return { ...sorted[0], _loadedFrom: 'wake_activation_readiness_history' };
+        if (passing) return { ...passing, _loadedFrom: 'wake_activation_readiness_history', _isPassing: true };
+        // History exists but no passing record — return newest so caller can show status
+        return { ...sorted[0], _loadedFrom: 'wake_activation_readiness_history', _isPassing: false };
       }
     }
   } catch { /* ignore */ }
 
-  // 2. Fall back to phase5a_evidence_* keys
+  // 2. Only fall back to phase5a_evidence_* if no history key exists at all
   try {
     const keys = Object.keys(localStorage)
       .filter(k => k.startsWith('phase5a_evidence_'))
-      .sort()
-      .reverse();
+      .sort().reverse();
     if (keys.length > 0) {
       const rec = JSON.parse(localStorage.getItem(keys[0]));
-      return rec ? { ...rec, _loadedFrom: 'phase5a_evidence' } : null;
+      if (rec) return { ...rec, _loadedFrom: 'phase5a_evidence', _isPassing: isPassingRecord(rec) };
     }
   } catch { /* ignore */ }
 
@@ -288,9 +298,9 @@ export default function ControlledWakeActivationReview() {
           </button>
           {evidence && (
             <span className="text-[7px] font-mono flex items-center gap-2 flex-wrap">
-              {isPassingRecord(evidence)
+              {evidence._isPassing
                 ? <><CheckCircle2 className="w-2.5 h-2.5 text-primary" /><span className="text-primary font-bold">Loaded latest passing readiness record:</span></>
-                : <><XCircle className="w-2.5 h-2.5 text-amber-400" /><span className="text-amber-400 font-bold">Loaded (not yet passing):</span></>}
+                : <><XCircle className="w-2.5 h-2.5 text-amber-400" /><span className="text-amber-400 font-bold">Loaded (not yet passing — run self-check first):</span></>}
               <span className="text-primary">{evidence.evidenceId}</span>
               {evidence._loadedFrom && (
                 <span className="text-slate-500">from {evidence._loadedFrom}</span>
