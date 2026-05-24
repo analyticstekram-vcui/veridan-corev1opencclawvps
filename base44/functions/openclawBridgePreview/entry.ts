@@ -79,8 +79,18 @@ const validateSignedRequest = async (body, hmacSecretConfigured, hmacSecret) => 
 
   // Check signature field existence
   if (!body.signature) {
-    errors.push('signature field missing');
-    return { result: 'FAIL', errors, mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC' };
+  errors.push('signature field missing');
+  return {
+    result: 'FAIL',
+    errors,
+    mode: hmacSecretConfigured ? 'REAL_HMAC_VALIDATION' : 'MOCK_SIGNATURE_VALIDATION_PENDING_REAL_HMAC',
+    signatureDebug: {
+      signaturePresent: false,
+      signatureLength: 0,
+      signaturePathResolved: false,
+      signedRequestKeys: Object.keys(body || {}),
+    }
+  };
   }
 
   // Check signingVersion
@@ -759,13 +769,14 @@ Deno.serve(async (req) => {
           console.error('Failed to create signature rejection audit record:', auditErr.message);
           }
 
-          return Response.json(
-          {
+      return Response.json(
+        {
           accepted: false,
           rejectedReason: rejectionReason,
           requestId,
           bridgeMode: 'DRY_RUN_ONLY',
           executionStatus: 'REJECTED_NOT_EXECUTED',
+          previewContractVersion: 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2',
           auditId,
           receivedAt,
           validatedAt,
@@ -779,7 +790,18 @@ Deno.serve(async (req) => {
           signatureCheckResult: 'FAIL',
           signatureCheckMessages: signatureCheck.errors,
           note: 'Request rejected by signature validation. No OpenClaw call was made.',
+          debug: {
+            receivedTopLevelKeys: Object.keys(body || {}),
+            incomingKeys: Object.keys(incoming || {}),
+            payloadKeys: Object.keys(payload || {}),
+            bridgeRequestKeys: Object.keys(bridgeRequest || {}),
+            signedRequestKeys: Object.keys(signedRequest || {}),
+            normalizedSignedRequestKeys: Object.keys(normalizedSignedRequest || {}),
+            signaturePresent: Boolean(normalizedSignedRequest?.signature),
+            signatureLength: normalizedSignedRequest?.signature?.length || 0,
+            signaturePathResolved: Boolean(signature),
           },
+        },
         { status: 400 }
       );
     }
@@ -930,30 +952,32 @@ Deno.serve(async (req) => {
         console.error('Failed to create audit record:', auditErr.message);
         }
 
-        return Response.json(
+      return Response.json(
         {
-        accepted: true,
-        rejectedReason: null,
-        requestId,
-        bridgeMode: 'DRY_RUN_ONLY',
-        executionStatus: 'NOT_EXECUTED',
-        auditId,
-        receivedAt,
-        validatedAt,
-        hmacSecretConfigured: hmacSecretCheck.configured,
-        secretExposed: false,
-        signatureMode: signatureCheck.mode,
-        policyGateResult: 'PASS',
-        policyGateMessages: [],
-        replayCheckResult: 'PASS',
-        replayCheckMessages: [],
-        signatureCheckResult: 'PASS',
-        signatureCheckMessages: [],
-        approvalBindingStatus: 'PASS',
-        note: 'Phases 1-5 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
+          accepted: true,
+          acceptedForDryRun: true,
+          rejectedReason: null,
+          requestId,
+          bridgeMode: 'DRY_RUN_ONLY',
+          executionStatus: 'NOT_EXECUTED',
+          previewContractVersion: 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2',
+          auditId,
+          receivedAt,
+          validatedAt,
+          hmacSecretConfigured: hmacSecretCheck.configured,
+          secretExposed: false,
+          signatureMode: signatureCheck.mode,
+          policyGateResult: 'PASS',
+          policyGateMessages: [],
+          replayCheckResult: 'PASS',
+          replayCheckMessages: [],
+          signatureCheckResult: 'PASS',
+          signatureCheckMessages: [],
+          approvalBindingStatus: 'PASS',
+          note: 'Phases 1-5 validation passed. DRY_RUN_ONLY mode. No OpenClaw call was made.',
         },
-      { status: 200 }
-    );
+        { status: 200 }
+      );
 
   } catch (error) {
     return Response.json(

@@ -247,12 +247,14 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         return;
       }
 
-      // Send preview request to backend
-      const previewResponse = await base44.functions.invoke('openclawBridgePreview', previewPayload);
+      // Send preview request to backend — function name: openclawBridgePreview
+      const PREVIEW_FUNCTION_INVOKED = 'openclawBridgePreview';
+      const previewResponse = await base44.functions.invoke(PREVIEW_FUNCTION_INVOKED, previewPayload);
       const resultData = previewResponse.data || {};
       
       // Add submission debug info
       resultData.submissionDebug = {
+        previewFunctionInvoked: PREVIEW_FUNCTION_INVOKED,
         submittedAt,
         expirationAt,
         expiresInMinutes: 5,
@@ -284,14 +286,19 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
       
       setResult(resultData);
     } catch (err) {
-      // Try to extract backend error details from response
+      // Capture backend error including debug fields if present
+      const backendData = err.response?.data || {};
       let errorMsg = err.message || 'Failed to invoke signer or preview';
-      if (err.response?.data?.rejectedReason) {
-        errorMsg = `Backend Error: ${err.response.data.rejectedReason}`;
-      } else if (err.response?.data?.message) {
-        errorMsg = `Backend Error: ${err.response.data.message}`;
+      if (backendData.rejectedReason) {
+        errorMsg = `Backend Error: ${backendData.rejectedReason}`;
+      } else if (backendData.message) {
+        errorMsg = `Backend Error: ${backendData.message}`;
       } else if (err.response?.statusText) {
         errorMsg = `Backend Error (${err.response.status}): ${err.response.statusText}`;
+      }
+      // Surface backend debug fields in result so UI can display them
+      if (backendData && Object.keys(backendData).length > 0) {
+        setResult({ ...backendData, _fromError: true });
       }
       setError(errorMsg);
     } finally {
@@ -453,7 +460,35 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
               </div>
 
               <div className="mt-2 pt-2 border-t border-current/20 text-[7px] text-slate-400 italic">{result.note}</div>
-              
+
+              {/* Backend Contract Version — deployment verification marker */}
+              <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px]">
+                <div className="font-semibold text-slate-300 uppercase mb-1">Backend Contract</div>
+                <div>
+                  previewContractVersion:{" "}
+                  <span className={result.previewContractVersion === 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2' ? 'text-primary font-mono font-bold' : 'text-amber-400 font-mono'}>
+                    {result.previewContractVersion || '⚠ NOT PRESENT — old backend may still be deployed'}
+                  </span>
+                </div>
+                <div>previewFunctionInvoked: <span className="text-slate-300 font-mono">openclawBridgePreview</span></div>
+              </div>
+
+              {/* Backend Debug Fields (from debug object on error responses) */}
+              {result.debug && (
+                <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px] text-slate-500">
+                  <div className="font-semibold text-slate-300 uppercase mb-1">Backend Debug Fields</div>
+                  <div>signaturePresent: <span className={result.debug.signaturePresent ? 'text-primary' : 'text-destructive'}>{String(result.debug.signaturePresent)}</span></div>
+                  <div>signatureLength: <span className="text-slate-300">{result.debug.signatureLength}</span></div>
+                  <div>signaturePathResolved: <span className={result.debug.signaturePathResolved ? 'text-primary' : 'text-destructive'}>{String(result.debug.signaturePathResolved)}</span></div>
+                  <div className="text-[6px] text-slate-600">receivedTopLevelKeys: {(result.debug.receivedTopLevelKeys || []).join(', ') || 'none'}</div>
+                  <div className="text-[6px] text-slate-600">incomingKeys: {(result.debug.incomingKeys || []).join(', ') || 'none'}</div>
+                  <div className="text-[6px] text-slate-600">payloadKeys: {(result.debug.payloadKeys || []).join(', ') || 'none'}</div>
+                  <div className="text-[6px] text-slate-600">bridgeRequestKeys: {(result.debug.bridgeRequestKeys || []).join(', ') || 'none'}</div>
+                  <div className="text-[6px] text-slate-600">signedRequestKeys: {(result.debug.signedRequestKeys || []).join(', ') || 'none'}</div>
+                  <div className="text-[6px] text-slate-600">normalizedSignedRequestKeys: {(result.debug.normalizedSignedRequestKeys || []).join(', ') || 'none'}</div>
+                </div>
+              )}
+
               {/* Submission Debug Info */}
               {result.submissionDebug && (
                 <div className="mt-2 pt-2 border-t border-current/20 space-y-1.5 text-[7px] text-slate-500">
