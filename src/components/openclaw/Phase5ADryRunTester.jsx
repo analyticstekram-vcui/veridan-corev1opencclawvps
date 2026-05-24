@@ -192,8 +192,9 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
       
       setSignerStatus({
         success: signerData.signingAllowed,
-        signature: signerData.signature,
-        signedAt: signerData.signedAt,
+        signature: signerData.signature || signerData.signedSignature || signerData.bridgeSignature || signerData.signedRequest?.signature || '',
+        signedAt: signerData.signedAt || signerData.signedRequest?.signedAt || '',
+        signingVersion: signerData.signingVersion || signerData.signedRequest?.signingVersion || 'OPENCLAW_BRIDGE_V1',
         message: signerData.signingAllowed ? 'Signature generated successfully' : signerData.rejectedReason || 'Signing rejected',
       });
 
@@ -204,79 +205,66 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         return;
       }
 
-      // Build deeper signer result candidates
-      const signerCandidates = [
-        signerResponse,
-        signerResponse?.data,
-        signerResponse?.result,
-        signerResponse?.response,
-        signerResponse?.output,
-        signerResponse?.body,
-        signerResponse?.data?.data,
-        signerResponse?.data?.result,
-        signerResponse?.data?.response,
-        signerResponse?.data?.output,
-        signerResponse?.data?.body,
-        signerResponse?.data?.signedRequest,
-        signerResponse?.result?.signedRequest,
-        signerResponse?.response?.signedRequest,
-      ].filter(Boolean);
-
-      // Find first candidate with a signature
-      const rawSignerResult =
-        signerCandidates.find((candidate) =>
-          candidate?.signature ||
-          candidate?.signedSignature ||
-          candidate?.bridgeSignature ||
-          candidate?.signedRequest?.signature
-        ) ||
-        signerResponse?.data ||
-        signerResponse?.result ||
-        signerResponse ||
-        {};
-
+      // ── Build one canonical signedBridgeRequest from signerData directly ──
+      // signerData is res.data from openclawBridgeSigner.
+      // Extract signature from the most direct path first, then fallbacks.
       const extractedSignature =
-        rawSignerResult.signature ||
-        rawSignerResult.signedSignature ||
-        rawSignerResult.bridgeSignature ||
-        rawSignerResult.signedRequest?.signature ||
+        signerData.signature ||
+        signerData.signedSignature ||
+        signerData.bridgeSignature ||
+        signerData.signedRequest?.signature ||
         "";
 
-      const sigerResponseKeys = Object.keys(signerResponse || {}).join(', ');
-      const rawSignerResultKeys = Object.keys(rawSignerResult).join(', ');
-      
-      const normalizedSignedRequest = {
-        ...rawSignerResult,
-        ...(rawSignerResult.signedRequest || {}),
+      const extractedSigningVersion =
+        signerData.signingVersion ||
+        signerData.signedRequest?.signingVersion ||
+        "OPENCLAW_BRIDGE_V1";
+
+      const extractedSignedAt =
+        signerData.signedAt ||
+        signerData.signedRequest?.signedAt ||
+        signerData.timestamp ||
+        submittedAt;
+
+      // One canonical signedBridgeRequest — preserves all required fields
+      const signedBridgeRequest = {
+        // Original bridge request fields
+        ...fullBridgeRequest,
+        // Signer-produced fields layered on top
         signature: extractedSignature,
-        signingVersion:
-          rawSignerResult.signingVersion ||
-          rawSignerResult.signedRequest?.signingVersion ||
-          "OPENCLAW_BRIDGE_V1",
-        signedAt:
-          rawSignerResult.signedAt ||
-          rawSignerResult.signedRequest?.signedAt ||
-          rawSignerResult.timestamp ||
-          submittedAt,
-        operatorId:
-          rawSignerResult.operatorId ||
-          rawSignerResult.signedRequest?.operatorId ||
-          fullBridgeRequest.operatorId ||
-          operatorId,
+        signingVersion: extractedSigningVersion,
+        signedAt: extractedSignedAt,
         previewHash,
         expirationAt,
+        submittedAt,
+        operatorId: fullBridgeRequest.operatorId || operatorId,
+        // Explicit field preservation
+        targetUrl: normalizedTarget,
+        requestedTarget: normalizedTarget,
+        commandType: fullBridgeRequest.commandType,
+        riskTier: fullBridgeRequest.riskTier,
+        proposalId: fullBridgeRequest.proposalId,
       };
 
-      // Hard guard: Validate signature is present in normalizedSignedRequest before preview
-      if (!normalizedSignedRequest?.signature) {
+      // ── Pre-submit debug row (visible in UI via setResult if blocked) ──
+      const preSubmitDebug = {
+        signerSuccess: signerData.signingAllowed ? 'YES' : 'NO',
+        signaturePresentBeforePreview: Boolean(extractedSignature) ? 'YES' : 'NO',
+        signatureLengthBeforePreview: extractedSignature?.length || 0,
+        signingVersionBeforePreview: extractedSigningVersion,
+        signedBridgeRequestKeys: Object.keys(signedBridgeRequest),
+      };
+
+      // Hard guard: block preview if signature is missing after signer success
+      if (!signedBridgeRequest.signature) {
         setResult({
           signer: 'SUCCESS',
           preview: 'BLOCKED',
-          error: 'Signer succeeded but normalizedSignedRequest.signature is missing',
+          error: 'Frontend blocked preview: signer succeeded but signature was not attached.',
+          preSubmitDebug,
           submissionDebug: {
             signaturePresent: false,
-            normalizedSignedRequestKeys: Object.keys(normalizedSignedRequest || {}),
-            previewPayloadWouldHaveSignature: false,
+            signerDataKeys: Object.keys(signerData),
             sanitizedSignerResponse: sanitizeSignerResponse(signerResponse),
           },
         });
@@ -284,70 +272,43 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         return;
       }
 
-      // Step 2: Build preview payload with normalized signed request
+      // ── Step 2: Send canonical preview payload to openclawBridgePreview ──
+      // The payload includes signature at top level AND inside signedRequest.
       const previewPayload = {
         bridgeRequest: fullBridgeRequest,
-        signedRequest: normalizedSignedRequest,
+        signedRequest: signedBridgeRequest,
+        signature: extractedSignature,
+        signingVersion: extractedSigningVersion,
+        signedAt: extractedSignedAt,
         previewHash,
         operatorId: fullBridgeRequest.operatorId || operatorId,
         submittedAt,
         expirationAt,
       };
 
-      // Hard guard: Verify signature is in previewPayload.signedRequest before backend call
-      if (!previewPayload?.signedRequest?.signature) {
-        setResult({
-          signer: 'SUCCESS',
-          preview: 'BLOCKED',
-          error: 'Preview payload missing signedRequest.signature before backend call',
-          submissionDebug: {
-            previewPayloadKeys: Object.keys(previewPayload || {}),
-            signedRequestKeys: Object.keys(previewPayload?.signedRequest || {}),
-            signaturePresent: Boolean(previewPayload?.signedRequest?.signature),
-            signatureLength: previewPayload?.signedRequest?.signature?.length || 0,
-          },
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Send preview request to backend — function name: openclawBridgePreview
       const PREVIEW_FUNCTION_INVOKED = 'openclawBridgePreview';
       const previewResponse = await base44.functions.invoke(PREVIEW_FUNCTION_INVOKED, previewPayload);
       const resultData = previewResponse.data || {};
-      
-      // Add submission debug info
+
+      // Attach submission debug info to result
       resultData.submissionDebug = {
         previewFunctionInvoked: PREVIEW_FUNCTION_INVOKED,
         submittedAt,
         expirationAt,
         expiresInMinutes: 5,
-        signerResponseKeys: sigerResponseKeys,
-        rawSignerResultKeys,
         signaturePresent: Boolean(extractedSignature),
         signatureLength: extractedSignature?.length || 0,
-        signingVersion: normalizedSignedRequest.signingVersion,
-        signedAt: normalizedSignedRequest.signedAt,
-        previewPayloadHasSignedRequest: Boolean(previewPayload.signedRequest),
+        signingVersion: extractedSigningVersion,
+        signedAt: extractedSignedAt,
+        previewPayloadHasSignedRequest: true,
         previewPayloadSignaturePresent: Boolean(previewPayload.signedRequest?.signature),
         previewPayloadSignatureLength: previewPayload.signedRequest?.signature?.length || 0,
-        signedRequestKeys: Object.keys(previewPayload.signedRequest || {}),
+        topLevelSignaturePresent: Boolean(previewPayload.signature),
+        signedRequestKeys: Object.keys(signedBridgeRequest),
+        preSubmitDebug,
         sanitizedSignerResponse: sanitizeSignerResponse(signerResponse),
-        signerCandidateCount: signerCandidates.length,
-        candidateKeys: signerCandidates.map((candidate, index) => ({
-          index,
-          keys: Object.keys(candidate || {}),
-          hasSignature: Boolean(
-            candidate?.signature ||
-            candidate?.signedSignature ||
-            candidate?.bridgeSignature ||
-            candidate?.signedRequest?.signature
-          ),
-          hasSignedRequest: Boolean(candidate?.signedRequest),
-          signedRequestKeys: candidate?.signedRequest ? Object.keys(candidate.signedRequest) : []
-        })),
       };
-      
+
       setResult(resultData);
     } catch (err) {
       // Capture backend error including debug fields if present
@@ -514,6 +475,16 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
             <div className="text-[7px] text-slate-400">{signerStatus.message}</div>
             {signerStatus.signedAt && (
               <div className="text-[7px] text-slate-500 mt-1">Signed At: {new Date(signerStatus.signedAt).toLocaleTimeString()}</div>
+            )}
+            {/* Pre-submit debug row */}
+            {signerStatus.success && (
+              <div className="mt-2 pt-2 border-t border-primary/20 space-y-0.5 text-[7px] font-mono text-slate-500">
+                <div className="text-slate-400 font-semibold mb-1">Pre-Preview Handoff Check</div>
+                <div>signerSuccess: <span className="text-primary">YES</span></div>
+                <div>signaturePresentBeforePreview: <span className={signerStatus.signature ? 'text-primary' : 'text-destructive'}>{signerStatus.signature ? 'YES' : 'NO'}</span></div>
+                <div>signatureLengthBeforePreview: <span className="text-slate-300">{signerStatus.signature?.length ?? 0}</span></div>
+                <div>signingVersionBeforePreview: <span className="text-slate-300">{signerStatus.signingVersion || 'OPENCLAW_BRIDGE_V1'}</span></div>
+              </div>
             )}
           </div>
         )}
