@@ -659,14 +659,14 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                       };
                       const key = `phase5a_evidence_${Date.now()}`;
                       try { localStorage.setItem(key, JSON.stringify(snapshot)); } catch { /* quota full */ }
-                      alert(`Action Release Packet saved to localStorage key: ${key}`);
+                      alert(`Dry-Run Snapshot saved to localStorage key: ${key}`);
                     }}
                     className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors rounded text-[8px] font-semibold font-mono uppercase"
                   >
                     <Save className="w-3 h-3" />
-                    Save Action Release Packet
+                    Save Dry-Run Snapshot
                   </button>
-                  <div className="text-[6px] text-slate-500 text-center mt-1 italic">Saves to localStorage only · No backend write · No execution</div>
+                  <div className="text-[6px] text-slate-500 text-center mt-1 italic">Saves to localStorage only. No backend write. No execution.</div>
                 </div>
               )}
             </div>
