@@ -1,14 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertTriangle, Zap, CheckCircle2, XCircle, Loader2, Save } from 'lucide-react';
+import { AlertTriangle, Zap, CheckCircle2, XCircle, Loader2, Save, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Phase5ApprovalBindingTestCases from './Phase5ApprovalBindingTestCases';
+
+const PHASE_5A_BASELINE = {
+  phase: 'Phase 5A',
+  status: 'LOCKED',
+  bridgeMode: 'DRY_RUN_ONLY',
+  executionStatus: 'NOT_EXECUTED',
+  previewContractVersion: 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2',
+  safetyStatement: 'No OpenClaw call was made. No execution occurred.',
+};
+
+const BASELINE_LS_KEY = 'phase5a_baseline_lock';
 
 export default function Phase5ADryRunTester({ signedRequest, proposalId, operatorId }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [signerStatus, setSignerStatus] = useState(null);
+  const [baseline, setBaseline] = useState(null);
+
+  // Write baseline lock to localStorage on mount and read it back
+  useEffect(() => {
+    const existing = localStorage.getItem(BASELINE_LS_KEY);
+    if (existing) {
+      setBaseline(JSON.parse(existing));
+    } else {
+      const record = { ...PHASE_5A_BASELINE, lockedAt: new Date().toISOString() };
+      localStorage.setItem(BASELINE_LS_KEY, JSON.stringify(record, null, 2));
+      setBaseline(record);
+    }
+  }, []);
 
   if (!signedRequest) {
     return (
@@ -312,6 +336,26 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         <div className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">Phase 5A: Dry-Run Bridge Tester</div>
         <div className="text-[8px] text-amber-500/70 mt-1">Test dry-run bridge preview creation without executing actions.</div>
       </div>
+
+      {/* Phase 5A Locked Baseline Banner */}
+      <div className="px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/30 flex items-center gap-2">
+        <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">PHASE 5A BASELINE LOCKED — DRY-RUN ONLY</span>
+      </div>
+
+      {/* Baseline Read-Only Section */}
+      {baseline && (
+        <div className="px-4 py-3 border-b border-border/30 bg-secondary/20 space-y-0.5 text-[7px] font-mono">
+          <div className="text-[8px] font-semibold text-slate-300 uppercase mb-1.5">Baseline Record (localStorage)</div>
+          <div className="text-slate-400">phase: <span className="text-slate-200">{baseline.phase}</span></div>
+          <div className="text-slate-400">status: <span className="text-emerald-400 font-bold">{baseline.status}</span></div>
+          <div className="text-slate-400">bridgeMode: <span className="text-slate-200">{baseline.bridgeMode}</span></div>
+          <div className="text-slate-400">executionStatus: <span className="text-slate-200">{baseline.executionStatus}</span></div>
+          <div className="text-slate-400">previewContractVersion: <span className="text-emerald-400">{baseline.previewContractVersion}</span></div>
+          <div className="text-slate-400">lockedAt: <span className="text-slate-200">{baseline.lockedAt}</span></div>
+          <div className="text-slate-400">safetyStatement: <span className="text-slate-300 italic">{baseline.safetyStatement}</span></div>
+        </div>
+      )}
 
       <div className="px-4 py-3 space-y-3">
         {/* Approval Binding Test Cases */}
