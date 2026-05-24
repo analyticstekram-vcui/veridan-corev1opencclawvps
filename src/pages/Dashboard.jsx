@@ -88,61 +88,74 @@ export default function Dashboard() {
 
 // ── OpenClaw Task Queue Preview Component ──────────────────────────────────
 
-function deriveNextActionPath() {
-  // Production operator routing: one clear path through Obsidian workflow
+function deriveObsidianWorkflowPath() {
+  // Intelligent routing through the 6-step Obsidian production workflow
   try {
-    // 1. Check if Obsidian task exists
     const tasks = JSON.parse(localStorage.getItem('veridan_openclaw_task_queue') || '[]');
     const obsidianTask = tasks.find(t => t.source === 'OBSIDIAN_WORKBENCH');
-
-    // 5. If draft written, go to audit
     const writeAudits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
-    if (writeAudits.some(a => a.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY')) {
-      return { path: '/audit-evidence', label: 'Review audit evidence' };
+    const drafts = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
+
+    // Step 6: If write audit exists → Audit Evidence
+    if (writeAudits.length > 0) {
+      return { path: '/audit-evidence', label: 'View audit evidence', step: 6 };
     }
 
-    // 4. If draft approved but not written, go to write
-    const drafts = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
+    // Step 5: If draft approved and LOW risk and NOT executed → Draft Review (write)
     const approvableDraft = drafts.find(d => d.approvalStatus === 'APPROVED' && d.riskLevel === 'LOW' && d.executionStatus === 'NOT_EXECUTED');
     if (approvableDraft) {
-      return { path: '/obsidian-draft-review', label: 'Write approved draft to vault' };
+      return { path: '/obsidian-draft-review', label: 'Write approved draft', step: 5 };
     }
 
-    // 3. If task exists but task or draft not approved, review draft
-    if (obsidianTask && (obsidianTask.approvalStatus !== 'APPROVED' || drafts.length === 0)) {
-      return { path: '/obsidian-draft-review', label: 'Review & approve draft' };
+    // Step 4: If draft exists but not approved → Draft Review (approve)
+    const unapprovedDraft = drafts.find(d => d.approvalStatus !== 'APPROVED');
+    if (unapprovedDraft) {
+      return { path: '/obsidian-draft-review', label: 'Approve draft', step: 4 };
     }
 
-    // 2. If task exists but not approved, review in queue
+    // Step 3: If task exists and has preview but no draft → wait for draft generation
+    if (obsidianTask && drafts.length === 0) {
+      return { path: '/obsidian-workbench-preview', label: 'Draft being generated...', step: 3 };
+    }
+
+    // Step 2: If task exists but not approved → Task Queue
     if (obsidianTask && obsidianTask.approvalStatus !== 'APPROVED') {
-      return { path: '/openclaw-control', label: 'Approve task in queue' };
+      return { path: '/openclaw-control', label: 'Approve task', step: 2 };
     }
 
-    // 1. Default: create task
-    return { path: '/obsidian-workbench-preview', label: 'Create Obsidian task' };
+    // Step 1: Default → Workbench (create task)
+    return { path: '/obsidian-workbench-preview', label: 'Create Obsidian task', step: 1 };
   } catch {
-    return { path: '/obsidian-workbench-preview', label: 'Create Obsidian task' };
+    return { path: '/obsidian-workbench-preview', label: 'Start workflow', step: 1 };
   }
 }
 
 function VeridanCoreUnifiedStatusCard() {
   const [taskCount, setTaskCount] = useState(0);
-  const [obsidianStatus, setObsidianStatus] = useState('IDLE');
-  const [nextAction, setNextAction] = useState({ path: '/obsidian-workbench-preview', label: 'Create Obsidian task' });
+  const [obsidianWorkflow, setObsidianWorkflow] = useState({ path: '/obsidian-workbench-preview', label: 'Create Obsidian task', step: 1 });
 
   useEffect(() => {
     try {
       const tasks = JSON.parse(localStorage.getItem('veridan_openclaw_task_queue') || '[]');
       setTaskCount(tasks.length);
-      const obsidianTasks = tasks.filter(t => t.source === 'OBSIDIAN_WORKBENCH');
-      setObsidianStatus(obsidianTasks.length > 0 ? 'TASKS_GENERATED' : 'IDLE');
-      setNextAction(deriveNextActionPath());
+      setObsidianWorkflow(deriveObsidianWorkflowPath());
     } catch { /* ignore */ }
   }, []);
 
   return (
     <div className="border-b border-border bg-card px-6 py-6">
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Start Obsidian Workflow - Production Button */}
+        <Link to={obsidianWorkflow.path}
+          className="border border-accent/40 bg-accent/5 rounded-sm p-4 space-y-2 hover:bg-accent/15 transition-colors">
+          <div className="text-[8px] font-bold uppercase text-accent tracking-widest">Obsidian Workflow</div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-lg font-mono font-bold text-accent">{obsidianWorkflow.step}</span>
+            <span className="text-[7px] text-slate-500">of 6</span>
+          </div>
+          <div className="text-[7px] text-slate-500">→ {obsidianWorkflow.label}</div>
+        </Link>
+
         {/* OpenClaw Safe Review */}
         <Link to="/openclaw-control"
           className="border border-primary/40 bg-primary/5 rounded-sm p-4 space-y-2 hover:bg-primary/10 transition-colors">
@@ -154,23 +167,6 @@ function VeridanCoreUnifiedStatusCard() {
           <div className="text-[7px] text-slate-500">→ Control Room</div>
         </Link>
 
-        {/* Obsidian Workbench */}
-        <Link to="/obsidian-workbench-preview"
-          className={`border rounded-sm p-4 space-y-2 hover:bg-secondary/10 transition-colors ${
-            obsidianStatus === 'TASKS_GENERATED'
-              ? 'border-accent/40 bg-accent/5'
-              : 'border-border/40 bg-card'
-          }`}>
-          <div className={`text-[8px] font-bold uppercase tracking-widest ${
-            obsidianStatus === 'TASKS_GENERATED' ? 'text-accent' : 'text-slate-400'
-          }`}>Obsidian Workbench</div>
-          <div className="flex items-baseline gap-2">
-            <Clock className={`w-3.5 h-3.5 shrink-0 ${obsidianStatus === 'TASKS_GENERATED' ? 'text-accent' : 'text-slate-400'}`} />
-            <span className="text-[9px] font-mono text-slate-300">{obsidianStatus}</span>
-          </div>
-          <div className="text-[7px] text-slate-500">→ Build Task Plan</div>
-        </Link>
-
         {/* Task Queue */}
         <Link to="/openclaw-control"
           className="border border-border/40 bg-card rounded-sm p-4 space-y-2 hover:bg-secondary/10 transition-colors">
@@ -180,19 +176,6 @@ function VeridanCoreUnifiedStatusCard() {
             <span className="text-[7px] text-slate-500">tasks</span>
           </div>
           <div className="text-[7px] text-slate-500">→ View Queue</div>
-        </Link>
-
-        {/* Next Action - Production routing */}
-        <Link to={nextAction.path}
-          className="border border-primary/40 bg-primary/5 rounded-sm p-4 space-y-2 hover:bg-primary/15 transition-colors font-bold">
-          <div className="text-[8px] font-bold uppercase text-primary tracking-widest">Next Action</div>
-          <div className="flex items-center gap-2">
-            <ArrowRight className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="text-[8px] font-mono text-slate-200">
-              {nextAction.label}
-            </span>
-          </div>
-          <div className="text-[7px] text-slate-500">→ Go</div>
         </Link>
       </div>
     </div>
