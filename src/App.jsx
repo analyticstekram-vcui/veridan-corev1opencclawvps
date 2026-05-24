@@ -42,6 +42,7 @@ import OpenClawReadOnlyCommandCenter from './pages/OpenClawReadOnlyCommandCenter
 import ControlledWakeActivationReview from './pages/ControlledWakeActivationReview';
 import OpenClawWakeControlCenter from './pages/OpenClawWakeControlCenter';
 import ObsidianWorkbenchPreview from './pages/ObsidianWorkbenchPreview';
+import ObsidianDraftReview from './pages/ObsidianDraftReview';
 import VeridanCoreCurrentStateAudit from './pages/VeridanCoreCurrentStateAudit';
 // Add page imports here
 
@@ -108,6 +109,7 @@ const AuthenticatedApp = () => {
       <Route path="/controlled-wake-activation-review" element={<ControlledWakeActivationReview />} />
       <Route path="/wake-control-center" element={<OpenClawWakeControlCenter />} />
       <Route path="/obsidian-workbench-preview" element={<ObsidianWorkbenchPreview />} />
+      <Route path="/obsidian-draft-review" element={<ObsidianDraftReview />} />
       <Route path="/veridan-core-audit" element={<VeridanCoreCurrentStateAudit />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
