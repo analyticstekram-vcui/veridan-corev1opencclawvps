@@ -11,7 +11,7 @@ export default function ModuleNav() {
     { label: 'Trading CMD', path: '/trading-command-center', icon: TrendingUp },
     { label: 'Public Credit CMD', path: '/public-credit-command-center', icon: CreditCard },
     { label: 'Biz Formation CMD', path: '/business-formation-command-center', icon: Briefcase },
-    { label: 'Obsidian Vault', path: '/obsidian-vault', icon: BookOpen },
+    { label: 'Obsidian Vault', path: '/obsidian-workbench-preview', icon: BookOpen },
     { label: 'Audit / Evidence', path: '/audit-evidence', icon: FileText },
     { label: 'System Map', path: '/system-map', icon: Layers },
   ];

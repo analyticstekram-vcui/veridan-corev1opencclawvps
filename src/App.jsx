@@ -41,6 +41,7 @@ import TradingViewMcpMonitor from './pages/TradingViewMcpMonitor';
 import OpenClawReadOnlyCommandCenter from './pages/OpenClawReadOnlyCommandCenter';
 import ControlledWakeActivationReview from './pages/ControlledWakeActivationReview';
 import OpenClawWakeControlCenter from './pages/OpenClawWakeControlCenter';
+import ObsidianWorkbenchPreview from './pages/ObsidianWorkbenchPreview';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -105,6 +106,7 @@ const AuthenticatedApp = () => {
       <Route path="/openclaw-readonly-command-center" element={<OpenClawReadOnlyCommandCenter />} />
       <Route path="/controlled-wake-activation-review" element={<ControlledWakeActivationReview />} />
       <Route path="/wake-control-center" element={<OpenClawWakeControlCenter />} />
+      <Route path="/obsidian-workbench-preview" element={<ObsidianWorkbenchPreview />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
