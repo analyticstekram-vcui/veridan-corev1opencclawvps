@@ -11,6 +11,7 @@ import WakeActivationForm from '../components/wake-activation/WakeActivationForm
 import WakeActivationHistoryTable from '../components/wake-activation/WakeActivationHistoryTable';
 import WakeActivationDetailDrawer from '../components/wake-activation/WakeActivationDetailDrawer';
 import { FIXED_STATUSES, GUARDRAILS, DECISION_META } from '../components/wake-activation/wakeActivationContracts';
+import FullWakeReadinessOrchestrator from '../components/wake-activation/FullWakeReadinessOrchestrator';
 
 const TABS = [
   { id: 'flow',     label: 'Readiness Pipeline' },
@@ -36,6 +37,10 @@ export default function WakeActivationReadiness() {
   const handleResult = (record) => {
     setHistory(prev => [record, ...prev]);
     setActiveTab('checker');
+  };
+
+  const handleOrchestratorEvidence = (rec) => {
+    setHistory(prev => [rec, ...prev]);
   };
 
   return (
@@ -113,6 +118,18 @@ export default function WakeActivationReadiness() {
         {/* ── Readiness Pipeline tab ── */}
         {activeTab === 'flow' && (
           <div className="space-y-4">
+
+            {/* Self-check orchestrator */}
+            <div className="bg-card border border-primary/20 rounded-sm p-4 space-y-2">
+              <div className="text-[9px] font-bold uppercase text-primary mb-1">
+                Self-Check Orchestration
+              </div>
+              <div className="text-[8px] text-slate-400 mb-3">
+                Runs the full readiness sequence automatically in preview/safe mode. No activation. No execution.
+              </div>
+              <FullWakeReadinessOrchestrator onEvidenceGenerated={handleOrchestratorEvidence} />
+            </div>
+
             <div className="bg-card border border-border/40 rounded-sm p-4">
               <div className="text-[9px] font-bold uppercase text-slate-400 mb-3">
                 10-Stage Wake Activation Readiness Pipeline

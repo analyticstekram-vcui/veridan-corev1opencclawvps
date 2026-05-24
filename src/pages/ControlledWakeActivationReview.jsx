@@ -17,6 +17,7 @@ import ControlledWakeReviewHistory from '../components/controlled-wake-review/Co
 import ControlledWakeVerificationPanel from '../components/controlled-wake-review/ControlledWakeVerificationPanel';
 import { FIXED_SAFETY_STATUSES, REVIEW_GUARDRAILS, loadReviewPackets } from '../components/controlled-wake-review/controlledWakeReviewContracts';
 import ControlledWakeSendPanel from '../components/controlled-wake-review/ControlledWakeSendPanel';
+import FullWakeReadinessOrchestrator from '../components/wake-activation/FullWakeReadinessOrchestrator';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -176,6 +177,11 @@ export default function ControlledWakeActivationReview() {
 
   const handleLoadEvidence = () => setEvidence(loadLatestReadinessEvidence());
 
+  const handleOrchestratorEvidence = (rec) => {
+    setEvidence(rec);
+    setActiveTab('review');
+  };
+
   const handlePacketGenerated = (pkt, allPackets) => {
     setPackets(allPackets);
     setActiveTab('history');
@@ -241,7 +247,7 @@ export default function ControlledWakeActivationReview() {
         </div>
 
         {/* Reload evidence shortcut */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button type="button" onClick={handleLoadEvidence}
             className="flex items-center gap-1.5 text-[8px] font-mono px-3 py-1.5 border border-border/40 hover:border-primary/40 hover:text-primary text-slate-400 rounded-sm transition-colors">
             <RefreshCw className="w-3 h-3" /> Reload Evidence from localStorage
@@ -252,6 +258,17 @@ export default function ControlledWakeActivationReview() {
             </span>
           )}
         </div>
+
+        {/* Orchestrator — shown prominently when evidence is missing */}
+        {!evidence && (
+          <div className="border border-primary/20 bg-card rounded-sm p-4 space-y-2">
+            <div className="text-[9px] font-bold uppercase text-primary mb-1">No Readiness Evidence Loaded</div>
+            <div className="text-[8px] text-slate-400 mb-3">
+              Run the full wake readiness check to generate and load evidence automatically.
+            </div>
+            <FullWakeReadinessOrchestrator onEvidenceGenerated={handleOrchestratorEvidence} />
+          </div>
+        )}
 
         {/* ── Advanced section ───────────────────────────────────────────── */}
         <div id="advanced-section" className="border border-border/40 rounded-sm overflow-hidden">
