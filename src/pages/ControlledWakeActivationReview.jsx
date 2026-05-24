@@ -152,9 +152,12 @@ function NotifyCard({ evidence, onOpenSend }) {
 }
 
 function TaskPreviewCard({ evidence }) {
+  // Prefer stored checksPassed/checksTotal; fall back to counting validationResults
+  const storedPassed = evidence?.checksPassed;
+  const storedTotal  = evidence?.checksTotal;
   const checks = evidence?.validationResults || {};
-  const passed = Object.values(checks).filter(Boolean).length;
-  const total  = Object.keys(checks).length || 0;
+  const passed = storedPassed != null ? Number(storedPassed) : Object.values(checks).filter(Boolean).length;
+  const total  = storedTotal  != null ? Number(storedTotal)  : Object.keys(checks).length || 0;
   const decision = evidence?.decision || '—';
   return (
     <div className="bg-card border border-border/40 rounded-sm p-4 space-y-3">
@@ -221,8 +224,10 @@ export default function ControlledWakeActivationReview() {
 
   const handleLoadEvidence = () => setEvidence(loadLatestReadinessEvidence());
 
-  const handleOrchestratorEvidence = (rec) => {
-    setEvidence(rec);
+  const handleOrchestratorEvidence = (_rec) => {
+    // Always re-load from storage after orchestrator saves its record,
+    // so we use the same isPassingRecord / _isPassing path as every other load.
+    setEvidence(loadLatestReadinessEvidence());
     setActiveTab('review');
   };
 
