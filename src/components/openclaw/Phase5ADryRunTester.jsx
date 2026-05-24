@@ -26,10 +26,10 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
   useEffect(() => {
     const existing = localStorage.getItem(BASELINE_LS_KEY);
     if (existing) {
-      setBaseline(JSON.parse(existing));
+      try { setBaseline(JSON.parse(existing)); } catch { setBaseline({ ...PHASE_5A_BASELINE, lockedAt: new Date().toISOString() }); }
     } else {
       const record = { ...PHASE_5A_BASELINE, lockedAt: new Date().toISOString() };
-      localStorage.setItem(BASELINE_LS_KEY, JSON.stringify(record, null, 2));
+      try { localStorage.setItem(BASELINE_LS_KEY, JSON.stringify(record)); } catch { /* localStorage full — display only */ }
       setBaseline(record);
     }
   }, []);
