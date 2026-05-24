@@ -77,6 +77,11 @@ export default function WakeActivationForm({ onResult }) {
       openClawAgentCall:  'PROHIBITED',
       tokenAccess:        'NOT_READ_IN_READINESS_CHECK',
     };
+    // Persist to localStorage so ControlledWakeActivationReview can load it
+    try {
+      const existing = JSON.parse(localStorage.getItem('wake_activation_readiness_history') || '[]');
+      localStorage.setItem('wake_activation_readiness_history', JSON.stringify([record, ...existing].slice(0, 20)));
+    } catch { /* quota */ }
     setResult(record);
     onResult(record);
   };

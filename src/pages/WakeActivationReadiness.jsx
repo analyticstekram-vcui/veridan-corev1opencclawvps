@@ -4,6 +4,7 @@
  * No activation. No network requests. No OpenClaw contact. No secret read. No execution.
  */
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import ModuleNav from '../components/navigation/ModuleNav';
 import WakeActivationFlowStages from '../components/wake-activation/WakeActivationFlowStages';
 import WakeActivationForm from '../components/wake-activation/WakeActivationForm';
@@ -150,6 +151,12 @@ export default function WakeActivationReadiness() {
                 <p>This page determines whether Veridan Core is ready to move from dry-run validation toward a future controlled local OpenClaw wake notification.</p>
                 <p>It aggregates evidence from prior dry-run records, local wake endpoint tests, service health checks, and operator governance state to compute a readiness decision.</p>
                 <p className="text-amber-400/80 font-bold">Even when all 16 checks pass and the decision is READY_FOR_CONTROLLED_WAKE_ACTIVATION_REVIEW — this page does not activate anything. No network request is made. No token is read. No OpenClaw endpoint is contacted.</p>
+                <div className="pt-2">
+                  <Link to="/controlled-wake-activation-review"
+                    className="inline-flex items-center gap-1.5 text-[8px] text-primary font-bold border border-primary/30 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-sm transition-colors">
+                    → Proceed to Controlled Wake Activation Review (next layer)
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
