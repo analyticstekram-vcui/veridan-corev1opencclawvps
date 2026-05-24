@@ -269,7 +269,7 @@ export function evaluateReadiness(form) {
   const r = {
     dryRunDecisionValid:     form.dryRunDecision === 'SERVER_DRY_RUN_VALIDATED',
     localWakeEvidenceExists: form.localWakeTestStatus !== 'NOT_TESTED' && form.localWakeTestStatus !== 'NONE',
-    localWakeHttp200:        form.localWakeHttpStatus === '200',
+    localWakeHttp200:        form.localWakeTestStatus === 'HTTP_200_CONFIRMED' || String(form.localWakeHttpStatus) === '200',
     openClawServiceActive:   ['ACTIVE', 'VERIFIED_READ_ONLY'].includes(form.openClawServiceStatus),
     tokenServerSideOnly:     form.tokenBoundaryStatus === 'SERVER_SIDE_ONLY',
     tokenNotDisplayed:       true, // always true — enforced by design
