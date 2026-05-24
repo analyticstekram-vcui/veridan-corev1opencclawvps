@@ -32,6 +32,71 @@ const readLastDryRun = () => {
   try { return JSON.parse(localStorage.getItem(keys[0])); } catch { return null; }
 };
 
+// ─── System Ready Panel ──────────────────────────────────────────────────────
+const QUICK_FACTS = [
+  { label: 'Execution', value: 'Disabled' },
+  { label: 'Dispatch', value: 'Disabled' },
+  { label: 'File Writes', value: 'Disabled' },
+  { label: 'Browser Automation', value: 'Disabled' },
+  { label: 'Credential Use', value: 'Disabled' },
+];
+
+function SystemReadyPanel({ healthStatus, gatewayStatus }) {
+  const neitherRun = !healthStatus && !gatewayStatus;
+  const bothOk = healthStatus === 'ok' && gatewayStatus === 'ok';
+  const anyFailed = healthStatus === 'error' || gatewayStatus === 'error';
+
+  let readiness, message, panelClass, iconEl;
+
+  if (neitherRun) {
+    readiness = 'LOCAL PREVIEW ONLY';
+    message = 'Local previews are safe. Run read-only checks when you want to verify gateway status.';
+    panelClass = 'border-slate-600/40 bg-slate-800/40';
+    iconEl = <Eye className="w-4 h-4 text-slate-400 shrink-0" />;
+  } else if (bothOk) {
+    readiness = 'READY FOR READ-ONLY CHECKS';
+    message = 'You can check OpenClaw status and preview tasks. No execution is enabled.';
+    panelClass = 'border-primary/30 bg-primary/5';
+    iconEl = <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />;
+  } else {
+    readiness = 'PARTIAL — SOME READ-ONLY CHECKS FAILED';
+    message = 'Some read-only status checks failed. Local previews are still safe.';
+    panelClass = 'border-amber-500/30 bg-amber-500/5';
+    iconEl = <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />;
+  }
+
+  return (
+    <div className={`border rounded-lg overflow-hidden ${panelClass}`}>
+      <div className="px-4 py-3 border-b border-current/10 flex items-center gap-2">
+        <Shield className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-300">System Ready?</span>
+      </div>
+      <div className="px-4 py-4 space-y-3">
+        {/* Readiness badge */}
+        <div className="flex items-center gap-2">
+          {iconEl}
+          <span className={`text-[10px] font-bold uppercase tracking-wide ${
+            neitherRun ? 'text-slate-400' : bothOk ? 'text-primary' : 'text-amber-500'
+          }`}>
+            {readiness}
+          </span>
+        </div>
+        {/* Plain-language message */}
+        <p className="text-[8px] text-slate-400">{message}</p>
+        {/* Quick facts */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 border-t border-current/10">
+          {QUICK_FACTS.map(f => (
+            <div key={f.label} className="text-[7px] font-mono">
+              <span className="text-slate-500">{f.label}: </span>
+              <span className="text-destructive font-semibold">{f.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Status Card ─────────────────────────────────────────────────────────────
 function StatusCard({ title, icon: Icon, status, data, onCheck, loading }) {
   return (
@@ -298,6 +363,12 @@ export default function OpenClawReadOnlyCommandCenter() {
           READ-ONLY MODE — No execution, no browser automation, no file writes.
         </span>
       </div>
+
+      {/* System Ready Panel */}
+      <SystemReadyPanel
+        healthStatus={statusCards.health.status}
+        gatewayStatus={statusCards.gatewayStatus.status}
+      />
 
       {/* Safety Chips */}
       <div className="flex flex-wrap gap-2">
