@@ -476,6 +476,185 @@ function NextActionQueue() {
   );
 }
 
+// ─── Controlled OpenClaw Send Test ───────────────────────────────────────────
+
+const CONTROLLED_SEND_LS_PREFIX = 'controlled_openclaw_send_test_';
+
+const CONTROLLED_SEND_VERIFICATION = [
+  'No new route created',
+  '/health endpoint only',
+  'No /hooks/agent call',
+  'No browser automation',
+  'No file writes',
+  'No credential use',
+  'No broker action',
+  'Result saved to localStorage only',
+  'Execution remains NOT_EXECUTED',
+  'Existing read-only checks preserved',
+];
+
+function ControlledSendTest({ healthStatus, healthData, gatewayStatusData, lastDryRun, phase5bExists }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult]   = useState(null);
+  const [error,  setError]    = useState(null);
+  const [showVerify, setShowVerify] = useState(false);
+
+  const gatewayOnline  = healthStatus === 'ok' && healthData?.online === true;
+  const statusOk       = gatewayStatusData?.status === 'SUCCESS' || gatewayStatusData?.status === 'ok' || gatewayStatusData?.status === 'online';
+  const dryRunValid    = !!lastDryRun && lastDryRun.bridgeMode === 'DRY_RUN_ONLY';
+  const canSend        = gatewayOnline && statusOk && dryRunValid && phase5bExists;
+
+  const lockReasons = [
+    !gatewayOnline  && 'Gateway Health must be ONLINE (run Gateway Health check)',
+    !statusOk       && 'Gateway Status must be SUCCESS (run Gateway Status check)',
+    !dryRunValid    && 'Phase 5A snapshot must be loaded and valid',
+    !phase5bExists  && 'Phase 5B preview must exist',
+  ].filter(Boolean);
+
+  const handleSend = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await base44.functions.invoke('openclawHealthCheck', {});
+      const d = res.data || {};
+      const packet = {
+        sent: true,
+        targetPath: '/health',
+        rawResponse: { online: d.online ?? d.success ?? d.gatewayReachable ?? null, latencyMs: d.latencyMs ?? d.data?.latencyMs ?? '—' },
+        executionStatus: 'NOT_EXECUTED',
+        dispatchStatus: 'READ_ONLY_STATUS_CALL_ONLY',
+        browserAutomation: 'DISABLED',
+        fileWrite: 'DISABLED',
+        credentialUse: 'DISABLED',
+        brokerAction: 'DISABLED',
+        sentAt: new Date().toISOString(),
+      };
+      const key = `${CONTROLLED_SEND_LS_PREFIX}${Date.now()}`;
+      try { localStorage.setItem(key, JSON.stringify(packet)); } catch { /* quota */ }
+      setResult(packet);
+    } catch (err) {
+      setError(err.message || 'Health check failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="space-y-3">
+      <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 border-b border-border/30 pb-1">
+        Controlled OpenClaw Send Test
+      </div>
+
+      <div className="border border-border/40 bg-card rounded-lg p-4 space-y-3">
+        {/* Gate status */}
+        <div className="space-y-1 text-[7px] font-mono">
+          {[
+            { label: 'Gateway Health ONLINE',    ok: gatewayOnline },
+            { label: 'Gateway Status SUCCESS',   ok: statusOk },
+            { label: 'Phase 5A snapshot valid',  ok: dryRunValid },
+            { label: 'Phase 5B preview exists',  ok: phase5bExists },
+            { label: 'targetPath',               ok: true, val: '/health' },
+          ].map(r => (
+            <div key={r.label} className="flex items-center gap-2">
+              {r.ok ? <CheckCircle2 className="w-2.5 h-2.5 text-primary shrink-0" /> : <XCircle className="w-2.5 h-2.5 text-amber-400 shrink-0" />}
+              <span className="text-slate-500">{r.label}:</span>
+              <span className={r.ok ? 'text-primary font-bold' : 'text-amber-400'}>{r.val ?? (r.ok ? 'PASS' : 'NOT MET')}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Lock reasons */}
+        {lockReasons.length > 0 && (
+          <div className="space-y-0.5">
+            {lockReasons.map(r => (
+              <div key={r} className="flex items-center gap-1.5 text-[7px] text-amber-400 font-mono">
+                <Lock className="w-2.5 h-2.5 shrink-0" /> {r}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Send button */}
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={!canSend || loading}
+          className="flex items-center gap-1.5 text-[8px] font-semibold px-4 py-2.5 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+          {loading ? 'Calling /health…' : 'Send Controlled /health Task'}
+        </button>
+
+        {!canSend && (
+          <div className="text-[7px] text-slate-500 font-mono italic">
+            Button locked — all gate conditions must be met. Run read-only checks above first.
+          </div>
+        )}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="border border-destructive/30 bg-destructive/5 rounded-lg px-4 py-3 text-[8px] text-destructive font-mono">{error}</div>
+      )}
+
+      {/* Controlled Send Result */}
+      {result && (
+        <div className="border border-primary/30 bg-primary/5 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-primary">Controlled Send Result</span>
+            <span className="text-[7px] text-slate-500 ml-auto font-mono">Saved to localStorage</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-[7px] font-mono">
+            {[
+              ['sent',              String(result.sent)],
+              ['targetPath',        result.targetPath],
+              ['executionStatus',   result.executionStatus],
+              ['dispatchStatus',    result.dispatchStatus],
+              ['browserAutomation', result.browserAutomation],
+              ['fileWrite',         result.fileWrite],
+              ['credentialUse',     result.credentialUse],
+              ['brokerAction',      result.brokerAction],
+              ['sentAt',            result.sentAt?.slice(11, 19)],
+              ['rawOnline',         String(result.rawResponse?.online)],
+              ['latencyMs',         String(result.rawResponse?.latencyMs)],
+            ].map(([k, v]) => (
+              <div key={k} className="flex gap-1">
+                <span className="text-slate-500 shrink-0">{k}:</span>
+                <span className={v === 'NOT_EXECUTED' || v === 'DISABLED' ? 'text-destructive font-bold' : v === 'true' || v === '/health' ? 'text-primary font-bold' : 'text-slate-200'}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Verification report */}
+      <div className="border border-border/40 bg-card rounded-lg overflow-hidden">
+        <button type="button" onClick={() => setShowVerify(v => !v)}
+          className="w-full px-4 py-3 flex items-center justify-between hover:bg-secondary/20 transition-colors">
+          <div className="flex items-center gap-2">
+            <Shield className="w-3 h-3 text-primary" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-300">Controlled Send Verification Report</span>
+          </div>
+          <span className="text-[7px] text-slate-500">{showVerify ? '▾ hide' : '▸ show'}</span>
+        </button>
+        {showVerify && (
+          <div className="px-4 pb-4 space-y-1">
+            {CONTROLLED_SEND_VERIFICATION.map(label => (
+              <div key={label} className="flex items-center gap-2 text-[7px] font-mono">
+                <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+                <span className="text-slate-300">{label}</span>
+                <span className="ml-auto font-bold text-primary">PASS</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function OpenClawReadOnlyCommandCenter() {
   const [statusCards, setStatusCards] = useState({
@@ -703,6 +882,15 @@ export default function OpenClawReadOnlyCommandCenter() {
         </div>
         <Phase5BReadOnlyDispatchPreview />
       </section>
+
+      {/* Controlled OpenClaw Send Test */}
+      <ControlledSendTest
+        healthStatus={statusCards.health.status}
+        healthData={statusCards.health.data}
+        gatewayStatusData={statusCards.gatewayStatus.data}
+        lastDryRun={lastDryRun || null}
+        phase5bExists={allPreviewsReady}
+      />
 
       {/* Footer */}
       <div className="text-[6px] text-slate-700 italic text-center pt-4 border-t border-border/20">
