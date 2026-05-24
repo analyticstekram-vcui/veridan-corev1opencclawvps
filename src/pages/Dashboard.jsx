@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu, Plus, CheckCircle2, Clock, Shield, ArrowRight } from 'lucide-react';
+import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu, Plus, CheckCircle2, Shield, ArrowRight } from 'lucide-react';
+import OpenClawTaskQueueItem from '../components/dashboard/OpenClawTaskQueueItem';
 import VeridanCoreBranchDashboard from '../components/dashboard/VeridanCoreBranchDashboard';
 import CurrentBuildStateCard from '../components/governance/CurrentBuildStateCard';
 import CurrentCapabilitiesBoundary from '../components/governance/CurrentCapabilitiesBoundary';
@@ -183,22 +184,6 @@ function OpenClawTaskQueuePreview() {
         return true;
       });
 
-  const statusConfig = {
-    PROPOSED_NOT_EXECUTED: { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/30' },
-    DRAFT: { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/30' },
-    READY_FOR_REVIEW: { icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30' },
-    APPROVED_PREVIEW: { icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30' },
-    REJECTED: { icon: AlertCircle, color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30' },
-  };
-
-  const sourceLabel = {
-    OBSIDIAN_WORKBENCH: '🔹 Obsidian',
-    TRADING_MODULE: '📈 Trading',
-    CREDIT_MODULE: '💳 Credit',
-    BUSINESS_MODULE: '🏢 Business',
-    OPENCLAW: '🔒 OpenClaw',
-  };
-
   return (
     <div className="border-b border-border bg-card px-6 py-6">
       <div className="max-w-7xl mx-auto space-y-4">
@@ -229,36 +214,9 @@ function OpenClawTaskQueuePreview() {
         {/* Task list */}
         {filteredTasks.length > 0 ? (
           <div className="grid gap-2">
-            {filteredTasks.map((task) => {
-              const cfg = statusConfig[task.status] || statusConfig.DRAFT;
-              const Icon = cfg.icon;
-              const src = sourceLabel[task.source] || 'Task';
-              return (
-                <div key={task.taskId} className={`border rounded-sm p-3 ${cfg.border} ${cfg.bg} space-y-1.5`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2 flex-1 min-w-0">
-                      <Icon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${cfg.color}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[9px] font-bold text-slate-100 break-words">{task.title}</div>
-                        <div className="text-[7px] text-slate-500 font-mono mt-0.5 space-x-2 flex flex-wrap">
-                          <span>{src}</span>
-                          <span>·</span>
-                          <span className={`font-bold ${cfg.color}`}>{task.status}</span>
-                          <span>·</span>
-                          <span>{task.taskType || 'TASK'}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-[6px] text-slate-500 shrink-0 text-right font-mono">
-                      {new Date(task.createdAt).toLocaleTimeString()}
-                    </div>
-                  </div>
-                  {task.description && (
-                    <div className="text-[7px] text-slate-400 font-mono pl-5">{task.description}</div>
-                  )}
-                </div>
-              );
-            })}
+            {filteredTasks.map((task) => (
+              <OpenClawTaskQueueItem key={task.taskId} task={task} />
+            ))}
           </div>
         ) : (
           <div className="border border-border/40 rounded-sm p-4 text-[8px] text-slate-400 text-center">
