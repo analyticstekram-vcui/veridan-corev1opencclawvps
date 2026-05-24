@@ -264,11 +264,21 @@ export default function OpenClawReadOnlyCommandCenter() {
     }
   };
 
-  const handleHealth = () => invokeReadOnly('health', 'openclawHealthCheck', d => ({
-    online: d.online ?? d.success ?? d.status ?? 'unknown',
-    message: d.message || d.status || 'Health check complete',
-    latencyMs: d.latencyMs ?? d.latency_ms ?? '—',
-  }));
+  const handleHealth = () => invokeReadOnly('health', 'openclawHealthCheck', d => {
+    const online =
+      d.status === 'SUCCESS' ||
+      d.success === true ||
+      d.gatewayReachable === true ||
+      d.httpStatus === 200 ||
+      d.data?.status === 'SUCCESS' ||
+      d.data?.gatewayReachable === true ||
+      d.data?.httpStatus === 200;
+    return {
+      online,
+      message: 'Health check complete',
+      latencyMs: d.latencyMs ?? d.latency_ms ?? d.data?.latencyMs ?? '—',
+    };
+  });
 
   const handleStatus = () => invokeReadOnly('gatewayStatus', 'openclawStatus', d => ({
     status: d.status ?? d.gatewayStatus ?? 'unknown',
