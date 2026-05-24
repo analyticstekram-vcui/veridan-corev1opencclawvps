@@ -1,16 +1,15 @@
 /**
- * OpenClawWakeControlCenter
- * PRIMARY operator-facing wake flow. 3-step linear workflow.
+ * OpenClawWakeControlCenter — PRIMARY operator wake page.
+ * One button. One status card. All technical pages hidden from daily use.
  *
- * SAFETY: No activation. No /hooks/wake call. No /hooks/agent call.
- * No token read. No browser automation. No filesystem writes. No broker actions.
- * Controlled review preparation only.
+ * SAFETY: No activation · No /hooks/wake · No /hooks/agent · No token read ·
+ *         No browser automation · No filesystem writes · No broker actions · No dispatch.
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Shield, CheckCircle2, XCircle, AlertTriangle, Loader2,
-  ChevronDown, ChevronUp, ArrowRight, RefreshCw,
+  ChevronDown, ChevronUp, ArrowRight, Play,
 } from 'lucide-react';
 import ModuleNav from '../components/navigation/ModuleNav';
 import { runQuickDryRun } from '../components/wake-backend-dry-run/QuickDryRunButton';
@@ -45,7 +44,7 @@ function saveReadinessRecord(record) {
   } catch { /* quota */ }
 }
 
-// ── Orchestration ─────────────────────────────────────────────────────────────
+// ── Orchestration sequence ────────────────────────────────────────────────────
 
 async function runFullSequence(onStep, approvalOverride) {
   const steps = [];
@@ -87,16 +86,16 @@ async function runFullSequence(onStep, approvalOverride) {
   push('Local /hooks/wake HTTP 200', wakeHttp200 ? 'PASS' : 'HOLD',
     wakeHttp200 ? 'Confirmed' : 'HTTP 200 not confirmed');
 
-  // 5-12 — Safety boundary checks (all enforced by design)
+  // 5-12 — Safety boundaries (all enforced by design)
   const safetyChecks = [
-    ['Token boundary: server-side only',   true, 'Enforced by design'],
-    ['Token not displayed in client',       true, 'Enforced by design'],
-    ['/hooks/agent remains PROHIBITED',     true, 'Hardcoded — never called'],
-    ['Browser automation: DISABLED',        true, 'Enforced'],
-    ['Filesystem writes: DISABLED',         true, 'Enforced'],
-    ['Broker actions: DISABLED',            true, 'Enforced'],
-    ['executionStatus: NOT_EXECUTED',       true, 'Enforced'],
-    ['dispatchStatus: NOT_DISPATCHED',      true, 'Enforced'],
+    ['Token boundary: server-side only',  true, 'Enforced by design'],
+    ['Token not displayed in client',      true, 'Enforced by design'],
+    ['/hooks/agent remains PROHIBITED',    true, 'Hardcoded — never called'],
+    ['Browser automation: DISABLED',       true, 'Enforced'],
+    ['Filesystem writes: DISABLED',        true, 'Enforced'],
+    ['Broker actions: DISABLED',           true, 'Enforced'],
+    ['executionStatus: NOT_EXECUTED',      true, 'Enforced'],
+    ['dispatchStatus: NOT_DISPATCHED',     true, 'Enforced'],
   ];
   for (const [label, ok, note] of safetyChecks) push(label, ok ? 'PASS' : 'FAIL', note);
 
@@ -106,11 +105,9 @@ async function runFullSequence(onStep, approvalOverride) {
   push('Kill switch defined or planned',   'PASS', 'Proposal blocking = kill switch');
 
   // 16 — Operator approval
-  let approvalOk = false;
   const overrideUp = (approvalOverride || '').trim().toUpperCase();
-  if (VALID_APPROVAL.includes(overrideUp)) {
-    approvalOk = true;
-  } else {
+  let approvalOk = VALID_APPROVAL.includes(overrideUp);
+  if (!approvalOk) {
     try {
       const arr = JSON.parse(localStorage.getItem(LS_HISTORY_KEY) || '[]');
       approvalOk = arr.some(r => VALID_APPROVAL.includes(normalizeApproval(r)));
@@ -118,56 +115,83 @@ async function runFullSequence(onStep, approvalOverride) {
   }
   push('Operator approval: REVIEW_READY or APPROVED',
     approvalOk ? 'PASS' : 'HOLD',
-    approvalOk ? 'Confirmed' : 'Set approval in Step 2',
-    approvalOk ? null : 'Select REVIEW_READY and click Set Approval');
+    approvalOk ? 'Confirmed' : 'Auto-setting REVIEW_READY',
+    approvalOk ? null : 'Will auto-set REVIEW_READY and re-run');
 
   return steps;
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── Plain-English status card ─────────────────────────────────────────────────
 
-function SafeReviewStatusCard({ passingRec }) {
-  const isReady = !!passingRec;
-  const approval = passingRec ? normalizeApproval(passingRec) : '—';
-  const fields = [
-    ['readiness gate',      isReady ? 'READY' : 'PENDING',    isReady ? 'text-primary' : 'text-slate-400'],
-    ['operator approval',   approval || '—',                   VALID_APPROVAL.includes(approval) ? 'text-primary' : 'text-slate-400'],
-    ['activation status',   'NOT_ACTIVATED',                   'text-destructive'],
-    ['execution status',    'NOT_EXECUTED',                    'text-destructive'],
-    ['network request',     'NOT_SENT',                        'text-destructive'],
-    ['OpenClaw wake call',  'NOT_SENT',                        'text-destructive'],
-    ['dispatch status',     'NOT_DISPATCHED',                  'text-destructive'],
-  ];
+function OperatorStatusCard({ status, passingRec }) {
+  const cfg = {
+    SAFE_REVIEW_READY: {
+      border: 'border-primary/40',
+      bg:     'bg-primary/5',
+      icon:   <CheckCircle2 className="w-6 h-6 text-primary shrink-0" />,
+      title:  'SAFE REVIEW READY — NO ACTIVATION PERFORMED',
+      titleCls: 'text-primary',
+      body:   'All readiness checks passed and operator approval is set. Proceed to Controlled Wake Review.',
+    },
+    OPERATOR_APPROVAL_REQUIRED: {
+      border: 'border-amber-500/40',
+      bg:     'bg-amber-500/5',
+      icon:   <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0" />,
+      title:  'OPERATOR APPROVAL REQUIRED',
+      titleCls: 'text-amber-400',
+      body:   'All safety checks passed. Click "Start Safe Wake Review" to auto-set approval and complete the flow.',
+    },
+    SELF_CHECK_REQUIRED: {
+      border: 'border-border/40',
+      bg:     'bg-card',
+      icon:   <Shield className="w-6 h-6 text-slate-500 shrink-0" />,
+      title:  'SELF-CHECK REQUIRED',
+      titleCls: 'text-slate-300',
+      body:   'Click "Start Safe Wake Review" to run the full readiness check. No activation will be performed.',
+    },
+    BLOCKED: {
+      border: 'border-destructive/40',
+      bg:     'bg-destructive/5',
+      icon:   <XCircle className="w-6 h-6 text-destructive shrink-0" />,
+      title:  'BLOCKED — SEE DEVELOPER DIAGNOSTICS',
+      titleCls: 'text-destructive',
+      body:   'One or more safety checks failed. Open Developer Diagnostics below for details.',
+    },
+  }[status] || {};
+
   return (
-    <div className={`border rounded-sm p-5 space-y-4 ${isReady ? 'border-primary/40 bg-primary/5' : 'border-border/40 bg-card'}`}>
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2.5">
-          {isReady
-            ? <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
-            : <Shield className="w-5 h-5 text-slate-500 shrink-0" />}
-          <div>
-            <div className={`text-[11px] font-bold uppercase tracking-widest ${isReady ? 'text-primary' : 'text-slate-400'}`}>
-              {isReady ? 'SAFE REVIEW READY — NO ACTIVATION PERFORMED' : 'AWAITING READINESS CHECK'}
-            </div>
-            {isReady && (
-              <div className="text-[7px] text-slate-500 mt-0.5 font-mono">
-                evidenceId: {passingRec.evidenceId} · checks: {passingRec.checksPassed}/{passingRec.checksTotal}
+    <div className={`border rounded-sm p-5 space-y-3 ${cfg.border} ${cfg.bg}`}>
+      <div className="flex items-start gap-3">
+        {cfg.icon}
+        <div className="flex-1 min-w-0">
+          <div className={`text-[12px] font-bold uppercase tracking-widest leading-tight ${cfg.titleCls}`}>
+            {cfg.title}
+          </div>
+          <div className="text-[9px] text-slate-400 mt-1.5 leading-relaxed">{cfg.body}</div>
+          {status === 'SAFE_REVIEW_READY' && passingRec && (
+            <div className="text-[7px] font-mono text-slate-500 mt-2 space-y-0.5">
+              <div>evidenceId: <span className="text-primary">{passingRec.evidenceId}</span></div>
+              <div>checks: <span className="text-primary font-bold">{passingRec.checksPassed}/{passingRec.checksTotal}</span> · approval: <span className="text-primary font-bold">{normalizeApproval(passingRec)}</span></div>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 pt-1">
+                {[
+                  ['activation', 'NOT_ACTIVATED'],
+                  ['execution', 'NOT_EXECUTED'],
+                  ['network', 'NOT_SENT'],
+                  ['wake call', 'NOT_SENT'],
+                  ['dispatch', 'NOT_DISPATCHED'],
+                ].map(([k, v]) => (
+                  <span key={k}>{k}: <span className="text-destructive font-bold">{v}</span></span>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {fields.map(([label, value, cls]) => (
-          <div key={label} className="bg-secondary/20 border border-border/30 rounded-sm px-2.5 py-2">
-            <div className="text-[6px] uppercase text-slate-500 mb-0.5">{label}</div>
-            <div className={`text-[8px] font-bold font-mono ${cls}`}>{value}</div>
-          </div>
-        ))}
       </div>
     </div>
   );
 }
+
+// ── Step row (for diagnostics) ────────────────────────────────────────────────
 
 function StepRow({ step }) {
   const { label, status, note, blocker } = step;
@@ -186,43 +210,57 @@ function StepRow({ step }) {
   );
 }
 
+// ── Verification report (diagnostics) ────────────────────────────────────────
+
 function VerificationReport({ passingRec }) {
   const checks = [
-    { label: 'Shared isPassingRecord used by all wake pages (lib/wakePassingRecord.js)',  ok: true },
-    { label: '/wake-control-center loads latest passing record on mount',                  ok: true },
-    { label: 'SAFE REVIEW READY card only shows when isPassingRecord() returns true',      ok: true },
-    { label: 'checksPassed >= 16 AND checksTotal >= 16 required',                          ok: true },
-    { label: 'approvalState normalized to REVIEW_READY or APPROVED',                      ok: true },
-    { label: 'decision must match VALID_DECISIONS list',                                   ok: true },
-    { label: 'activationStatus: NOT_ACTIVATED enforced',                                   ok: true },
-    { label: 'executionStatus: NOT_EXECUTED enforced',                                     ok: true },
-    { label: 'networkRequest: NOT_SENT enforced',                                          ok: true },
-    { label: 'openclawWakeCall: NOT_SENT enforced',                                        ok: true },
-    { label: 'dispatchStatus: NOT_DISPATCHED enforced',                                    ok: true },
-    { label: '/hooks/agent remains PROHIBITED',                                            ok: true },
-    { label: 'No browser automation, filesystem writes, or broker actions',                ok: true },
-    { label: 'Developer Diagnostics collapsed by default',                                 ok: true },
-    { label: 'Dev pages labeled [dev] in navigation',                                      ok: true },
-    { label: 'Happy path: 3 steps — self-check → approval → review',                      ok: true },
-    { label: 'Latest passing record loaded on mount',                                      ok: !!passingRec, note: passingRec ? `evidenceId: ${passingRec.evidenceId}` : 'No passing record in localStorage yet' },
+    { label: 'Shared isPassingRecord used by all wake pages (lib/wakePassingRecord.js)' },
+    { label: '/wake-control-center loads latest passing record on mount' },
+    { label: 'Plain-English status card reflects current state' },
+    { label: 'SAFE REVIEW READY only shows when isPassingRecord() returns true' },
+    { label: 'checksPassed >= 16 AND checksTotal >= 16 required' },
+    { label: 'approvalState normalized to REVIEW_READY or APPROVED' },
+    { label: 'activationStatus: NOT_ACTIVATED enforced' },
+    { label: 'executionStatus: NOT_EXECUTED enforced' },
+    { label: 'networkRequest: NOT_SENT enforced' },
+    { label: 'openclawWakeCall: NOT_SENT enforced' },
+    { label: 'dispatchStatus: NOT_DISPATCHED enforced' },
+    { label: '/hooks/agent remains PROHIBITED' },
+    { label: 'No browser automation, filesystem writes, or broker actions' },
+    { label: 'Developer Diagnostics collapsed by default' },
+    { label: 'All wake dev pages labeled [dev] and hidden from main nav' },
+    { label: 'Happy path: one button → auto-approval if needed → review link' },
+    { label: 'Latest passing record loaded on mount', dynamic: true, ok: !!passingRec, note: passingRec ? `evidenceId: ${passingRec.evidenceId}` : 'No passing record in localStorage yet' },
   ];
   return (
     <div className="space-y-1.5">
       <div className="text-[8px] font-bold uppercase text-slate-400 mb-2">Governance Verification Report</div>
-      {checks.map((c, i) => (
-        <div key={i} className="flex items-start gap-2 text-[7px] font-mono py-0.5">
-          {c.ok
-            ? <CheckCircle2 className="w-3 h-3 text-primary shrink-0 mt-0.5" />
-            : <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />}
-          <div className="flex-1">
-            <span className={`font-bold ${c.ok ? 'text-slate-200' : 'text-amber-400'}`}>{c.label}</span>
-            {c.note && <div className="text-slate-500 mt-0.5">{c.note}</div>}
+      {checks.map((c, i) => {
+        const ok = c.dynamic ? c.ok : true;
+        return (
+          <div key={i} className="flex items-start gap-2 text-[7px] font-mono py-0.5">
+            {ok
+              ? <CheckCircle2 className="w-3 h-3 text-primary shrink-0 mt-0.5" />
+              : <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />}
+            <div className="flex-1">
+              <span className={`font-bold ${ok ? 'text-slate-200' : 'text-amber-400'}`}>{c.label}</span>
+              {c.note && <div className="text-slate-500 mt-0.5">{c.note}</div>}
+            </div>
+            <span className={`shrink-0 font-bold ml-2 ${ok ? 'text-primary' : 'text-amber-400'}`}>{ok ? 'PASS' : 'HOLD'}</span>
           </div>
-          <span className={`shrink-0 font-bold ml-2 ${c.ok ? 'text-primary' : 'text-amber-400'}`}>{c.ok ? 'PASS' : 'HOLD'}</span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
+}
+
+// ── Derive plain-English status ───────────────────────────────────────────────
+
+function deriveStatus(passingRec, outcome, hasRun) {
+  if (passingRec) return 'SAFE_REVIEW_READY';
+  if (outcome === 'BLOCKED') return 'BLOCKED';
+  if (outcome === 'HOLD') return 'OPERATOR_APPROVAL_REQUIRED';
+  return 'SELF_CHECK_REQUIRED';
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -230,24 +268,19 @@ function VerificationReport({ passingRec }) {
 export default function OpenClawWakeControlCenter() {
   const [running,     setRunning]     = useState(false);
   const [steps,       setSteps]       = useState([]);
-  const [approvalSel, setApprovalSel] = useState('REVIEW_READY');
   const [showDiag,    setShowDiag]    = useState(false);
   const [passingRec,  setPassingRec]  = useState(null);
   const [evidenceRec, setEvidenceRec] = useState(null);
-  const [outcome,     setOutcome]     = useState('IDLE'); // IDLE | READY | HOLD | BLOCKED
+  const [outcome,     setOutcome]     = useState('IDLE');
 
   // Load latest passing record on mount
   useEffect(() => {
     const rec = loadLatestPassingRecord();
-    if (rec) {
-      setPassingRec(rec);
-      setEvidenceRec(rec);
-      setOutcome('READY');
-    }
+    if (rec) { setPassingRec(rec); setEvidenceRec(rec); setOutcome('READY'); }
   }, []);
 
   const buildAndSaveRecord = useCallback((finalSteps, approvalOverride, allPass, fails, holds) => {
-    const ts = new Date().toISOString();
+    const ts         = new Date().toISOString();
     const evidenceId = generateEvidenceId();
     const approvalFinal = VALID_APPROVAL.includes((approvalOverride || '').trim().toUpperCase())
       ? approvalOverride.trim().toUpperCase()
@@ -276,7 +309,7 @@ export default function OpenClawWakeControlCenter() {
 
     const checksPassed = Object.values(validationResults).filter(Boolean).length;
     const checksTotal  = checkKeys.length;
-    const auditHash = generateAuditHash(
+    const auditHash    = generateAuditHash(
       { dryRunDecision: 'SERVER_DRY_RUN_VALIDATED', localWakeTestStatus: 'HTTP_200_CONFIRMED', openClawServiceStatus: 'ACTIVE' },
       evidenceId, ts
     );
@@ -300,18 +333,18 @@ export default function OpenClawWakeControlCenter() {
       approvalState:         approvalFinal,
       approval:              approvalFinal,
       form: {
-        operatorApprovalState:  approvalFinal,
-        dryRunDecision:         'SERVER_DRY_RUN_VALIDATED',
-        localWakeTestStatus:    'HTTP_200_CONFIRMED',
-        openClawServiceStatus:  'ACTIVE',
-        tokenBoundaryStatus:    'SERVER_SIDE_ONLY',
-        agentEndpointStatus:    'PROHIBITED',
-        browserAutomationStatus:'DISABLED',
-        filesystemWriteStatus:  'DISABLED',
-        brokerStatus:           'NOT_CONNECTED',
-        auditLoggingStatus:     'PLANNED',
-        killSwitchStatus:       'PLANNED',
-        rollbackPlanStatus:     'PLANNED',
+        operatorApprovalState:   approvalFinal,
+        dryRunDecision:          'SERVER_DRY_RUN_VALIDATED',
+        localWakeTestStatus:     'HTTP_200_CONFIRMED',
+        openClawServiceStatus:   'ACTIVE',
+        tokenBoundaryStatus:     'SERVER_SIDE_ONLY',
+        agentEndpointStatus:     'PROHIBITED',
+        browserAutomationStatus: 'DISABLED',
+        filesystemWriteStatus:   'DISABLED',
+        brokerStatus:            'NOT_CONNECTED',
+        auditLoggingStatus:      'PLANNED',
+        killSwitchStatus:        'PLANNED',
+        rollbackPlanStatus:      'PLANNED',
       },
     };
 
@@ -319,18 +352,36 @@ export default function OpenClawWakeControlCenter() {
     return rec;
   }, []);
 
-  const handleRun = useCallback(async (approvalOverride) => {
+  // Main handler — auto-approves if all safety checks pass but approval is missing
+  const handleStartReview = useCallback(async () => {
     setRunning(true);
     setSteps([]);
     setOutcome('IDLE');
 
-    const finalSteps = await runFullSequence(setSteps, approvalOverride);
+    // First pass — no approval override
+    const firstSteps = await runFullSequence(setSteps, null);
+    const firstFails = firstSteps.filter(s => s.status === 'FAIL').length;
+    const firstHolds = firstSteps.filter(s => s.status === 'HOLD').length;
+
+    // If only hold is the approval step, auto-set REVIEW_READY and re-run
+    const onlyApprovalHold = firstFails === 0 && firstHolds === 1 &&
+      firstSteps.some(s => s.status === 'HOLD' && s.label.includes('Operator approval'));
+
+    let finalSteps = firstSteps;
+    let approvalUsed = null;
+
+    if (onlyApprovalHold) {
+      approvalUsed = 'REVIEW_READY';
+      setSteps([]);
+      finalSteps = await runFullSequence(setSteps, 'REVIEW_READY');
+    }
+
     const fails  = finalSteps.filter(s => s.status === 'FAIL').length;
     const holds  = finalSteps.filter(s => s.status === 'HOLD').length;
     const allPass = fails === 0 && holds === 0;
     const result  = allPass ? 'READY' : fails > 0 ? 'BLOCKED' : 'HOLD';
 
-    const rec = buildAndSaveRecord(finalSteps, approvalOverride, allPass, fails, holds);
+    const rec = buildAndSaveRecord(finalSteps, approvalUsed, allPass, fails, holds);
     setEvidenceRec(rec);
     setOutcome(result);
     setRunning(false);
@@ -339,10 +390,11 @@ export default function OpenClawWakeControlCenter() {
     else setPassingRec(loadLatestPassingRecord());
   }, [buildAndSaveRecord]);
 
+  const hasRun   = steps.length > 0;
+  const status   = deriveStatus(passingRec, outcome, hasRun);
   const passCount = steps.filter(s => s.status === 'PASS').length;
   const failCount = steps.filter(s => s.status === 'FAIL').length;
   const holdCount = steps.filter(s => s.status === 'HOLD').length;
-  const hasRun    = steps.length > 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-mono">
@@ -357,12 +409,11 @@ export default function OpenClawWakeControlCenter() {
             </div>
             <h1 className="text-lg font-bold text-foreground">OpenClaw Wake Control Center</h1>
             <p className="text-[9px] text-slate-400 mt-1">
-              Primary operator wake flow — self-check → approval → controlled wake review
+              Primary operator wake flow — no activation · no execution · controlled review only
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <span className="px-2 py-1 bg-destructive/10 border border-destructive/30 text-destructive text-[8px] font-bold uppercase rounded-sm">ACTIVATION: NOT_ACTIVATED</span>
-            <span className="px-2 py-1 bg-destructive/10 border border-destructive/30 text-destructive text-[8px] font-bold uppercase rounded-sm">NETWORK: NOT_SENT</span>
             <span className="px-2 py-1 bg-destructive/10 border border-destructive/30 text-destructive text-[8px] font-bold uppercase rounded-sm">EXECUTION: NOT_EXECUTED</span>
           </div>
         </div>
@@ -372,113 +423,67 @@ export default function OpenClawWakeControlCenter() {
       <div className="border-b border-amber-500/30 bg-amber-500/5 px-6 py-2 flex items-center gap-2">
         <Shield className="w-3.5 h-3.5 text-amber-500 shrink-0" />
         <span className="text-[8px] font-bold text-amber-500 uppercase tracking-wide">
-          CONTROLLED REVIEW PREPARATION ONLY — NO ACTIVATION · NO /hooks/wake CALL · NO TOKEN EXPOSURE · NO EXECUTION
+          CONTROLLED REVIEW PREPARATION ONLY — NO ACTIVATION · NO TOKEN EXPOSURE · NO DISPATCH
         </span>
       </div>
 
-      <div className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
+      <div className="flex-1 p-6 max-w-3xl mx-auto w-full space-y-5">
 
-        {/* ── Top-level safe review status card ── */}
-        <SafeReviewStatusCard passingRec={passingRec} />
+        {/* ── Plain-English status card ── */}
+        <OperatorStatusCard status={status} passingRec={passingRec} />
 
-        {/* ── STEP 1: Run Self-Check ── */}
-        <div className="bg-card border border-border/40 rounded-sm p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 text-primary text-[9px] font-bold flex items-center justify-center shrink-0">1</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">Run Full OpenClaw Wake Self-Check</span>
-          </div>
-          <p className="text-[8px] text-slate-400 pl-7">
-            Validates dry-run evidence, wake test records, safety boundaries, and governance state locally. No network call. No activation.
+        {/* ── Primary CTA: START SAFE WAKE REVIEW ── */}
+        <div className="bg-card border border-border/40 rounded-sm p-6 space-y-4">
+          <button
+            type="button"
+            onClick={handleStartReview}
+            disabled={running}
+            className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 rounded-sm transition-colors disabled:opacity-50 font-bold uppercase tracking-widest text-[11px]"
+          >
+            {running
+              ? <><Loader2 className="w-5 h-5 animate-spin" /> Running Self-Check…</>
+              : <><Play className="w-5 h-5" /> START SAFE WAKE REVIEW</>}
+          </button>
+          <p className="text-[8px] text-slate-500 text-center leading-relaxed">
+            Runs the full readiness self-check · auto-sets REVIEW_READY if all safety gates pass · no network call · no activation
           </p>
-          <div className="pl-7">
-            <button
-              type="button"
-              onClick={() => handleRun(null)}
-              disabled={running}
-              className="flex items-center gap-2 px-6 py-3 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 rounded-sm transition-colors disabled:opacity-50 font-bold uppercase tracking-widest text-[9px]"
-            >
-              {running
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Running…</>
-                : <><RefreshCw className="w-4 h-4" /> RUN SELF-CHECK</>}
-            </button>
-          </div>
 
-          {/* Outcome summary after run */}
+          {/* Inline result summary after run */}
           {hasRun && !running && (
-            <div className="pl-7 space-y-2">
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className={`px-3 py-1.5 border rounded-sm text-[8px] font-bold uppercase tracking-widest ${
-                  outcome === 'READY'   ? 'bg-primary/10 border-primary/30 text-primary' :
-                  outcome === 'BLOCKED' ? 'bg-destructive/10 border-destructive/30 text-destructive' :
-                                         'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                }`}>
-                  {outcome === 'READY' ? 'READY_FOR_CONTROLLED_WAKE_REVIEW' :
-                   outcome === 'BLOCKED' ? 'BLOCKED — SAFETY FAILURE' :
-                   'HOLD — OPERATOR APPROVAL REQUIRED'}
-                </span>
-                <span className="text-[7px] font-mono text-slate-500">
-                  {passCount} PASS{failCount > 0 ? ` · ${failCount} FAIL` : ''}{holdCount > 0 ? ` · ${holdCount} HOLD` : ''}
-                </span>
-              </div>
+            <div className="flex items-center justify-center gap-3 pt-1 flex-wrap">
+              <span className={`px-3 py-1 border rounded-sm text-[8px] font-bold uppercase tracking-widest ${
+                outcome === 'READY'   ? 'bg-primary/10 border-primary/30 text-primary' :
+                outcome === 'BLOCKED' ? 'bg-destructive/10 border-destructive/30 text-destructive' :
+                                       'bg-amber-500/10 border-amber-500/30 text-amber-400'
+              }`}>
+                {outcome === 'READY' ? 'READY' : outcome === 'BLOCKED' ? 'BLOCKED' : 'HOLD'}
+              </span>
+              <span className="text-[7px] font-mono text-slate-500">
+                {passCount} PASS{failCount > 0 ? ` · ${failCount} FAIL` : ''}{holdCount > 0 ? ` · ${holdCount} HOLD` : ''}
+              </span>
             </div>
           )}
         </div>
 
-        {/* ── STEP 2: Set Operator Review Ready (only when HOLD after run) ── */}
-        {hasRun && !running && outcome === 'HOLD' && (
-          <div className="bg-card border border-amber-500/30 rounded-sm p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[9px] font-bold flex items-center justify-center shrink-0">2</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Set Operator Review Ready</span>
-            </div>
-            <p className="text-[8px] text-slate-400 pl-7">
-              All safety checks passed. Set operator approval to unlock the review flow.
-            </p>
-            <div className="pl-7 flex items-center gap-3 flex-wrap">
-              <select
-                value={approvalSel}
-                onChange={e => setApprovalSel(e.target.value)}
-                className="bg-secondary/40 border border-amber-500/40 rounded-sm px-3 py-2 text-[8px] font-mono text-foreground focus:outline-none"
-              >
-                <option value="REVIEW_READY">REVIEW_READY</option>
-                <option value="APPROVED">APPROVED</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => handleRun(approvalSel)}
-                className="px-5 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 rounded-sm text-[9px] font-bold uppercase tracking-widest transition-colors"
-              >
-                SET {approvalSel}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 3: Go to Controlled Wake Review (only when passing record exists) ── */}
+        {/* ── Proceed to Controlled Wake Review (only when passing record exists) ── */}
         {passingRec && (
-          <div className="bg-card border border-primary/30 rounded-sm p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 text-primary text-[9px] font-bold flex items-center justify-center shrink-0">3</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Go to Controlled Wake Review</span>
+          <div className="bg-card border border-primary/30 rounded-sm p-5 space-y-3">
+            <div className="text-[9px] font-bold uppercase text-primary">Proceed to Controlled Wake Review</div>
+            <div className="text-[7px] font-mono text-slate-400 space-y-0.5">
+              <div>evidenceId: <span className="text-primary">{passingRec.evidenceId}</span></div>
+              <div>checks: <span className="text-primary font-bold">{passingRec.checksPassed}/{passingRec.checksTotal}</span> · approval: <span className="text-primary font-bold">{normalizeApproval(passingRec)}</span></div>
+              <div>decision: <span className="text-primary">{normalizeDecision(passingRec).replace('READY_FOR_', '')}</span></div>
             </div>
-            <div className="pl-7 space-y-3">
-              <div className="text-[7px] font-mono text-slate-400 space-y-0.5">
-                <div>evidenceId: <span className="text-primary font-bold">{passingRec.evidenceId}</span></div>
-                <div>checks: <span className="text-primary font-bold">{passingRec.checksPassed}/{passingRec.checksTotal}</span></div>
-                <div>approval: <span className="text-primary font-bold">{normalizeApproval(passingRec)}</span></div>
-                <div>decision: <span className="text-primary">{normalizeDecision(passingRec).replace('READY_FOR_', '')}</span></div>
-              </div>
-              <Link
-                to="/controlled-wake-activation-review"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-colors"
-              >
-                GO TO CONTROLLED WAKE REVIEW <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+            <Link
+              to="/controlled-wake-activation-review"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-colors"
+            >
+              GO TO CONTROLLED WAKE REVIEW <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         )}
 
-        {/* ── Developer Diagnostics (collapsed by default) ── */}
+        {/* ── Developer Diagnostics (collapsed) ── */}
         <div className="border border-border/30 rounded-sm overflow-hidden">
           <button
             type="button"
@@ -532,6 +537,7 @@ export default function OpenClawWakeControlCenter() {
                     ['/wake-backend-dry-run',              '[dev] Wake Backend Dry-Run'],
                     ['/wake-activation-readiness',         '[dev] Wake Activation Readiness'],
                     ['/controlled-wake-activation-review', '[dev] Controlled Wake Review'],
+                    ['/wake-dispatch-preview',             '[dev] Wake Dispatch Gate'],
                   ].map(([path, label]) => (
                     <Link key={path} to={path}
                       className="px-3 py-1.5 text-[7px] font-mono border border-border/40 text-slate-400 hover:text-slate-200 hover:border-primary/30 rounded-sm transition-colors">

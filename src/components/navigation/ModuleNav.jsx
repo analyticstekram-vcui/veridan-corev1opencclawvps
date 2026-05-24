@@ -27,10 +27,6 @@ export default function ModuleNav() {
     { label: 'Webhook Contracts', path: '/webhook-contract-preview', icon: Layers },
     { label: 'MCP TradingView', path: '/mcp-tradingview-preview', icon: TrendingUp },
     { label: '⚡ Wake Control Center', path: '/wake-control-center', icon: Layers },
-    { label: '[dev] Wake Dispatch Gate', path: '/wake-dispatch-preview', icon: Layers },
-    { label: '[dev] Wake Backend Dry-Run', path: '/wake-backend-dry-run', icon: Layers },
-    { label: '[dev] Wake Activation Readiness', path: '/wake-activation-readiness', icon: Layers },
-    { label: '[dev] Controlled Wake Review', path: '/controlled-wake-activation-review', icon: Layers },
     { label: 'TV MCP Bridge', path: '/tradingview-mcp-bridge', icon: TrendingUp },
     { label: 'TradingView MCP', path: '/tradingview-mcp-monitor', icon: TrendingUp },
   ];
