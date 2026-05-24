@@ -21,18 +21,56 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
   const [error, setError] = useState(null);
   const [signerStatus, setSignerStatus] = useState(null);
   const [baseline, setBaseline] = useState(null);
+  const [baselineStorageStatus, setBaselineStorageStatus] = useState(null);
 
-  // Write baseline lock to localStorage on mount and read it back
+  // Write compact baseline lock to localStorage on mount and read it back
   useEffect(() => {
     const existing = localStorage.getItem(BASELINE_LS_KEY);
     if (existing) {
-      try { setBaseline(JSON.parse(existing)); } catch { setBaseline({ ...PHASE_5A_BASELINE, lockedAt: new Date().toISOString() }); }
+      try {
+        setBaseline(JSON.parse(existing));
+        setBaselineStorageStatus('SAVED');
+      } catch {
+        const record = { ...PHASE_5A_BASELINE, lockedAt: new Date().toISOString() };
+        setBaseline(record);
+        setBaselineStorageStatus('MEMORY_ONLY_WRITE_FAILED');
+      }
     } else {
       const record = { ...PHASE_5A_BASELINE, lockedAt: new Date().toISOString() };
-      try { localStorage.setItem(BASELINE_LS_KEY, JSON.stringify(record)); } catch { /* localStorage full — display only */ }
+      try {
+        localStorage.setItem(BASELINE_LS_KEY, JSON.stringify(record));
+        setBaselineStorageStatus('SAVED');
+      } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+          setBaselineStorageStatus('MEMORY_ONLY_QUOTA_FULL');
+        } else {
+          setBaselineStorageStatus('MEMORY_ONLY_WRITE_FAILED');
+        }
+      }
       setBaseline(record);
     }
   }, []);
+
+  const TEMP_DEBUG_KEYS = [
+    'phase5a_debug',
+    'phase5a_last_result',
+    'phase5a_temp_result',
+    'phase5a_candidate_debug',
+    'phase5a_signature_debug',
+    'phase5a_preview_debug',
+    'phase5a_approval_debug',
+  ];
+
+  const handleClearTempDebugStorage = () => {
+    let cleared = 0;
+    TEMP_DEBUG_KEYS.forEach((key) => {
+      if (localStorage.getItem(key) !== null) {
+        localStorage.removeItem(key);
+        cleared++;
+      }
+    });
+    alert(`Cleared ${cleared} temporary Phase 5A debug key(s). Baseline lock and governance records were not touched.`);
+  };
 
   if (!signedRequest) {
     return (
@@ -346,7 +384,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
       {/* Baseline Read-Only Section */}
       {baseline && (
         <div className="px-4 py-3 border-b border-border/30 bg-secondary/20 space-y-0.5 text-[7px] font-mono">
-          <div className="text-[8px] font-semibold text-slate-300 uppercase mb-1.5">Baseline Record (localStorage)</div>
+          <div className="text-[8px] font-semibold text-slate-300 uppercase mb-1.5">Baseline Record</div>
           <div className="text-slate-400">phase: <span className="text-slate-200">{baseline.phase}</span></div>
           <div className="text-slate-400">status: <span className="text-emerald-400 font-bold">{baseline.status}</span></div>
           <div className="text-slate-400">bridgeMode: <span className="text-slate-200">{baseline.bridgeMode}</span></div>
@@ -354,6 +392,31 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
           <div className="text-slate-400">previewContractVersion: <span className="text-emerald-400">{baseline.previewContractVersion}</span></div>
           <div className="text-slate-400">lockedAt: <span className="text-slate-200">{baseline.lockedAt}</span></div>
           <div className="text-slate-400">safetyStatement: <span className="text-slate-300 italic">{baseline.safetyStatement}</span></div>
+          {baselineStorageStatus && (
+            <div className="pt-1 mt-1 border-t border-border/20 text-slate-400">
+              Baseline Storage:{" "}
+              <span className={
+                baselineStorageStatus === 'SAVED'
+                  ? 'text-emerald-400 font-bold'
+                  : 'text-amber-400 font-bold'
+              }>
+                {baselineStorageStatus === 'SAVED'
+                  ? 'SAVED'
+                  : baselineStorageStatus === 'MEMORY_ONLY_QUOTA_FULL'
+                  ? 'MEMORY ONLY — localStorage quota full'
+                  : 'MEMORY ONLY — write failed'}
+              </span>
+            </div>
+          )}
+          <div className="pt-2 mt-1 border-t border-border/20">
+            <button
+              type="button"
+              onClick={handleClearTempDebugStorage}
+              className="text-[7px] font-mono text-slate-500 hover:text-amber-400 border border-border/30 hover:border-amber-400/30 px-2 py-1 rounded transition-colors"
+            >
+              Clear Phase 5A Temporary Debug Storage
+            </button>
+          </div>
         </div>
       )}
 
