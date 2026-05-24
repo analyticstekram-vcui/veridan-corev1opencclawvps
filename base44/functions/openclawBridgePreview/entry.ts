@@ -844,29 +844,23 @@ Deno.serve(async (req) => {
         } else {
           const proposal = proposals[0];
 
-          // Normalize targets for comparison
-          const proposalTargetNormalized = normalizeHttpsTarget(
-            proposal.targetUrl || proposal.requestedTarget || proposal.target || proposal.url || ""
-          );
-          const bridgeTargetNormalized = normalizeHttpsTarget(
-            br.targetUrl || br.requestedTarget || br.target || br.url || ""
-          );
-          const proposalRequestedTargetNormalized = normalizeHttpsTarget(
-            proposal.requestedTarget || proposal.targetUrl || proposal.target || proposal.url || ""
-          );
-          const bridgeRequestedTargetNormalized = normalizeHttpsTarget(
-            br.requestedTarget || br.targetUrl || br.target || br.url || ""
-          );
+          // Normalize targets for comparison — do NOT use proposal.target or proposal.targetSystem as URL
+          const proposalTargetRaw = proposal.targetUrl || proposal.requestedTarget || proposal.url || "";
+          const bridgeTargetRaw = br.targetUrl || br.requestedTarget || br.url || "";
+
+          const proposalTargetNormalized = normalizeHttpsTarget(proposalTargetRaw);
+          const bridgeTargetNormalized = normalizeHttpsTarget(bridgeTargetRaw);
 
           approvalBindingDebug = {
-            proposalTargetRaw: proposal.targetUrl || proposal.requestedTarget || null,
-            bridgeTargetRaw: br.targetUrl || br.requestedTarget || null,
+            proposalId,
+            proposalTargetRaw: proposalTargetRaw || null,
+            bridgeTargetRaw: bridgeTargetRaw || null,
             proposalTargetNormalized,
             bridgeTargetNormalized,
             targetsMatch: proposalTargetNormalized === bridgeTargetNormalized,
-            proposalRequestedTargetNormalized,
-            bridgeRequestedTargetNormalized,
-            requestedTargetsMatch: proposalRequestedTargetNormalized === bridgeRequestedTargetNormalized,
+            proposalHasTargetUrl: Boolean(proposal.targetUrl),
+            proposalHasRequestedTarget: Boolean(proposal.requestedTarget),
+            targetSystem: proposal.targetSystem || br.targetSystem || null,
           };
 
           // Check proposal status
@@ -879,8 +873,13 @@ Deno.serve(async (req) => {
             approvalBindingStatus = 'FAIL';
             approvalBindingReason = `Proposal commandType ${proposal.commandType} does not match bridgeRequest ${br.commandType}`;
           }
+          // Guard: proposal must have a real URL field for comparison
+          else if (!proposalTargetRaw) {
+            approvalBindingStatus = 'FAIL';
+            approvalBindingReason = 'Approval binding failed: approved proposal is missing targetUrl/requestedTarget';
+          }
           // Check targetUrl match (normalized)
-          else if (proposalTargetNormalized && proposalTargetNormalized !== bridgeTargetNormalized) {
+          else if (proposalTargetNormalized !== bridgeTargetNormalized) {
             approvalBindingStatus = 'FAIL';
             approvalBindingReason = `Proposal targetUrl does not match bridgeRequest targetUrl (normalized)`;
           }

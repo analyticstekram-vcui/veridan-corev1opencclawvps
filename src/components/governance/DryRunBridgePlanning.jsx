@@ -497,6 +497,16 @@ export default function DryRunBridgePlanning() {
     return errors;
   };
 
+  // Normalize requestedTarget to absolute HTTPS URL for proposal storage
+  const normalizeProposalTarget = (raw) => {
+    if (!raw) return "";
+    const s = String(raw).trim();
+    if (s.startsWith("https://")) return s;
+    if (s.startsWith("http://")) return s.replace("http://", "https://");
+    if (s.startsWith("/")) return `https://openclaw.veridancore.com${s}`;
+    return `https://${s}`;
+  };
+
   // Create approved preview proposal
   const handleCreateProposal = async () => {
     setProposalCreationError(null);
@@ -510,18 +520,22 @@ export default function DryRunBridgePlanning() {
     setProposalCreationLoading(true);
     try {
       const { base44 } = await import('@/api/base44Client');
-      
+
+      const normalizedTarget = normalizeProposalTarget(builderForm.requestedTarget);
+
       const proposalData = {
         requestId: generateRequestId(),
         proposedBy: builderForm.operatorId,
         commandType: builderForm.commandType,
         target: builderForm.targetSystem,
-        url: builderForm.requestedTarget,
+        url: normalizedTarget,
+        targetUrl: normalizedTarget,
+        requestedTarget: normalizedTarget,
         payloadPreview: {
           commandType: builderForm.commandType,
           targetSystem: builderForm.targetSystem,
           requestedAction: builderForm.requestedAction,
-          requestedTarget: builderForm.requestedTarget,
+          requestedTarget: normalizedTarget,
           riskTier: builderForm.riskTier,
           operatorId: builderForm.operatorId,
         },
@@ -529,7 +543,7 @@ export default function DryRunBridgePlanning() {
         status: 'APPROVED',
         policyGate: 'PASS',
         createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       };
       
       const created = await base44.entities.OpenClawProposal.create(proposalData);
