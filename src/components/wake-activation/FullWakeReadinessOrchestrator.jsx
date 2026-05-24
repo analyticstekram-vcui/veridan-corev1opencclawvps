@@ -140,17 +140,20 @@ async function runFullSequence(setSteps) {
     push(label, status, note);
   }
 
-  // 18 — Operator approval (always HOLD until operator explicitly sets it)
-  // Check if any existing readiness record has REVIEW_READY/APPROVED
+  // 18 — Operator approval — check localStorage history (written by WakeActivationForm)
   let operatorApprovalOk = false;
   try {
     const raw = localStorage.getItem(LS_HISTORY_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      operatorApprovalOk = arr.some(r =>
-        ['APPROVED', 'REVIEW_READY'].includes(r.form?.operatorApprovalState) ||
-        ['APPROVED', 'REVIEW_READY'].includes(r.approvalState)
-      );
+      operatorApprovalOk = arr.some(r => {
+        const approval =
+          r.form?.operatorApprovalState ||
+          r.approvalState ||
+          r.form?.approval ||
+          '';
+        return ['APPROVED', 'REVIEW_READY'].includes(String(approval).trim().toUpperCase());
+      });
     }
   } catch { /* ignore */ }
   push('Operator approval: REVIEW_READY or APPROVED',

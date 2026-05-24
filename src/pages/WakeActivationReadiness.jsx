@@ -34,16 +34,21 @@ export default function WakeActivationReadiness() {
   const [history,            setHistory]            = useState([]);
   const [selected,           setSelected]           = useState(null);
   const [orchestratorResult, setOrchestratorResult] = useState(null);
+  const [latestRecord,       setLatestRecord]       = useState(null);
 
   const handleResult = (record) => {
     setHistory(prev => [record, ...prev]);
-    setActiveTab('checker');
+    setLatestRecord(record);
   };
 
   const handleOrchestratorEvidence = (rec) => {
     setHistory(prev => [rec, ...prev]);
     setOrchestratorResult(rec);
+    setLatestRecord(rec);
   };
+
+  const wakeCallReady = latestRecord?.allPass === true &&
+    ['REVIEW_READY', 'APPROVED'].includes(String(latestRecord?.approvalState || '').trim().toUpperCase());
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-mono">
@@ -65,8 +70,12 @@ export default function WakeActivationReadiness() {
             <span className="px-2 py-1 bg-destructive/10 border border-destructive/30 text-destructive text-[8px] font-bold uppercase rounded-sm">
               ACTIVATION_STATUS: NOT_ACTIVATED
             </span>
-            <span className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[8px] font-bold uppercase rounded-sm">
-              WAKE_CALL: BLOCKED_PENDING_OPERATOR_APPROVAL
+            <span className={`px-2 py-1 border text-[8px] font-bold uppercase rounded-sm ${
+              wakeCallReady
+                ? 'bg-primary/10 border-primary/30 text-primary'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+            }`}>
+              WAKE_CALL: {wakeCallReady ? 'READY_FOR_CONTROLLED_WAKE_REVIEW' : 'BLOCKED_PENDING_OPERATOR_APPROVAL'}
             </span>
             <span className="px-2 py-1 bg-destructive/10 border border-destructive/30 text-destructive text-[8px] font-bold uppercase rounded-sm">
               ROUTE_MODE: READINESS_CHECK_ONLY
