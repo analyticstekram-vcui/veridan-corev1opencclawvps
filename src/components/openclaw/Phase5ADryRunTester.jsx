@@ -194,11 +194,16 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
       const uniqueRequestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       // Build full bridgeRequest with all required Phase 5 fields and normalized HTTPS targets
+      // proposalId MUST equal the stored proposal's requestId — always use props.proposalId
       const fullBridgeRequest = {
         ...signedRequest,
         requestId: uniqueRequestId,
+        proposalId: proposalId || signedRequest.proposalId,
+        operatorId: operatorId || signedRequest.operatorId,
         targetUrl: normalizedTarget,
         requestedTarget: normalizedTarget,
+        commandType: signedRequest.commandType,
+        riskTier: signedRequest.riskTier,
         expirationAt,
         dryRun: true,
         liveExecution: false,

@@ -1061,14 +1061,25 @@ export default function DryRunBridgePlanning() {
                       <h2 className="text-[11px] font-mono font-bold uppercase text-slate-100">Phase 5A: Signed Dry-Run Tester</h2>
                     </div>
                     <div className="p-4">
-                      <Phase5ADryRunTester 
-                        signedRequest={{
-                          ...builderPreviewObject,
-                          proposalId: createdProposalId || builderPreviewObject.requestId,
-                        }}
-                        proposalId={createdProposalId || builderPreviewObject.requestId}
-                        operatorId={builderForm.operatorId}
-                      />
+                      {createdProposalId ? (
+                        <Phase5ADryRunTester 
+                          signedRequest={{
+                            ...builderPreviewObject,
+                            proposalId: createdProposalId,
+                            targetUrl: normalizeProposalTarget(builderForm.requestedTarget),
+                            requestedTarget: normalizeProposalTarget(builderForm.requestedTarget),
+                            commandType: builderForm.commandType,
+                            riskTier: builderForm.riskTier,
+                            operatorId: builderForm.operatorId,
+                          }}
+                          proposalId={createdProposalId}
+                          operatorId={builderForm.operatorId}
+                        />
+                      ) : (
+                        <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg p-4 text-[9px] text-amber-600">
+                          ⚠️ Create an Approved Preview Proposal above first. The Phase 5A tester requires a backend-persisted proposal so the backend can verify approval binding.
+                        </div>
+                      )}
                     </div>
                   </div>
 
