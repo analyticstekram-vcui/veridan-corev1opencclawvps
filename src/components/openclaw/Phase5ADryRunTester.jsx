@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertTriangle, Zap, CheckCircle2, XCircle, Loader2, Copy } from 'lucide-react';
+import { AlertTriangle, Zap, CheckCircle2, XCircle, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Phase5ApprovalBindingTestCases from './Phase5ApprovalBindingTestCases';
 
@@ -414,34 +414,41 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
           <div className="space-y-2">
             <div className={`border rounded p-3 text-[8px] ${
               result.acceptedForDryRun
-                ? 'bg-primary/10 border-primary/30'
+                ? 'bg-emerald-500/10 border-emerald-500/30'
                 : 'bg-destructive/10 border-destructive/30'
             }`}>
-              <div className="flex items-center gap-2 mb-2">
+
+              {/* Status Header */}
+              <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${result.acceptedForDryRun ? 'border-emerald-500/20' : 'border-destructive/20'}`}>
                 {result.acceptedForDryRun ? (
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                 ) : (
-                  <XCircle className="w-4 h-4 text-destructive" />
+                  <XCircle className="w-5 h-5 text-destructive shrink-0" />
                 )}
-                <span className={result.acceptedForDryRun ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
-                  PREVIEW: {result.acceptedForDryRun ? 'ACCEPTED FOR DRY-RUN' : 'REJECTED'}
-                </span>
+                <div>
+                  <div className={`text-[11px] font-bold uppercase tracking-wide ${result.acceptedForDryRun ? 'text-emerald-400' : 'text-destructive'}`}>
+                    {result.acceptedForDryRun ? 'PHASE 5A ACCEPTED FOR DRY-RUN' : 'PHASE 5A REJECTED'}
+                  </div>
+                  <div className="text-[7px] text-slate-400 mt-0.5 italic">{result.note}</div>
+                </div>
               </div>
 
-              <div className="space-y-1 text-slate-400">
-                <div>Dry-Run ID: <span className="text-foreground font-mono text-[7px]">{result.dryRunId}</span></div>
+              {/* Core Fields */}
+              <div className="space-y-0.5 text-slate-400 mb-2">
                 {result.requestId && <div>Request ID: <span className="text-foreground font-mono text-[7px]">{result.requestId}</span></div>}
                 <div>Bridge Mode: <span className="text-foreground font-semibold">{result.bridgeMode}</span></div>
                 <div>Execution Status: <span className="text-foreground font-semibold">{result.executionStatus}</span></div>
                 {result.rejectedReason && <div>Reason: <span className="text-foreground">{result.rejectedReason}</span></div>}
               </div>
 
-              {/* Validation Results */}
+              {/* Validation Gate Results — only show "Signature present" row when backend didn't already pass sig check */}
               <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5">
-                <div className="flex items-center gap-2">
-                  {result.submissionDebug?.signaturePresent ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
-                  <span>Signature is present before preview: {result.submissionDebug?.signaturePresent ? 'PASS' : 'FAIL'}</span>
-                </div>
+                {result.signatureCheckResult !== 'PASS' && (
+                  <div className="flex items-center gap-2">
+                    {result.submissionDebug?.signaturePresent ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                    <span>Signature present before preview: {result.submissionDebug?.signaturePresent ? 'PASS' : 'FAIL'}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   {result.policyGateResult === 'PASS' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
                   <span>Policy Gate: {result.policyGateResult}</span>
@@ -459,91 +466,80 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                 </div>
               </div>
 
-              <div className="mt-2 pt-2 border-t border-current/20 text-[7px] text-slate-400 italic">{result.note}</div>
-
-              {/* Approval Binding Debug */}
-              {result.approvalBindingDebug && (
-                <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px] text-slate-500">
-                  <div className="font-semibold text-slate-300 uppercase mb-1">Approval Binding Debug</div>
-                  <div>targetsMatch: <span className={result.approvalBindingDebug.targetsMatch ? 'text-primary' : 'text-destructive'}>{String(result.approvalBindingDebug.targetsMatch)}</span></div>
-                  <div className="text-[6px] text-slate-600">proposalTargetRaw: {result.approvalBindingDebug.proposalTargetRaw || 'none'}</div>
-                  <div className="text-[6px] text-slate-600">bridgeTargetRaw: {result.approvalBindingDebug.bridgeTargetRaw || 'none'}</div>
-                  <div className="text-[6px] text-slate-600">proposalTargetNormalized: {result.approvalBindingDebug.proposalTargetNormalized}</div>
-                  <div className="text-[6px] text-slate-600">bridgeTargetNormalized: {result.approvalBindingDebug.bridgeTargetNormalized}</div>
-                  <div>requestedTargetsMatch: <span className={result.approvalBindingDebug.requestedTargetsMatch ? 'text-primary' : 'text-destructive'}>{String(result.approvalBindingDebug.requestedTargetsMatch)}</span></div>
-                </div>
-              )}
-
-              {/* Backend Contract Version — deployment verification marker */}
+              {/* Backend Contract Version */}
               <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px]">
                 <div className="font-semibold text-slate-300 uppercase mb-1">Backend Contract</div>
                 <div>
                   previewContractVersion:{" "}
-                  <span className={result.previewContractVersion === 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2' ? 'text-primary font-mono font-bold' : 'text-amber-400 font-mono'}>
+                  <span className={result.previewContractVersion === 'OPENCLAW_BRIDGE_PREVIEW_NORMALIZED_V2' ? 'text-emerald-400 font-mono font-bold' : 'text-amber-400 font-mono'}>
                     {result.previewContractVersion || '⚠ NOT PRESENT — old backend may still be deployed'}
                   </span>
                 </div>
                 <div>previewFunctionInvoked: <span className="text-slate-300 font-mono">openclawBridgePreview</span></div>
               </div>
 
-              {/* Backend Debug Fields (from debug object on error responses) */}
-              {result.debug && (
+              {/* Submission Debug Fields */}
+              {result.submissionDebug && (
                 <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px] text-slate-500">
-                  <div className="font-semibold text-slate-300 uppercase mb-1">Backend Debug Fields</div>
-                  <div>signaturePresent: <span className={result.debug.signaturePresent ? 'text-primary' : 'text-destructive'}>{String(result.debug.signaturePresent)}</span></div>
-                  <div>signatureLength: <span className="text-slate-300">{result.debug.signatureLength}</span></div>
-                  <div>signaturePathResolved: <span className={result.debug.signaturePathResolved ? 'text-primary' : 'text-destructive'}>{String(result.debug.signaturePathResolved)}</span></div>
-                  <div className="text-[6px] text-slate-600">receivedTopLevelKeys: {(result.debug.receivedTopLevelKeys || []).join(', ') || 'none'}</div>
-                  <div className="text-[6px] text-slate-600">incomingKeys: {(result.debug.incomingKeys || []).join(', ') || 'none'}</div>
-                  <div className="text-[6px] text-slate-600">payloadKeys: {(result.debug.payloadKeys || []).join(', ') || 'none'}</div>
-                  <div className="text-[6px] text-slate-600">bridgeRequestKeys: {(result.debug.bridgeRequestKeys || []).join(', ') || 'none'}</div>
-                  <div className="text-[6px] text-slate-600">signedRequestKeys: {(result.debug.signedRequestKeys || []).join(', ') || 'none'}</div>
-                  <div className="text-[6px] text-slate-600">normalizedSignedRequestKeys: {(result.debug.normalizedSignedRequestKeys || []).join(', ') || 'none'}</div>
+                  <div className="font-semibold text-slate-300 uppercase mb-1">Submission Debug</div>
+                  <div>submittedAt: <span className="text-slate-300 font-mono">{result.submissionDebug.submittedAt}</span></div>
+                  <div>expirationAt: <span className="text-slate-300 font-mono">{result.submissionDebug.expirationAt}</span></div>
+                  <div>expiresInMinutes: <span className="text-slate-300 font-semibold">{result.submissionDebug.expiresInMinutes}</span></div>
+                  <div>signaturePresent: <span className={result.submissionDebug.signaturePresent ? 'text-emerald-400 font-semibold' : 'text-destructive font-semibold'}>{result.submissionDebug.signaturePresent ? 'YES' : 'NO'}</span></div>
+                  <div>signatureLength: <span className="text-slate-300">{result.submissionDebug.signatureLength} chars</span></div>
+                  <div>signingVersion: <span className="text-slate-300 font-mono">{result.submissionDebug.signingVersion}</span></div>
+                  <div>signedAt: <span className="text-slate-300 font-mono">{result.submissionDebug.signedAt}</span></div>
                 </div>
               )}
 
-              {/* Submission Debug Info */}
-              {result.submissionDebug && (
-                <div className="mt-2 pt-2 border-t border-current/20 space-y-1.5 text-[7px] text-slate-500">
-                  <div>Submitted At: <span className="text-slate-300 font-mono">{result.submissionDebug.submittedAt}</span></div>
-                  <div>Expiration At: <span className="text-slate-300 font-mono">{result.submissionDebug.expirationAt}</span></div>
-                  <div>Expires In: <span className="text-slate-300 font-semibold">{result.submissionDebug.expiresInMinutes} minutes</span></div>
-                  <div>Signature Present: <span className="text-slate-300 font-semibold">{result.submissionDebug.signaturePresent ? 'YES' : 'NO'}</span></div>
-                  <div>Signature Length: <span className="text-slate-300 font-semibold">{result.submissionDebug.signatureLength} chars</span></div>
-                  <div>Signing Version: <span className="text-slate-300 font-mono">{result.submissionDebug.signingVersion}</span></div>
-                  <div>Signed At: <span className="text-slate-300 font-mono">{result.submissionDebug.signedAt}</span></div>
-                  <div className="text-[6px] text-slate-600 mt-1">Signer Response Keys: {result.submissionDebug.signerResponseKeys}</div>
-                  <div className="text-[6px] text-slate-600">Raw Signer Result Keys: {result.submissionDebug.rawSignerResultKeys}</div>
-                  <div className="text-[6px] text-slate-600">Signer Candidates Found: {result.submissionDebug.signerCandidateCount}</div>
+              {/* Backend Debug Fields (error responses only) */}
+              {result.debug && (
+                <div className="mt-2 pt-2 border-t border-current/20 space-y-0.5 text-[7px] text-slate-500">
+                  <div className="font-semibold text-slate-300 uppercase mb-1">Backend Debug Fields</div>
+                  <div>signaturePresent: <span className={result.debug.signaturePresent ? 'text-emerald-400' : 'text-destructive'}>{String(result.debug.signaturePresent)}</span></div>
+                  <div>signatureLength: <span className="text-slate-300">{result.debug.signatureLength}</span></div>
+                  <div>signaturePathResolved: <span className={result.debug.signaturePathResolved ? 'text-emerald-400' : 'text-destructive'}>{String(result.debug.signaturePathResolved)}</span></div>
+                  <div className="text-[6px] text-slate-600">receivedTopLevelKeys: {(result.debug.receivedTopLevelKeys || []).join(', ') || 'none'}</div>
+                </div>
+              )}
 
-                  {/* Candidate details */}
-                  {result.submissionDebug.candidateKeys && (
-                    <div className="mt-1 space-y-1 bg-secondary/50 p-2 rounded border border-border/20 max-h-48 overflow-y-auto">
-                      <div className="text-[6px] font-semibold text-slate-300 uppercase mb-1">Candidate Breakdown</div>
-                      {result.submissionDebug.candidateKeys.map((candidate, idx) => (
-                        <div key={idx} className="text-[6px] border-l border-border/40 pl-1.5 py-0.5">
-                          <div className="text-slate-400">Candidate {candidate.index}:</div>
-                          <div className="text-slate-500">Keys: {candidate.keys.join(', ') || 'none'}</div>
-                          <div className={candidate.hasSignature ? 'text-primary' : 'text-slate-600'}>
-                            Signature: {candidate.hasSignature ? '✓ FOUND' : '✗ none'}
-                          </div>
-                          {candidate.hasSignedRequest && (
-                            <div className="text-slate-500">SignedRequest Keys: {candidate.signedRequestKeys.join(', ')}</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Sanitized Signer Response JSON */}
-                  {result.submissionDebug.sanitizedSignerResponse && (
-                    <div className="mt-1 bg-secondary/50 p-2 rounded border border-border/20 max-h-48 overflow-y-auto">
-                      <div className="text-[6px] font-semibold text-slate-300 uppercase mb-1">Sanitized Signer Response</div>
-                      <pre className="text-[5px] text-slate-400 font-mono overflow-x-auto whitespace-pre-wrap break-words">
-                        {JSON.stringify(result.submissionDebug.sanitizedSignerResponse, null, 2)}
-                      </pre>
-                    </div>
-                  )}
+              {/* Save Evidence Snapshot — localStorage only */}
+              {result.acceptedForDryRun && (
+                <div className="mt-3 pt-2 border-t border-emerald-500/20">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const snapshot = {
+                        snapshotType: 'PHASE_5A_DRY_RUN_EVIDENCE',
+                        savedAt: new Date().toISOString(),
+                        executionStatus: 'NOT_EXECUTED',
+                        bridgeMode: result.bridgeMode,
+                        previewContractVersion: result.previewContractVersion,
+                        requestId: result.requestId,
+                        policyGateResult: result.policyGateResult,
+                        replayCheckResult: result.replayCheckResult,
+                        signatureCheckResult: result.signatureCheckResult,
+                        approvalBindingStatus: result.approvalBindingStatus,
+                        note: result.note,
+                        submittedAt: result.submissionDebug?.submittedAt,
+                        expirationAt: result.submissionDebug?.expirationAt,
+                        expiresInMinutes: result.submissionDebug?.expiresInMinutes,
+                        signaturePresent: result.submissionDebug?.signaturePresent,
+                        signatureLength: result.submissionDebug?.signatureLength,
+                        signingVersion: result.submissionDebug?.signingVersion,
+                        signedAt: result.submissionDebug?.signedAt,
+                        safetyBoundary: 'No OpenClaw call was made. No execution. No dispatch. LocalStorage only.',
+                      };
+                      const key = `phase5a_evidence_${Date.now()}`;
+                      localStorage.setItem(key, JSON.stringify(snapshot, null, 2));
+                      alert(`Phase 5A evidence snapshot saved to localStorage key: ${key}`);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors rounded text-[8px] font-semibold font-mono uppercase"
+                  >
+                    <Save className="w-3 h-3" />
+                    Save Phase 5A Evidence Snapshot
+                  </button>
+                  <div className="text-[6px] text-slate-500 text-center mt-1 italic">Saves to localStorage only · No backend write · No execution</div>
                 </div>
               )}
             </div>
