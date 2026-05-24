@@ -57,13 +57,19 @@ function loadLatestPassingRecord() {
 
 function isPassingRecord(r) {
   if (!r) return false;
-  const checksOk = r.allPass === true || (r.checksPassed != null && r.checksPassed === r.checksTotal);
+  const cp = Number(r.checksPassed ?? 0);
+  const ct = Number(r.checksTotal  ?? 0);
+  const checksOk = r.allPass === true || (cp >= 16 && ct >= 16 && cp === ct);
   const approval = (r.operatorApprovalState || r.approvalState || r.approval || r.form?.operatorApprovalState || '').trim().toUpperCase();
-  return checksOk
-    && VALID_APPROVAL.includes(approval)
-    && typeof r.decision === 'string' && r.decision.includes('READY_FOR_CONTROLLED_WAKE')
-    && (!r.activationStatus || r.activationStatus === 'NOT_ACTIVATED')
-    && (!r.executionStatus  || r.executionStatus  === 'NOT_EXECUTED');
+  const approvalOk = VALID_APPROVAL.includes(approval);
+  const decisionOk = typeof r.decision === 'string' && r.decision.includes('READY_FOR_CONTROLLED_WAKE');
+  const activationOk = !r.activationStatus || r.activationStatus === 'NOT_ACTIVATED';
+  const execOk       = !r.executionStatus   || r.executionStatus   === 'NOT_EXECUTED';
+  const dispatchOk   = !r.dispatchStatus    || r.dispatchStatus    === 'NOT_DISPATCHED';
+  const nr  = (r.networkRequest   || '').trim().toUpperCase();
+  const owc = (r.openclawWakeCall || '').trim().toUpperCase();
+  const networkOk = !nr || nr === 'NOT_SENT' || (!nr && (!owc || owc === 'NOT_SENT'));
+  return checksOk && approvalOk && decisionOk && activationOk && execOk && dispatchOk && networkOk;
 }
 
 // ── Orchestration logic (mirrors FullWakeReadinessOrchestrator) ──────────────
@@ -188,11 +194,12 @@ function StepRow({ step }) {
 export default function OpenClawWakeControlCenter() {
   const [running,      setRunning]      = useState(false);
   const [steps,        setSteps]        = useState([]);
-  const [outcome,      setOutcome]      = useState('IDLE');
-  const [evidenceRec,  setEvidenceRec]  = useState(null);
   const [approvalSel,  setApprovalSel]  = useState('REVIEW_READY');
   const [showDiag,     setShowDiag]     = useState(false);
   const [passingRec,   setPassingRec]   = useState(() => loadLatestPassingRecord());
+  // Derive outcome from passingRec on mount; updated after each run
+  const [outcome,      setOutcome]      = useState(() => loadLatestPassingRecord() ? 'READY' : 'IDLE');
+  const [evidenceRec,  setEvidenceRec]  = useState(() => loadLatestPassingRecord());
 
   const handleRun = useCallback(async (approvalOverride) => {
     setRunning(true);
@@ -287,11 +294,13 @@ export default function OpenClawWakeControlCenter() {
 
   const handleSetApproval = () => handleRun(approvalSel);
 
-  const passCount = steps.filter(s => s.status === 'PASS').length;
-  const failCount = steps.filter(s => s.status === 'FAIL').length;
-  const holdCount = steps.filter(s => s.status === 'HOLD').length;
-  const hasRun    = steps.length > 0;
-  const approval  = evidenceRec?.operatorApprovalState || evidenceRec?.form?.operatorApprovalState || '—';
+  const passCount  = steps.filter(s => s.status === 'PASS').length;
+  const failCount  = steps.filter(s => s.status === 'FAIL').length;
+  const holdCount  = steps.filter(s => s.status === 'HOLD').length;
+  const hasRun     = steps.length > 0;
+  const showBadge  = outcome !== 'IDLE';  // show badge on mount if passing rec exists
+  const showHold   = hasRun && !running && outcome === 'HOLD';
+  const approval   = evidenceRec?.operatorApprovalState || evidenceRec?.form?.operatorApprovalState || '—';
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-mono">
@@ -345,19 +354,21 @@ export default function OpenClawWakeControlCenter() {
             Runs dry-run generation + readiness orchestration locally. No network request. No activation.
           </div>
 
-          {/* Outcome badge */}
-          {hasRun && !running && (
+          {/* Outcome badge — shown on mount if passing record exists, or after run */}
+          {showBadge && !running && (
             <div className="flex items-center gap-3 flex-wrap pt-1">
               <StatusBadge outcome={outcome} />
-              <span className="text-[7px] font-mono text-slate-500">
-                {passCount} PASS · {failCount > 0 ? `${failCount} FAIL` : ''} {holdCount > 0 ? `${holdCount} HOLD` : ''}
-              </span>
+              {hasRun && (
+                <span className="text-[7px] font-mono text-slate-500">
+                  {passCount} PASS{failCount > 0 ? ` · ${failCount} FAIL` : ''}{holdCount > 0 ? ` · ${holdCount} HOLD` : ''}
+                </span>
+              )}
             </div>
           )}
         </div>
 
-        {/* ── STEP 2: Operator approval (only shown when HOLD) ───────── */}
-        {hasRun && !running && outcome === 'HOLD' && (
+        {/* ── STEP 2: Operator approval (only shown when HOLD after a run) ── */}
+        {showHold && (
           <div className="bg-card border border-amber-500/30 rounded-sm p-5 space-y-3">
             <div className="flex items-center gap-2 text-[9px] font-bold uppercase text-amber-400">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Step 2 — Set Operator Approval

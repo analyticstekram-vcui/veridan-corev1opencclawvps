@@ -25,27 +25,19 @@ const VALID_APPROVAL = ['REVIEW_READY', 'APPROVED'];
 
 function isPassingRecord(r) {
   if (!r) return false;
-  // checks: allPass=true OR (checksPassed === checksTotal AND checksTotal >= 16)
-  const checksOk = r.allPass === true ||
-    (r.checksPassed != null && r.checksTotal != null &&
-     r.checksPassed === r.checksTotal && Number(r.checksTotal) >= 16);
-  // approval: normalize all known field paths
-  const approval = (
-    r.operatorApprovalState || r.approvalState || r.approval || r.form?.operatorApprovalState || ''
-  ).trim().toUpperCase();
+  const cp = Number(r.checksPassed ?? 0);
+  const ct = Number(r.checksTotal  ?? 0);
+  const checksOk   = r.allPass === true || (cp >= 16 && ct >= 16 && cp === ct);
+  const approval   = (r.operatorApprovalState || r.approvalState || r.approval || r.form?.operatorApprovalState || '').trim().toUpperCase();
   const approvalOk = VALID_APPROVAL.includes(approval);
-  // decision: must include READY_FOR_CONTROLLED_WAKE
-  const decisionOk = typeof r.decision === 'string' &&
-    (r.decision.includes('READY_FOR_CONTROLLED_WAKE_ACTIVATION_REVIEW') ||
-     r.decision.includes('READY_FOR_CONTROLLED_WAKE_REVIEW') ||
-     r.decision.includes('READY_FOR_CONTROLLED_WAKE'));
+  const decisionOk = typeof r.decision === 'string' && r.decision.includes('READY_FOR_CONTROLLED_WAKE');
   const activationOk = !r.activationStatus || r.activationStatus === 'NOT_ACTIVATED';
   const execOk       = !r.executionStatus   || r.executionStatus   === 'NOT_EXECUTED';
-  // networkRequest: treat missing/blank as NOT_SENT when openclawWakeCall is also NOT_SENT
+  const dispatchOk   = !r.dispatchStatus    || r.dispatchStatus    === 'NOT_DISPATCHED';
   const nr  = (r.networkRequest   || '').trim().toUpperCase();
   const owc = (r.openclawWakeCall || '').trim().toUpperCase();
-  const networkOk = !nr || nr === 'NOT_SENT' || (!nr && (owc === 'NOT_SENT' || !owc));
-  return checksOk && approvalOk && decisionOk && activationOk && execOk && networkOk;
+  const networkOk = !nr || nr === 'NOT_SENT' || (!nr && (!owc || owc === 'NOT_SENT'));
+  return checksOk && approvalOk && decisionOk && activationOk && execOk && dispatchOk && networkOk;
 }
 
 function loadLatestReadinessEvidence() {
