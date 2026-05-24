@@ -29,6 +29,7 @@ export default function ModuleNav() {
     { label: 'Wake Dispatch Gate', path: '/wake-dispatch-preview', icon: Layers },
     { label: 'Wake Backend Dry-Run', path: '/wake-backend-dry-run', icon: Layers },
     { label: 'Wake Activation Gate', path: '/wake-activation-readiness', icon: Layers },
+    { label: 'Wake Control Center', path: '/wake-control-center', icon: Layers },
     { label: 'TV MCP Bridge', path: '/tradingview-mcp-bridge', icon: TrendingUp },
     { label: 'TradingView MCP', path: '/tradingview-mcp-monitor', icon: TrendingUp },
   ];

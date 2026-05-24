@@ -40,6 +40,7 @@ import OpenClawMonitoring from './pages/OpenClawMonitoring';
 import TradingViewMcpMonitor from './pages/TradingViewMcpMonitor';
 import OpenClawReadOnlyCommandCenter from './pages/OpenClawReadOnlyCommandCenter';
 import ControlledWakeActivationReview from './pages/ControlledWakeActivationReview';
+import OpenClawWakeControlCenter from './pages/OpenClawWakeControlCenter';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -103,6 +104,7 @@ const AuthenticatedApp = () => {
       <Route path="/tradingview-mcp-monitor" element={<TradingViewMcpMonitor />} />
       <Route path="/openclaw-readonly-command-center" element={<OpenClawReadOnlyCommandCenter />} />
       <Route path="/controlled-wake-activation-review" element={<ControlledWakeActivationReview />} />
+      <Route path="/wake-control-center" element={<OpenClawWakeControlCenter />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
