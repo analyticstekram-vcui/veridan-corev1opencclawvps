@@ -9,6 +9,7 @@ import {
 import Phase5BReadOnlyDispatchPreview from '@/components/openclaw/Phase5BReadOnlyDispatchPreview';
 import Phase5BCapabilityProbe from '@/components/openclaw/Phase5BCapabilityProbe';
 import Phase5CCommandContractRegistry from '@/components/openclaw/Phase5CCommandContractRegistry';
+import Phase5DCommandPreviewBuilder from '@/components/openclaw/Phase5DCommandPreviewBuilder';
 
 // ============================================================================
 // SAFETY BOUNDARY
@@ -890,6 +891,9 @@ export default function OpenClawReadOnlyCommandCenter() {
 
       {/* Phase 5C Command Contract Preview Registry */}
       <Phase5CCommandContractRegistry />
+
+      {/* Phase 5D Command Preview Builder */}
+      <Phase5DCommandPreviewBuilder />
 
       {/* Controlled OpenClaw Send Test */}
       <ControlledSendTest
