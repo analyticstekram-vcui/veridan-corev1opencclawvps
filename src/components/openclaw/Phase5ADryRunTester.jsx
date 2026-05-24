@@ -226,6 +226,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         validationResult: 'PASS',
         executionEligibility: 'ELIGIBLE_PREVIEW',
         approvalStatus: 'APPROVED',
+        previewContractVersion: 'PHASE_5A_DRY_RUN_V1',
       };
 
       // Generate previewHash if not present
@@ -346,6 +347,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         requestedTarget: normalizedTarget,
         commandType: fullBridgeRequest.commandType,
         riskTier: fullBridgeRequest.riskTier,
+        previewContractVersion: 'PHASE_5A_DRY_RUN_V1',
         // signedRequest path
         signedRequest: { ...signedBridgeRequest, ...sigFields },
         // signedBridgeRequest path (alternate key some backends check)
@@ -364,6 +366,7 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
         submittedAt,
         expirationAt,
         expiresInMinutes: 5,
+        previewContractVersion: 'PHASE_5A_DRY_RUN_V1',
         signaturePresent: Boolean(extractedSignature),
         signatureLength: extractedSignature?.length || 0,
         signingVersion: extractedSigningVersion,
@@ -577,6 +580,17 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                 : 'bg-destructive/10 border-destructive/30'
             }`}>
 
+              {/* Rejection reason — highly visible at top, only on rejection */}
+              {!result.acceptedForDryRun && result.rejectedReason && (
+                <div className="mb-3 px-3 py-2 bg-destructive/20 border border-destructive/40 rounded font-mono">
+                  <div className="text-[8px] font-bold text-destructive uppercase tracking-wider mb-0.5">REJECTION REASON</div>
+                  <div className="text-[9px] text-destructive font-semibold">{result.rejectedReason}</div>
+                  {result.rejectionCode && (
+                    <div className="text-[7px] text-destructive/70 mt-0.5">Code: {result.rejectionCode}</div>
+                  )}
+                </div>
+              )}
+
               {/* Status Header */}
               <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${result.acceptedForDryRun ? 'border-emerald-500/20' : 'border-destructive/20'}`}>
                 {result.acceptedForDryRun ? (
@@ -595,14 +609,6 @@ export default function Phase5ADryRunTester({ signedRequest, proposalId, operato
                 <div>Execution Status: <span className="text-foreground font-semibold">{result.executionStatus}</span></div>
                 <div>Result: <span className={result.acceptedForDryRun ? 'text-emerald-400 font-semibold' : 'text-destructive font-semibold'}>{result.acceptedForDryRun ? 'Accepted for dry-run' : 'Rejected'}</span></div>
                 <div>Safety: <span className="text-slate-300 italic">No OpenClaw call was made</span></div>
-                {result.rejectedReason && (
-                  <div className="mt-1 px-2 py-1.5 bg-destructive/10 border border-destructive/20 rounded text-[8px] text-destructive font-mono">
-                    Reason: {result.rejectedReason}
-                  </div>
-                )}
-                {result.rejectionCode && (
-                  <div className="text-[7px] font-mono text-destructive/70">Code: {result.rejectionCode}</div>
-                )}
               </div>
 
               {/* Rejection Debug — expanded by default on rejection */}
