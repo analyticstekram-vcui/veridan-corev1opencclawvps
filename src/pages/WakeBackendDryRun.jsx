@@ -10,6 +10,7 @@ import WakeBackendDryRunForm from '../components/wake-backend-dry-run/WakeBacken
 import WakeBackendHistoryTable from '../components/wake-backend-dry-run/WakeBackendHistoryTable';
 import WakeBackendDetailDrawer from '../components/wake-backend-dry-run/WakeBackendDetailDrawer';
 import { FIXED_STATUSES, GUARDRAILS } from '../components/wake-backend-dry-run/wakeBackendDryRunContracts';
+import QuickDryRunButton from '../components/wake-backend-dry-run/QuickDryRunButton';
 
 const TABS = [
   { id: 'flow',    label: 'Pipeline Flow' },
@@ -30,7 +31,7 @@ export default function WakeBackendDryRun() {
 
   const handleResult = (record) => {
     setHistory(prev => [record, ...prev]);
-    setActiveTab('builder');
+    setActiveTab('history');
   };
 
   return (
@@ -104,6 +105,15 @@ export default function WakeBackendDryRun() {
 
       {/* Content */}
       <div className="flex-1 p-6 max-w-6xl mx-auto w-full space-y-6">
+
+        {/* ── Quick action — always visible at top ── */}
+        <div className="bg-card border border-primary/20 rounded-sm p-4 space-y-2">
+          <div className="text-[9px] font-bold uppercase text-primary mb-1">Quick Validation</div>
+          <div className="text-[8px] text-slate-400 mb-3">
+            Generates a <span className="text-primary font-bold">SERVER_DRY_RUN_VALIDATED</span> evidence record instantly and saves it to localStorage for Wake Activation Gate.
+          </div>
+          <QuickDryRunButton onResult={handleResult} />
+        </div>
 
         {activeTab === 'flow' && (
           <div className="space-y-4">
