@@ -21,14 +21,52 @@ import FullWakeReadinessOrchestrator from '../components/wake-activation/FullWak
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+const VALID_APPROVAL = ['REVIEW_READY', 'APPROVED'];
+
+function isPassingRecord(r) {
+  if (!r) return false;
+  const checksOk = r.allPass === true || (r.checksPassed != null && r.checksTotal != null && r.checksPassed === r.checksTotal);
+  const approval = (
+    r.operatorApprovalState || r.approvalState || r.approval || r.form?.operatorApprovalState || ''
+  ).trim().toUpperCase();
+  const approvalOk = VALID_APPROVAL.includes(approval);
+  const decisionOk = typeof r.decision === 'string' && r.decision.includes('READY_FOR_CONTROLLED_WAKE');
+  const activationOk = !r.activationStatus || r.activationStatus === 'NOT_ACTIVATED';
+  const execOk = !r.executionStatus || r.executionStatus === 'NOT_EXECUTED';
+  const networkOk = !r.openclawWakeCall || r.openclawWakeCall === 'NOT_SENT';
+  return checksOk && approvalOk && decisionOk && activationOk && execOk && networkOk;
+}
+
 function loadLatestReadinessEvidence() {
   try {
+    // 1. Scan wake_activation_readiness_history first — sort by createdAt desc, pick newest passing
     const raw = localStorage.getItem('wake_activation_readiness_history');
     if (raw) {
       const arr = JSON.parse(raw);
-      if (arr?.length > 0) return arr[0];
+      if (Array.isArray(arr) && arr.length > 0) {
+        const sorted = [...arr].sort((a, b) =>
+          new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        );
+        const passing = sorted.find(isPassingRecord);
+        if (passing) return { ...passing, _loadedFrom: 'wake_activation_readiness_history' };
+        // No passing record — return newest anyway (caller can show status)
+        return { ...sorted[0], _loadedFrom: 'wake_activation_readiness_history' };
+      }
     }
   } catch { /* ignore */ }
+
+  // 2. Fall back to phase5a_evidence_* keys
+  try {
+    const keys = Object.keys(localStorage)
+      .filter(k => k.startsWith('phase5a_evidence_'))
+      .sort()
+      .reverse();
+    if (keys.length > 0) {
+      const rec = JSON.parse(localStorage.getItem(keys[0]));
+      return rec ? { ...rec, _loadedFrom: 'phase5a_evidence' } : null;
+    }
+  } catch { /* ignore */ }
+
   return null;
 }
 
@@ -47,8 +85,8 @@ const ADVANCED_TABS = [
 // ── Summary cards ─────────────────────────────────────────────────────────────
 
 function StatusCard({ evidence, packets }) {
-  const ready = evidence?.allPass === true && evidence?.decision === 'READY_FOR_CONTROLLED_WAKE_ACTIVATION_REVIEW';
-  const approval = evidence?.form?.operatorApprovalState || '—';
+  const ready = isPassingRecord(evidence);
+  const approval = (evidence?.operatorApprovalState || evidence?.approvalState || evidence?.approval || evidence?.form?.operatorApprovalState || '—');
   return (
     <div className="bg-card border border-border/40 rounded-sm p-4 space-y-3">
       <div className="flex items-center gap-2 text-[9px] font-bold uppercase text-slate-300">
@@ -77,11 +115,7 @@ function StatusCard({ evidence, packets }) {
 }
 
 function NotifyCard({ evidence, onOpenSend }) {
-  const approval = evidence?.form?.operatorApprovalState;
-  const sendReady = evidence?.allPass === true &&
-    evidence?.decision === 'READY_FOR_CONTROLLED_WAKE_ACTIVATION_REVIEW' &&
-    evidence?.activationStatus === 'NOT_ACTIVATED' &&
-    ['APPROVED', 'REVIEW_READY'].includes(approval);
+  const sendReady = isPassingRecord(evidence);
   return (
     <div className="bg-card border border-border/40 rounded-sm p-4 space-y-3">
       <div className="flex items-center gap-2 text-[9px] font-bold uppercase text-slate-300">
@@ -253,8 +287,14 @@ export default function ControlledWakeActivationReview() {
             <RefreshCw className="w-3 h-3" /> Reload Evidence from localStorage
           </button>
           {evidence && (
-            <span className="text-[7px] text-slate-500 font-mono">
-              Loaded: <span className="text-primary">{evidence.evidenceId}</span>
+            <span className="text-[7px] font-mono flex items-center gap-2 flex-wrap">
+              {isPassingRecord(evidence)
+                ? <><CheckCircle2 className="w-2.5 h-2.5 text-primary" /><span className="text-primary font-bold">Loaded latest passing readiness record:</span></>
+                : <><XCircle className="w-2.5 h-2.5 text-amber-400" /><span className="text-amber-400 font-bold">Loaded (not yet passing):</span></>}
+              <span className="text-primary">{evidence.evidenceId}</span>
+              {evidence._loadedFrom && (
+                <span className="text-slate-500">from {evidence._loadedFrom}</span>
+              )}
             </span>
           )}
         </div>
