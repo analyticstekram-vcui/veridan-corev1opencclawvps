@@ -13,11 +13,28 @@ import ApprovedDraftWriteButton from '../components/obsidian-vault/ApprovedDraft
 
 function DraftCard({ draft, onApprove }) {
   const [expanded, setExpanded] = useState(false);
-  const isApproved = draft.approvalStatus === 'APPROVED';
+  const isApproved = draft.approvalStatus === 'APPROVED' || draft.approvalState === 'APPROVED_DRAFT';
+  const isPendingReview = draft.approvalStatus === 'PENDING_REVIEW' || draft.approvalState === 'PENDING_REVIEW';
   const isLowRisk = draft.riskLevel === 'LOW';
   const canWrite = isApproved && isLowRisk && draft.executionStatus === 'NOT_EXECUTED';
+  const isManual = draft.source === 'MANUAL_LOCAL_DRAFT';
 
-  const statusColor = isApproved ? 'text-primary' : 'text-amber-400';
+  const statusColor = isApproved ? 'text-primary' : isPendingReview ? 'text-amber-400' : 'text-slate-500';
+
+  const handleManualApprove = () => {
+    try {
+      const stored = localStorage.getItem('veridan_obsidian_drafts') || '[]';
+      const drafts = JSON.parse(stored);
+      const idx = drafts.findIndex(d => d.id === draft.id);
+      if (idx >= 0) {
+        drafts[idx].approvalStatus = 'APPROVED';
+        drafts[idx].approvalState = 'APPROVED_DRAFT';
+        drafts[idx].approvedAt = new Date().toISOString();
+        localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(drafts));
+      }
+      if (onApprove) onApprove();
+    } catch { /* ignore */ }
+  };
 
   return (
     <div className="border border-border/40 rounded-sm overflow-hidden">
@@ -30,9 +47,10 @@ function DraftCard({ draft, onApprove }) {
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-4 h-4 text-slate-400 shrink-0" />
             <h3 className="text-[10px] font-bold uppercase text-slate-200 tracking-widest">{draft.filename}</h3>
+            {isManual && <span className="px-1.5 py-0.5 text-[6px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-sm">MANUAL</span>}
           </div>
           <div className="text-[8px] text-slate-500 space-x-2 flex flex-wrap">
-            <span className={`font-bold ${statusColor}`}>{draft.approvalStatus}</span>
+            <span className={`font-bold ${statusColor}`}>{draft.approvalStatus || draft.approvalState}</span>
             <span>·</span>
             <span className={isLowRisk ? 'text-primary' : 'text-amber-400'}>{draft.riskLevel} risk</span>
             <span>·</span>
@@ -79,9 +97,28 @@ function DraftCard({ draft, onApprove }) {
             </div>
           )}
 
-          <div>
-            <ApprovedDraftWriteButton draft={draft} onSuccess={onApprove} />
-          </div>
+          {/* Manual draft approval button */}
+          {isPendingReview && isManual && (
+            <div>
+              <div className="text-[7px] font-mono text-amber-400 mb-2">
+                source: {draft.source} · awaiting operator approval
+              </div>
+              <button
+                type="button"
+                onClick={handleManualApprove}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 rounded-sm font-bold text-[10px] uppercase tracking-widest transition-colors"
+              >
+                <CheckCircle2 className="w-4 h-4" /> Approve Draft
+              </button>
+            </div>
+          )}
+
+          {/* Write button for approved drafts */}
+          {canWrite && (
+            <div>
+              <ApprovedDraftWriteButton draft={draft} onSuccess={onApprove} />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -122,8 +159,7 @@ export default function ObsidianDraftReview() {
     } catch { /* ignore */ }
   };
 
-  const handleApprove = (result) => {
-    // Reload drafts after write
+  const handleApprove = () => {
     loadDrafts();
   };
 

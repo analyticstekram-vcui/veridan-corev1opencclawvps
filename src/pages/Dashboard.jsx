@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu, Plus, CheckCircle2, Shield, ArrowRight, Clock } from 'lucide-react';
+import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu, Plus, CheckCircle2, Shield, ArrowRight, Clock, WifiOff } from 'lucide-react';
 import OpenClawTaskQueueItem from '../components/dashboard/OpenClawTaskQueueItem';
 import VeridanCoreBranchDashboard from '../components/dashboard/VeridanCoreBranchDashboard';
 import CurrentBuildStateCard from '../components/governance/CurrentBuildStateCard';
@@ -8,6 +8,7 @@ import CurrentCapabilitiesBoundary from '../components/governance/CurrentCapabil
 import FinalGovernanceBaselineLockSummary from '../components/governance/FinalGovernanceBaselineLockSummary';
 import GovernanceControlIndex from '../components/governance/GovernanceControlIndex';
 import ObsidianWorkflowStatusCard from '../components/obsidian-vault/ObsidianWorkflowStatusCard';
+import { API_MODE_CONFIG } from '../lib/apiMode';
 
 export default function Dashboard() {
   const navItems = [
@@ -21,6 +22,21 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen w-full bg-background">
+      {/* NO_API_LOCAL_ONLY Banner */}
+      <div className="border-b border-destructive/40 bg-destructive/5 px-6 py-2">
+        <div className="max-w-7xl mx-auto flex items-center gap-3 flex-wrap">
+          <WifiOff className="w-3.5 h-3.5 text-destructive shrink-0" />
+          <span className="text-[9px] font-mono font-bold uppercase text-destructive tracking-wide">
+            API MODE: {API_MODE_CONFIG.mode}
+          </span>
+          <div className="flex items-center gap-2 flex-wrap ml-2">
+            <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">AI MODEL CALLS: {API_MODE_CONFIG.aiModelCalls}</span>
+            <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-destructive/10 text-destructive border border-destructive/30 rounded-sm">OPENCLAW GPT CALLS: {API_MODE_CONFIG.openclawGptCalls}</span>
+            <span className="px-2 py-0.5 text-[7px] font-mono font-bold uppercase bg-primary/10 text-primary border border-primary/30 rounded-sm">LOCAL WORKFLOWS: {API_MODE_CONFIG.localWorkflows}</span>
+          </div>
+        </div>
+      </div>
+
       {/* AI Operator Console Banner */}
       <div className="border-b border-amber-500/30 bg-amber-500/5 px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center gap-3">

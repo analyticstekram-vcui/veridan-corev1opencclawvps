@@ -5,9 +5,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus } from 'lucide-react';
+import { Shield, Plus, WifiOff } from 'lucide-react';
 import ModuleNav from '../components/navigation/ModuleNav';
 import ObsidianWorkflowStatusCard from '../components/obsidian-vault/ObsidianWorkflowStatusCard';
+import ManualDraftForm from '../components/obsidian-vault/ManualDraftForm';
+import { API_MODE_CONFIG } from '../lib/apiMode';
 
 const VAULT_CATEGORIES = [
   { id: 'system', label: 'Veridan Core System', emoji: '📋' },
@@ -225,6 +227,23 @@ export default function ObsidianWorkbenchPreview() {
             </div>
           )}
         </div>
+
+        {/* API Mode Warning */}
+        <div className="border border-destructive/30 bg-destructive/5 rounded-sm p-3 flex items-start gap-2">
+          <WifiOff className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <div className="text-[8px] font-bold uppercase text-destructive tracking-wide">API MODE: {API_MODE_CONFIG.mode}</div>
+            <div className="text-[7px] font-mono text-slate-400">{API_MODE_CONFIG.disabledMessage}</div>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {API_MODE_CONFIG.disabledFeatures.map(f => (
+                <span key={f} className="px-2 py-0.5 text-[6px] font-mono font-bold uppercase bg-destructive/10 text-destructive/70 border border-destructive/20 rounded-sm line-through">{f}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Manual Draft Form */}
+        <ManualDraftForm onDraftCreated={() => {}} />
 
         {/* Next Steps */}
         <div className="border border-border/40 bg-card rounded-sm p-4 space-y-2">
