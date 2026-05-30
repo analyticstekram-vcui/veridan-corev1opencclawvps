@@ -10,7 +10,17 @@ import { FileUp, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 
-const APPROVED_FOLDERS = ['drafts', 'task-plans', 'approval-queues', 'audit-logs', 'governance', 'evidence'];
+const APPROVED_FOLDERS = [
+  'drafts', 'task-plans', 'approval-queues', 'audit-logs', 'governance', 'evidence',
+  'Veridan Core/Veridan Core System',
+  'Veridan Core/OpenClaw',
+  'Veridan Core/Trading',
+  'Veridan Core/Credit',
+  'Veridan Core/Business Formation',
+  'Veridan Core/Trust / Entities',
+  'Veridan Core/SOPs',
+  'Veridan Core/Daily Operations',
+];
 
 export default function ApprovedDraftWriteButton({ draft, onSuccess }) {
   const [loading, setLoading] = useState(false);

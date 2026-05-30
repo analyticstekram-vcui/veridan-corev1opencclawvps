@@ -23,6 +23,14 @@ const APPROVED_FOLDERS = [
   'audit-logs',
   'governance',
   'evidence',
+  'Veridan Core/Veridan Core System',
+  'Veridan Core/OpenClaw',
+  'Veridan Core/Trading',
+  'Veridan Core/Credit',
+  'Veridan Core/Business Formation',
+  'Veridan Core/Trust / Entities',
+  'Veridan Core/SOPs',
+  'Veridan Core/Daily Operations',
 ];
 
 // Blocked filename patterns (credentials, system files, executables)
@@ -55,7 +63,8 @@ function validateDraft(draft) {
   }
 
   // Check draft type
-  if (!draft.draftType || !['task_plan', 'approval_queue', 'audit_log', 'governance_doc'].includes(draft.draftType)) {
+  const ALLOWED_DRAFT_TYPES = ['task_plan', 'approval_queue', 'audit_log', 'governance_doc', 'MANUAL_MARKDOWN', 'MANUAL_LOCAL_DRAFT'];
+  if (!draft.draftType || !ALLOWED_DRAFT_TYPES.includes(draft.draftType)) {
     errors.push('Invalid draft type');
   }
 
