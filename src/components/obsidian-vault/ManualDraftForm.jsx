@@ -74,10 +74,45 @@ export default function ManualDraftForm({ onDraftCreated }) {
 
     try {
       const stored = localStorage.getItem('veridan_obsidian_drafts') || '[]';
-      const drafts = JSON.parse(stored);
-      drafts.unshift(draft);
+      let drafts;
+      try {
+        drafts = JSON.parse(stored);
+        if (!Array.isArray(drafts)) drafts = [];
+      } catch {
+        drafts = [];
+      }
+
+      // Remove old duplicate non-approved manual drafts with same filename + folder + draftType
+      // Preserve approved drafts regardless
+      drafts = drafts.filter(d => {
+        const isDuplicate =
+          d.filename === draft.filename &&
+          d.targetFolder === draft.targetFolder &&
+          d.draftType === draft.draftType &&
+          d.source === 'MANUAL_LOCAL_DRAFT';
+        const isApproved =
+          d.approvalStatus === 'APPROVED' || d.approvalState === 'APPROVED_DRAFT';
+        return !(isDuplicate && !isApproved);
+      });
+
+      // Trim content to 200KB max to avoid QuotaExceededError
+      const MAX_CONTENT_BYTES = 200 * 1024;
+      const safeContent =
+        draft.content.length > MAX_CONTENT_BYTES
+          ? draft.content.slice(0, MAX_CONTENT_BYTES) + '\n\n[content trimmed — exceeded 200KB limit]'
+          : draft.content;
+      const draftToSave = { ...draft, content: safeContent };
+
+      drafts.unshift(draftToSave);
       if (drafts.length > 50) drafts.length = 50;
-      localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(drafts));
+
+      try {
+        localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(drafts));
+      } catch (storageErr) {
+        console.error('Manual draft localStorage save failed:', storageErr);
+        setError(`Storage save failed: ${storageErr.message || 'QuotaExceededError'}. Try shortening the content or clearing old drafts.`);
+        return;
+      }
 
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -90,9 +125,10 @@ export default function ManualDraftForm({ onDraftCreated }) {
       setMarkdownContent('');
       setOpen(false);
 
-      if (onDraftCreated) onDraftCreated(draft);
-    } catch {
-      setError('Failed to save draft to local storage.');
+      if (onDraftCreated) onDraftCreated(draftToSave);
+    } catch (err) {
+      console.error('Manual draft localStorage save failed:', err);
+      setError(`Failed to save draft: ${err.message || 'Unknown error'}`);
     }
   };
 
