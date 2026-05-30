@@ -10,6 +10,7 @@ import { FileUp, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 
+// Must match obsidianWriteApprovedDraft backend allowlist exactly
 const APPROVED_FOLDERS = [
   'drafts', 'task-plans', 'approval-queues', 'audit-logs', 'governance', 'evidence',
   'Veridan Core/Veridan Core System',
@@ -20,6 +21,9 @@ const APPROVED_FOLDERS = [
   'Veridan Core/Trust / Entities',
   'Veridan Core/SOPs',
   'Veridan Core/Daily Operations',
+  'Veridan Core/Audit Evidence',
+  'Veridan Core/Governance',
+  'Veridan Core/System Map',
 ];
 
 export default function ApprovedDraftWriteButton({ draft, onSuccess }) {

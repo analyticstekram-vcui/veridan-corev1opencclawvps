@@ -10,6 +10,7 @@ import { Package, CheckCircle2, FileUp, AlertCircle, Loader2, ArrowRight } from 
 import { base44 } from '@/api/base44Client';
 import CoreVaultPackGenerator from './CoreVaultPackGenerator';
 
+// Must match obsidianWriteApprovedDraft backend allowlist exactly
 const APPROVED_FOLDERS = [
   'drafts', 'task-plans', 'approval-queues', 'audit-logs', 'governance', 'evidence',
   'Veridan Core/Veridan Core System',
@@ -20,6 +21,9 @@ const APPROVED_FOLDERS = [
   'Veridan Core/Trust / Entities',
   'Veridan Core/SOPs',
   'Veridan Core/Daily Operations',
+  'Veridan Core/Audit Evidence',
+  'Veridan Core/Governance',
+  'Veridan Core/System Map',
 ];
 
 function isEligibleForApproval(d) {
@@ -101,10 +105,23 @@ export default function CoreVaultPackWorkflow() {
     const toWrite = drafts.filter(d => isEligibleForWrite(d));
     let written = 0;
     const skipped = [];
+    const writeErrors = [];
 
     for (const draft of toWrite) {
       try {
-        const response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft });
+        let response;
+        try {
+          response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft });
+        } catch (invokeErr) {
+          // Extract backend validation errors from axios 400 response
+          const backendErrors = invokeErr?.response?.data?.errors;
+          const backendError = invokeErr?.response?.data?.error;
+          const reason = Array.isArray(backendErrors) && backendErrors.length > 0
+            ? backendErrors.join(' | ')
+            : (backendError || invokeErr.message || 'Unknown backend error');
+          writeErrors.push({ filename: draft.filename, reason });
+          continue;
+        }
 
         if (response.data.success) {
           const auditRecord = {

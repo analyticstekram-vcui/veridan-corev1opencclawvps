@@ -15,7 +15,7 @@ import { base44 } from '@/api/base44Client';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-// Must match ApprovedDraftWriteButton + obsidianWriteApprovedDraft allowlist exactly
+// Must match obsidianWriteApprovedDraft backend allowlist exactly
 const APPROVED_FOLDERS = [
   'drafts', 'task-plans', 'approval-queues', 'audit-logs', 'governance', 'evidence',
   'Veridan Core/Veridan Core System',
@@ -26,6 +26,9 @@ const APPROVED_FOLDERS = [
   'Veridan Core/Trust / Entities',
   'Veridan Core/SOPs',
   'Veridan Core/Daily Operations',
+  'Veridan Core/Audit Evidence',
+  'Veridan Core/Governance',
+  'Veridan Core/System Map',
 ];
 
 const ELIGIBLE_DRAFT_TYPES = [
@@ -238,7 +241,18 @@ export default function BatchDraftReview() {
 
     for (const draft of toWrite) {
       try {
-        const response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft });
+        let response;
+        try {
+          response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft });
+        } catch (invokeErr) {
+          const backendErrors = invokeErr?.response?.data?.errors;
+          const backendError = invokeErr?.response?.data?.error;
+          const reason = Array.isArray(backendErrors) && backendErrors.length > 0
+            ? backendErrors.join(' | ')
+            : (backendError || invokeErr.message || 'Unknown backend error');
+          writeErrors.push({ id: draft.id, filename: draft.filename, reason });
+          continue;
+        }
 
         if (response.data.success) {
           const auditRecord = {
