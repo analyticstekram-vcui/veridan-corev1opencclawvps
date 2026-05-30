@@ -12,21 +12,8 @@ import VaultIndexSummaryCards from '../components/vault-index/VaultIndexSummaryC
 import VaultFileDetailDrawer from '../components/vault-index/VaultFileDetailDrawer';
 import VaultIndexFilters from '../components/vault-index/VaultIndexFilters';
 import VaultIndexVerificationPanel from '../components/vault-index/VaultIndexVerificationPanel';
-import { Shield, Download, FileSearch, RefreshCw } from 'lucide-react';
-
-function loadAudits() {
-  try {
-    const raw = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
-    return Array.isArray(raw) ? raw : [];
-  } catch { return []; }
-}
-
-function loadDrafts() {
-  try {
-    const raw = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
-    return Array.isArray(raw) ? raw : [];
-  } catch { return []; }
-}
+import { Shield, Download, FileSearch, RefreshCw, Database } from 'lucide-react';
+import { loadAuditsFromBackend, loadDraftsFromBackend } from '@/lib/obsidianDraftStore';
 
 function buildFileRecords(audits, drafts) {
   const draftMap = {};
@@ -68,12 +55,33 @@ export default function VaultFileIndex() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [filters, setFilters] = useState({ search: '', folder: '', source: '', draftType: '' });
+  const [loading, setLoading] = useState(false);
+  const [storageSource, setStorageSource] = useState('—');
 
-  const refresh = () => {
-    const audits = loadAudits();
-    const drafts = loadDrafts();
-    setRecords(buildFileRecords(audits, drafts));
+  const refresh = async () => {
+    setLoading(true);
+    // Primary: backend entities
+    const [audits, drafts] = await Promise.all([
+      loadAuditsFromBackend(200),
+      loadDraftsFromBackend(200),
+    ]);
+
+    if (audits.length > 0) {
+      setStorageSource('backend');
+      setRecords(buildFileRecords(audits, drafts));
+    } else {
+      // Fallback: localStorage cache (legacy / offline)
+      try {
+        const lsAudits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
+        const lsDrafts = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
+        setStorageSource(lsAudits.length > 0 ? 'localStorage (cache)' : 'empty');
+        setRecords(buildFileRecords(lsAudits, lsDrafts));
+      } catch {
+        setRecords([]);
+      }
+    }
     setLastRefresh(new Date().toISOString());
+    setLoading(false);
   };
 
   useEffect(() => { refresh(); }, []);
@@ -146,12 +154,18 @@ export default function VaultFileIndex() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {storageSource && (
+              <span className="flex items-center gap-1 px-2 py-1 text-[7px] font-mono border border-primary/20 bg-primary/5 text-primary/70 rounded-sm">
+                <Database className="w-2.5 h-2.5" /> {storageSource}
+              </span>
+            )}
             <button
               type="button"
               onClick={refresh}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-bold uppercase border border-border/40 text-slate-400 hover:text-slate-200 hover:border-primary/30 rounded-sm transition-colors"
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-bold uppercase border border-border/40 text-slate-400 hover:text-slate-200 hover:border-primary/30 rounded-sm transition-colors disabled:opacity-50"
             >
-              <RefreshCw className="w-3 h-3" /> Refresh
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
             </button>
             <button
               type="button"

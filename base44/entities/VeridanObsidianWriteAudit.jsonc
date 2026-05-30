@@ -1,0 +1,67 @@
+{
+  "name": "VeridanObsidianWriteAudit",
+  "type": "object",
+  "properties": {
+    "auditId": {
+      "type": "string",
+      "description": "Unique audit record identifier"
+    },
+    "draftId": {
+      "type": "string"
+    },
+    "taskId": {
+      "type": "string"
+    },
+    "filename": {
+      "type": "string"
+    },
+    "folder": {
+      "type": "string"
+    },
+    "filePath": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "draftType": {
+      "type": "string"
+    },
+    "riskLevel": {
+      "type": "string"
+    },
+    "approvalStatus": {
+      "type": "string"
+    },
+    "filesystemWrite": {
+      "type": "string"
+    },
+    "executionStatus": {
+      "type": "string",
+      "default": "NOT_EXECUTED"
+    },
+    "dispatchStatus": {
+      "type": "string",
+      "default": "NOT_DISPATCHED"
+    },
+    "openclawCall": {
+      "type": "string",
+      "default": "NOT_SENT"
+    },
+    "timestamp": {
+      "type": "string"
+    },
+    "contentHash": {
+      "type": "string"
+    },
+    "writeMode": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "auditId",
+    "filename",
+    "filePath",
+    "executionStatus"
+  ]
+}

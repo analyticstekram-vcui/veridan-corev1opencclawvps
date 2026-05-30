@@ -5,7 +5,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, WifiOff, Trash2, ChevronDown } from 'lucide-react';
+import { Shield, Plus, WifiOff, Trash2, ChevronDown, FolderOpen } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import ModuleNav from '../components/navigation/ModuleNav';
 import ObsidianWorkflowStatusCard from '../components/obsidian-vault/ObsidianWorkflowStatusCard';
 import ManualDraftForm from '../components/obsidian-vault/ManualDraftForm';
@@ -167,6 +168,16 @@ export default function ObsidianWorkbenchPreview() {
 
         {/* Workflow Progress */}
         <ObsidianWorkflowStatusCard />
+
+        {/* View Written Files shortcut */}
+        <div className="flex justify-end">
+          <Link
+            to="/vault-file-index"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-mono font-bold border border-primary/30 text-primary bg-primary/10 hover:bg-primary/20 rounded-sm transition-colors"
+          >
+            <FolderOpen className="w-3 h-3" /> View Written Files
+          </Link>
+        </div>
 
         {/* ── ONE-CLICK: Core Vault Pack Workflow ── */}
         <CoreVaultPackWorkflow />

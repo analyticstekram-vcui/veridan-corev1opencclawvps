@@ -1,0 +1,101 @@
+{
+  "name": "VeridanObsidianDraft",
+  "type": "object",
+  "properties": {
+    "draftId": {
+      "type": "string",
+      "description": "Unique draft identifier"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "CORE_VAULT_PACK",
+        "MANUAL_LOCAL_DRAFT",
+        "TEMPLATE_DRAFT"
+      ],
+      "description": "Origin of the draft"
+    },
+    "title": {
+      "type": "string"
+    },
+    "filename": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "targetFolder": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "draftType": {
+      "type": "string"
+    },
+    "templateId": {
+      "type": "string"
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "default": "LOW"
+    },
+    "approvalStatus": {
+      "type": "string",
+      "enum": [
+        "PENDING_REVIEW",
+        "APPROVED",
+        "DENIED"
+      ],
+      "default": "PENDING_REVIEW"
+    },
+    "approvalState": {
+      "type": "string"
+    },
+    "approvedAt": {
+      "type": "string"
+    },
+    "autoApprovedBy": {
+      "type": "string"
+    },
+    "executionStatus": {
+      "type": "string",
+      "default": "NOT_EXECUTED"
+    },
+    "dispatchStatus": {
+      "type": "string",
+      "default": "NOT_DISPATCHED"
+    },
+    "openclawCall": {
+      "type": "string",
+      "default": "NOT_SENT"
+    },
+    "filesystemWrite": {
+      "type": "string",
+      "default": "DISABLED"
+    },
+    "filePath": {
+      "type": "string"
+    },
+    "writtenAt": {
+      "type": "string"
+    },
+    "apiMode": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "draftId",
+    "source",
+    "filename",
+    "targetFolder",
+    "draftType",
+    "riskLevel",
+    "approvalStatus"
+  ]
+}

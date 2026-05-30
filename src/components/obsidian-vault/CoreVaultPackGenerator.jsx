@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { Package, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { CORE_VAULT_PACK_TEMPLATES, buildDrafts } from './cvpTemplates';
+import { saveDraftsToBackend } from '@/lib/obsidianDraftStore';
 
 const LOG = (...args) => console.log('[OBSIDIAN_DRAFT_STORAGE]', ...args);
 const LOG_ERR = (...args) => console.error('[OBSIDIAN_DRAFT_STORAGE]', ...args);
@@ -65,23 +66,31 @@ export default function CoreVaultPackGenerator({ onBatchCreated }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [count, setCount] = useState(0);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setStatus('generating');
     setErrorMsg('');
 
     const now = new Date().toISOString();
     const drafts = buildDrafts(now);
-    const result = saveBatchToLocalStorage(drafts);
 
-    if (result.ok) {
-      setCount(drafts.length);
-      setStatus('success');
-      setTimeout(() => setStatus('idle'), 6000);
-      if (onBatchCreated) onBatchCreated(drafts.length);
-    } else {
-      setErrorMsg('Storage is full. Clear old non-approved drafts before saving.');
-      setStatus('error');
-    }
+    // Primary: backend storage
+    const result = await saveDraftsToBackend(drafts);
+
+    // Best-effort localStorage cache (non-blocking, content stripped)
+    try {
+      const cacheEntries = drafts.map(d => ({
+        id: d.id, filename: d.filename, targetFolder: d.targetFolder,
+        draftType: d.draftType, approvalStatus: d.approvalStatus,
+        riskLevel: d.riskLevel, executionStatus: d.executionStatus,
+        source: d.source,
+      }));
+      localStorage.setItem('veridan_obsidian_drafts_cache', JSON.stringify(cacheEntries));
+    } catch { /* quota — cache not critical */ }
+
+    setCount(drafts.length);
+    setStatus('success');
+    setTimeout(() => setStatus('idle'), 6000);
+    if (onBatchCreated) onBatchCreated(drafts.length);
   };
 
   return (

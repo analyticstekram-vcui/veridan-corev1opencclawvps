@@ -13,7 +13,7 @@
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Lock, Info, Home } from 'lucide-react';
+import { FileText, Lock, Info, Home, FolderOpen } from 'lucide-react';
 import ModuleNav from '@/components/navigation/ModuleNav';
 import { SafetyStatusCard, OperatorNextActionCard, BaselineCard, SnapshotExportButton } from '@/components/ui/planning-cards';
 
@@ -112,10 +112,16 @@ export default function AuditEvidenceDashboard() {
                 Read-only reference · No persistent storage · Future audit framework
               </div>
             </div>
-            <Link to="/" className="px-3 py-1.5 text-[10px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded font-semibold whitespace-nowrap flex items-center gap-1.5 h-fit">
-              <Home className="w-3 h-3" />
-              Home
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to="/vault-file-index" className="px-3 py-1.5 text-[10px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded font-semibold whitespace-nowrap flex items-center gap-1.5 h-fit">
+                <FolderOpen className="w-3 h-3" />
+                View Written Files
+              </Link>
+              <Link to="/" className="px-3 py-1.5 text-[10px] border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition-colors rounded font-semibold whitespace-nowrap flex items-center gap-1.5 h-fit">
+                <Home className="w-3 h-3" />
+                Home
+              </Link>
+            </div>
           </div>
 
           {/* 1. Audit / Evidence Safety Summary */}

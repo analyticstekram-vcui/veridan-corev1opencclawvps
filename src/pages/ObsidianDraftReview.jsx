@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, CheckCircle2, AlertCircle, FileText, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
+import { Shield, CheckCircle2, AlertCircle, FileText, ChevronDown, ChevronUp, ArrowLeft, FolderOpen } from 'lucide-react';
 import ModuleNav from '../components/navigation/ModuleNav';
 import ApprovedDraftWriteButton from '../components/obsidian-vault/ApprovedDraftWriteButton';
 import BatchDraftReview from '../components/obsidian-vault/BatchDraftReview';
@@ -118,6 +118,14 @@ function DraftCard({ draft, onApprove }) {
           {canWrite && (
             <div>
               <ApprovedDraftWriteButton draft={draft} onSuccess={onApprove} />
+              <div className="mt-2">
+                <Link
+                  to="/vault-file-index"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-mono font-bold border border-border/40 text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 rounded-sm transition-colors"
+                >
+                  <FolderOpen className="w-3 h-3" /> Open in Index
+                </Link>
+              </div>
             </div>
           )}
         </div>
@@ -187,6 +195,12 @@ export default function ObsidianDraftReview() {
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
+            <Link
+              to="/vault-file-index"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-mono font-bold border border-primary/30 text-primary bg-primary/10 hover:bg-primary/20 rounded-sm transition-colors"
+            >
+              <FolderOpen className="w-3 h-3" /> Open in Index
+            </Link>
             <span className="px-2 py-1 bg-primary/10 border border-primary/30 text-primary text-[8px] font-bold uppercase rounded-sm">
               {drafts.length} drafts
             </span>
