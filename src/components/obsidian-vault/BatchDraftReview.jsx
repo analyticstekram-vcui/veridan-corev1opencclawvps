@@ -2,15 +2,20 @@
  * BatchDraftReview
  * Batch approve and write multiple LOW-risk, allowlisted Obsidian drafts.
  * No API calls. No OpenClaw dispatch. No browser automation. No credentials.
- * All vault writes use the same obsidianWriteApprovedDraft backend function path.
- * Unapproved or non-LOW-risk drafts cannot be selected or written.
+ * All vault writes reuse the obsidianWriteApprovedDraft backend function.
+ * Unapproved / non-LOW / non-allowlisted drafts are blocked at every gate.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckSquare, Square, FileUp, CheckCircle2, AlertCircle, Loader2, RefreshCw, Filter } from 'lucide-react';
+import {
+  CheckSquare, Square, FileUp, CheckCircle2, AlertCircle,
+  Loader2, RefreshCw, SkipForward,
+} from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-// Must match ApprovedDraftWriteButton allowlist exactly
+// ── Constants ────────────────────────────────────────────────────────────────
+
+// Must match ApprovedDraftWriteButton + obsidianWriteApprovedDraft allowlist exactly
 const APPROVED_FOLDERS = [
   'drafts', 'task-plans', 'approval-queues', 'audit-logs', 'governance', 'evidence',
   'Veridan Core/Veridan Core System',
@@ -46,42 +51,56 @@ const ELIGIBLE_DRAFT_TYPES = [
 
 const FILTERS = ['All', 'Pending Review', 'Approved', 'Ready To Write', 'Written'];
 
+// ── Eligibility helpers ───────────────────────────────────────────────────────
+
 function isEligibleForApproval(d) {
   return (
     d.riskLevel === 'LOW' &&
     d.approvalStatus === 'PENDING_REVIEW' &&
     d.executionStatus === 'NOT_EXECUTED' &&
     d.dispatchStatus === 'NOT_DISPATCHED' &&
-    d.targetFolder &&
     APPROVED_FOLDERS.includes(d.targetFolder) &&
-    d.draftType &&
     ELIGIBLE_DRAFT_TYPES.includes(d.draftType)
   );
 }
 
-function isEligibleForWrite(d) {
+function isAlreadyWritten(d) {
+  return d.writtenAt || d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY';
+}
+
+function isEligibleForWrite(d, allowOverwrite = false) {
+  if (!allowOverwrite && isAlreadyWritten(d)) return false;
   return (
     d.approvalStatus === 'APPROVED' &&
     d.riskLevel === 'LOW' &&
     d.executionStatus === 'NOT_EXECUTED' &&
-    d.targetFolder &&
-    APPROVED_FOLDERS.includes(d.targetFolder) &&
-    !d.writtenAt  // not already written this session
+    APPROVED_FOLDERS.includes(d.targetFolder)
   );
+}
+
+function buildSkipReason(d) {
+  if (d.approvalStatus !== 'APPROVED') return 'Not approved';
+  if (d.riskLevel !== 'LOW') return 'Risk level not LOW';
+  if (d.executionStatus !== 'NOT_EXECUTED') return 'Already executed';
+  if (!APPROVED_FOLDERS.includes(d.targetFolder)) return 'Folder not in allowlist';
+  if (isAlreadyWritten(d)) return 'Already written — skipped';
+  return 'Unknown';
 }
 
 function applyFilter(drafts, filter) {
   switch (filter) {
     case 'Pending Review': return drafts.filter(d => d.approvalStatus === 'PENDING_REVIEW');
-    case 'Approved': return drafts.filter(d => d.approvalStatus === 'APPROVED');
+    case 'Approved': return drafts.filter(d => d.approvalStatus === 'APPROVED' && !isAlreadyWritten(d));
     case 'Ready To Write': return drafts.filter(d => isEligibleForWrite(d));
-    case 'Written': return drafts.filter(d => d.writtenAt || d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY');
+    case 'Written': return drafts.filter(d => isAlreadyWritten(d));
     default: return drafts;
   }
 }
 
-function statusBadge(d) {
-  if (d.writtenAt || d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY')
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function StatusBadge({ d }) {
+  if (isAlreadyWritten(d))
     return <span className="px-1.5 py-0.5 text-[6px] font-bold uppercase bg-primary/10 text-primary border border-primary/20 rounded-sm">WRITTEN</span>;
   if (d.approvalStatus === 'APPROVED')
     return <span className="px-1.5 py-0.5 text-[6px] font-bold uppercase bg-primary/10 text-primary border border-primary/20 rounded-sm">APPROVED</span>;
@@ -90,6 +109,37 @@ function statusBadge(d) {
   return <span className="px-1.5 py-0.5 text-[6px] font-bold uppercase bg-secondary/30 text-slate-400 border border-border/20 rounded-sm">{d.approvalStatus}</span>;
 }
 
+function StatusSummary({ drafts }) {
+  const total = drafts.length;
+  const pending = drafts.filter(d => d.approvalStatus === 'PENDING_REVIEW').length;
+  const approved = drafts.filter(d => d.approvalStatus === 'APPROVED' && !isAlreadyWritten(d)).length;
+  const readyToWrite = drafts.filter(d => isEligibleForWrite(d)).length;
+  const written = drafts.filter(d => isAlreadyWritten(d)).length;
+  const failed = drafts.filter(d => d.writeError).length;
+
+  const items = [
+    { label: 'Total', value: total, color: 'text-slate-300' },
+    { label: 'Pending Review', value: pending, color: 'text-amber-400' },
+    { label: 'Approved', value: approved, color: 'text-primary' },
+    { label: 'Ready to Write', value: readyToWrite, color: 'text-primary' },
+    { label: 'Written', value: written, color: 'text-primary' },
+    { label: 'Failed Writes', value: failed, color: failed > 0 ? 'text-destructive' : 'text-slate-500' },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+      {items.map(({ label, value, color }) => (
+        <div key={label} className="bg-card border border-border/30 rounded-sm p-2 text-center">
+          <div className="text-[6px] uppercase text-slate-500 mb-0.5">{label}</div>
+          <div className={`text-base font-mono font-bold ${color}`}>{value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function BatchDraftReview() {
   const [drafts, setDrafts] = useState([]);
   const [filter, setFilter] = useState('All');
@@ -97,6 +147,8 @@ export default function BatchDraftReview() {
   const [batchMode, setBatchMode] = useState('approve'); // 'approve' | 'write'
   const [processing, setProcessing] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
+  const [allowOverwrite, setAllowOverwrite] = useState(false);
+  const [overwriteConfirmPending, setOverwriteConfirmPending] = useState(false);
 
   const loadDrafts = useCallback(() => {
     try {
@@ -105,18 +157,22 @@ export default function BatchDraftReview() {
     } catch { setDrafts([]); }
     setSelectedIds(new Set());
     setBatchResult(null);
+    setOverwriteConfirmPending(false);
   }, []);
 
   useEffect(() => { loadDrafts(); }, [loadDrafts]);
 
   const visible = applyFilter(drafts, filter);
 
-  // Eligible set depends on current batch mode
   const eligibleIds = new Set(
     visible
-      .filter(d => batchMode === 'approve' ? isEligibleForApproval(d) : isEligibleForWrite(d))
+      .filter(d => batchMode === 'approve'
+        ? isEligibleForApproval(d)
+        : isEligibleForWrite(d, allowOverwrite))
       .map(d => d.id)
   );
+
+  // ── Selection helpers ──────────────────────────────────────────────────────
 
   const toggleOne = (id) => {
     if (!eligibleIds.has(id)) return;
@@ -127,12 +183,13 @@ export default function BatchDraftReview() {
     });
   };
 
+  const selectAllEligible = () => setSelectedIds(new Set(eligibleIds));
+  const clearSelection = () => setSelectedIds(new Set());
+
   const toggleAll = () => {
-    if (selectedIds.size === eligibleIds.size && eligibleIds.size > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(eligibleIds));
-    }
+    eligibleIds.size > 0 && selectedIds.size === eligibleIds.size
+      ? clearSelection()
+      : selectAllEligible();
   };
 
   // ── Batch Approve ──────────────────────────────────────────────────────────
@@ -149,7 +206,7 @@ export default function BatchDraftReview() {
       for (const d of stored) {
         if (!selectedIds.has(d.id)) continue;
         if (!isEligibleForApproval(d)) {
-          skipped.push({ id: d.id, filename: d.filename, reason: 'Failed eligibility check' });
+          skipped.push({ id: d.id, filename: d.filename, reason: 'Failed eligibility check at write time' });
           continue;
         }
         d.approvalStatus = 'APPROVED';
@@ -168,15 +225,12 @@ export default function BatchDraftReview() {
     }
   };
 
-  // ── Batch Write ────────────────────────────────────────────────────────────
-  const handleBatchWrite = async () => {
-    if (selectedIds.size === 0) return;
-    setProcessing(true);
-    setBatchResult(null);
-
-    const toWrite = drafts.filter(d => selectedIds.has(d.id) && isEligibleForWrite(d));
-    const skipped = drafts
-      .filter(d => selectedIds.has(d.id) && !isEligibleForWrite(d))
+  // ── Core write logic (shared by selected + write-all) ─────────────────────
+  const executeWrite = async (idsToWrite) => {
+    const allDrafts = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
+    const toWrite = allDrafts.filter(d => idsToWrite.has(d.id) && isEligibleForWrite(d, allowOverwrite));
+    const skipped = allDrafts
+      .filter(d => idsToWrite.has(d.id) && !isEligibleForWrite(d, allowOverwrite))
       .map(d => ({ id: d.id, filename: d.filename, reason: buildSkipReason(d) }));
 
     let written = 0;
@@ -187,18 +241,22 @@ export default function BatchDraftReview() {
         const response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft });
 
         if (response.data.success) {
-          // Audit record — same shape as ApprovedDraftWriteButton
           const auditRecord = {
             ...response.data.auditRecord,
+            auditId: response.data.auditRecord?.auditId || `AUDIT-${Date.now().toString(36).toUpperCase()}-BATCH`,
             draftId: draft.id || 'unknown',
             taskId: draft.taskId || 'unknown',
-            filePath: response.data.filePath,
+            filename: draft.filename,
             folder: draft.targetFolder,
-            writeStatus: 'COMPLETED_APPROVED_DRAFT_ONLY',
+            filePath: response.data.filePath,
+            timestamp: new Date().toISOString(),
             filesystemWrite: 'COMPLETED_APPROVED_DRAFT_ONLY',
+            writeStatus: 'COMPLETED_APPROVED_DRAFT_ONLY',
             executionStatus: 'NOT_EXECUTED',
             dispatchStatus: 'NOT_DISPATCHED',
-            timestamp: new Date().toISOString(),
+            openclawCall: 'NOT_SENT',
+            approvalStatus: 'APPROVED',
+            riskLevel: 'LOW',
           };
 
           try {
@@ -208,14 +266,14 @@ export default function BatchDraftReview() {
             localStorage.setItem('veridan_obsidian_write_audits', JSON.stringify(audits));
           } catch { /* quota */ }
 
-          // Mark draft as written in localStorage
+          // Mark draft as written
           try {
-            const stored = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
-            const idx = stored.findIndex(d => d.id === draft.id);
+            const current = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
+            const idx = current.findIndex(x => x.id === draft.id);
             if (idx >= 0) {
-              stored[idx].writtenAt = new Date().toISOString();
-              stored[idx].filesystemWrite = 'COMPLETED_APPROVED_DRAFT_ONLY';
-              localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(stored));
+              current[idx].writtenAt = new Date().toISOString();
+              current[idx].filesystemWrite = 'COMPLETED_APPROVED_DRAFT_ONLY';
+              localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(current));
             }
           } catch { /* quota */ }
 
@@ -228,37 +286,51 @@ export default function BatchDraftReview() {
       }
     }
 
-    setBatchResult({
-      mode: 'write',
-      selected: selectedIds.size,
-      approved: 0,
-      written,
-      skipped: [...skipped, ...writeErrors],
-    });
+    return { written, skipped: [...skipped, ...writeErrors] };
+  };
+
+  // ── Write Selected ─────────────────────────────────────────────────────────
+  const handleBatchWrite = async () => {
+    if (selectedIds.size === 0) return;
+    setProcessing(true);
+    setBatchResult(null);
+    const { written, skipped } = await executeWrite(selectedIds);
+    setBatchResult({ mode: 'write', selected: selectedIds.size, approved: 0, written, skipped });
     loadDrafts();
     setProcessing(false);
   };
 
-  function buildSkipReason(d) {
-    if (d.approvalStatus !== 'APPROVED') return 'Not approved';
-    if (d.riskLevel !== 'LOW') return 'Risk level not LOW';
-    if (d.executionStatus !== 'NOT_EXECUTED') return 'Already executed';
-    if (!APPROVED_FOLDERS.includes(d.targetFolder)) return 'Folder not in allowlist';
-    if (d.writtenAt) return 'Already written';
-    return 'Unknown';
-  }
+  // ── Write All Approved Eligible ────────────────────────────────────────────
+  const handleWriteAllApproved = async () => {
+    setProcessing(true);
+    setBatchResult(null);
+    const allDrafts = JSON.parse(localStorage.getItem('veridan_obsidian_drafts') || '[]');
+    const allEligibleIds = new Set(
+      allDrafts.filter(d => isEligibleForWrite(d, allowOverwrite)).map(d => d.id)
+    );
+    if (allEligibleIds.size === 0) {
+      setBatchResult({ mode: 'write-all', selected: 0, approved: 0, written: 0, skipped: [{ filename: 'N/A', reason: 'No eligible approved drafts found' }] });
+      setProcessing(false);
+      return;
+    }
+    const { written, skipped } = await executeWrite(allEligibleIds);
+    setBatchResult({ mode: 'write-all', selected: allEligibleIds.size, approved: 0, written, skipped });
+    loadDrafts();
+    setProcessing(false);
+  };
 
   const allEligibleSelected = eligibleIds.size > 0 && selectedIds.size === eligibleIds.size;
   const someSelected = selectedIds.size > 0;
 
   return (
     <div className="space-y-4">
+
       {/* Section header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <div className="text-[10px] font-bold uppercase text-slate-300 tracking-widest">Batch Draft Review</div>
           <div className="text-[7px] font-mono text-slate-500 mt-0.5">
-            Select multiple LOW-risk drafts to approve or write at once
+            Select LOW-risk drafts to approve or write at once · no API · no dispatch · no credentials
           </div>
         </div>
         <button type="button" onClick={loadDrafts}
@@ -267,20 +339,25 @@ export default function BatchDraftReview() {
         </button>
       </div>
 
+      {/* Status summary */}
+      <StatusSummary drafts={drafts} />
+
       {/* Mode + filter bar */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[7px] text-slate-500 font-mono">Mode:</span>
-        {(['approve', 'write']).map(m => (
-          <button key={m} type="button" onClick={() => { setBatchMode(m); setSelectedIds(new Set()); setBatchResult(null); }}
+        {[['approve', 'Approve Drafts'], ['write', 'Write To Vault']].map(([m, label]) => (
+          <button key={m} type="button"
+            onClick={() => { setBatchMode(m); setSelectedIds(new Set()); setBatchResult(null); setAllowOverwrite(false); }}
             className={`px-3 py-1 text-[7px] font-bold uppercase rounded-sm border transition-colors ${
               batchMode === m ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border/30 text-slate-400 hover:text-slate-200'
             }`}>
-            {m === 'approve' ? 'Approve Drafts' : 'Write To Vault'}
+            {label}
           </button>
         ))}
         <span className="text-[7px] text-slate-500 font-mono ml-2">Filter:</span>
         {FILTERS.map(f => (
-          <button key={f} type="button" onClick={() => { setFilter(f); setSelectedIds(new Set()); }}
+          <button key={f} type="button"
+            onClick={() => { setFilter(f); setSelectedIds(new Set()); }}
             className={`px-3 py-1 text-[7px] font-bold uppercase rounded-sm border transition-colors ${
               filter === f ? 'border-accent/40 bg-accent/10 text-accent' : 'border-border/30 text-slate-400 hover:text-slate-200'
             }`}>
@@ -289,114 +366,155 @@ export default function BatchDraftReview() {
         ))}
       </div>
 
+      {/* Overwrite toggle (write mode only) */}
+      {batchMode === 'write' && (
+        <div className="flex items-center gap-2">
+          {!overwriteConfirmPending ? (
+            <button type="button"
+              onClick={() => setOverwriteConfirmPending(true)}
+              className="flex items-center gap-1.5 px-3 py-1 text-[7px] font-mono border border-border/30 text-slate-500 hover:text-amber-400 hover:border-amber-500/30 rounded-sm transition-colors">
+              <SkipForward className="w-3 h-3" />
+              {allowOverwrite ? '✓ Overwrite enabled — click to disable' : 'Enable overwrite for already-written drafts'}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-1.5 border border-amber-500/30 bg-amber-500/5 rounded-sm">
+              <span className="text-[7px] text-amber-400 font-mono">Confirm: allow overwrite of already-written files?</span>
+              <button type="button" onClick={() => { setAllowOverwrite(true); setOverwriteConfirmPending(false); }}
+                className="px-2 py-0.5 text-[7px] font-bold uppercase border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded-sm">Yes</button>
+              <button type="button" onClick={() => setOverwriteConfirmPending(false)}
+                className="px-2 py-0.5 text-[7px] font-bold uppercase border border-border/30 text-slate-400 hover:text-slate-200 rounded-sm">No</button>
+            </div>
+          )}
+          {allowOverwrite && (
+            <button type="button" onClick={() => setAllowOverwrite(false)}
+              className="text-[6px] font-mono text-slate-500 hover:text-slate-300 underline">disable overwrite</button>
+          )}
+        </div>
+      )}
+
       {/* Table */}
       {visible.length === 0 ? (
         <div className="border border-border/30 rounded-sm p-4 text-center text-[8px] text-slate-500 font-mono">
           No drafts match this filter.
         </div>
       ) : (
-        <div className="border border-border/30 rounded-sm overflow-hidden">
-          {/* Table header */}
-          <div className="grid grid-cols-[28px_1fr_1fr_80px_90px_90px_90px_90px] gap-0 bg-secondary/30 border-b border-border/30 text-[7px] font-bold uppercase text-slate-500 tracking-widest">
-            <div className="px-2 py-2 flex items-center justify-center">
-              <button type="button" onClick={toggleAll} title="Toggle all eligible">
-                {allEligibleSelected
-                  ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
-                  : <Square className="w-3.5 h-3.5 text-slate-500" />}
-              </button>
-            </div>
-            <div className="px-3 py-2">Filename</div>
-            <div className="px-3 py-2">Folder</div>
-            <div className="px-3 py-2">Risk</div>
-            <div className="px-3 py-2">Approval</div>
-            <div className="px-3 py-2">Exec</div>
-            <div className="px-3 py-2">Dispatch</div>
-            <div className="px-3 py-2">Write</div>
-          </div>
-
-          {/* Rows */}
-          <div className="divide-y divide-border/20">
-            {visible.map((d, i) => {
-              const eligible = eligibleIds.has(d.id);
-              const checked = selectedIds.has(d.id);
-              return (
-                <div
-                  key={d.id || i}
-                  onClick={() => toggleOne(d.id)}
-                  className={`grid grid-cols-[28px_1fr_1fr_80px_90px_90px_90px_90px] gap-0 items-center text-[7px] font-mono transition-colors ${
-                    eligible ? 'cursor-pointer hover:bg-secondary/20' : 'opacity-50 cursor-not-allowed'
-                  } ${checked ? 'bg-primary/5' : ''}`}
-                >
-                  <div className="px-2 py-2.5 flex items-center justify-center">
-                    {eligible
-                      ? checked
-                        ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
-                        : <Square className="w-3.5 h-3.5 text-slate-500" />
-                      : <Square className="w-3.5 h-3.5 text-slate-700" />
-                    }
-                  </div>
-                  <div className="px-3 py-2.5 text-slate-300 truncate max-w-[180px]" title={d.filename}>{d.filename || '—'}</div>
-                  <div className="px-3 py-2.5 text-slate-400 truncate max-w-[160px]" title={d.targetFolder}>{d.targetFolder || '—'}</div>
-                  <div className="px-3 py-2.5">
-                    <span className={d.riskLevel === 'LOW' ? 'text-primary' : 'text-amber-400'}>{d.riskLevel || '—'}</span>
-                  </div>
-                  <div className="px-3 py-2.5">{statusBadge(d)}</div>
-                  <div className="px-3 py-2.5 text-slate-500">{d.executionStatus || '—'}</div>
-                  <div className="px-3 py-2.5 text-slate-500">{d.dispatchStatus || '—'}</div>
-                  <div className="px-3 py-2.5 text-slate-500">
-                    {d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY'
-                      ? <span className="text-primary">DONE</span>
-                      : d.filesystemWrite || 'DISABLED'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <div className="border border-border/30 rounded-sm overflow-x-auto">
+          <table className="w-full text-[7px] font-mono">
+            <thead>
+              <tr className="bg-secondary/30 border-b border-border/30 text-slate-500 uppercase tracking-widest">
+                <th className="px-2 py-2 w-8">
+                  <button type="button" onClick={toggleAll} title="Toggle all eligible">
+                    {allEligibleSelected
+                      ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                      : <Square className="w-3.5 h-3.5 text-slate-500" />}
+                  </button>
+                </th>
+                <th className="px-3 py-2 text-left">Filename</th>
+                <th className="px-3 py-2 text-left">Folder</th>
+                <th className="px-3 py-2 text-left">Type</th>
+                <th className="px-3 py-2 text-left">Risk</th>
+                <th className="px-3 py-2 text-left">Approval</th>
+                <th className="px-3 py-2 text-left">Exec</th>
+                <th className="px-3 py-2 text-left">Dispatch</th>
+                <th className="px-3 py-2 text-left">Write</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/20">
+              {visible.map((d, i) => {
+                const eligible = eligibleIds.has(d.id);
+                const checked = selectedIds.has(d.id);
+                return (
+                  <tr
+                    key={d.id || i}
+                    onClick={() => toggleOne(d.id)}
+                    className={`transition-colors ${eligible ? 'cursor-pointer hover:bg-secondary/20' : 'opacity-40 cursor-not-allowed'} ${checked ? 'bg-primary/5' : ''}`}
+                  >
+                    <td className="px-2 py-2 text-center">
+                      {eligible
+                        ? checked
+                          ? <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                          : <Square className="w-3.5 h-3.5 text-slate-500" />
+                        : <Square className="w-3.5 h-3.5 text-slate-700" />
+                      }
+                    </td>
+                    <td className="px-3 py-2 text-slate-300 max-w-[140px] truncate" title={d.filename}>{d.filename || '—'}</td>
+                    <td className="px-3 py-2 text-slate-400 max-w-[150px] truncate" title={d.targetFolder}>{d.targetFolder || '—'}</td>
+                    <td className="px-3 py-2 text-slate-500 max-w-[100px] truncate" title={d.draftType}>{d.draftType || '—'}</td>
+                    <td className="px-3 py-2">
+                      <span className={d.riskLevel === 'LOW' ? 'text-primary' : 'text-amber-400'}>{d.riskLevel || '—'}</span>
+                    </td>
+                    <td className="px-3 py-2"><StatusBadge d={d} /></td>
+                    <td className="px-3 py-2 text-slate-500">{d.executionStatus || '—'}</td>
+                    <td className="px-3 py-2 text-slate-500">{d.dispatchStatus || '—'}</td>
+                    <td className="px-3 py-2 text-slate-500">
+                      {isAlreadyWritten(d)
+                        ? <span className="text-primary">DONE</span>
+                        : <span>{d.filesystemWrite || 'DISABLED'}</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Selection summary + action buttons */}
-      <div className="flex items-center justify-between gap-3 flex-wrap border border-border/30 rounded-sm px-4 py-3 bg-card">
-        <div className="text-[7px] font-mono text-slate-400 space-y-0.5">
-          <div>{visible.length} shown · {eligibleIds.size} eligible · <span className="text-primary">{selectedIds.size} selected</span></div>
-          {batchMode === 'approve' && (
-            <div className="text-slate-500">Eligible = LOW risk + PENDING_REVIEW + NOT_EXECUTED + NOT_DISPATCHED + allowlisted folder</div>
-          )}
-          {batchMode === 'write' && (
-            <div className="text-slate-500">Eligible = APPROVED + LOW risk + NOT_EXECUTED + allowlisted folder + not already written</div>
-          )}
+      {/* Action bar */}
+      <div className="border border-border/30 rounded-sm px-4 py-3 bg-card space-y-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {/* Selection controls */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={selectAllEligible}
+              disabled={eligibleIds.size === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[7px] font-bold uppercase border border-border/30 text-slate-400 hover:text-primary hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed rounded-sm transition-colors">
+              <CheckSquare className="w-3 h-3" /> Select All Eligible ({eligibleIds.size})
+            </button>
+            <button type="button" onClick={clearSelection}
+              disabled={!someSelected}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[7px] font-bold uppercase border border-border/30 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-sm transition-colors">
+              Clear
+            </button>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {batchMode === 'approve' && (
+              <button type="button" onClick={handleBatchApprove}
+                disabled={!someSelected || processing}
+                className="flex items-center gap-2 px-4 py-2 text-[8px] font-bold uppercase tracking-widest border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-sm transition-colors">
+                {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                Approve Selected ({selectedIds.size})
+              </button>
+            )}
+            {batchMode === 'write' && (
+              <>
+                <button type="button" onClick={handleBatchWrite}
+                  disabled={!someSelected || processing}
+                  className="flex items-center gap-2 px-4 py-2 text-[8px] font-bold uppercase tracking-widest border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-sm transition-colors">
+                  {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
+                  Write Selected ({selectedIds.size})
+                </button>
+                <button type="button" onClick={handleWriteAllApproved}
+                  disabled={processing}
+                  className="flex items-center gap-2 px-4 py-2 text-[8px] font-bold uppercase tracking-widest border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-sm transition-colors">
+                  {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
+                  Write All Approved Eligible
+                </button>
+              </>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {batchMode === 'approve' && (
-            <button
-              type="button"
-              onClick={handleBatchApprove}
-              disabled={!someSelected || processing}
-              className="flex items-center gap-2 px-4 py-2 text-[8px] font-bold uppercase tracking-widest border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-sm transition-colors"
-            >
-              {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-              Approve Selected LOW-Risk Drafts ({selectedIds.size})
-            </button>
-          )}
-          {batchMode === 'write' && (
-            <button
-              type="button"
-              onClick={handleBatchWrite}
-              disabled={!someSelected || processing}
-              className="flex items-center gap-2 px-4 py-2 text-[8px] font-bold uppercase tracking-widest border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-sm transition-colors"
-            >
-              {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
-              Write Selected Approved Drafts To Vault ({selectedIds.size})
-            </button>
-          )}
+
+        <div className="text-[6px] font-mono text-slate-600">
+          {batchMode === 'approve'
+            ? 'Eligible = LOW + PENDING_REVIEW + NOT_EXECUTED + NOT_DISPATCHED + allowlisted folder + accepted type'
+            : `Eligible = APPROVED + LOW + NOT_EXECUTED + allowlisted folder${allowOverwrite ? '' : ' + not already written'}`}
         </div>
       </div>
 
       {/* Batch result panel */}
       {batchResult && (
-        <div className={`border rounded-sm p-4 space-y-3 ${
-          batchResult.error ? 'border-destructive/30 bg-destructive/5' : 'border-primary/30 bg-primary/5'
-        }`}>
+        <div className={`border rounded-sm p-4 space-y-3 ${batchResult.error ? 'border-destructive/30 bg-destructive/5' : 'border-primary/30 bg-primary/5'}`}>
           <div className="text-[9px] font-bold uppercase tracking-widest text-slate-300">
             Batch {batchResult.mode === 'approve' ? 'Approval' : 'Write'} Result
           </div>
@@ -405,11 +523,11 @@ export default function BatchDraftReview() {
             {[
               { label: 'Selected', value: batchResult.selected, color: 'text-slate-300' },
               { label: batchResult.mode === 'approve' ? 'Approved' : 'Written', value: batchResult.mode === 'approve' ? batchResult.approved : batchResult.written, color: 'text-primary' },
-              { label: 'Skipped', value: batchResult.skipped.length, color: batchResult.skipped.length > 0 ? 'text-amber-400' : 'text-slate-400' },
-              { label: 'Failed', value: batchResult.error ? 1 : 0, color: 'text-destructive' },
+              { label: 'Skipped / Already Written', value: batchResult.skipped.length, color: batchResult.skipped.length > 0 ? 'text-amber-400' : 'text-slate-400' },
+              { label: 'Errors', value: batchResult.error ? 1 : 0, color: batchResult.error ? 'text-destructive' : 'text-slate-500' },
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-card/50 border border-border/20 rounded-sm p-2.5 text-center">
-                <div className="text-[7px] uppercase text-slate-500 mb-1">{label}</div>
+                <div className="text-[6px] uppercase text-slate-500 mb-1">{label}</div>
                 <div className={`text-lg font-mono font-bold ${color}`}>{value}</div>
               </div>
             ))}
@@ -417,7 +535,7 @@ export default function BatchDraftReview() {
 
           {batchResult.skipped.length > 0 && (
             <div className="space-y-1">
-              <div className="text-[7px] font-bold uppercase text-amber-400">Skipped Reasons</div>
+              <div className="text-[7px] font-bold uppercase text-amber-400">Skipped / Already Written</div>
               {batchResult.skipped.map((s, i) => (
                 <div key={i} className="text-[7px] font-mono text-slate-400">
                   <span className="text-slate-300">{s.filename || s.id}</span> — {s.reason}
@@ -431,7 +549,7 @@ export default function BatchDraftReview() {
           )}
 
           <div className="text-[6px] font-mono text-slate-600 pt-1 border-t border-border/20">
-            executionStatus: NOT_EXECUTED · dispatchStatus: NOT_DISPATCHED · openclawCall: NOT_SENT · no credentials accessed
+            executionStatus: NOT_EXECUTED · dispatchStatus: NOT_DISPATCHED · openclawCall: NOT_SENT · no credentials accessed · no API calls made
           </div>
         </div>
       )}

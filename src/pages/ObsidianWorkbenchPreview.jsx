@@ -11,6 +11,7 @@ import ObsidianWorkflowStatusCard from '../components/obsidian-vault/ObsidianWor
 import ManualDraftForm from '../components/obsidian-vault/ManualDraftForm';
 import TemplateDraftGenerator from '../components/obsidian-vault/TemplateDraftGenerator';
 import CoreVaultPackGenerator from '../components/obsidian-vault/CoreVaultPackGenerator';
+import CoreVaultPackWorkflow from '../components/obsidian-vault/CoreVaultPackWorkflow';
 import { API_MODE_CONFIG } from '../lib/apiMode';
 
 const VAULT_CATEGORIES = [
@@ -167,7 +168,10 @@ export default function ObsidianWorkbenchPreview() {
         {/* Workflow Progress */}
         <ObsidianWorkflowStatusCard />
 
-        {/* ── BATCH: Core Vault Pack Generator ── */}
+        {/* ── ONE-CLICK: Core Vault Pack Workflow ── */}
+        <CoreVaultPackWorkflow />
+
+        {/* ── BATCH: Core Vault Pack Generator (standalone) ── */}
         <CoreVaultPackGenerator onBatchCreated={() => {}} />
 
         {/* ── PRIMARY: Template Draft Generator ── */}
