@@ -8,6 +8,46 @@ import React, { useState } from 'react';
 import { FileText, Plus } from 'lucide-react';
 import { API_MODE_CONFIG } from '../../lib/apiMode';
 
+const LOG = (...args) => console.log('[OBSIDIAN_DRAFT_STORAGE]', ...args);
+const LOG_ERR = (...args) => console.error('[OBSIDIAN_DRAFT_STORAGE]', ...args);
+
+const MAX_CONTENT_BYTES = 200 * 1024; // 200KB per draft
+const MAX_NON_APPROVED_HISTORY = 10;
+
+function isApprovedDraft(d) {
+  return d.approvalStatus === 'APPROVED' || d.approvalState === 'APPROVED_DRAFT';
+}
+
+function isReadyToWrite(d) {
+  return isApprovedDraft(d) && d.riskLevel === 'LOW' && d.executionStatus === 'NOT_EXECUTED';
+}
+
+/**
+ * Compact the draft list before saving:
+ * - Preserve all approved / ready-to-write drafts
+ * - For non-approved: keep only the newest per filename+folder+draftType key
+ * - Limit non-approved history to MAX_NON_APPROVED_HISTORY total
+ */
+function compactDrafts(drafts) {
+  const approved = drafts.filter(d => isApprovedDraft(d) || isReadyToWrite(d));
+  const pending = drafts.filter(d => !isApprovedDraft(d));
+
+  // Deduplicate pending — keep newest per key
+  const seen = new Map();
+  for (const d of pending) {
+    const key = `${d.filename}||${d.targetFolder}||${d.draftType}`;
+    if (!seen.has(key)) seen.set(key, d); // array is newest-first (unshifted), so first seen = newest
+  }
+  const dedupedPending = Array.from(seen.values()).slice(0, MAX_NON_APPROVED_HISTORY);
+
+  LOG(`Compacted: ${approved.length} approved + ${dedupedPending.length} pending (was ${pending.length} pending)`);
+  return [...approved, ...dedupedPending];
+}
+
+function trySetDrafts(drafts) {
+  localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(drafts));
+}
+
 const ALLOWLISTED_FOLDERS = [
   'Veridan Core/Veridan Core System',
   'Veridan Core/OpenClaw',
@@ -82,52 +122,55 @@ export default function ManualDraftForm({ onDraftCreated }) {
         drafts = [];
       }
 
-      // Remove old duplicate non-approved manual drafts with same filename + folder + draftType
-      // Preserve approved drafts regardless
-      drafts = drafts.filter(d => {
-        const isDuplicate =
-          d.filename === draft.filename &&
-          d.targetFolder === draft.targetFolder &&
-          d.draftType === draft.draftType &&
-          d.source === 'MANUAL_LOCAL_DRAFT';
-        const isApproved =
-          d.approvalStatus === 'APPROVED' || d.approvalState === 'APPROVED_DRAFT';
-        return !(isDuplicate && !isApproved);
-      });
-
-      // Trim content to 200KB max to avoid QuotaExceededError
-      const MAX_CONTENT_BYTES = 200 * 1024;
+      // Trim content to 200KB max
       const safeContent =
         draft.content.length > MAX_CONTENT_BYTES
           ? draft.content.slice(0, MAX_CONTENT_BYTES) + '\n\n[content trimmed — exceeded 200KB limit]'
           : draft.content;
       const draftToSave = { ...draft, content: safeContent };
 
+      // Add new draft at front, then compact
       drafts.unshift(draftToSave);
-      if (drafts.length > 50) drafts.length = 50;
+      const compacted = compactDrafts(drafts);
 
+      // First save attempt
+      let saveOk = false;
       try {
-        localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(drafts));
+        trySetDrafts(compacted);
+        saveOk = true;
+        LOG(`Saved draft ${draftToSave.id} (${compacted.length} total)`);
       } catch (storageErr) {
-        console.error('Manual draft localStorage save failed:', storageErr);
-        setError(`Storage save failed: ${storageErr.message || 'QuotaExceededError'}. Try shortening the content or clearing old drafts.`);
-        return;
+        LOG_ERR('Manual draft localStorage save failed:', storageErr);
+        // Retry: strip content from all non-ready pending drafts to free space
+        const stripped = compacted.map(d =>
+          (!isApprovedDraft(d) && d.id !== draftToSave.id)
+            ? { ...d, content: '[content removed to free storage space]' }
+            : d
+        );
+        try {
+          trySetDrafts(stripped);
+          saveOk = true;
+          LOG(`Saved draft after stripping old content (${stripped.length} total)`);
+        } catch (retryErr) {
+          LOG_ERR('Manual draft localStorage save failed (retry):', retryErr);
+          setError('Storage is full. Clear old non-approved drafts, shorten the markdown, or export evidence before saving.');
+          return;
+        }
       }
 
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-
-      // Reset
-      setTitle('');
-      setCategory('');
-      setTargetFolder('');
-      setProposedFileName('');
-      setMarkdownContent('');
-      setOpen(false);
-
-      if (onDraftCreated) onDraftCreated(draftToSave);
+      if (saveOk) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+        setTitle('');
+        setCategory('');
+        setTargetFolder('');
+        setProposedFileName('');
+        setMarkdownContent('');
+        setOpen(false);
+        if (onDraftCreated) onDraftCreated(draftToSave);
+      }
     } catch (err) {
-      console.error('Manual draft localStorage save failed:', err);
+      LOG_ERR('Manual draft localStorage save failed:', err);
       setError(`Failed to save draft: ${err.message || 'Unknown error'}`);
     }
   };

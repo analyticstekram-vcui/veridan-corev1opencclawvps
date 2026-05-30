@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, WifiOff } from 'lucide-react';
+import { Shield, Plus, WifiOff, Trash2 } from 'lucide-react';
 import ModuleNav from '../components/navigation/ModuleNav';
 import ObsidianWorkflowStatusCard from '../components/obsidian-vault/ObsidianWorkflowStatusCard';
 import ManualDraftForm from '../components/obsidian-vault/ManualDraftForm';
@@ -55,11 +55,32 @@ const NOTE_TYPES = {
   ],
 };
 
+function clearNonApprovedDrafts() {
+  try {
+    const stored = localStorage.getItem('veridan_obsidian_drafts') || '[]';
+    const drafts = JSON.parse(stored);
+    if (!Array.isArray(drafts)) return { removed: 0, kept: 0 };
+    const kept = drafts.filter(d => {
+      const isApproved = d.approvalStatus === 'APPROVED' || d.approvalState === 'APPROVED_DRAFT';
+      const isReadyToWrite = isApproved && d.riskLevel === 'LOW' && d.executionStatus === 'NOT_EXECUTED';
+      return isApproved || isReadyToWrite;
+    });
+    localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(kept));
+    const removed = drafts.length - kept.length;
+    console.log('[OBSIDIAN_DRAFT_STORAGE] Cleared', removed, 'non-approved drafts, kept', kept.length);
+    return { removed, kept: kept.length };
+  } catch (err) {
+    console.error('[OBSIDIAN_DRAFT_STORAGE] Clear failed:', err);
+    return { removed: 0, kept: 0 };
+  }
+}
+
 export default function ObsidianWorkbenchPreview() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedNoteType, setSelectedNoteType] = useState(null);
   const [purpose, setPurpose] = useState('');
   const [taskCreated, setTaskCreated] = useState(false);
+  const [clearResult, setClearResult] = useState(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('veridan_obsidian_selected_category');
@@ -240,6 +261,30 @@ export default function ObsidianWorkbenchPreview() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Clear Non-Approved Drafts */}
+        <div className="border border-border/40 bg-card rounded-sm p-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="space-y-0.5">
+            <div className="text-[8px] font-bold uppercase text-slate-400 tracking-widest">Storage Management</div>
+            <div className="text-[7px] font-mono text-slate-500">Removes only non-approved, not-yet-written drafts. Approved drafts are preserved.</div>
+            {clearResult && (
+              <div className="text-[7px] font-mono text-primary mt-1">
+                ✓ Removed {clearResult.removed} draft(s) · {clearResult.kept} approved draft(s) kept
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const result = clearNonApprovedDrafts();
+              setClearResult(result);
+              setTimeout(() => setClearResult(null), 4000);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-bold uppercase tracking-widest border border-destructive/30 text-destructive/80 bg-destructive/5 hover:bg-destructive/10 rounded-sm transition-colors whitespace-nowrap"
+          >
+            <Trash2 className="w-3 h-3" /> Clear Old Non-Approved Drafts
+          </button>
         </div>
 
         {/* Manual Draft Form */}
