@@ -12,6 +12,7 @@ export default function ModuleNav() {
     { label: 'Public Credit CMD', path: '/public-credit-command-center', icon: CreditCard },
     { label: 'Biz Formation CMD', path: '/business-formation-command-center', icon: Briefcase },
     { label: 'Obsidian Vault', path: '/obsidian-workbench-preview', icon: BookOpen },
+    { label: 'Vault File Index', path: '/vault-file-index', icon: Archive },
     { label: 'Audit / Evidence', path: '/audit-evidence', icon: FileText },
     { label: 'System Map', path: '/system-map', icon: Layers },
   ];

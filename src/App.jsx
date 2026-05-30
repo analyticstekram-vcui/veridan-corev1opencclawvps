@@ -44,6 +44,7 @@ import OpenClawWakeControlCenter from './pages/OpenClawWakeControlCenter';
 import ObsidianWorkbenchPreview from './pages/ObsidianWorkbenchPreview';
 import ObsidianDraftReview from './pages/ObsidianDraftReview';
 import VeridanCoreCurrentStateAudit from './pages/VeridanCoreCurrentStateAudit';
+import VaultFileIndex from './pages/VaultFileIndex';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -111,6 +112,7 @@ const AuthenticatedApp = () => {
       <Route path="/obsidian-workbench-preview" element={<ObsidianWorkbenchPreview />} />
       <Route path="/obsidian-draft-review" element={<ObsidianDraftReview />} />
       <Route path="/veridan-core-audit" element={<VeridanCoreCurrentStateAudit />} />
+      <Route path="/vault-file-index" element={<VaultFileIndex />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
