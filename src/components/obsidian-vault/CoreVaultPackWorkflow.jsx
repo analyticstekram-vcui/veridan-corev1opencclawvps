@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Package, CheckCircle2, FileUp, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
+import { Package, CheckCircle2, FileUp, AlertCircle, Loader2, ArrowRight, RefreshCw } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import CoreVaultPackGenerator from './CoreVaultPackGenerator';
 
@@ -36,13 +36,18 @@ function isEligibleForApproval(d) {
   );
 }
 
+// A draft is "already written" ONLY when both conditions are true
+function isAlreadyWritten(d) {
+  return d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' && !!d.filePath;
+}
+
 function isEligibleForWrite(d) {
   return (
     d.approvalStatus === 'APPROVED' &&
     d.riskLevel === 'LOW' &&
     d.executionStatus === 'NOT_EXECUTED' &&
     APPROVED_FOLDERS.includes(d.targetFolder) &&
-    !(d.writtenAt || d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY')
+    !isAlreadyWritten(d)
   );
 }
 
@@ -96,78 +101,110 @@ export default function CoreVaultPackWorkflow() {
     }
   };
 
-  // ── Step: Write all eligible approved CVP drafts ───────────────────────────
+  // ── Core write executor (shared by Write All and Retry) ───────────────────
+  const executeWrites = async (toWrite) => {
+    let written = 0;
+    const alreadyWritten = [];
+    const failed = []; // backend 400s / errors — retriable
+
+    for (const draft of toWrite) {
+      // Double-check: skip if already written (should not reach here, but guard)
+      if (isAlreadyWritten(draft)) {
+        alreadyWritten.push({ filename: draft.filename, reason: 'Already written (filesystemWrite + filePath set)' });
+        continue;
+      }
+
+      let response;
+      try {
+        response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft });
+      } catch (invokeErr) {
+        // 400/500 from backend — DO NOT mark draft as written
+        const backendErrors = invokeErr?.response?.data?.errors;
+        const backendError = invokeErr?.response?.data?.error;
+        const reason = Array.isArray(backendErrors) && backendErrors.length > 0
+          ? backendErrors.join(' | ')
+          : (backendError || invokeErr.message || 'Backend error');
+        failed.push({ id: draft.id, filename: draft.filename, reason });
+        continue; // draft remains unmodified — eligible for retry
+      }
+
+      if (response.data.success) {
+        const filePath = response.data.filePath;
+        const auditRecord = {
+          ...response.data.auditRecord,
+          auditId: response.data.auditRecord?.auditId || `AUDIT-${Date.now().toString(36).toUpperCase()}-CVP`,
+          draftId: draft.id || 'unknown',
+          filename: draft.filename,
+          folder: draft.targetFolder,
+          filePath,
+          timestamp: new Date().toISOString(),
+          filesystemWrite: 'COMPLETED_APPROVED_DRAFT_ONLY',
+          executionStatus: 'NOT_EXECUTED',
+          dispatchStatus: 'NOT_DISPATCHED',
+          openclawCall: 'NOT_SENT',
+          approvalStatus: 'APPROVED',
+          riskLevel: 'LOW',
+        };
+
+        try {
+          const audits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
+          audits.unshift(auditRecord);
+          if (audits.length > 50) audits.length = 50;
+          localStorage.setItem('veridan_obsidian_write_audits', JSON.stringify(audits));
+        } catch { /* quota */ }
+
+        // Mark written ONLY on confirmed success — set both filesystemWrite AND filePath
+        try {
+          const current = loadDraftsFromStorage();
+          const idx = current.findIndex(x => x.id === draft.id);
+          if (idx >= 0) {
+            current[idx].writtenAt = new Date().toISOString();
+            current[idx].filesystemWrite = 'COMPLETED_APPROVED_DRAFT_ONLY';
+            current[idx].filePath = filePath; // required for isAlreadyWritten()
+            localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(current));
+          }
+        } catch { /* quota */ }
+
+        written++;
+      } else {
+        // Backend returned success=false — also retriable, do NOT mark as written
+        failed.push({ id: draft.id, filename: draft.filename, reason: response.data.error || 'Write returned failure' });
+      }
+    }
+
+    return { written, alreadyWritten, failed };
+  };
+
+  // ── Step: Write all eligible approved drafts ───────────────────────────────
   const handleWriteAll = async () => {
     setStep('writing');
     setErrorMsg('');
 
     const drafts = loadDraftsFromStorage();
     const toWrite = drafts.filter(d => isEligibleForWrite(d));
-    let written = 0;
-    const skipped = [];
-    const writeErrors = [];
+    const { written, alreadyWritten, failed } = await executeWrites(toWrite);
 
-    for (const draft of toWrite) {
-      try {
-        let response;
-        try {
-          response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft });
-        } catch (invokeErr) {
-          // Extract backend validation errors from axios 400 response
-          const backendErrors = invokeErr?.response?.data?.errors;
-          const backendError = invokeErr?.response?.data?.error;
-          const reason = Array.isArray(backendErrors) && backendErrors.length > 0
-            ? backendErrors.join(' | ')
-            : (backendError || invokeErr.message || 'Unknown backend error');
-          writeErrors.push({ filename: draft.filename, reason });
-          continue;
-        }
+    setResult(prev => ({ ...(prev || {}), written, alreadyWritten, failed, total: toWrite.length }));
+    setStep('done');
+  };
 
-        if (response.data.success) {
-          const auditRecord = {
-            ...response.data.auditRecord,
-            auditId: response.data.auditRecord?.auditId || `AUDIT-${Date.now().toString(36).toUpperCase()}-CVP`,
-            draftId: draft.id || 'unknown',
-            filename: draft.filename,
-            folder: draft.targetFolder,
-            filePath: response.data.filePath,
-            timestamp: new Date().toISOString(),
-            filesystemWrite: 'COMPLETED_APPROVED_DRAFT_ONLY',
-            executionStatus: 'NOT_EXECUTED',
-            dispatchStatus: 'NOT_DISPATCHED',
-            openclawCall: 'NOT_SENT',
-            approvalStatus: 'APPROVED',
-            riskLevel: 'LOW',
-          };
+  // ── Retry: only previously failed drafts (by id) ──────────────────────────
+  const handleRetryFailed = async () => {
+    if (!result?.failed?.length) return;
+    setStep('writing');
 
-          try {
-            const audits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
-            audits.unshift(auditRecord);
-            if (audits.length > 50) audits.length = 50;
-            localStorage.setItem('veridan_obsidian_write_audits', JSON.stringify(audits));
-          } catch { /* quota */ }
+    const failedIds = new Set(result.failed.map(f => f.id));
+    const drafts = loadDraftsFromStorage();
+    const toRetry = drafts.filter(d => failedIds.has(d.id) && isEligibleForWrite(d));
 
-          // Mark written
-          try {
-            const current = loadDraftsFromStorage();
-            const idx = current.findIndex(x => x.id === draft.id);
-            if (idx >= 0) {
-              current[idx].writtenAt = new Date().toISOString();
-              current[idx].filesystemWrite = 'COMPLETED_APPROVED_DRAFT_ONLY';
-              localStorage.setItem('veridan_obsidian_drafts', JSON.stringify(current));
-            }
-          } catch { /* quota */ }
+    const { written, alreadyWritten, failed } = await executeWrites(toRetry);
 
-          written++;
-        } else {
-          skipped.push({ filename: draft.filename, reason: response.data.error || 'Write returned failure' });
-        }
-      } catch (err) {
-        skipped.push({ filename: draft.filename, reason: err.message });
-      }
-    }
-
-    setResult(prev => ({ ...(prev || {}), written, writeSkipped: skipped, total: toWrite.length }));
+    setResult(prev => ({
+      ...(prev || {}),
+      written: (prev?.written || 0) + written,
+      alreadyWritten: [...(prev?.alreadyWritten || []), ...alreadyWritten],
+      failed, // replace with new failure list after retry
+    }));
     setStep('done');
   };
 
@@ -175,7 +212,8 @@ export default function CoreVaultPackWorkflow() {
   const drafts = loadDraftsFromStorage();
   const pendingCount = drafts.filter(d => isEligibleForApproval(d)).length;
   const approvedCount = drafts.filter(d => isEligibleForWrite(d)).length;
-  const writtenCount = drafts.filter(d => d.writtenAt || d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY').length;
+  // Written = confirmed success only (both flags set)
+  const writtenCount = drafts.filter(d => isAlreadyWritten(d)).length;
 
   return (
     <div className="border border-primary/40 bg-primary/5 rounded-sm overflow-hidden">
@@ -268,18 +306,45 @@ export default function CoreVaultPackWorkflow() {
         {step === 'done' && result && (
           <div className="border border-primary/30 bg-primary/5 rounded-sm p-3 space-y-2">
             <div className="flex items-center gap-2 text-[9px] font-bold text-primary">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Vault Pack Written
+              <CheckCircle2 className="w-3.5 h-3.5" /> Write Run Complete
             </div>
-            <div className="text-[7px] font-mono text-slate-400 space-y-0.5">
-              <div>Written: <span className="text-primary">{result.written}</span></div>
-              {result.writeSkipped?.length > 0 && (
-                <div>Skipped: <span className="text-amber-400">{result.writeSkipped.length}</span>
-                  {result.writeSkipped.map((s, i) => (
-                    <div key={i} className="ml-2 text-slate-500">— {s.filename}: {s.reason}</div>
+            <div className="text-[7px] font-mono text-slate-400 space-y-1">
+              {/* Written */}
+              <div>✅ Written: <span className="text-primary font-bold">{result.written ?? 0}</span></div>
+
+              {/* Skipped Already Written */}
+              {result.alreadyWritten?.length > 0 && (
+                <div>
+                  ⏭ Skipped (already written): <span className="text-slate-400">{result.alreadyWritten.length}</span>
+                  {result.alreadyWritten.map((s, i) => (
+                    <div key={i} className="ml-2 text-slate-600">— {s.filename}</div>
+                  ))}
+                </div>
+              )}
+
+              {/* Failed — retriable */}
+              {result.failed?.length > 0 && (
+                <div>
+                  ❌ Failed (retriable): <span className="text-destructive font-bold">{result.failed.length}</span>
+                  {result.failed.map((s, i) => (
+                    <div key={i} className="ml-2 text-destructive/70">— {s.filename}: {s.reason}</div>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Retry failed button */}
+            {result.failed?.length > 0 && (
+              <button
+                type="button"
+                onClick={handleRetryFailed}
+                disabled={step === 'writing'}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 text-destructive hover:bg-destructive/20 disabled:opacity-40 rounded-sm font-bold text-[9px] uppercase tracking-widest transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Retry {result.failed.length} Failed Write(s)
+              </button>
+            )}
+
             <div className="text-[6px] font-mono text-slate-600 border-t border-border/20 pt-1">
               executionStatus: NOT_EXECUTED · dispatchStatus: NOT_DISPATCHED · openclawCall: NOT_SENT
             </div>
