@@ -5,10 +5,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, WifiOff, Trash2 } from 'lucide-react';
+import { Shield, Plus, WifiOff, Trash2, ChevronDown } from 'lucide-react';
 import ModuleNav from '../components/navigation/ModuleNav';
 import ObsidianWorkflowStatusCard from '../components/obsidian-vault/ObsidianWorkflowStatusCard';
 import ManualDraftForm from '../components/obsidian-vault/ManualDraftForm';
+import TemplateDraftGenerator from '../components/obsidian-vault/TemplateDraftGenerator';
 import { API_MODE_CONFIG } from '../lib/apiMode';
 
 const VAULT_CATEGORIES = [
@@ -81,6 +82,7 @@ export default function ObsidianWorkbenchPreview() {
   const [purpose, setPurpose] = useState('');
   const [taskCreated, setTaskCreated] = useState(false);
   const [clearResult, setClearResult] = useState(null);
+  const [showFallback, setShowFallback] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('veridan_obsidian_selected_category');
@@ -164,90 +166,8 @@ export default function ObsidianWorkbenchPreview() {
         {/* Workflow Progress */}
         <ObsidianWorkflowStatusCard />
 
-        {/* Task Creation Form */}
-        <div className="border border-primary/40 bg-primary/5 rounded-sm p-5 space-y-4">
-          <div className="text-[10px] font-bold uppercase text-primary tracking-widest">Create Obsidian Task</div>
-
-          {/* Category Selection */}
-          <div className="space-y-2">
-            <label className="text-[8px] font-bold uppercase text-slate-400">Vault Category</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {VAULT_CATEGORIES.map(cat => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedCategory(cat.id);
-                    setSelectedNoteType(null);
-                  }}
-                  className={`flex flex-col items-center gap-1 p-3 rounded-sm border transition-colors ${
-                    selectedCategory === cat.id
-                      ? 'border-primary/40 bg-primary/10 text-primary'
-                      : 'border-border/30 bg-card hover:bg-secondary/20 text-slate-400'
-                  }`}
-                >
-                  <span className="text-lg">{cat.emoji}</span>
-                  <span className="text-[7px] font-mono text-center">{cat.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Note Type Selection */}
-          {selectedCategory && (
-            <div className="space-y-2">
-              <label className="text-[8px] font-bold uppercase text-slate-400">Note Type</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {NOTE_TYPES[selectedCategory].map(nt => (
-                  <button
-                    key={nt.type}
-                    type="button"
-                    onClick={() => setSelectedNoteType(nt.type)}
-                    className={`p-3 text-left rounded-sm border transition-colors ${
-                      selectedNoteType === nt.type
-                        ? 'border-primary/40 bg-primary/10 text-primary'
-                        : 'border-border/30 bg-card hover:bg-secondary/20 text-slate-400'
-                    }`}
-                  >
-                    <div className="text-[8px] font-bold">{nt.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Purpose Input */}
-          {selectedNoteType && (
-            <div className="space-y-2">
-              <label className="text-[8px] font-bold uppercase text-slate-400">Purpose / Title</label>
-              <input
-                type="text"
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-                placeholder="e.g., Weekly Operations Review"
-                className="w-full px-3 py-2 text-[9px] bg-card border border-border/30 rounded-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary/40"
-              />
-            </div>
-          )}
-
-          {/* Create Button */}
-          {selectedCategory && selectedNoteType && purpose && (
-            <button
-              type="button"
-              onClick={handleCreateTask}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 rounded-sm font-bold text-[10px] uppercase tracking-widest transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Create Task
-            </button>
-          )}
-
-          {/* Success message */}
-          {taskCreated && (
-            <div className="bg-primary/10 border border-primary/30 rounded-sm p-2.5 text-[8px] font-mono text-primary">
-              ✓ Task created and queued for approval
-            </div>
-          )}
-        </div>
+        {/* ── PRIMARY: Template Draft Generator ── */}
+        <TemplateDraftGenerator onDraftCreated={() => {}} />
 
         {/* API Mode Warning */}
         <div className="border border-destructive/30 bg-destructive/5 rounded-sm p-3 flex items-start gap-2">
@@ -263,7 +183,7 @@ export default function ObsidianWorkbenchPreview() {
           </div>
         </div>
 
-        {/* Clear Non-Approved Drafts */}
+        {/* Storage Management */}
         <div className="border border-border/40 bg-card rounded-sm p-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="space-y-0.5">
             <div className="text-[8px] font-bold uppercase text-slate-400 tracking-widest">Storage Management</div>
@@ -287,8 +207,84 @@ export default function ObsidianWorkbenchPreview() {
           </button>
         </div>
 
-        {/* Manual Draft Form */}
-        <ManualDraftForm onDraftCreated={() => {}} />
+        {/* ── FALLBACK: Advanced / Manual ── */}
+        <div className="border border-border/40 rounded-sm overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowFallback(v => !v)}
+            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-card hover:bg-secondary/20 transition-colors"
+          >
+            <span className="text-[8px] font-bold uppercase text-slate-400 tracking-widest">
+              Advanced / Fallback Options
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${showFallback ? 'rotate-180' : ''}`} />
+          </button>
+          {showFallback && (
+            <div className="border-t border-border/30 p-4 space-y-4 bg-card/50">
+              <div className="text-[7px] font-mono text-slate-500">
+                Use these options only when templates do not cover your use case.
+              </div>
+
+              {/* Legacy Task Creation */}
+              <div className="border border-border/40 bg-card rounded-sm p-4 space-y-4">
+                <div className="text-[9px] font-bold uppercase text-slate-400">Create Legacy Obsidian Task</div>
+                <div className="space-y-2">
+                  <label className="text-[8px] font-bold uppercase text-slate-400">Vault Category</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {VAULT_CATEGORIES.map(cat => (
+                      <button key={cat.id} type="button"
+                        onClick={() => { setSelectedCategory(cat.id); setSelectedNoteType(null); }}
+                        className={`flex flex-col items-center gap-1 p-3 rounded-sm border transition-colors ${
+                          selectedCategory === cat.id ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border/30 bg-card hover:bg-secondary/20 text-slate-400'
+                        }`}>
+                        <span className="text-lg">{cat.emoji}</span>
+                        <span className="text-[7px] font-mono text-center">{cat.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {selectedCategory && (
+                  <div className="space-y-2">
+                    <label className="text-[8px] font-bold uppercase text-slate-400">Note Type</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {NOTE_TYPES[selectedCategory].map(nt => (
+                        <button key={nt.type} type="button" onClick={() => setSelectedNoteType(nt.type)}
+                          className={`p-3 text-left rounded-sm border transition-colors ${
+                            selectedNoteType === nt.type ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border/30 bg-card hover:bg-secondary/20 text-slate-400'
+                          }`}>
+                          <div className="text-[8px] font-bold">{nt.label}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {selectedNoteType && (
+                  <div className="space-y-2">
+                    <label className="text-[8px] font-bold uppercase text-slate-400">Purpose / Title</label>
+                    <input type="text" value={purpose} onChange={(e) => setPurpose(e.target.value)}
+                      placeholder="e.g., Weekly Operations Review"
+                      className="w-full px-3 py-2 text-[9px] bg-card border border-border/30 rounded-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary/40"
+                    />
+                  </div>
+                )}
+                {selectedCategory && selectedNoteType && purpose && (
+                  <button type="button" onClick={handleCreateTask}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 rounded-sm font-bold text-[10px] uppercase tracking-widest transition-colors">
+                    <Plus className="w-4 h-4" /> Create Task
+                  </button>
+                )}
+                {taskCreated && (
+                  <div className="bg-primary/10 border border-primary/30 rounded-sm p-2.5 text-[8px] font-mono text-primary">
+                    ✓ Task created and queued for approval
+                  </div>
+                )}
+              </div>
+
+              {/* Manual Markdown Draft */}
+              <ManualDraftForm onDraftCreated={() => {}} />
+            </div>
+          )}
+        </div>
 
         {/* Next Steps */}
         <div className="border border-border/40 bg-card rounded-sm p-4 space-y-2">
