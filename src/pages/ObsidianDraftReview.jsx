@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { Shield, CheckCircle2, AlertCircle, FileText, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import ModuleNav from '../components/navigation/ModuleNav';
 import ApprovedDraftWriteButton from '../components/obsidian-vault/ApprovedDraftWriteButton';
+import BatchDraftReview from '../components/obsidian-vault/BatchDraftReview';
 
 function DraftCard({ draft, onApprove }) {
   const [expanded, setExpanded] = useState(false);
@@ -228,9 +229,12 @@ export default function ObsidianDraftReview() {
           </div>
         </div>
 
+        {/* ── Batch Review Section ── */}
+        <BatchDraftReview />
+
         {/* Drafts list or empty state */}
         <div>
-          <div className="text-[9px] uppercase font-bold text-slate-400 mb-3 tracking-widest">Draft Queue</div>
+          <div className="text-[9px] uppercase font-bold text-slate-400 mb-3 tracking-widest">Individual Draft Queue</div>
           {drafts.length === 0 ? (
             <DraftLoadingState />
           ) : (
