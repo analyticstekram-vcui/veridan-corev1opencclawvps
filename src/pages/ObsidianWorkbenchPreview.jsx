@@ -169,125 +169,159 @@ export default function ObsidianWorkbenchPreview() {
 
       <div className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-5">
 
-        {/* System Status Overview */}
+        {/* STATUS OVERVIEW */}
         <ObsidianSystemStatusCard />
 
-        {/* Quick Links */}
-        <div className="flex justify-end">
+        {/* NEXT ACTION GUIDE */}
+        <div className="border border-primary/30 bg-primary/5 rounded-sm p-4">
+          <div className="text-[8px] font-bold uppercase tracking-widest text-primary mb-3">Next Steps</div>
+          <div className="space-y-2 text-[8px] font-mono text-slate-300">
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold">1.</span>
+              <div><span className="text-primary font-bold">Check Bridge</span> — Confirm vault is connected</div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold">2.</span>
+              <div><span className="text-primary font-bold">Write Test File</span> — Verify write works</div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold">3.</span>
+              <div><span className="text-primary font-bold">Build Vault Pack</span> — Write approved files</div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold">4.</span>
+              <div><span className="text-primary font-bold">Check Vault Health</span> — Verify all succeeded</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── FOUR MAIN ACTIONS ── */}
+
+        {/* 1. CHECK BRIDGE */}
+        <div className="border-l-4 border-l-primary border border-border/40 bg-card rounded-sm overflow-hidden">
+          <div className="px-4 py-2.5 bg-primary/10 border-b border-border/30 flex items-center gap-2">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-primary">1. Check Bridge</div>
+          </div>
+          <div className="p-4">
+            <div className="text-[7px] font-mono text-slate-500 mb-3">Check if the Obsidian vault bridge is working.</div>
+            <button
+              type="button"
+              className="w-full px-4 py-2.5 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 rounded-sm font-bold text-[10px] uppercase tracking-widest transition-colors"
+            >
+              Check Bridge Status
+            </button>
+          </div>
+        </div>
+
+        {/* 2. WRITE TEST FILE */}
+        <div className="border-l-4 border-l-accent border border-border/40 bg-card rounded-sm overflow-hidden">
+          <div className="px-4 py-2.5 bg-accent/10 border-b border-border/30 flex items-center gap-2">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-accent">2. Write Test File</div>
+          </div>
+          <div className="p-4">
+            <SafeTestWritePanel />
+          </div>
+        </div>
+
+        {/* 3. BUILD VAULT PACK */}
+        <div className="border-l-4 border-l-primary border border-border/40 bg-card rounded-sm overflow-hidden">
+          <div className="px-4 py-2.5 bg-primary/10 border-b border-border/30 flex items-center gap-2">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-primary">3. Build Vault Pack</div>
+          </div>
+          <div className="p-4">
+            <CoreVaultPackWorkflow />
+          </div>
+        </div>
+
+        {/* 4. CHECK VAULT HEALTH */}
+        <div className="border-l-4 border-l-accent border border-border/40 bg-card rounded-sm overflow-hidden">
+          <div className="px-4 py-2.5 bg-accent/10 border-b border-border/30 flex items-center gap-2">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-accent">4. Check Vault Health</div>
+          </div>
+          <div className="p-4">
+            <DailyVaultHealthCheckPanel />
+          </div>
+        </div>
+
+        {/* QUICK LINKS */}
+        <div className="flex flex-wrap gap-2 justify-between pt-2">
           <Link
             to="/vault-file-index"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-mono font-bold border border-primary/30 text-primary bg-primary/10 hover:bg-primary/20 rounded-sm transition-colors"
           >
             <FolderOpen className="w-3 h-3" /> View Written Files
           </Link>
-        </div>
-
-        {/* ── CORE FEATURES ── */}
-
-        {/* 1. Safe Test Write */}
-        <SafeTestWritePanel />
-
-        {/* 2. Run Governed Vault Pack */}
-        <CoreVaultPackWorkflow />
-
-        {/* 3. Run Health Check */}
-        <DailyVaultHealthCheckPanel />
-
-        {/* 4. Storage Management */}
-
-        {/* API Mode Warning */}
-        <div className="border border-destructive/30 bg-destructive/5 rounded-sm p-3 flex items-start gap-2">
-          <WifiOff className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <div className="text-[8px] font-bold uppercase text-destructive tracking-wide">API MODE: {API_MODE_CONFIG.mode}</div>
-            <div className="text-[7px] font-mono text-slate-400">{API_MODE_CONFIG.disabledMessage}</div>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {API_MODE_CONFIG.disabledFeatures.map(f => (
-                <span key={f} className="px-2 py-0.5 text-[6px] font-mono font-bold uppercase bg-destructive/10 text-destructive/70 border border-destructive/20 rounded-sm line-through">{f}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Storage Management */}
-        <div className="border border-border/40 bg-card rounded-sm p-3 flex items-center justify-between gap-3 flex-wrap">
-          <div className="space-y-0.5">
-            <div className="text-[8px] font-bold uppercase text-slate-400 tracking-widest">Storage Management</div>
-            <div className="text-[7px] font-mono text-slate-500">Removes only non-approved, not-yet-written drafts. Approved drafts are preserved.</div>
-            {clearResult && (
-              <div className="text-[7px] font-mono text-primary mt-1">
-                ✓ Removed {clearResult.removed} draft(s) · {clearResult.kept} approved draft(s) kept
-              </div>
-            )}
-          </div>
           <button
             type="button"
             onClick={() => {
               const result = clearNonApprovedDrafts();
               setClearResult(result);
-              setTimeout(() => setClearResult(null), 4000);
+              setTimeout(() => setClearResult(null), 3000);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-bold uppercase tracking-widest border border-destructive/30 text-destructive/80 bg-destructive/5 hover:bg-destructive/10 rounded-sm transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-bold uppercase tracking-widest border border-destructive/30 text-destructive/80 bg-destructive/5 hover:bg-destructive/10 rounded-sm transition-colors"
           >
-            <Trash2 className="w-3 h-3" /> Clear Old Non-Approved Drafts
+            <Trash2 className="w-3 h-3" /> Clear Old Drafts
           </button>
+          {clearResult && (
+            <span className="text-[7px] font-mono text-primary self-center">✓ {clearResult.removed} removed, {clearResult.kept} kept</span>
+          )}
         </div>
 
-        {/* ── ADVANCED METADATA REPAIR ── */}
-        <div className="border border-border/40 rounded-sm overflow-hidden">
+        {/* ── ADVANCED MAINTENANCE ── */}
+        <div className="border border-destructive/30 bg-destructive/5 rounded-sm overflow-hidden mt-6">
           <button
             type="button"
             onClick={() => setShowAdvanced(v => !v)}
-            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-card hover:bg-secondary/20 transition-colors"
+            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-destructive/10 transition-colors"
           >
-            <span className="text-[8px] font-bold uppercase text-slate-400 tracking-widest">
-              Advanced Metadata Repair
+            <span className="text-[8px] font-bold uppercase text-destructive/80 tracking-widest">
+              ⚠ Advanced Maintenance — Do Not Use Unless Needed
             </span>
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 text-destructive/60 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
           </button>
           {showAdvanced && (
-            <div className="border-t border-border/30 p-4 space-y-4 bg-card/50">
-              <div className="text-[7px] font-mono text-slate-500">
-                Repair tools for index metadata consistency and orphan audit reconciliation. Hidden by default.
+            <div className="border-t border-destructive/20 p-4 space-y-4 bg-destructive/5">
+              <div className="text-[7px] font-mono text-destructive/70">
+                These tools are for advanced metadata repair and orphan audit reconciliation. Use only if normal workflow fails. All operations are read-only or metadata-only.
               </div>
 
-              {/* Repair and Reconciliation Panels */}
+              {/* Storage Reconciliation & Repair */}
               <StorageReconciliationPanel />
 
-              {/* Additional Generators */}
-              <div className="border-t border-border/20 pt-4 space-y-4">
-                <div className="text-[8px] font-bold uppercase text-slate-400 tracking-widest">Optional Draft Generators</div>
+              {/* Optional Generators for Advanced Users */}
+              <div className="border-t border-destructive/20 pt-4 space-y-4">
+                <div className="text-[8px] font-bold uppercase text-destructive/70 tracking-widest">Optional Generators</div>
                 <CoreVaultPackGenerator onBatchCreated={() => {}} />
                 <TemplateDraftGenerator onDraftCreated={() => {}} />
 
                 {/* Legacy Task Creation */}
-                <div className="border border-border/40 bg-card rounded-sm p-4 space-y-4">
-                  <div className="text-[9px] font-bold uppercase text-slate-400">Create Legacy Obsidian Task</div>
+                <div className="border border-destructive/20 bg-destructive/5 rounded-sm p-4 space-y-4">
+                  <div className="text-[9px] font-bold uppercase text-destructive/80">Create Custom Task</div>
                   <div className="space-y-2">
-                    <label className="text-[8px] font-bold uppercase text-slate-400">Vault Category</label>
+                    <label className="text-[8px] font-bold uppercase text-destructive/70">Category</label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {VAULT_CATEGORIES.map(cat => (
                         <button key={cat.id} type="button"
                           onClick={() => { setSelectedCategory(cat.id); setSelectedNoteType(null); }}
-                          className={`flex flex-col items-center gap-1 p-3 rounded-sm border transition-colors ${
-                            selectedCategory === cat.id ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border/30 bg-card hover:bg-secondary/20 text-slate-400'
+                          className={`flex flex-col items-center gap-1 p-2.5 rounded-sm border transition-colors text-[8px] ${
+                            selectedCategory === cat.id ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-border/30 bg-card hover:bg-secondary/20 text-slate-400'
                           }`}>
-                          <span className="text-lg">{cat.emoji}</span>
-                          <span className="text-[7px] font-mono text-center">{cat.label}</span>
+                          <span>{cat.emoji}</span>
+                          <span className="font-mono text-center">{cat.label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
                   {selectedCategory && (
                     <div className="space-y-2">
-                      <label className="text-[8px] font-bold uppercase text-slate-400">Note Type</label>
+                      <label className="text-[8px] font-bold uppercase text-destructive/70">Type</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {NOTE_TYPES[selectedCategory].map(nt => (
                           <button key={nt.type} type="button" onClick={() => setSelectedNoteType(nt.type)}
-                            className={`p-3 text-left rounded-sm border transition-colors ${
-                              selectedNoteType === nt.type ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border/30 bg-card hover:bg-secondary/20 text-slate-400'
+                            className={`p-2.5 text-left rounded-sm border transition-colors text-[8px] ${
+                              selectedNoteType === nt.type ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-border/30 bg-card hover:bg-secondary/20 text-slate-400'
                             }`}>
-                            <div className="text-[8px] font-bold">{nt.label}</div>
+                            {nt.label}
                           </button>
                         ))}
                       </div>
@@ -295,22 +329,22 @@ export default function ObsidianWorkbenchPreview() {
                   )}
                   {selectedNoteType && (
                     <div className="space-y-2">
-                      <label className="text-[8px] font-bold uppercase text-slate-400">Purpose / Title</label>
+                      <label className="text-[8px] font-bold uppercase text-destructive/70">Purpose</label>
                       <input type="text" value={purpose} onChange={(e) => setPurpose(e.target.value)}
-                        placeholder="e.g., Weekly Operations Review"
-                        className="w-full px-3 py-2 text-[9px] bg-card border border-border/30 rounded-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary/40"
+                        placeholder="Task title"
+                        className="w-full px-3 py-2 text-[8px] bg-card border border-border/30 rounded-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-destructive/40"
                       />
                     </div>
                   )}
                   {selectedCategory && selectedNoteType && purpose && (
                     <button type="button" onClick={handleCreateTask}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 rounded-sm font-bold text-[10px] uppercase tracking-widest transition-colors">
-                      <Plus className="w-4 h-4" /> Create Task
+                      className="w-full px-4 py-2 bg-destructive/20 border border-destructive/40 text-destructive/80 hover:bg-destructive/30 rounded-sm font-bold text-[9px] uppercase tracking-widest transition-colors">
+                      <Plus className="w-3 h-3 inline mr-1" /> Create
                     </button>
                   )}
                   {taskCreated && (
-                    <div className="bg-primary/10 border border-primary/30 rounded-sm p-2.5 text-[8px] font-mono text-primary">
-                      ✓ Task created and queued for approval
+                    <div className="bg-destructive/10 border border-destructive/30 rounded-sm p-2 text-[8px] font-mono text-destructive">
+                      ✓ Task created
                     </div>
                   )}
                 </div>
