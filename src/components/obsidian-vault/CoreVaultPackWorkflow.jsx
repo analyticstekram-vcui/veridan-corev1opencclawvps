@@ -152,13 +152,13 @@ async function executeWrites(toWrite) {
 // ── Component ────────────────────────────────────────────────────────────────
 export default function CoreVaultPackWorkflow() {
   const [runStatus, setRunStatus] = useState('idle'); // idle | running | done | error
-  const [runPhase, setRunPhase] = useState('');
+  const [currentPhase, setCurrentPhase] = useState(''); // Generating | Saving | Auto-Approving | Writing | Complete | Failed
   const [summary, setSummary] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   const reset = useCallback(() => {
     setRunStatus('idle');
-    setRunPhase('');
+    setCurrentPhase('');
     setSummary(null);
     setErrorMsg('');
   }, []);
@@ -166,7 +166,7 @@ export default function CoreVaultPackWorkflow() {
   // ── ONE-CLICK: Generate → Save to Backend → Auto-Approve → Write ──────────
   const handleRunGoverned = async () => {
     setRunStatus('running');
-    setRunPhase('Generating drafts…');
+    setCurrentPhase('Generating');
     setSummary(null);
     setErrorMsg('');
 
@@ -183,27 +183,37 @@ export default function CoreVaultPackWorkflow() {
 
       // ── Phase 2: Save to backend ─────────────────────────────────────────────
       console.log('[CVP Workflow] Phase 2: Saving to backend');
-      setRunPhase('Saving drafts to backend storage…');
+      setCurrentPhase('Saving');
       const saveResult = await saveDraftsToBackend(freshDrafts);
       if (!saveResult || typeof saveResult.saved !== 'number') {
         throw new Error('saveDraftsToBackend returned invalid result: ' + JSON.stringify(saveResult));
       }
       const savedCount = saveResult.saved;
       console.log(`[CVP Workflow] Saved ${savedCount} drafts to backend`);
+      
+      // VALIDATION: Stop if nothing saved
+      if (savedCount === 0) {
+        throw new Error('STOPPED: Generated drafts did not save to backend');
+      }
 
       // ── Phase 3: Auto-Approve (backend, CORE_VAULT_PACK source only) ─────────
       console.log('[CVP Workflow] Phase 3: Auto-approving');
-      setRunPhase('Auto-approving eligible drafts…');
+      setCurrentPhase('Auto-Approving');
       const approveResult = await autoApproveCVPDrafts(APPROVED_FOLDERS, ALLOWED_CVP_DRAFT_TYPES);
       if (!approveResult || typeof approveResult.approved !== 'number') {
         throw new Error('autoApproveCVPDrafts returned invalid result: ' + JSON.stringify(approveResult));
       }
       const autoApproved = approveResult.approved;
       console.log(`[CVP Workflow] Auto-approved ${autoApproved} drafts`);
+      
+      // VALIDATION: Stop if nothing approved
+      if (autoApproved === 0) {
+        throw new Error('STOPPED: Saved drafts were not approved');
+      }
 
       // ── Phase 4: Load eligible approved drafts from backend ──────────────────
       console.log('[CVP Workflow] Phase 4: Loading eligible drafts');
-      setRunPhase('Loading eligible drafts for write…');
+      setCurrentPhase('Writing');
       const toWrite = await loadEligibleForWrite(APPROVED_FOLDERS);
       if (!Array.isArray(toWrite)) {
         throw new Error('loadEligibleForWrite returned invalid result: ' + JSON.stringify(toWrite));
@@ -219,13 +229,17 @@ export default function CoreVaultPackWorkflow() {
 
       // ── Phase 5: Write ────────────────────────────────────────────────────────
       console.log(`[CVP Workflow] Phase 5: Writing ${cvpToWrite.length} drafts`);
-      setRunPhase(`Writing ${cvpToWrite.length} draft(s) to vault…`);
       const writeResult = await executeWrites(cvpToWrite);
       if (!writeResult || typeof writeResult.written !== 'number') {
         throw new Error('executeWrites returned invalid result: ' + JSON.stringify(writeResult));
       }
       const { written, failed } = writeResult;
       console.log(`[CVP Workflow] Written ${written} drafts, ${failed?.length || 0} failed`);
+      
+      // VALIDATION: Stop if nothing written
+      if (written === 0) {
+        throw new Error('STOPPED: Approved drafts were not written');
+      }
 
       const finalSummary = {
         generated,
@@ -241,14 +255,14 @@ export default function CoreVaultPackWorkflow() {
       
       console.log('[CVP Workflow] Workflow complete:', finalSummary);
       setSummary(finalSummary);
-      setRunPhase('');
+      setCurrentPhase('Complete');
       setRunStatus('done');
     } catch (err) {
       const errorMsg = err?.message || 'Unknown error';
       console.error('[CVP Workflow] Workflow failed:', errorMsg, err);
       setErrorMsg(errorMsg);
+      setCurrentPhase('Failed');
       setRunStatus('done');
-      setRunPhase('');
     }
   };
 
@@ -256,7 +270,7 @@ export default function CoreVaultPackWorkflow() {
   const handleRetryFailed = async () => {
     if (!summary?.failed?.length) return;
     setRunStatus('running');
-    setRunPhase('Retrying failed writes…');
+    setCurrentPhase('Writing');
 
     const failedFilenames = new Set(summary.failed.map(f => f.filename));
     const eligible = await loadEligibleForWrite(APPROVED_FOLDERS);
@@ -268,7 +282,7 @@ export default function CoreVaultPackWorkflow() {
       written: (prev.written || 0) + written,
       failed: failed || [],
     }));
-    setRunPhase('');
+    setCurrentPhase('Complete');
     setRunStatus('done');
   };
 
@@ -331,35 +345,44 @@ export default function CoreVaultPackWorkflow() {
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/25 border-2 border-primary/60 text-primary hover:bg-primary/35 disabled:opacity-50 disabled:cursor-not-allowed rounded-sm font-bold text-[11px] uppercase tracking-widest transition-colors"
         >
           {isRunning
-            ? <><Loader2 className="w-4 h-4 animate-spin" /> {runPhase || 'Running…'}</>
+            ? <><Loader2 className="w-4 h-4 animate-spin" /> {currentPhase}</>
             : <><Zap className="w-4 h-4" /> Run Governed Vault Pack</>}
         </button>
 
-        {/* Quick result line under button */}
+        {/* Live status phase + counts */}
+        {runStatus === 'running' && (
+          <div className="space-y-1.5">
+            <div className="text-[8px] font-bold text-primary text-center">
+              Phase: {currentPhase}
+            </div>
+          </div>
+        )}
+
         {runStatus === 'done' && (
-          <>
-            {summary && (
-              <div className="text-center space-y-1">
-                <div className="text-[8px] font-bold text-primary">
-                  ✅ Vault Pack Complete
-                </div>
-                <div className="text-[7px] font-mono text-slate-400">
-                  Generated: {summary.generated} · Saved: {summary.savedToBackend} · Approved: {summary.autoApproved} · Written: {summary.written}
-                  {summary.failed?.length > 0 && ` · Failed: ${summary.failed.length}`}
-                </div>
-              </div>
-            )}
+          <div className="space-y-2 text-center">
+            {/* Phase indicator */}
+            <div className={`text-[8px] font-bold ${currentPhase === 'Complete' ? 'text-primary' : 'text-destructive'}`}>
+              Phase: {currentPhase}
+            </div>
+
+            {/* Counts display */}
+            <div className="text-[7px] font-mono text-slate-400 space-y-0.5">
+              <div>Generated: <span className="text-slate-200">{summary?.generated || 0}</span></div>
+              <div>Saved: <span className="text-slate-200">{summary?.savedToBackend || 0}</span></div>
+              <div>Approved: <span className="text-slate-200">{summary?.autoApproved || 0}</span></div>
+              <div>Written: <span className="text-slate-200">{summary?.written || 0}</span></div>
+              {summary?.failed?.length > 0 && (
+                <div>Failed: <span className="text-destructive">{summary.failed.length}</span></div>
+              )}
+            </div>
+
+            {/* Error message if failed */}
             {errorMsg && (
-              <div className="text-center space-y-1">
-                <div className="text-[8px] font-bold text-destructive">
-                  ❌ Vault Pack Failed
-                </div>
-                <div className="text-[7px] font-mono text-destructive/80">
-                  {errorMsg}
-                </div>
+              <div className="text-[7px] font-mono text-destructive/90 bg-destructive/10 border border-destructive/30 rounded-sm px-2 py-1.5">
+                {errorMsg}
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* Result summary */}
