@@ -16,6 +16,7 @@ import CoreVaultPackWorkflow from '../components/obsidian-vault/CoreVaultPackWor
 import ObsidianBridgeHealthPanel from '../components/obsidian-vault/ObsidianBridgeHealthPanel';
 import ObsidianBridgeConnectorContract from '../components/obsidian-vault/ObsidianBridgeConnectorContract';
 import StorageStatusPanel from '../components/obsidian-vault/StorageStatusPanel';
+import SafeTestWritePanel from '../components/obsidian-vault/SafeTestWritePanel';
 import { API_MODE_CONFIG } from '../lib/apiMode';
 
 const VAULT_CATEGORIES = [
@@ -185,6 +186,9 @@ export default function ObsidianWorkbenchPreview() {
         {/* ── BRIDGE HEALTH CHECK ── */}
         <ObsidianBridgeHealthPanel />
         <ObsidianBridgeConnectorContract />
+
+        {/* ── SAFE TEST WRITE ── */}
+        <SafeTestWritePanel />
 
         {/* ── ONE-CLICK: Core Vault Pack Workflow ── */}
         <CoreVaultPackWorkflow />
