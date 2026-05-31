@@ -9,7 +9,8 @@ import React, { useState } from 'react';
 import { FlaskConical, CheckCircle2, XCircle, Loader2, Shield, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-const TEST_FOLDER = 'Veridan Core/System Tests';
+// Folder MUST be in APPROVED_FOLDERS allowlist on the backend
+const TEST_FOLDER = 'Veridan Core/Veridan Core System';
 const TEST_FILENAME = 'bridge-health-test.md';
 const TEST_FILE_PATH = `${TEST_FOLDER}/${TEST_FILENAME}`;
 
@@ -45,7 +46,7 @@ Bridge health test write completed successfully.
     category: 'system',
     targetFolder: TEST_FOLDER,
     content,
-    draftType: 'CVP_SYSTEM_OVERVIEW',
+    draftType: 'MANUAL_MARKDOWN',
     riskLevel: 'LOW',
     approvalStatus: 'APPROVED',
     approvalState: 'APPROVED_DRAFT',
@@ -75,7 +76,9 @@ export default function SafeTestWritePanel() {
     try {
       response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft });
     } catch (err) {
-      const reason = err?.response?.data?.error || err?.message || 'Backend error';
+      const d = err?.response?.data;
+      const errors = d?.errors?.length ? d.errors.join(' | ') : null;
+      const reason = errors || d?.error || err?.message || 'Backend error';
       setErrorMsg(reason);
       setPhase('error');
 
@@ -102,7 +105,9 @@ export default function SafeTestWritePanel() {
         localStorage.setItem('veridan_safe_test_writes', JSON.stringify(log));
       } catch { /* quota */ }
     } else {
-      const reason = response?.data?.error || 'Write returned failure';
+      const d = response?.data;
+      const errors = d?.errors?.length ? d.errors.join(' | ') : null;
+      const reason = errors || d?.message || d?.error || 'Write returned failure';
       setErrorMsg(reason);
       setPhase('error');
 
@@ -206,7 +211,7 @@ export default function SafeTestWritePanel() {
             <div className="flex items-center gap-2 text-[9px] font-bold text-destructive">
               <XCircle className="w-3.5 h-3.5" /> WRITE_FAILED
             </div>
-            <div className="text-[7px] font-mono text-destructive/70">{errorMsg}</div>
+            <div className="text-[7px] font-mono text-destructive/70 whitespace-pre-wrap break-all">{errorMsg}</div>
             <button type="button" onClick={reset} className="text-[7px] font-mono text-slate-500 hover:text-slate-300 underline mt-1">
               Reset
             </button>
