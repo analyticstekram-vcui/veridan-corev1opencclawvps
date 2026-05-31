@@ -30,6 +30,7 @@ import {
   markDraftWritten,
   saveAuditToBackend,
 } from '@/lib/obsidianDraftStore';
+import StorageReconciliationPanel from './StorageReconciliationPanel';
 import { buildDrafts } from './cvpTemplates';
 
 const APPROVED_FOLDERS = [
@@ -205,6 +206,9 @@ export default function CoreVaultPackWorkflow() {
       written,
       alreadyWritten: alreadyWrittenCount,
       failed: failed || [],
+      writtenFilenames: cvpToWrite
+        .filter((_, i) => !failed?.find(f => f.filename === cvpToWrite[i]?.filename))
+        .map(d => d.filename),
     });
     setRunPhase('');
     setRunStatus('done');
@@ -349,6 +353,11 @@ export default function CoreVaultPackWorkflow() {
               Reset workflow
             </button>
           </div>
+        )}
+
+        {/* Storage Reconciliation — shown after workflow completes */}
+        {runStatus === 'done' && summary && (
+          <StorageReconciliationPanel workflowSummary={summary} />
         )}
 
         {errorMsg && (
