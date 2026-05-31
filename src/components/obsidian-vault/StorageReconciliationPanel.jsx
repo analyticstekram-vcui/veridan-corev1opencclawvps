@@ -23,6 +23,7 @@ import {
   AlertCircle, Shield, Info,
 } from 'lucide-react';
 import { loadDraftsFromBackend, loadAuditsFromBackend, repairIndexMetadata, reconcileOrphanAudits } from '@/lib/obsidianDraftStore';
+import OrphanManualLinkPanel from './OrphanManualLinkPanel';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -319,6 +320,7 @@ function OrphanSkipDebugTable({ log }) {
 
 export default function StorageReconciliationPanel({ workflowSummary, className = '' }) {
   const [result, setResult] = useState(null);
+  const [allDrafts, setAllDrafts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showVerification, setShowVerification] = useState(false);
@@ -359,6 +361,7 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
         loadDraftsFromBackend(500),
         loadAuditsFromBackend(500),
       ]);
+      setAllDrafts(drafts);
       setResult(reconcile(drafts, audits, workflowSummary));
     } catch (e) {
       setError(e?.message || 'Backend read failed during reconciliation');
@@ -403,11 +406,11 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
     try {
       const r = await repairIndexMetadata();
       setRepairResult(r);
-      // Re-run reconciliation so counts update
       const [drafts, audits] = await Promise.all([
         loadDraftsFromBackend(500),
         loadAuditsFromBackend(500),
       ]);
+      setAllDrafts(drafts);
       setResult(reconcile(drafts, audits, workflowSummary));
     } catch (e) {
       setRepairError(e?.message || 'Repair failed');
@@ -452,11 +455,11 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
     try {
       const r = await reconcileOrphanAudits();
       setOrphanResult(r);
-      // Re-run reconciliation so orphan count updates
       const [drafts, audits] = await Promise.all([
         loadDraftsFromBackend(500),
         loadAuditsFromBackend(500),
       ]);
+      setAllDrafts(drafts);
       setResult(reconcile(drafts, audits, workflowSummary));
     } catch (e) {
       setOrphanError(e?.message || 'Orphan reconciliation failed');
@@ -771,6 +774,15 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
 
                     {/* Skipped debug section — expanded diagnostic table */}
                     {orphanResult.skipped > 0 && <OrphanSkipDebugTable log={orphanResult.log} />}
+
+                    {/* Manual link fallback for skipped orphans */}
+                    {orphanResult.skipped > 0 && allDrafts.length > 0 && (
+                      <OrphanManualLinkPanel
+                        log={orphanResult.log}
+                        drafts={allDrafts}
+                        onAnyLinked={runReconciliation}
+                      />
+                    )}
 
                     {/* Orphan repair log */}
                     <RepairLogTable log={orphanResult.log.filter(r => r.status !== 'NO_MATCH')} />
