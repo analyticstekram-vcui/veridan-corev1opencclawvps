@@ -189,11 +189,20 @@ export default function CoreVaultPackWorkflow() {
         throw new Error('saveDraftsToBackend returned invalid result: ' + JSON.stringify(saveResult));
       }
       const savedCount = saveResult.saved;
-      console.log(`[CVP Workflow] Saved ${savedCount} drafts to backend`);
+      const saveErrors = saveResult.failed || [];
+      console.log(`[CVP Workflow] Saved ${savedCount}/${generated} drafts to backend`, saveResult);
+      
+      // Log any save failures for debugging
+      if (saveErrors.length > 0) {
+        console.error('[CVP Workflow] Save failures:', saveErrors);
+      }
       
       // VALIDATION: Stop if nothing saved
       if (savedCount === 0) {
-        throw new Error('STOPPED: Generated drafts did not save to backend');
+        const errorDetail = saveErrors.length > 0
+          ? `All saves failed: ${saveErrors[0]?.reason || 'unknown error'}`
+          : 'No drafts were saved to backend';
+        throw new Error(`STOPPED: Generated drafts did not save to backend — ${errorDetail}`);
       }
 
       // ── Phase 3: Auto-Approve (backend, CORE_VAULT_PACK source only) ─────────

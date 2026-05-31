@@ -20,9 +20,10 @@ import { base44 } from '@/api/base44Client';
 /**
  * Save a batch of drafts to the backend entity store.
  * Upserts by (filename + targetFolder + draftType) — no duplicates.
+ * Returns { saved, skipped, failed, createdDrafts }
  */
 export async function saveDraftsToBackend(drafts) {
-  const results = { saved: 0, skipped: 0, failed: [] };
+  const results = { saved: 0, skipped: 0, failed: [], createdDrafts: [] };
 
   // Load existing to detect duplicates
   let existing = [];
@@ -60,6 +61,7 @@ export async function saveDraftsToBackend(drafts) {
             content: draft.content,
           });
           results.saved++;
+          results.createdDrafts.push({ backendId: match.id, draftId: draft.id });
         } catch (e) {
           results.failed.push({ filename: draft.filename, reason: e.message });
         }
@@ -70,7 +72,7 @@ export async function saveDraftsToBackend(drafts) {
     }
 
     try {
-      await base44.entities.VeridanObsidianDraft.create({
+      const response = await base44.entities.VeridanObsidianDraft.create({
         draftId: draft.id,
         source: draft.source,
         title: draft.title || draft.filename,
@@ -90,6 +92,8 @@ export async function saveDraftsToBackend(drafts) {
         apiMode: draft.apiMode || 'NO_API_LOCAL_ONLY',
       });
       results.saved++;
+      // Store mapping of backend ID (auto-generated) to the local draftId for later reference
+      results.createdDrafts.push({ backendId: response.id || response.data?.id, draftId: draft.id });
       existingKeys.add(key);
     } catch (e) {
       results.failed.push({ filename: draft.filename, reason: e.message });
