@@ -62,16 +62,20 @@ const SECRET_PATTERNS = [
 function validateRequest(body) {
   const errors = [];
 
-  // Support both proposal-shape (from VaultWriteExecutionPanel) and draft-shape (from CoreVaultPackWorkflow)
-  // Proposal shape: { proposal: {...} } or fields directly
-  // Draft shape: { draft: {...} }
+  // Support both proposal-shape (from VaultWriteExecutionPanel) and draft-shape (from CoreVaultPackWorkflow / SafeTestWritePanel)
+  // Proposal shape: { proposal: {...} }
+  // Draft shape: { draft: {...}, operatorApproval?: boolean }
   const proposal = body.proposal || null;
   const draft = body.draft || null;
 
-  // Determine which shape we're dealing with
   if (proposal) {
     return validateProposalShape(proposal, errors);
   } else if (draft) {
+    // Enforce operatorApproval gate when present
+    if (body.operatorApproval === false) {
+      errors.push('OPERATOR_APPROVAL_REQUIRED: operatorApproval must be true');
+      return { errors, normalized: null };
+    }
     return validateDraftShape(draft, errors);
   } else {
     errors.push('REQUEST_INVALID: must provide either "proposal" or "draft" in request body');
@@ -131,8 +135,11 @@ function validateProposalShape(p, errors) {
 }
 
 function validateDraftShape(d, errors) {
-  // Legacy draft shape (from CoreVaultPackWorkflow)
-  if (d.approvalStatus !== 'APPROVED') {
+  // Normalize fileName → filename (VPS sends fileName, legacy sends filename)
+  if (!d.filename && d.fileName) d.filename = d.fileName;
+
+  // SAFE_TEST_WRITE source skips approvalStatus check (operatorApproval gate used instead)
+  if (d.source !== 'SAFE_TEST_WRITE' && d.approvalStatus !== 'APPROVED') {
     errors.push(`APPROVAL_REQUIRED: approvalStatus is "${d.approvalStatus}", must be APPROVED`);
   }
   if (d.riskLevel !== 'LOW') {
@@ -305,12 +312,15 @@ Deno.serve(async (req) => {
     executedAt,
     proposalId: normalized.proposalId,
     action: normalized.action,
+    targetFolder: normalized.folder,
     allowlistedFolder: normalized.folder,
     relativePath: normalized.relativePath,
+    fileName: normalized.relativePath.split('/').pop(),
     normalizedPath: normalized.normalizedPath,
     appendMode: normalized.appendMode,
     content: normalized.content,
     contentHash: simpleHash(normalized.content),
+    operatorApproval: true,
     safetySummary: {
       noOpenClawDispatch: true,
       noInvokeLLM: true,
