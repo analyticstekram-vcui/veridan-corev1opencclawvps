@@ -329,18 +329,25 @@ Deno.serve(async (req) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
+    const bridgeToken = (Deno.env.get('VERIDAN_BRIDGE_TOKEN') || '').trim();
+
     const bridgeRes = await fetch(`${bridgeUrl}/vault/write-approved`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(bridgeToken ? { 'Authorization': `Bearer ${bridgeToken}` } : {}),
+      },
       body: JSON.stringify(bridgePayload),
       signal: controller.signal,
     });
     clearTimeout(timeout);
 
+    const rawBody = await bridgeRes.text();
+    let bridgeData;
+    try { bridgeData = JSON.parse(rawBody); } catch { bridgeData = { raw: rawBody }; }
+
     if (bridgeRes.ok) {
-      let bridgeData;
-      try { bridgeData = await bridgeRes.json(); } catch { bridgeData = { raw: await bridgeRes.text() }; }
-      bridgeSuccess = bridgeData?.success !== false; // treat as success unless explicitly false
+      bridgeSuccess = bridgeData?.success !== false;
       bridgeResponseSummary = {
         httpStatus: bridgeRes.status,
         bridgeSuccess,
@@ -348,8 +355,13 @@ Deno.serve(async (req) => {
         filePath: bridgeData?.filePath || normalized.normalizedPath,
       };
     } else {
-      bridgeError = `Bridge returned HTTP ${bridgeRes.status}`;
-      bridgeResponseSummary = { httpStatus: bridgeRes.status, bridgeSuccess: false, message: bridgeError };
+      bridgeError = `Bridge returned HTTP ${bridgeRes.status}: ${bridgeData?.error || bridgeData?.message || rawBody.slice(0, 300)}`;
+      bridgeResponseSummary = {
+        httpStatus: bridgeRes.status,
+        bridgeSuccess: false,
+        message: bridgeError,
+        upstreamBody: bridgeData,
+      };
     }
   } catch (e) {
     if (e.name === 'AbortError') {
