@@ -29,28 +29,33 @@ export async function saveDraftsToBackend(drafts) {
     return results;
   }
 
-  // Load existing to detect duplicates
+  // For CORE_VAULT_PACK, always create fresh (don't check for duplicates)
+  // For other sources, check for duplicates to avoid re-saving
+  const isCVP = drafts.length > 0 && drafts[0]?.source === 'CORE_VAULT_PACK';
+  
   let existing = [];
-  try {
-    existing = await base44.entities.VeridanObsidianDraft.list('-created_date', 100);
-  } catch { /* proceed with empty */ }
-
-  const existingKeys = new Set(
-    existing.map(d => `${d.filename}||${d.targetFolder}||${d.draftType}`)
-  );
+  let existingKeys = new Set();
+  
+  if (!isCVP) {
+    try {
+      existing = await base44.entities.VeridanObsidianDraft.list('-created_date', 100);
+      existingKeys = new Set(
+        existing.map(d => `${d.filename}||${d.targetFolder}||${d.draftType}`)
+      );
+    } catch { /* proceed with empty */ }
+  }
 
   for (const draft of drafts) {
     const key = `${draft.filename}||${draft.targetFolder}||${draft.draftType}`;
     
-    if (existingKeys.has(key)) {
-      // Update existing record's approval/write state instead of duplicating
+    // Check duplicates only for non-CVP sources
+    if (!isCVP && existingKeys.has(key)) {
       const match = existing.find(d =>
         d.filename === draft.filename &&
         d.targetFolder === draft.targetFolder &&
         d.draftType === draft.draftType
       );
       if (match && (match.approvalStatus === 'PENDING_REVIEW' || !match.approvalStatus)) {
-        // Re-save as fresh pending draft (reset state for regeneration)
         try {
           await base44.entities.VeridanObsidianDraft.update(match.id, {
             approvalStatus: 'PENDING_REVIEW',
@@ -97,12 +102,10 @@ export async function saveDraftsToBackend(drafts) {
         apiMode: draft.apiMode || 'NO_API_LOCAL_ONLY',
       });
       
-      // Base44 SDK .create() returns the created object with 'id' field
-      // Count as saved regardless; track the backend ID for subsequent operations
       const backendId = created?.id;
       results.saved++;
       results.createdDrafts.push({ backendId: backendId || draft.id, draftId: draft.id });
-      existingKeys.add(key);
+      if (!isCVP) existingKeys.add(key);
     } catch (e) {
       const errorMsg = e?.response?.data?.error || e?.message || 'Unknown error';
       results.failed.push({ filename: draft.filename, reason: errorMsg });
