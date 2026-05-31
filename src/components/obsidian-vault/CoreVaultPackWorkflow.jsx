@@ -31,6 +31,7 @@ import {
   saveAuditToBackend,
 } from '@/lib/obsidianDraftStore';
 import StorageReconciliationPanel from './StorageReconciliationPanel';
+import ObsidianBridgeHealthPanel from './ObsidianBridgeHealthPanel';
 import DailyVaultHealthCheckPanel from '../vault-index/DailyVaultHealthCheckPanel';
 import VaultWriteBridgeDryRunPanel from '../vault-write/VaultWriteBridgeDryRunPanel';
 import VaultWriteExecutionPanel from '../vault-write/VaultWriteExecutionPanel';
@@ -366,6 +367,11 @@ export default function CoreVaultPackWorkflow() {
         {/* Daily Vault Health Check — shown after workflow completes */}
         {runStatus === 'done' && summary && (
           <DailyVaultHealthCheckPanel />
+        )}
+
+        {/* Bridge Health — shown after workflow completes, before dry-run */}
+        {runStatus === 'done' && summary && (
+          <ObsidianBridgeHealthPanel />
         )}
 
         {/* Vault Write Bridge — shown after workflow completes */}

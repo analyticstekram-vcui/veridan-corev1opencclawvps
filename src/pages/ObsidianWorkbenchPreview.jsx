@@ -13,6 +13,7 @@ import ManualDraftForm from '../components/obsidian-vault/ManualDraftForm';
 import TemplateDraftGenerator from '../components/obsidian-vault/TemplateDraftGenerator';
 import CoreVaultPackGenerator from '../components/obsidian-vault/CoreVaultPackGenerator';
 import CoreVaultPackWorkflow from '../components/obsidian-vault/CoreVaultPackWorkflow';
+import ObsidianBridgeHealthPanel from '../components/obsidian-vault/ObsidianBridgeHealthPanel';
 import StorageStatusPanel from '../components/obsidian-vault/StorageStatusPanel';
 import { API_MODE_CONFIG } from '../lib/apiMode';
 
@@ -179,6 +180,9 @@ export default function ObsidianWorkbenchPreview() {
             <FolderOpen className="w-3 h-3" /> View Written Files
           </Link>
         </div>
+
+        {/* ── BRIDGE HEALTH CHECK ── */}
+        <ObsidianBridgeHealthPanel />
 
         {/* ── ONE-CLICK: Core Vault Pack Workflow ── */}
         <CoreVaultPackWorkflow />
