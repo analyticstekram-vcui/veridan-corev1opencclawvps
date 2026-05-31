@@ -32,6 +32,8 @@ import {
 } from '@/lib/obsidianDraftStore';
 import StorageReconciliationPanel from './StorageReconciliationPanel';
 import DailyVaultHealthCheckPanel from '../vault-index/DailyVaultHealthCheckPanel';
+import VaultWriteBridgeDryRunPanel from '../vault-write/VaultWriteBridgeDryRunPanel';
+import VaultWriteExecutionPanel from '../vault-write/VaultWriteExecutionPanel';
 import { buildDrafts } from './cvpTemplates';
 
 const APPROVED_FOLDERS = [
@@ -364,6 +366,14 @@ export default function CoreVaultPackWorkflow() {
         {/* Daily Vault Health Check — shown after workflow completes */}
         {runStatus === 'done' && summary && (
           <DailyVaultHealthCheckPanel />
+        )}
+
+        {/* Vault Write Bridge — shown after workflow completes */}
+        {runStatus === 'done' && summary && (
+          <VaultWriteBridgeDryRunPanel />
+        )}
+        {runStatus === 'done' && summary && (
+          <VaultWriteExecutionPanel />
         )}
 
         {errorMsg && (

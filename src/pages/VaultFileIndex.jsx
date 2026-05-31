@@ -17,6 +17,8 @@ import { loadAuditsFromBackend, loadDraftsFromBackend } from '@/lib/obsidianDraf
 import StorageStatusPanel from '../components/obsidian-vault/StorageStatusPanel';
 import StorageReconciliationPanel from '../components/obsidian-vault/StorageReconciliationPanel';
 import DailyVaultHealthCheckPanel from '../components/vault-index/DailyVaultHealthCheckPanel';
+import VaultWriteBridgeDryRunPanel from '../components/vault-write/VaultWriteBridgeDryRunPanel';
+import VaultWriteExecutionPanel from '../components/vault-write/VaultWriteExecutionPanel';
 
 function buildFileRecords(audits, drafts) {
   const draftMap = {};
@@ -204,6 +206,10 @@ export default function VaultFileIndex() {
 
         {/* Daily Vault Health Check */}
         <DailyVaultHealthCheckPanel />
+
+        {/* Vault Write Bridge — Dry Run + Execution */}
+        <VaultWriteBridgeDryRunPanel />
+        <VaultWriteExecutionPanel />
 
         {/* Summary cards */}
         <VaultIndexSummaryCards
