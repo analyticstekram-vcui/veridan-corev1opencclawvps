@@ -9,6 +9,7 @@ import ManualReadOnlyMonitoringConsole from '../components/openclaw/ManualReadOn
 import OpenClawGatewayStatusPanel from '../components/openclaw/OpenClawGatewayStatusPanel';
 import OpenClawGatewayConnectorContract from '../components/openclaw/OpenClawGatewayConnectorContract';
 import OpenClawReadOnlyEvidenceSnapshot from '../components/openclaw/OpenClawReadOnlyEvidenceSnapshot';
+import OpenClawMonitoringRunbook from '../components/openclaw/OpenClawMonitoringRunbook';
 import { Shield } from 'lucide-react';
 
 export default function OpenClawMonitoring() {
@@ -39,6 +40,7 @@ export default function OpenClawMonitoring() {
         <OpenClawGatewayStatusPanel />
         <OpenClawGatewayConnectorContract />
         <OpenClawReadOnlyEvidenceSnapshot />
+        <OpenClawMonitoringRunbook />
         <ManualReadOnlyMonitoringConsole />
       </main>
     </div>
