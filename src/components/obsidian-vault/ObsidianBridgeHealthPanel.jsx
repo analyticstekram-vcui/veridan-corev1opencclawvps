@@ -110,7 +110,7 @@ export default function ObsidianBridgeHealthPanel() {
       setLastChecked(d.checkedAt || new Date().toISOString());
     } catch (e) {
       const msg = e?.response?.data?.error || e?.message || '';
-      const isNotConnected = msg.includes('BRIDGE_NOT_CONNECTED') || msg.includes('not configured') || msg.includes('VERIDAN_BRIDGE_URL');
+      const isNotConnected = msg.includes('BRIDGE_NOT_CONNECTED') || msg.includes('not configured') || msg.includes('VERIDAN_OBSIDIAN_BRIDGE_URL') || msg.includes('VERIDAN_BRIDGE_URL');
       const isCors = msg.includes('CORS') || msg.includes('Access') || msg.includes('blocked');
       setErrorCode(isCors ? 'CORS_OR_ACCESS_BLOCKED' : isNotConnected ? 'BRIDGE_NOT_CONNECTED' : 'HEALTH_UNKNOWN');
       setLoadState('error');
@@ -188,9 +188,9 @@ export default function ObsidianBridgeHealthPanel() {
               }`}>{errorCode}</div>
               <div className="text-[7px] text-slate-500">
                 {errorCode === 'BRIDGE_NOT_CONNECTED'
-                  ? 'VERIDAN_BRIDGE_URL is not configured or bridge is unreachable. Fails closed. No request dispatched.'
+                  ? 'VERIDAN_OBSIDIAN_BRIDGE_URL is not configured or bridge is unreachable. Fails closed. No request dispatched.'
                   : errorCode === 'CORS_OR_ACCESS_BLOCKED'
-                    ? 'Bridge access blocked — check VERIDAN_BRIDGE_TOKEN and bridge service auth config.'
+                    ? 'Bridge access blocked — check VERIDAN_BRIDGE_TOKEN and VERIDAN_OBSIDIAN_BRIDGE_URL config.'
                     : 'Bridge health check returned an unexpected result. No vault write attempted.'}
               </div>
             </div>

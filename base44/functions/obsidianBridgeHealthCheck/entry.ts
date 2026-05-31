@@ -43,7 +43,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const bridgeUrl = Deno.env.get('VERIDAN_BRIDGE_URL') || '';
+    // Primary secret: VERIDAN_OBSIDIAN_BRIDGE_URL
+    // Legacy fallback: VERIDAN_BRIDGE_URL (labeled — will be removed once primary is configured)
+    const bridgeUrl = Deno.env.get('VERIDAN_OBSIDIAN_BRIDGE_URL') || Deno.env.get('VERIDAN_BRIDGE_URL') || '';
     const bridgeToken = Deno.env.get('VERIDAN_BRIDGE_TOKEN') || '';
 
     if (!bridgeUrl) {
@@ -51,7 +53,7 @@ Deno.serve(async (req) => {
         status: 'BRIDGE_NOT_CONNECTED',
         bridgeLive: false,
         health: 'NOT_CONFIGURED',
-        message: 'VERIDAN_BRIDGE_URL is not set. Bridge URL must be configured in app secrets.',
+        message: 'VERIDAN_OBSIDIAN_BRIDGE_URL is not set. Bridge URL must be configured in app secrets. Legacy fallback VERIDAN_BRIDGE_URL also absent.',
         checkedAt: new Date().toISOString(),
         vaultWrite: 'DISABLED',
         openclawDispatch: 'DISABLED',
@@ -104,7 +106,7 @@ Deno.serve(async (req) => {
         status: 'CORS_OR_ACCESS_BLOCKED',
         bridgeLive: false,
         health: 'CORS_OR_ACCESS_BLOCKED',
-        message: 'Bridge access blocked — check VERIDAN_BRIDGE_TOKEN and bridge auth config.',
+        message: 'Bridge access blocked — check VERIDAN_BRIDGE_TOKEN and VERIDAN_OBSIDIAN_BRIDGE_URL config.',
         checkedAt,
         latencyMs,
         vaultWrite: 'DISABLED',

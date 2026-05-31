@@ -10,11 +10,13 @@ import {
   FileText, AlertTriangle,
 } from 'lucide-react';
 
-const BRIDGE_SECRET_NAME = 'VERIDAN_BRIDGE_URL';
+const BRIDGE_SECRET_NAME = 'VERIDAN_OBSIDIAN_BRIDGE_URL';
+const BRIDGE_SECRET_LEGACY_FALLBACK = 'VERIDAN_BRIDGE_URL'; // legacy fallback only — will be removed once primary is configured
 const BRIDGE_TOKEN_SECRET = 'VERIDAN_BRIDGE_TOKEN';
 
 const CONTRACT = {
   bridgeUrlSecretName:            BRIDGE_SECRET_NAME,
+  bridgeUrlLegacyFallback:        `${BRIDGE_SECRET_LEGACY_FALLBACK} (LEGACY FALLBACK — set primary to remove)`,
   bridgeTokenSecretName:          BRIDGE_TOKEN_SECRET,
   requestMode:                    'MANUAL_ONLY',
   healthCheckMode:                'READ_ONLY',
@@ -67,7 +69,7 @@ const VERIFICATION_CHECKS = [
   'Browser automation is blocked (/browser)',
   'Trading is blocked (/trade)',
   'Credentials are blocked (/credentials)',
-  'Secret name VERIDAN_BRIDGE_URL is consistent across health and write connector',
+  'Secret VERIDAN_OBSIDIAN_BRIDGE_URL (primary) is consistent across health and write connector — legacy fallback VERIDAN_BRIDGE_URL labeled',
   'Missing bridge URL fails closed — no request dispatched',
 ];
 
@@ -122,6 +124,7 @@ export default function ObsidianBridgeConnectorContract() {
         <div className="border border-border/30 bg-background/50 rounded-sm p-3 space-y-0.5">
           <div className="text-[6px] font-bold uppercase tracking-widest text-slate-600 mb-2">Contract Fields</div>
           <ContractRow label="bridgeUrlSecretName"       value={CONTRACT.bridgeUrlSecretName}       valueClass="text-accent/80" />
+          <ContractRow label="bridgeUrlLegacyFallback"  value={CONTRACT.bridgeUrlLegacyFallback}   valueClass="text-slate-600" />
           <ContractRow label="bridgeTokenSecretName"     value={CONTRACT.bridgeTokenSecretName}     valueClass="text-accent/80" />
           <ContractRow label="requestMode"               value={CONTRACT.requestMode}               valueClass="text-primary" />
           <ContractRow label="healthCheckMode"           value={CONTRACT.healthCheckMode}           valueClass="text-primary" />
@@ -195,7 +198,7 @@ export default function ObsidianBridgeConnectorContract() {
         {/* Footer */}
         <div className="text-[6px] font-mono text-slate-600 space-y-0.5 border-t border-border/20 pt-2">
           <div>contractType: READ_ONLY_DISPLAY · vaultWrite: GOVERNED_ONLY · mutation: NONE_IN_THIS_PANEL</div>
-          <div>secretConsistency: VERIDAN_BRIDGE_URL used by health + write connector · failClosed: TRUE</div>
+          <div>secretConsistency: VERIDAN_OBSIDIAN_BRIDGE_URL (primary) · VERIDAN_BRIDGE_URL (legacy fallback) · failClosed: TRUE</div>
         </div>
 
       </div>
