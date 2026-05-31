@@ -175,18 +175,30 @@ export default function CoreVaultPackWorkflow() {
       const now = new Date().toISOString();
       const freshDrafts = buildDrafts(now);
       const generated = freshDrafts.length;
+      if (generated === 0) throw new Error('No drafts generated');
 
       // ── Phase 2: Save to backend ─────────────────────────────────────────────
       setRunPhase('Saving drafts to backend storage…');
       const saveResult = await saveDraftsToBackend(freshDrafts);
+      if (!saveResult || typeof saveResult.saved !== 'number') {
+        throw new Error('saveDraftsToBackend returned invalid result');
+      }
+      const savedCount = saveResult.saved;
 
       // ── Phase 3: Auto-Approve (backend, CORE_VAULT_PACK source only) ─────────
       setRunPhase('Auto-approving eligible drafts…');
-      const { approved: autoApproved } = await autoApproveCVPDrafts(APPROVED_FOLDERS, ALLOWED_CVP_DRAFT_TYPES);
+      const approveResult = await autoApproveCVPDrafts(APPROVED_FOLDERS, ALLOWED_CVP_DRAFT_TYPES);
+      if (!approveResult || typeof approveResult.approved !== 'number') {
+        throw new Error('autoApproveCVPDrafts returned invalid result');
+      }
+      const autoApproved = approveResult.approved;
 
       // ── Phase 4: Load eligible approved drafts from backend ──────────────────
       setRunPhase('Loading eligible drafts for write…');
       const toWrite = await loadEligibleForWrite(APPROVED_FOLDERS);
+      if (!Array.isArray(toWrite)) {
+        throw new Error('loadEligibleForWrite returned invalid result');
+      }
       const cvpToWrite = toWrite.filter(d => d.source === 'CORE_VAULT_PACK');
 
       // Count already-written CVP drafts (have filePath set, filesystemWrite = COMPLETED)
@@ -197,11 +209,15 @@ export default function CoreVaultPackWorkflow() {
 
       // ── Phase 5: Write ────────────────────────────────────────────────────────
       setRunPhase(`Writing ${cvpToWrite.length} draft(s) to vault…`);
-      const { written, failed } = await executeWrites(cvpToWrite);
+      const writeResult = await executeWrites(cvpToWrite);
+      if (!writeResult || typeof writeResult.written !== 'number') {
+        throw new Error('executeWrites returned invalid result');
+      }
+      const { written, failed } = writeResult;
 
       setSummary({
         generated,
-        savedToBackend: saveResult.saved,
+        savedToBackend: savedCount,
         autoApproved,
         written,
         alreadyWritten: alreadyWrittenCount,
@@ -302,6 +318,18 @@ export default function CoreVaultPackWorkflow() {
             : <><Zap className="w-4 h-4" /> Run Governed Vault Pack</>}
         </button>
 
+        {/* Quick result line under button */}
+        {runStatus === 'done' && summary && (
+          <div className="text-[8px] font-bold text-primary text-center">
+            ✅ Vault Pack Complete — Generated: {summary.generated} · Saved: {summary.savedToBackend} · Approved: {summary.autoApproved} · Written: {summary.written}
+          </div>
+        )}
+        {errorMsg && (
+          <div className="text-[8px] font-bold text-destructive text-center">
+            ❌ Vault Pack Failed — {errorMsg}
+          </div>
+        )}
+
         {/* Result summary */}
         {runStatus === 'done' && summary && (
           <div className="border border-primary/30 bg-primary/5 rounded-sm p-4 space-y-3">
@@ -363,12 +391,6 @@ export default function CoreVaultPackWorkflow() {
               className="text-[7px] font-mono text-slate-500 hover:text-slate-300 underline">
               Reset workflow
             </button>
-          </div>
-        )}
-
-        {errorMsg && (
-          <div className="flex items-center gap-2 text-[8px] font-mono text-destructive bg-destructive/10 border border-destructive/30 rounded-sm px-3 py-2">
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errorMsg}
           </div>
         )}
       </div>
