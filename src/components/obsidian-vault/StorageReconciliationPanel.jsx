@@ -1,100 +1,147 @@
 /**
  * StorageReconciliationPanel
- * Read-only cross-reference of VeridanObsidianDraft, VeridanObsidianWriteAudit,
- * and the indexed written-file list.
+ * Read-only cross-reference of VeridanObsidianDraft + VeridanObsidianWriteAudit.
+ * Includes "Reconcile Now" (read-only re-check) and "Repair Index Metadata"
+ * (safe backend metadata patch — never writes vault files, never calls OpenClaw).
  *
  * Safety guarantees:
- * - NO deletions or mutations of any kind
- * - NO OpenClaw dispatch · NO browser automation · NO credentials · NO InvokeLLM
- * - Backend entities read-only
- * - localStorage read-only (no writes)
- * - executionStatus / dispatchStatus / openclawCall never touched
- *
- * Accepts optional `workflowSummary` prop (from CoreVaultPackWorkflow) to show
- * last-run written filenames for reconciliation against audit records.
+ * - "Reconcile Now" → state update only, no backend writes
+ * - "Repair Index Metadata" → metadata fields only (filePath, writtenAt, filesystemWrite,
+ *   approvalStatus/riskLevel when proven by a successful audit), nothing else
+ * - NO vault file writes · NO obsidianWriteApprovedDraft · NO OpenClaw dispatch
+ * - NO browser automation · NO credentials · NO InvokeLLM
+ * - Audit records NEVER deleted or modified
+ * - Draft content / filename / targetFolder NEVER modified
+ * - MEDIUM/HIGH risk drafts BLOCKED from repair
+ * - executionStatus / dispatchStatus / openclawCall NEVER touched
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   GitCompare, RefreshCw, CheckCircle2, AlertTriangle, XCircle,
-  ChevronDown, ChevronRight, ShieldCheck,
+  ChevronDown, ChevronRight, ShieldCheck, Wrench, Clock,
+  AlertCircle, Shield, Info,
 } from 'lucide-react';
-import { loadDraftsFromBackend, loadAuditsFromBackend } from '@/lib/obsidianDraftStore';
+import { loadDraftsFromBackend, loadAuditsFromBackend, repairIndexMetadata } from '@/lib/obsidianDraftStore';
 
-// ── Reconciliation logic ─────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const CONFIRM_TTL_MS = 15000;
+
+const REPAIR_VERIFICATIONS = [
+  'No vault files written',
+  'obsidianWriteApprovedDraft NOT called',
+  'No OpenClaw dispatch',
+  'No browser automation',
+  'No credentials accessed or stored',
+  'Backend metadata fields only (filePath, writtenAt, filesystemWrite, approvalStatus, riskLevel)',
+  'Audit records fully preserved — never deleted or modified',
+  'Draft content, filename, targetFolder never modified',
+  'Pending unproven drafts NOT auto-approved',
+  'MEDIUM and HIGH risk drafts BLOCKED from repair',
+  'executionStatus / dispatchStatus / openclawCall never touched',
+];
+
+// ── Reconciliation logic ──────────────────────────────────────────────────────
 
 function reconcile(drafts, audits, workflowSummary) {
   const totalDrafts = drafts.length;
   const totalAudits = audits.length;
 
-  // Written files = audits with COMPLETED filesystem write
+  // "Written" = audit has COMPLETED filesystem write
   const writtenAudits = audits.filter(a =>
     a.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' || a.filePath
   );
   const writtenCount = writtenAudits.length;
 
   const failedAudits = audits.filter(a =>
-    a.filesystemWrite && a.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY' &&
-    a.filesystemWrite !== 'DISABLED'
+    a.filesystemWrite && a.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY' && a.filesystemWrite !== 'DISABLED'
   );
   const failedCount = failedAudits.length;
 
-  // Last workflow run written filenames (from prop)
-  const lastRunWritten = workflowSummary?.written ?? null;
-  const lastRunFilenames = new Set(
-    (workflowSummary?.writtenFilenames ?? []).map(f => f.toLowerCase())
+  // Drafts confirmed written (multiple criteria)
+  const writtenByField = drafts.filter(d =>
+    d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' || d.writtenAt || d.filePath
   );
+  const confirmedWrittenDraftCount = writtenByField.length;
 
-  // Build audit filename sets
+  // Build sets for cross-checks
   const auditFilenames = new Set(audits.map(a => (a.filename || '').toLowerCase()));
-  const auditDraftIds = new Set(audits.map(a => a.draftId).filter(Boolean));
+  const draftIdSet = new Set(drafts.map(d => d.draftId || d.id).filter(Boolean));
+  const auditFilePathSet = new Set(audits.map(a => a.filePath).filter(Boolean));
 
-  // Audits present in last run result but missing from audit entity records
+  // Last workflow run checks
+  const lastRunWritten = workflowSummary?.written ?? null;
   const inLastRunNotInAudits = workflowSummary?.writtenFilenames?.filter(
     f => !auditFilenames.has(f.toLowerCase())
   ) ?? [];
 
-  // Approved drafts not yet written (filesystemWrite !== COMPLETED)
+  // Approved drafts not yet written
   const approvedNotWritten = drafts.filter(d =>
     (d.approvalStatus === 'APPROVED' || d.approvalState === 'APPROVED_DRAFT') &&
     d.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY'
   );
 
-  // Audits without a matching draftId in the drafts list
-  const draftIdSet = new Set(
-    drafts.map(d => d.draftId || d.id).filter(Boolean)
-  );
+  // Audits without a matching draft record
   const auditsWithoutDraft = audits.filter(a =>
     a.draftId && !draftIdSet.has(a.draftId)
   );
 
-  // REVIEW_REQUIRED if any mismatch exists
+  // Written drafts missing audit records (by filePath cross-check)
+  const writtenDraftsMissingAudit = writtenByField.filter(d =>
+    d.filePath && !auditFilePathSet.has(d.filePath)
+  );
+
+  // Duplicate filePaths in drafts
+  const filePathCount = {};
+  for (const d of drafts) {
+    if (d.filePath) filePathCount[d.filePath] = (filePathCount[d.filePath] || 0) + 1;
+  }
+  const duplicateFilePaths = Object.entries(filePathCount)
+    .filter(([, count]) => count > 1)
+    .map(([fp]) => fp);
+
+  // Drafts potentially repairable (has matching audit, missing metadata)
+  const auditsByDraftId = {};
+  for (const a of audits) {
+    if (a.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY') continue;
+    if (a.draftId) {
+      if (!auditsByDraftId[a.draftId]) auditsByDraftId[a.draftId] = [];
+      auditsByDraftId[a.draftId].push(a);
+    }
+  }
+  const repairableCount = drafts.filter(d => {
+    const draftId = d.draftId || d.id;
+    if (!auditsByDraftId[draftId]) return false;
+    if (d.riskLevel && d.riskLevel !== 'LOW') return false;
+    return !d.filePath || !d.writtenAt || !d.filesystemWrite || d.filesystemWrite === 'DISABLED';
+  }).length;
+
   const needsReview =
     inLastRunNotInAudits.length > 0 ||
     approvedNotWritten.length > 0 ||
     auditsWithoutDraft.length > 0 ||
+    writtenDraftsMissingAudit.length > 0 ||
+    duplicateFilePaths.length > 0 ||
     failedCount > 0;
 
   return {
-    totalDrafts,
-    totalAudits,
-    writtenCount,
-    failedCount,
-    lastRunWritten,
-    inLastRunNotInAudits,
-    approvedNotWritten,
-    auditsWithoutDraft,
-    needsReview,
+    totalDrafts, totalAudits, writtenCount, failedCount,
+    confirmedWrittenDraftCount, lastRunWritten,
+    inLastRunNotInAudits, approvedNotWritten, auditsWithoutDraft,
+    writtenDraftsMissingAudit, duplicateFilePaths,
+    repairableCount, needsReview,
   };
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function CountCell({ label, value, highlight }) {
+function CountCell({ label, value, highlight, warn }) {
+  const color = highlight ? 'text-destructive' : warn ? 'text-accent' : 'text-primary';
   return (
-    <div className="flex flex-col items-center px-3 py-2 bg-background/60 border border-border/30 rounded-sm">
-      <span className={`text-[11px] font-bold ${highlight ? 'text-destructive' : 'text-primary'}`}>{value ?? '—'}</span>
-      <span className="text-[6px] font-mono text-slate-500 text-center mt-0.5">{label}</span>
+    <div className="flex flex-col items-center px-2 py-2 bg-background/60 border border-border/30 rounded-sm">
+      <span className={`text-[11px] font-bold ${color}`}>{value ?? '—'}</span>
+      <span className="text-[6px] font-mono text-slate-500 text-center mt-0.5 leading-tight">{label}</span>
     </div>
   );
 }
@@ -103,20 +150,16 @@ function DisclosureList({ title, items, keyFn, renderFn, emptyMsg, color = 'text
   const [open, setOpen] = useState(false);
   return (
     <div className="border border-border/30 rounded-sm overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-card/60 hover:bg-card text-left transition-colors"
-      >
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-card/60 hover:bg-card text-left transition-colors">
         <span className={`text-[8px] font-bold ${items.length > 0 ? color : 'text-slate-500'}`}>
           {title} <span className="font-mono">({items.length})</span>
         </span>
-        {open
-          ? <ChevronDown className="w-3 h-3 text-slate-500 shrink-0" />
-          : <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />}
+        {open ? <ChevronDown className="w-3 h-3 text-slate-500 shrink-0" />
+               : <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />}
       </button>
       {open && (
-        <div className="px-3 py-2 border-t border-border/20 space-y-1 bg-background/40">
+        <div className="px-3 py-2 border-t border-border/20 space-y-1 bg-background/40 max-h-40 overflow-y-auto">
           {items.length === 0
             ? <div className="text-[7px] font-mono text-slate-600">{emptyMsg}</div>
             : items.map((item, i) => (
@@ -131,16 +174,54 @@ function DisclosureList({ title, items, keyFn, renderFn, emptyMsg, color = 'text
   );
 }
 
-const VERIFICATIONS = [
-  'No deletions or mutations performed by this panel',
-  'Backend entities are read-only from this view',
-  'localStorage is read-only (no writes from reconciliation)',
-  'executionStatus remains NOT_EXECUTED',
-  'dispatchStatus remains NOT_DISPATCHED',
-  'openclawCall remains NOT_SENT',
-  'Approved drafts and write audits are fully preserved',
-  'No OpenClaw dispatch · No browser automation · No credentials · No InvokeLLM',
-];
+function RepairLogTable({ log }) {
+  const [open, setOpen] = useState(false);
+  if (!log?.length) return null;
+
+  const statusColor = (s) => {
+    if (s === 'REPAIRED') return 'text-primary';
+    if (s === 'ERROR') return 'text-destructive';
+    if (s === 'BLOCKED') return 'text-destructive/70';
+    if (s === 'MANUAL_REVIEW') return 'text-accent';
+    return 'text-slate-500';
+  };
+
+  return (
+    <div className="border border-border/30 rounded-sm overflow-hidden">
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-card/60 hover:bg-card text-left transition-colors">
+        <span className="text-[8px] font-bold text-slate-400">Repair Log <span className="font-mono">({log.length} entries)</span></span>
+        {open ? <ChevronDown className="w-3 h-3 text-slate-500 shrink-0" />
+               : <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />}
+      </button>
+      {open && (
+        <div className="border-t border-border/20 bg-background/40 overflow-x-auto">
+          <table className="w-full text-[7px] font-mono">
+            <thead>
+              <tr className="border-b border-border/20">
+                {['draftId', 'filename', 'folder', 'action', 'status', 'reason'].map(h => (
+                  <th key={h} className="text-left px-2 py-1.5 text-slate-500 uppercase tracking-widest font-bold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {log.map((row, i) => (
+                <tr key={i} className="border-b border-border/10 hover:bg-card/30">
+                  <td className="px-2 py-1 text-slate-500 truncate max-w-[80px]">{row.draftId}</td>
+                  <td className="px-2 py-1 text-slate-300">{row.filename}</td>
+                  <td className="px-2 py-1 text-slate-500 truncate max-w-[100px]">{row.folder}</td>
+                  <td className="px-2 py-1 text-slate-400">{row.action}</td>
+                  <td className={`px-2 py-1 font-bold ${statusColor(row.status)}`}>{row.status}</td>
+                  <td className="px-2 py-1 text-slate-500 max-w-[200px]">{row.reason}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -150,10 +231,26 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
   const [error, setError] = useState('');
   const [showVerification, setShowVerification] = useState(false);
 
+  // Repair state
+  const [repairArmed, setRepairArmed] = useState(false);
+  const [repairCountdown, setRepairCountdown] = useState(0);
+  const [repairing, setRepairing] = useState(false);
+  const [repairResult, setRepairResult] = useState(null);
+  const [repairError, setRepairError] = useState('');
+  const armTimerRef = useRef(null);
+  const countdownRef = useRef(null);
+
+  // Cleanup timers on unmount
+  useEffect(() => () => {
+    clearTimeout(armTimerRef.current);
+    clearInterval(countdownRef.current);
+  }, []);
+
+  // ── Reconcile Now ─────────────────────────────────────────────────────────
+
   const runReconciliation = useCallback(async () => {
     setLoading(true);
     setError('');
-    setResult(null);
     try {
       const [drafts, audits] = await Promise.all([
         loadDraftsFromBackend(500),
@@ -166,6 +263,57 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
     setLoading(false);
   }, [workflowSummary]);
 
+  // ── Repair: arm + confirm ─────────────────────────────────────────────────
+
+  const armRepair = () => {
+    setRepairArmed(true);
+    setRepairCountdown(Math.ceil(CONFIRM_TTL_MS / 1000));
+    setRepairResult(null);
+    setRepairError('');
+
+    armTimerRef.current = setTimeout(() => {
+      setRepairArmed(false);
+      setRepairCountdown(0);
+      clearInterval(countdownRef.current);
+    }, CONFIRM_TTL_MS);
+
+    countdownRef.current = setInterval(() => {
+      setRepairCountdown(c => {
+        if (c <= 1) { clearInterval(countdownRef.current); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+  };
+
+  const cancelArm = () => {
+    setRepairArmed(false);
+    setRepairCountdown(0);
+    clearTimeout(armTimerRef.current);
+    clearInterval(countdownRef.current);
+  };
+
+  const runRepair = async () => {
+    cancelArm();
+    setRepairing(true);
+    setRepairResult(null);
+    setRepairError('');
+    try {
+      const r = await repairIndexMetadata();
+      setRepairResult(r);
+      // Re-run reconciliation so counts update
+      const [drafts, audits] = await Promise.all([
+        loadDraftsFromBackend(500),
+        loadAuditsFromBackend(500),
+      ]);
+      setResult(reconcile(drafts, audits, workflowSummary));
+    } catch (e) {
+      setRepairError(e?.message || 'Repair failed');
+    }
+    setRepairing(false);
+  };
+
+  // ── Status badge ──────────────────────────────────────────────────────────
+
   const statusBadge = result
     ? result.needsReview
       ? { label: 'REVIEW REQUIRED', cls: 'text-destructive bg-destructive/10 border-destructive/40', icon: AlertTriangle }
@@ -174,9 +322,10 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
 
   return (
     <div className={`border border-border/40 bg-card rounded-sm overflow-hidden ${className}`}>
+
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/30 bg-card/80">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/30 bg-card/80 flex-wrap gap-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <GitCompare className="w-3.5 h-3.5 text-accent" />
           <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">Storage Reconciliation</span>
           {statusBadge && (
@@ -186,27 +335,21 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowVerification(v => !v)}
-            className="flex items-center gap-1 px-2 py-1 text-[7px] font-mono border border-primary/20 text-primary/70 hover:text-primary hover:border-primary/40 rounded-sm transition-colors"
-          >
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button type="button" onClick={() => setShowVerification(v => !v)}
+            className="flex items-center gap-1 px-2 py-1 text-[7px] font-mono border border-primary/20 text-primary/70 hover:text-primary hover:border-primary/40 rounded-sm transition-colors">
             <ShieldCheck className="w-2.5 h-2.5" /> Verify
           </button>
-          <button
-            type="button"
-            onClick={runReconciliation}
-            disabled={loading}
-            className="flex items-center gap-1 px-2 py-1 text-[7px] font-bold uppercase border border-accent/30 text-accent hover:border-accent/60 rounded-sm transition-colors disabled:opacity-40"
-          >
+          <button type="button" onClick={runReconciliation} disabled={loading || repairing}
+            className="flex items-center gap-1 px-2 py-1 text-[7px] font-bold uppercase border border-accent/30 text-accent hover:border-accent/60 rounded-sm transition-colors disabled:opacity-40">
             <RefreshCw className={`w-2.5 h-2.5 ${loading ? 'animate-spin' : ''}`} />
-            {result ? 'Re-run' : 'Run Reconciliation'}
+            {result ? 'Reconcile Now' : 'Run Reconciliation'}
           </button>
         </div>
       </div>
 
       <div className="p-4 space-y-3">
+
         {/* Idle prompt */}
         {!result && !loading && !error && (
           <div className="text-[8px] font-mono text-slate-500 flex items-center gap-2">
@@ -216,13 +359,14 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
         )}
 
         {/* Loading */}
-        {loading && (
+        {(loading || repairing) && (
           <div className="text-[8px] font-mono text-slate-500 flex items-center gap-2">
-            <RefreshCw className="w-3 h-3 animate-spin" /> Reading backend entities…
+            <RefreshCw className="w-3 h-3 animate-spin" />
+            {repairing ? 'Running metadata repair…' : 'Reading backend entities…'}
           </div>
         )}
 
-        {/* Error */}
+        {/* Reconcile error */}
         {error && !loading && (
           <div className="flex items-start gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-sm">
             <XCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
@@ -236,16 +380,13 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
         {result && !loading && (
           <>
             {/* Count summary */}
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
               <CountCell label="Backend Drafts" value={result.totalDrafts} />
               <CountCell label="Write Audits" value={result.totalAudits} />
               <CountCell label="Written Files" value={result.writtenCount} />
+              <CountCell label="Confirmed Written" value={result.confirmedWrittenDraftCount} />
               <CountCell label="Failed Writes" value={result.failedCount} highlight={result.failedCount > 0} />
-              <CountCell
-                label="Last Run Written"
-                value={result.lastRunWritten ?? 'N/A'}
-                highlight={false}
-              />
+              <CountCell label="Repairable" value={result.repairableCount} warn={result.repairableCount > 0} />
             </div>
 
             {/* Mismatch details */}
@@ -267,6 +408,14 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
                 color="text-accent"
               />
               <DisclosureList
+                title="Written drafts missing audit records"
+                items={result.writtenDraftsMissingAudit}
+                keyFn={d => d.id || d.draftId}
+                renderFn={d => `→ ${d.filename}  filePath: ${d.filePath}`}
+                emptyMsg="All written drafts have matching audit records."
+                color="text-accent"
+              />
+              <DisclosureList
                 title="Write audits without a matching draft record"
                 items={result.auditsWithoutDraft}
                 keyFn={a => a.id || a.auditId}
@@ -274,15 +423,113 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
                 emptyMsg="All audit records have a matching draft."
                 color="text-slate-400"
               />
+              <DisclosureList
+                title="Duplicate filePath records (manual review required)"
+                items={result.duplicateFilePaths}
+                keyFn={(f, i) => i}
+                renderFn={f => `⚠ ${f}`}
+                emptyMsg="No duplicate filePaths detected."
+                color="text-destructive"
+              />
             </div>
 
-            {/* Status summary line */}
-            <div className="text-[6px] font-mono text-slate-600 border-t border-border/20 pt-2 space-y-0.5">
-              <div>Read-only · no mutations · executionStatus: NOT_EXECUTED · dispatchStatus: NOT_DISPATCHED · openclawCall: NOT_SENT</div>
+            {/* Status line */}
+            <div className="text-[6px] font-mono text-slate-600 border-t border-border/20 pt-2">
               {result.needsReview
-                ? <div className="text-destructive/70">⚠ One or more reconciliation checks require operator review.</div>
-                : <div className="text-primary/60">✅ All reconciliation checks passed — storage is consistent.</div>
+                ? <span className="text-destructive/70">⚠ One or more reconciliation checks require operator review.</span>
+                : <span className="text-primary/60">✅ All reconciliation checks passed — storage is consistent.</span>
               }
+            </div>
+
+            {/* ── Repair section ───────────────────────────────────────────── */}
+            <div className="border border-border/40 rounded-sm overflow-hidden mt-1">
+              {/* Safety banner */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/5 border-b border-amber-500/20">
+                <Shield className="w-3 h-3 text-amber-500 shrink-0" />
+                <span className="text-[7px] font-bold text-amber-500 uppercase tracking-wide">
+                  Metadata repair only · No vault files written · No OpenClaw dispatch · No execution
+                </span>
+              </div>
+
+              <div className="p-3 space-y-2.5">
+                <div className="text-[7px] font-mono text-slate-500 space-y-0.5">
+                  <div>Repairs only: <span className="text-slate-300">filePath · writtenAt · filesystemWrite · approvalStatus · riskLevel</span></div>
+                  <div>Source: matching <span className="text-primary">VeridanObsidianWriteAudit</span> record with <span className="text-primary">COMPLETED_APPROVED_DRAFT_ONLY</span> status</div>
+                  <div>Blocked: MEDIUM/HIGH risk · non-standard executionStatus/dispatchStatus/openclawCall · credential fields · unproven drafts</div>
+                </div>
+
+                {/* Arm / Confirm / Cancel */}
+                {!repairArmed && (
+                  <button type="button" onClick={armRepair}
+                    disabled={repairing || loading}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[8px] font-bold uppercase tracking-widest border border-accent/40 text-accent bg-accent/5 hover:bg-accent/15 disabled:opacity-40 rounded-sm transition-colors">
+                    <Wrench className="w-3 h-3" /> Repair Index Metadata
+                  </button>
+                )}
+
+                {repairArmed && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/40 rounded-sm">
+                      <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                      <span className="text-[8px] font-bold text-amber-500">
+                        Confirm metadata repair? Auto-expires in {repairCountdown}s
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={runRepair}
+                        className="flex items-center gap-1.5 px-3 py-2 text-[8px] font-bold uppercase tracking-widest border border-primary/50 text-primary bg-primary/10 hover:bg-primary/20 rounded-sm transition-colors">
+                        <CheckCircle2 className="w-3 h-3" /> Confirm Metadata Repair
+                      </button>
+                      <button type="button" onClick={cancelArm}
+                        className="flex items-center gap-1.5 px-3 py-2 text-[8px] font-bold uppercase tracking-widest border border-border/40 text-slate-400 hover:text-slate-200 rounded-sm transition-colors">
+                        <XCircle className="w-3 h-3" /> Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Repair error */}
+                {repairError && (
+                  <div className="flex items-start gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-sm">
+                    <AlertCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-[7px] font-mono text-destructive">
+                      <span className="font-bold">Repair error:</span> {repairError}
+                    </div>
+                  </div>
+                )}
+
+                {/* Repair result summary */}
+                {repairResult && (
+                  <div className="space-y-2">
+                    <div className="border border-primary/30 bg-primary/5 rounded-sm p-3">
+                      <div className="text-[8px] font-bold text-primary mb-2 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3 h-3" /> Metadata Repair Complete
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { label: 'Checked', value: repairResult.checked, color: 'text-slate-300' },
+                          { label: 'Repaired', value: repairResult.repaired, color: 'text-primary' },
+                          { label: 'Skipped', value: repairResult.skipped, color: 'text-slate-500' },
+                          { label: 'Blocked', value: repairResult.blocked, color: repairResult.blocked > 0 ? 'text-destructive' : 'text-slate-500' },
+                          { label: 'Manual Review', value: repairResult.manualReviewRequired, color: repairResult.manualReviewRequired > 0 ? 'text-accent' : 'text-slate-500' },
+                          { label: 'Errors', value: repairResult.errors, color: repairResult.errors > 0 ? 'text-destructive' : 'text-slate-500' },
+                        ].map(({ label, value, color }) => (
+                          <div key={label} className="flex flex-col items-center px-2 py-1.5 bg-background/50 border border-border/30 rounded-sm">
+                            <span className={`text-[10px] font-bold ${color}`}>{value}</span>
+                            <span className="text-[6px] font-mono text-slate-600">{label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-[6px] font-mono text-slate-600 mt-2 border-t border-border/20 pt-1.5">
+                        No vault files written · executionStatus/dispatchStatus/openclawCall untouched · audit records preserved
+                      </div>
+                    </div>
+
+                    {/* Repair log */}
+                    <RepairLogTable log={repairResult.log} />
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
@@ -291,7 +538,7 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
         {showVerification && (
           <div className="border border-primary/20 bg-primary/5 rounded-sm p-3 space-y-1.5">
             <div className="text-[7px] font-bold uppercase tracking-widest text-primary/80 mb-2">Safety Verification Report</div>
-            {VERIFICATIONS.map((v, i) => (
+            {REPAIR_VERIFICATIONS.map((v, i) => (
               <div key={i} className="flex items-start gap-1.5 text-[7px] font-mono text-slate-400">
                 <CheckCircle2 className="w-2.5 h-2.5 text-primary shrink-0 mt-0.5" />
                 {v}
@@ -299,6 +546,7 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
             ))}
           </div>
         )}
+
       </div>
     </div>
   );

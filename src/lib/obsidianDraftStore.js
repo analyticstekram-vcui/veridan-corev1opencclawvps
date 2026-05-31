@@ -216,6 +216,174 @@ export async function loadAuditsFromBackend(limit = 100) {
   }
 }
 
+// ── Index Metadata Repair ────────────────────────────────────────────────────
+
+const CREDENTIAL_FIELDS = ['credentialRef', 'brokerKey', 'apiKey', 'token', 'secret', 'password'];
+
+/**
+ * Safe metadata-only repair of VeridanObsidianDraft records.
+ * Allowed repairs: filePath, writtenAt, filesystemWrite, approvalStatus (APPROVED only),
+ * riskLevel (LOW only) — all sourced from a matching successful VeridanObsidianWriteAudit.
+ *
+ * NEVER: writes vault files, calls obsidianWriteApprovedDraft, modifies content/filename/
+ * targetFolder, deletes records, touches executionStatus/dispatchStatus/openclawCall,
+ * repairs MEDIUM/HIGH risk, or auto-approves drafts without a proven audit.
+ *
+ * Returns { checked, repaired, skipped, blocked, manualReviewRequired, errors, log }
+ */
+export async function repairIndexMetadata() {
+  const result = {
+    checked: 0,
+    repaired: 0,
+    skipped: 0,
+    blocked: 0,
+    manualReviewRequired: 0,
+    errors: 0,
+    log: [],
+  };
+
+  // Load all data
+  let drafts = [], audits = [];
+  try {
+    [drafts, audits] = await Promise.all([
+      base44.entities.VeridanObsidianDraft.list('-created_date', 500),
+      base44.entities.VeridanObsidianWriteAudit.list('-created_date', 500),
+    ]);
+  } catch (e) {
+    result.errors++;
+    result.log.push({ draftId: '—', filename: '—', folder: '—', action: 'LOAD', status: 'ERROR', reason: e?.message || 'Failed to load data' });
+    return result;
+  }
+
+  // Build audit lookup: by draftId (primary) and filePath (secondary)
+  // For each draft, find all matching audits, pick newest successful one
+  const auditsByDraftId = {};
+  const auditsByFilePath = {};
+  for (const a of audits) {
+    if (a.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY') continue; // only successful
+    if (a.draftId) {
+      if (!auditsByDraftId[a.draftId]) auditsByDraftId[a.draftId] = [];
+      auditsByDraftId[a.draftId].push(a);
+    }
+    if (a.filePath) {
+      if (!auditsByFilePath[a.filePath]) auditsByFilePath[a.filePath] = [];
+      auditsByFilePath[a.filePath].push(a);
+    }
+  }
+
+  // Sort by timestamp desc (newest first)
+  const newestAudit = (list) =>
+    [...list].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))[0];
+
+  // Detect drafts sharing the same filePath (duplicates → manual review)
+  const draftsByFilePath = {};
+  for (const d of drafts) {
+    if (d.filePath) {
+      if (!draftsByFilePath[d.filePath]) draftsByFilePath[d.filePath] = [];
+      draftsByFilePath[d.filePath].push(d);
+    }
+  }
+
+  for (const draft of drafts) {
+    result.checked++;
+    const draftId = draft.draftId || draft.id;
+    const logBase = { draftId, filename: draft.filename || '—', folder: draft.targetFolder || '—' };
+
+    // ── Hard blocks ────────────────────────────────────────────────────────
+    if ((draft.riskLevel && draft.riskLevel !== 'LOW')) {
+      result.blocked++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'BLOCKED', reason: `riskLevel=${draft.riskLevel} (only LOW allowed)` });
+      continue;
+    }
+    if (draft.executionStatus && draft.executionStatus !== 'NOT_EXECUTED') {
+      result.blocked++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'BLOCKED', reason: `executionStatus=${draft.executionStatus}` });
+      continue;
+    }
+    if (draft.dispatchStatus && draft.dispatchStatus !== 'NOT_DISPATCHED') {
+      result.blocked++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'BLOCKED', reason: `dispatchStatus=${draft.dispatchStatus}` });
+      continue;
+    }
+    if (draft.openclawCall && draft.openclawCall !== 'NOT_SENT') {
+      result.blocked++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'BLOCKED', reason: `openclawCall=${draft.openclawCall}` });
+      continue;
+    }
+    if (CREDENTIAL_FIELDS.some(f => draft[f])) {
+      result.blocked++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'BLOCKED', reason: 'draft contains credential field' });
+      continue;
+    }
+
+    // ── Find matching audit ────────────────────────────────────────────────
+    let matchAuditList = [];
+    if (draftId && auditsByDraftId[draftId]) {
+      matchAuditList = auditsByDraftId[draftId];
+    } else if (draft.filePath && auditsByFilePath[draft.filePath]) {
+      matchAuditList = auditsByFilePath[draft.filePath];
+    }
+
+    if (matchAuditList.length === 0) {
+      result.skipped++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'NO_AUDIT', reason: 'No matching successful audit record found' });
+      continue;
+    }
+
+    // Duplicate draft check (multiple drafts matching same filePath audit)
+    if (draft.filePath && draftsByFilePath[draft.filePath]?.length > 1) {
+      result.manualReviewRequired++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'MANUAL_REVIEW', reason: `Multiple drafts share filePath: ${draft.filePath}` });
+      continue;
+    }
+
+    const audit = newestAudit(matchAuditList);
+
+    // ── Compute needed repairs ─────────────────────────────────────────────
+    const patch = {};
+    const reasons = [];
+
+    if (!draft.filePath && audit.filePath) {
+      patch.filePath = audit.filePath;
+      reasons.push('filePath from audit');
+    }
+    if (!draft.writtenAt && audit.timestamp) {
+      patch.writtenAt = audit.timestamp;
+      reasons.push('writtenAt from audit.timestamp');
+    }
+    if (!draft.filesystemWrite || draft.filesystemWrite === 'DISABLED') {
+      patch.filesystemWrite = 'COMPLETED_APPROVED_DRAFT_ONLY';
+      reasons.push('filesystemWrite → COMPLETED_APPROVED_DRAFT_ONLY');
+    }
+    if (!draft.approvalStatus && audit.approvalStatus === 'APPROVED') {
+      patch.approvalStatus = 'APPROVED';
+      reasons.push('approvalStatus → APPROVED (from audit)');
+    }
+    if (!draft.riskLevel && audit.riskLevel === 'LOW') {
+      patch.riskLevel = 'LOW';
+      reasons.push('riskLevel → LOW (from audit)');
+    }
+
+    if (Object.keys(patch).length === 0) {
+      result.skipped++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'ALREADY_COMPLETE', reason: 'No metadata fields require repair' });
+      continue;
+    }
+
+    // ── Apply patch ────────────────────────────────────────────────────────
+    try {
+      await base44.entities.VeridanObsidianDraft.update(draft.id, patch);
+      result.repaired++;
+      result.log.push({ ...logBase, action: 'REPAIR', status: 'REPAIRED', reason: reasons.join(' | ') });
+    } catch (e) {
+      result.errors++;
+      result.log.push({ ...logBase, action: 'REPAIR', status: 'ERROR', reason: e?.message || 'Update failed' });
+    }
+  }
+
+  return result;
+}
+
 // ── localStorage Cleanup ─────────────────────────────────────────────────────
 
 /**
