@@ -219,6 +219,48 @@ export async function loadAuditsFromBackend(limit = 100) {
 // ── localStorage Cleanup ─────────────────────────────────────────────────────
 
 /**
+ * Clear ONLY obsolete localStorage cache entries.
+ * NEVER deletes backend entity records, approved drafts, or write audit entities.
+ * NEVER mutates executionStatus, dispatchStatus, or openclawCall.
+ * Safe to call from UI at any time.
+ * Returns { removed, kept }.
+ */
+export function clearLocalCacheOnly() {
+  let removed = 0;
+  let kept = 0;
+
+  // 1. Remove the heavyweight drafts cache (content already in backend)
+  try {
+    const raw = localStorage.getItem('veridan_obsidian_drafts_cache');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      removed += Array.isArray(parsed) ? parsed.length : 1;
+      localStorage.removeItem('veridan_obsidian_drafts_cache');
+    }
+  } catch { /* ignore */ }
+
+  // 2. Trim write audit cache — keep at most 5 most recent refs (no content stored)
+  try {
+    const raw = localStorage.getItem('veridan_obsidian_write_audits');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const trimmed = parsed.slice(0, 5);
+        removed += parsed.length - trimmed.length;
+        kept += trimmed.length;
+        localStorage.setItem('veridan_obsidian_write_audits', JSON.stringify(trimmed));
+      }
+    }
+  } catch { /* ignore */ }
+
+  // 3. Run standard cleanup on non-approved drafts in localStorage
+  const r = cleanupObsoleteLocalDrafts();
+  removed += r.removed ?? 0;
+
+  return { removed, kept };
+}
+
+/**
  * On app load: remove only obsolete non-approved localStorage drafts.
  * Never deletes approved drafts, audit records, or written file index.
  */

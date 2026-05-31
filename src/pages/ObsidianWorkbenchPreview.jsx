@@ -13,6 +13,7 @@ import ManualDraftForm from '../components/obsidian-vault/ManualDraftForm';
 import TemplateDraftGenerator from '../components/obsidian-vault/TemplateDraftGenerator';
 import CoreVaultPackGenerator from '../components/obsidian-vault/CoreVaultPackGenerator';
 import CoreVaultPackWorkflow from '../components/obsidian-vault/CoreVaultPackWorkflow';
+import StorageStatusPanel from '../components/obsidian-vault/StorageStatusPanel';
 import { API_MODE_CONFIG } from '../lib/apiMode';
 
 const VAULT_CATEGORIES = [
@@ -187,6 +188,9 @@ export default function ObsidianWorkbenchPreview() {
 
         {/* ── PRIMARY: Template Draft Generator ── */}
         <TemplateDraftGenerator onDraftCreated={() => {}} />
+
+        {/* Storage Status */}
+        <StorageStatusPanel />
 
         {/* API Mode Warning */}
         <div className="border border-destructive/30 bg-destructive/5 rounded-sm p-3 flex items-start gap-2">

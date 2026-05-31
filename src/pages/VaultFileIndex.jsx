@@ -14,6 +14,7 @@ import VaultIndexFilters from '../components/vault-index/VaultIndexFilters';
 import VaultIndexVerificationPanel from '../components/vault-index/VaultIndexVerificationPanel';
 import { Shield, Download, FileSearch, RefreshCw, Database } from 'lucide-react';
 import { loadAuditsFromBackend, loadDraftsFromBackend } from '@/lib/obsidianDraftStore';
+import StorageStatusPanel from '../components/obsidian-vault/StorageStatusPanel';
 
 function buildFileRecords(audits, drafts) {
   const draftMap = {};
@@ -192,6 +193,9 @@ export default function VaultFileIndex() {
       </div>
 
       <div className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-5">
+
+        {/* Storage Status */}
+        <StorageStatusPanel />
 
         {/* Summary cards */}
         <VaultIndexSummaryCards
