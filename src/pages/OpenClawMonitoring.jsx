@@ -7,6 +7,7 @@ import React from 'react';
 import ModuleNav from '../components/navigation/ModuleNav';
 import ManualReadOnlyMonitoringConsole from '../components/openclaw/ManualReadOnlyMonitoringConsole';
 import OpenClawGatewayStatusPanel from '../components/openclaw/OpenClawGatewayStatusPanel';
+import OpenClawGatewayConnectorContract from '../components/openclaw/OpenClawGatewayConnectorContract';
 import { Shield } from 'lucide-react';
 
 export default function OpenClawMonitoring() {
@@ -35,6 +36,7 @@ export default function OpenClawMonitoring() {
 
       <main className="flex-1 px-6 py-5 max-w-5xl w-full mx-auto space-y-6">
         <OpenClawGatewayStatusPanel />
+        <OpenClawGatewayConnectorContract />
         <ManualReadOnlyMonitoringConsole />
       </main>
     </div>
