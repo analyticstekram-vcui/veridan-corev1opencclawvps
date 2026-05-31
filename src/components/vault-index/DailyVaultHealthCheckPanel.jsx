@@ -100,7 +100,7 @@ function runHealthChecks(drafts, audits, draftsError, auditsError) {
   // C. Draft/Audit Reconciliation
   const draftIdSet = new Set(drafts.map(d => d.draftId || d.id).filter(Boolean));
   const auditDraftIdSet = new Set(audits.map(a => a.draftId).filter(Boolean));
-  const orphanAudits = audits.filter(a => a.draftId && !draftIdSet.has(a.draftId));
+  const orphanAudits = audits.filter(a => !a.draftId || !draftIdSet.has(a.draftId));
   const filePathCount = {};
   for (const d of drafts) { if (d.filePath) filePathCount[d.filePath] = (filePathCount[d.filePath] || 0) + 1; }
   const duplicateFilePaths = Object.entries(filePathCount).filter(([, c]) => c > 1).map(([fp]) => fp);

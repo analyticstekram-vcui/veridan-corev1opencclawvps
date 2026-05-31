@@ -22,7 +22,7 @@ import {
   ChevronDown, ChevronRight, ShieldCheck, Wrench, Clock,
   AlertCircle, Shield, Info,
 } from 'lucide-react';
-import { loadDraftsFromBackend, loadAuditsFromBackend, repairIndexMetadata } from '@/lib/obsidianDraftStore';
+import { loadDraftsFromBackend, loadAuditsFromBackend, repairIndexMetadata, reconcileOrphanAudits } from '@/lib/obsidianDraftStore';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -35,11 +35,13 @@ const REPAIR_VERIFICATIONS = [
   'No browser automation',
   'No credentials accessed or stored',
   'Backend metadata fields only (filePath, writtenAt, filesystemWrite, approvalStatus, riskLevel)',
-  'Audit records fully preserved — never deleted or modified',
+  'Audit records preserved — only draftId + reconciliationStatus + reconciledAt may be added',
   'Draft content, filename, targetFolder never modified',
   'Pending unproven drafts NOT auto-approved',
   'MEDIUM and HIGH risk drafts BLOCKED from repair',
   'executionStatus / dispatchStatus / openclawCall never touched',
+  'Orphan reconciliation requires confidence score ≥ 50 (filePath exact match = 50 pts)',
+  'No records deleted — audit and draft records fully preserved',
 ];
 
 // ── Reconciliation logic ──────────────────────────────────────────────────────
@@ -82,9 +84,9 @@ function reconcile(drafts, audits, workflowSummary) {
     d.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY'
   );
 
-  // Audits without a matching draft record
+  // Audits without a matching draft record (orphans: missing draftId OR draftId set but no match)
   const auditsWithoutDraft = audits.filter(a =>
-    a.draftId && !draftIdSet.has(a.draftId)
+    !a.draftId || !draftIdSet.has(a.draftId)
   );
 
   // Written drafts missing audit records (by filePath cross-check)
@@ -207,7 +209,7 @@ function RepairLogTable({ log }) {
             <tbody>
               {log.map((row, i) => (
                 <tr key={i} className="border-b border-border/10 hover:bg-card/30">
-                  <td className="px-2 py-1 text-slate-500 truncate max-w-[80px]">{row.draftId}</td>
+                  <td className="px-2 py-1 text-slate-500 truncate max-w-[80px]">{row.draftId || row.auditId || '—'}</td>
                   <td className="px-2 py-1 text-slate-300">{row.filename}</td>
                   <td className="px-2 py-1 text-slate-500 truncate max-w-[100px]">{row.folder}</td>
                   <td className="px-2 py-1 text-slate-400">{row.action}</td>
@@ -240,10 +242,21 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
   const armTimerRef = useRef(null);
   const countdownRef = useRef(null);
 
+  // Orphan reconciliation state
+  const [orphanArmed, setOrphanArmed] = useState(false);
+  const [orphanCountdown, setOrphanCountdown] = useState(0);
+  const [reconciling, setReconciling] = useState(false);
+  const [orphanResult, setOrphanResult] = useState(null);
+  const [orphanError, setOrphanError] = useState('');
+  const orphanArmTimerRef = useRef(null);
+  const orphanCountdownRef = useRef(null);
+
   // Cleanup timers on unmount
   useEffect(() => () => {
     clearTimeout(armTimerRef.current);
     clearInterval(countdownRef.current);
+    clearTimeout(orphanArmTimerRef.current);
+    clearInterval(orphanCountdownRef.current);
   }, []);
 
   // ── Reconcile Now ─────────────────────────────────────────────────────────
@@ -312,6 +325,55 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
     setRepairing(false);
   };
 
+  // ── Orphan reconciliation: arm + confirm ─────────────────────────────────
+
+  const armOrphan = () => {
+    setOrphanArmed(true);
+    setOrphanCountdown(Math.ceil(CONFIRM_TTL_MS / 1000));
+    setOrphanResult(null);
+    setOrphanError('');
+
+    orphanArmTimerRef.current = setTimeout(() => {
+      setOrphanArmed(false);
+      setOrphanCountdown(0);
+      clearInterval(orphanCountdownRef.current);
+    }, CONFIRM_TTL_MS);
+
+    orphanCountdownRef.current = setInterval(() => {
+      setOrphanCountdown(c => {
+        if (c <= 1) { clearInterval(orphanCountdownRef.current); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+  };
+
+  const cancelOrphan = () => {
+    setOrphanArmed(false);
+    setOrphanCountdown(0);
+    clearTimeout(orphanArmTimerRef.current);
+    clearInterval(orphanCountdownRef.current);
+  };
+
+  const runOrphanReconcile = async () => {
+    cancelOrphan();
+    setReconciling(true);
+    setOrphanResult(null);
+    setOrphanError('');
+    try {
+      const r = await reconcileOrphanAudits();
+      setOrphanResult(r);
+      // Re-run reconciliation so orphan count updates
+      const [drafts, audits] = await Promise.all([
+        loadDraftsFromBackend(500),
+        loadAuditsFromBackend(500),
+      ]);
+      setResult(reconcile(drafts, audits, workflowSummary));
+    } catch (e) {
+      setOrphanError(e?.message || 'Orphan reconciliation failed');
+    }
+    setReconciling(false);
+  };
+
   // ── Status badge ──────────────────────────────────────────────────────────
 
   const statusBadge = result
@@ -359,10 +421,10 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
         )}
 
         {/* Loading */}
-        {(loading || repairing) && (
+        {(loading || repairing || reconciling) && (
           <div className="text-[8px] font-mono text-slate-500 flex items-center gap-2">
             <RefreshCw className="w-3 h-3 animate-spin" />
-            {repairing ? 'Running metadata repair…' : 'Reading backend entities…'}
+            {repairing ? 'Running metadata repair…' : reconciling ? 'Reconciling orphan audits…' : 'Reading backend entities…'}
           </div>
         )}
 
@@ -527,6 +589,98 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
 
                     {/* Repair log */}
                     <RepairLogTable log={repairResult.log} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── Orphan Audit Reconciliation section ─────────────────────── */}
+            <div className="border border-border/40 rounded-sm overflow-hidden mt-1">
+              {/* Safety banner */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border-b border-primary/20">
+                <Shield className="w-3 h-3 text-primary shrink-0" />
+                <span className="text-[7px] font-bold text-primary uppercase tracking-wide">
+                  Orphan Audit Reconciliation — metadata link only · no vault writes · no OpenClaw
+                </span>
+              </div>
+
+              <div className="p-3 space-y-2.5">
+                <div className="text-[7px] font-mono text-slate-500 space-y-0.5">
+                  <div>Links orphan <span className="text-primary">VeridanObsidianWriteAudit</span> records to matching <span className="text-primary">VeridanObsidianDraft</span> records via filePath / folder / filename / source matching.</div>
+                  <div>Confidence threshold: <span className="text-slate-300">≥ 50pts</span> (filePath exact match = 50pts · folder = 20pts · filename = 20pts · source = 10pts · timestamp ≤60s = 5pts)</div>
+                  <div>Safe fields only: <span className="text-slate-300">draftId · reconciliationStatus · reconciledAt · filePath · writtenAt · filesystemWrite</span></div>
+                  <div className="text-destructive/70">Blocked: executionStatus · dispatchStatus · openclawCall · credentials · MEDIUM/HIGH risk · draft content/filename/folder</div>
+                </div>
+
+                {/* Arm / Confirm / Cancel */}
+                {!orphanArmed && (
+                  <button type="button" onClick={armOrphan}
+                    disabled={reconciling || repairing || loading}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[8px] font-bold uppercase tracking-widest border border-primary/40 text-primary bg-primary/5 hover:bg-primary/15 disabled:opacity-40 rounded-sm transition-colors">
+                    <GitCompare className="w-3 h-3" /> Reconcile Orphan Audits
+                  </button>
+                )}
+
+                {orphanArmed && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/40 rounded-sm">
+                      <Clock className="w-3 h-3 text-primary shrink-0" />
+                      <span className="text-[8px] font-bold text-primary">
+                        Confirm orphan reconciliation? Auto-expires in {orphanCountdown}s
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={runOrphanReconcile}
+                        className="flex items-center gap-1.5 px-3 py-2 text-[8px] font-bold uppercase tracking-widest border border-primary/50 text-primary bg-primary/10 hover:bg-primary/20 rounded-sm transition-colors">
+                        <CheckCircle2 className="w-3 h-3" /> Confirm Reconcile Orphans
+                      </button>
+                      <button type="button" onClick={cancelOrphan}
+                        className="flex items-center gap-1.5 px-3 py-2 text-[8px] font-bold uppercase tracking-widest border border-border/40 text-slate-400 hover:text-slate-200 rounded-sm transition-colors">
+                        <XCircle className="w-3 h-3" /> Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Orphan error */}
+                {orphanError && (
+                  <div className="flex items-start gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-sm">
+                    <AlertCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-[7px] font-mono text-destructive">
+                      <span className="font-bold">Reconcile error:</span> {orphanError}
+                    </div>
+                  </div>
+                )}
+
+                {/* Orphan result summary */}
+                {orphanResult && (
+                  <div className="space-y-2">
+                    <div className="border border-primary/30 bg-primary/5 rounded-sm p-3">
+                      <div className="text-[8px] font-bold text-primary mb-2 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3 h-3" /> Orphan Reconciliation Complete
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { label: 'Checked', value: orphanResult.checked, color: 'text-slate-300' },
+                          { label: 'Repaired', value: orphanResult.repaired, color: 'text-primary' },
+                          { label: 'Skipped', value: orphanResult.skipped, color: 'text-slate-500' },
+                          { label: 'Blocked', value: orphanResult.blocked, color: orphanResult.blocked > 0 ? 'text-destructive' : 'text-slate-500' },
+                          { label: 'Errors', value: orphanResult.errors, color: orphanResult.errors > 0 ? 'text-destructive' : 'text-slate-500' },
+                          { label: 'Orphans Left', value: Math.max(0, orphanResult.checked - orphanResult.repaired - orphanResult.blocked - orphanResult.errors), color: 'text-slate-400' },
+                        ].map(({ label, value, color }) => (
+                          <div key={label} className="flex flex-col items-center px-2 py-1.5 bg-background/50 border border-border/30 rounded-sm">
+                            <span className={`text-[10px] font-bold ${color}`}>{value}</span>
+                            <span className="text-[6px] font-mono text-slate-600">{label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-[6px] font-mono text-slate-600 mt-2 border-t border-border/20 pt-1.5">
+                        No vault files written · executionStatus/dispatchStatus/openclawCall untouched · records preserved
+                      </div>
+                    </div>
+
+                    {/* Orphan repair log */}
+                    <RepairLogTable log={orphanResult.log} />
                   </div>
                 )}
               </div>

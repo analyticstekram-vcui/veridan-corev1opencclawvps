@@ -384,6 +384,225 @@ export async function repairIndexMetadata() {
   return result;
 }
 
+// ── Orphan Audit Reconciliation ───────────────────────────────────────────────
+
+/**
+ * Reconcile orphan VeridanObsidianWriteAudit records by linking them to matching
+ * VeridanObsidianDraft records via filePath / fileName / targetFolder / source matching.
+ *
+ * Only updates SAFE METADATA fields:
+ *   - On audit: draftId (linked draft's draftId or id), reconciliationStatus, reconciledAt
+ *   - On draft: filePath, writtenAt, filesystemWrite, approvalStatus, riskLevel
+ *     (only if matching audit confirms them and they are missing/default on the draft)
+ *
+ * NEVER:
+ *   - Writes vault files
+ *   - Calls obsidianWriteApprovedDraft
+ *   - Calls OpenClaw
+ *   - Runs browser automation
+ *   - Touches executionStatus / dispatchStatus / openclawCall
+ *   - Deletes any records
+ *   - Touches credential fields
+ *   - Modifies draft content, filename, targetFolder
+ *
+ * Confidence scoring:
+ *   filePath exact match    → +50
+ *   folder match            → +20
+ *   filename match          → +20
+ *   source match            → +10
+ *   writtenAt proximity     → +5 (within 60s)
+ *   Score >= 50 required for repair.
+ *
+ * Returns { checked, repaired, skipped, blocked, errors, log }
+ */
+export async function reconcileOrphanAudits() {
+  const result = { checked: 0, repaired: 0, skipped: 0, blocked: 0, errors: 0, log: [] };
+
+  let drafts = [], audits = [];
+  try {
+    [drafts, audits] = await Promise.all([
+      base44.entities.VeridanObsidianDraft.list('-created_date', 500),
+      base44.entities.VeridanObsidianWriteAudit.list('-created_date', 500),
+    ]);
+  } catch (e) {
+    result.errors++;
+    result.log.push({ auditId: '—', filename: '—', action: 'LOAD', status: 'ERROR', reason: e?.message || 'Failed to load data' });
+    return result;
+  }
+
+  // Build set of all known draft IDs (draftId field AND entity id)
+  const draftById = {};
+  const draftByDraftId = {};
+  for (const d of drafts) {
+    draftById[d.id] = d;
+    if (d.draftId) draftByDraftId[d.draftId] = d;
+  }
+
+  // Identify orphan audits: draftId set but no matching draft, OR draftId missing entirely
+  const orphanAudits = audits.filter(a => {
+    if (!a.draftId) return true; // no draftId set → orphan
+    return !draftByDraftId[a.draftId] && !draftById[a.draftId]; // draftId set but no match
+  });
+
+  for (const audit of orphanAudits) {
+    result.checked++;
+    const logBase = { auditId: audit.auditId || audit.id, filename: audit.filename || '—', folder: audit.folder || '—' };
+
+    // Safety blocks on the audit itself
+    if (audit.executionStatus && audit.executionStatus !== 'NOT_EXECUTED') {
+      result.blocked++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'BLOCKED', reason: `executionStatus=${audit.executionStatus}` });
+      continue;
+    }
+    if (audit.dispatchStatus && audit.dispatchStatus !== 'NOT_DISPATCHED') {
+      result.blocked++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'BLOCKED', reason: `dispatchStatus=${audit.dispatchStatus}` });
+      continue;
+    }
+    if (audit.openclawCall && audit.openclawCall !== 'NOT_SENT') {
+      result.blocked++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'BLOCKED', reason: `openclawCall=${audit.openclawCall}` });
+      continue;
+    }
+
+    // Score each draft as a potential match
+    let bestDraft = null;
+    let bestScore = 0;
+    let bestReasons = [];
+
+    for (const draft of drafts) {
+      // Block MEDIUM/HIGH risk drafts from being linked
+      if (draft.riskLevel && draft.riskLevel !== 'LOW') continue;
+      // Block drafts with credential fields
+      if (CREDENTIAL_FIELDS.some(f => draft[f])) continue;
+      // Don't re-link drafts that already have a different confirmed audit
+      if (draft.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' && draft.filePath && draft.filePath !== audit.filePath) continue;
+
+      let score = 0;
+      const reasons = [];
+
+      // filePath exact match (strongest signal)
+      const auditFilePath = audit.filePath || '';
+      const draftFilePath = draft.filePath || '';
+      if (auditFilePath && draftFilePath && auditFilePath === draftFilePath) {
+        score += 50; reasons.push('filePath exact match');
+      }
+
+      // folder match
+      const auditFolder = (audit.folder || '').trim();
+      const draftFolder = (draft.targetFolder || '').trim();
+      if (auditFolder && draftFolder && auditFolder === draftFolder) {
+        score += 20; reasons.push('folder match');
+      }
+
+      // filename match (normalize case + extension)
+      const auditFile = (audit.filename || '').toLowerCase().trim();
+      const draftFile = (draft.filename || '').toLowerCase().trim();
+      if (auditFile && draftFile && auditFile === draftFile) {
+        score += 20; reasons.push('filename match');
+      }
+
+      // source match
+      const auditSource = (audit.source || '').trim();
+      const draftSource = (draft.source || '').trim();
+      if (auditSource && draftSource && auditSource === draftSource) {
+        score += 10; reasons.push('source match');
+      }
+
+      // writtenAt / timestamp proximity (within 60s)
+      const auditTs = audit.timestamp ? new Date(audit.timestamp).getTime() : null;
+      const draftTs = draft.writtenAt ? new Date(draft.writtenAt).getTime() : null;
+      if (auditTs && draftTs && Math.abs(auditTs - draftTs) <= 60000) {
+        score += 5; reasons.push('timestamp proximity <60s');
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestDraft = draft;
+        bestReasons = reasons;
+      }
+    }
+
+    // Require confidence score >= 50 to proceed
+    if (!bestDraft || bestScore < 50) {
+      result.skipped++;
+      result.log.push({ ...logBase, action: 'SKIP', status: 'NO_MATCH', reason: `Best confidence score ${bestScore} < 50 — no confident match found` });
+      continue;
+    }
+
+    const draft = bestDraft;
+    const linkedDraftId = draft.draftId || draft.id;
+
+    // Patch the audit: set draftId + reconciliation metadata
+    const auditPatch = {};
+    const auditReasons = [];
+    if (!audit.draftId || audit.draftId !== linkedDraftId) {
+      auditPatch.draftId = linkedDraftId;
+      auditReasons.push(`draftId linked → ${linkedDraftId}`);
+    }
+    // reconciliationStatus and reconciledAt are safe metadata fields
+    auditPatch.reconciliationStatus = 'RECONCILED';
+    auditPatch.reconciledAt = new Date().toISOString();
+    auditReasons.push(`reconciliationStatus=RECONCILED`);
+
+    // Patch the draft: safe metadata only
+    const draftPatch = {};
+    const draftReasons = [];
+    if (!draft.filePath && audit.filePath) {
+      draftPatch.filePath = audit.filePath;
+      draftReasons.push('filePath from audit');
+    }
+    if (!draft.writtenAt && audit.timestamp) {
+      draftPatch.writtenAt = audit.timestamp;
+      draftReasons.push('writtenAt from audit.timestamp');
+    }
+    if ((!draft.filesystemWrite || draft.filesystemWrite === 'DISABLED') && audit.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY') {
+      draftPatch.filesystemWrite = 'COMPLETED_APPROVED_DRAFT_ONLY';
+      draftReasons.push('filesystemWrite → COMPLETED');
+    }
+    if (!draft.approvalStatus && audit.approvalStatus === 'APPROVED') {
+      draftPatch.approvalStatus = 'APPROVED';
+      draftReasons.push('approvalStatus → APPROVED');
+    }
+    if (!draft.riskLevel && audit.riskLevel === 'LOW') {
+      draftPatch.riskLevel = 'LOW';
+      draftReasons.push('riskLevel → LOW');
+    }
+
+    // Apply patches
+    let success = true;
+    try {
+      await base44.entities.VeridanObsidianWriteAudit.update(audit.id, auditPatch);
+    } catch (e) {
+      success = false;
+      result.errors++;
+      result.log.push({ ...logBase, action: 'REPAIR_AUDIT', status: 'ERROR', reason: `Audit update failed: ${e?.message}` });
+    }
+
+    if (success && Object.keys(draftPatch).length > 0) {
+      try {
+        await base44.entities.VeridanObsidianDraft.update(draft.id, draftPatch);
+      } catch (e) {
+        // Draft patch failure is non-fatal — audit link was already saved
+        result.log.push({ ...logBase, action: 'REPAIR_DRAFT', status: 'WARN', reason: `Draft metadata patch failed (audit link saved): ${e?.message}` });
+      }
+    }
+
+    if (success) {
+      result.repaired++;
+      const allReasons = [...auditReasons, ...draftReasons].join(' | ');
+      result.log.push({
+        ...logBase,
+        action: 'RECONCILE',
+        status: 'REPAIRED',
+        reason: `Score=${bestScore} [${bestReasons.join(',')}] → ${allReasons}`,
+      });
+    }
+  }
+
+  return result;
+}
+
 // ── localStorage Cleanup ─────────────────────────────────────────────────────
 
 /**
