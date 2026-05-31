@@ -171,35 +171,45 @@ export default function CoreVaultPackWorkflow() {
     setErrorMsg('');
 
     try {
+      console.log('[CVP Workflow] Starting governed vault pack workflow');
+
       // ── Phase 1: Generate ────────────────────────────────────────────────────
+      console.log('[CVP Workflow] Phase 1: Generating drafts');
       const now = new Date().toISOString();
       const freshDrafts = buildDrafts(now);
       const generated = freshDrafts.length;
+      console.log(`[CVP Workflow] Generated ${generated} drafts`);
       if (generated === 0) throw new Error('No drafts generated');
 
       // ── Phase 2: Save to backend ─────────────────────────────────────────────
+      console.log('[CVP Workflow] Phase 2: Saving to backend');
       setRunPhase('Saving drafts to backend storage…');
       const saveResult = await saveDraftsToBackend(freshDrafts);
       if (!saveResult || typeof saveResult.saved !== 'number') {
-        throw new Error('saveDraftsToBackend returned invalid result');
+        throw new Error('saveDraftsToBackend returned invalid result: ' + JSON.stringify(saveResult));
       }
       const savedCount = saveResult.saved;
+      console.log(`[CVP Workflow] Saved ${savedCount} drafts to backend`);
 
       // ── Phase 3: Auto-Approve (backend, CORE_VAULT_PACK source only) ─────────
+      console.log('[CVP Workflow] Phase 3: Auto-approving');
       setRunPhase('Auto-approving eligible drafts…');
       const approveResult = await autoApproveCVPDrafts(APPROVED_FOLDERS, ALLOWED_CVP_DRAFT_TYPES);
       if (!approveResult || typeof approveResult.approved !== 'number') {
-        throw new Error('autoApproveCVPDrafts returned invalid result');
+        throw new Error('autoApproveCVPDrafts returned invalid result: ' + JSON.stringify(approveResult));
       }
       const autoApproved = approveResult.approved;
+      console.log(`[CVP Workflow] Auto-approved ${autoApproved} drafts`);
 
       // ── Phase 4: Load eligible approved drafts from backend ──────────────────
+      console.log('[CVP Workflow] Phase 4: Loading eligible drafts');
       setRunPhase('Loading eligible drafts for write…');
       const toWrite = await loadEligibleForWrite(APPROVED_FOLDERS);
       if (!Array.isArray(toWrite)) {
-        throw new Error('loadEligibleForWrite returned invalid result');
+        throw new Error('loadEligibleForWrite returned invalid result: ' + JSON.stringify(toWrite));
       }
       const cvpToWrite = toWrite.filter(d => d.source === 'CORE_VAULT_PACK');
+      console.log(`[CVP Workflow] Loaded ${toWrite.length} total eligible drafts, ${cvpToWrite.length} are CORE_VAULT_PACK`);
 
       // Count already-written CVP drafts (have filePath set, filesystemWrite = COMPLETED)
       const alreadyWrittenCount = toWrite.filter(d =>
@@ -208,14 +218,16 @@ export default function CoreVaultPackWorkflow() {
       ).length;
 
       // ── Phase 5: Write ────────────────────────────────────────────────────────
+      console.log(`[CVP Workflow] Phase 5: Writing ${cvpToWrite.length} drafts`);
       setRunPhase(`Writing ${cvpToWrite.length} draft(s) to vault…`);
       const writeResult = await executeWrites(cvpToWrite);
       if (!writeResult || typeof writeResult.written !== 'number') {
-        throw new Error('executeWrites returned invalid result');
+        throw new Error('executeWrites returned invalid result: ' + JSON.stringify(writeResult));
       }
       const { written, failed } = writeResult;
+      console.log(`[CVP Workflow] Written ${written} drafts, ${failed?.length || 0} failed`);
 
-      setSummary({
+      const finalSummary = {
         generated,
         savedToBackend: savedCount,
         autoApproved,
@@ -225,11 +237,16 @@ export default function CoreVaultPackWorkflow() {
         writtenFilenames: cvpToWrite
           .filter((_, i) => !failed?.find(f => f.filename === cvpToWrite[i]?.filename))
           .map(d => d.filename),
-      });
+      };
+      
+      console.log('[CVP Workflow] Workflow complete:', finalSummary);
+      setSummary(finalSummary);
       setRunPhase('');
       setRunStatus('done');
     } catch (err) {
-      setErrorMsg(`Workflow failed: ${err?.message || 'Unknown error'}`);
+      const errorMsg = err?.message || 'Unknown error';
+      console.error('[CVP Workflow] Workflow failed:', errorMsg, err);
+      setErrorMsg(errorMsg);
       setRunStatus('done');
       setRunPhase('');
     }
@@ -319,15 +336,30 @@ export default function CoreVaultPackWorkflow() {
         </button>
 
         {/* Quick result line under button */}
-        {runStatus === 'done' && summary && (
-          <div className="text-[8px] font-bold text-primary text-center">
-            ✅ Vault Pack Complete — Generated: {summary.generated} · Saved: {summary.savedToBackend} · Approved: {summary.autoApproved} · Written: {summary.written}
-          </div>
-        )}
-        {errorMsg && (
-          <div className="text-[8px] font-bold text-destructive text-center">
-            ❌ Vault Pack Failed — {errorMsg}
-          </div>
+        {runStatus === 'done' && (
+          <>
+            {summary && (
+              <div className="text-center space-y-1">
+                <div className="text-[8px] font-bold text-primary">
+                  ✅ Vault Pack Complete
+                </div>
+                <div className="text-[7px] font-mono text-slate-400">
+                  Generated: {summary.generated} · Saved: {summary.savedToBackend} · Approved: {summary.autoApproved} · Written: {summary.written}
+                  {summary.failed?.length > 0 && ` · Failed: ${summary.failed.length}`}
+                </div>
+              </div>
+            )}
+            {errorMsg && (
+              <div className="text-center space-y-1">
+                <div className="text-[8px] font-bold text-destructive">
+                  ❌ Vault Pack Failed
+                </div>
+                <div className="text-[7px] font-mono text-destructive/80">
+                  {errorMsg}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Result summary */}
