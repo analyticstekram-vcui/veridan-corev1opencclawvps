@@ -347,16 +347,21 @@ export default function CoreVaultPackWorkflow() {
         </div>
 
         {/* PRIMARY BUTTON */}
-        <button
-          type="button"
-          onClick={handleRunGoverned}
-          disabled={isRunning}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/25 border-2 border-primary/60 text-primary hover:bg-primary/35 disabled:opacity-50 disabled:cursor-not-allowed rounded-sm font-bold text-[11px] uppercase tracking-widest transition-colors"
-        >
-          {isRunning
-            ? <><Loader2 className="w-4 h-4 animate-spin" /> {currentPhase}</>
-            : <><Zap className="w-4 h-4" /> Run Governed Vault Pack</>}
-        </button>
+         <button
+           type="button"
+           onClick={handleRunGoverned}
+           disabled={isRunning}
+           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/25 border-2 border-primary/60 text-primary hover:bg-primary/35 disabled:opacity-50 disabled:cursor-not-allowed rounded-sm font-bold text-[11px] uppercase tracking-widest transition-colors"
+         >
+           {isRunning
+             ? <><Loader2 className="w-4 h-4 animate-spin" /> {currentPhase}</>
+             : <><Zap className="w-4 h-4" /> Run Governed Vault Pack</>}
+         </button>
+
+         {/* Debug line */}
+         <div className="text-[6px] font-mono text-slate-600 text-center">
+           {summary ? `gen:${summary.generated} saved:${summary.savedToBackend} appr:${summary.autoApproved} writ:${summary.written}${errorMsg ? ` err: ${errorMsg.split(' — ')[1]?.slice(0, 60) || ''}` : ''}` : ''}
+         </div>
 
         {/* Live status phase + counts */}
         {runStatus === 'running' && (

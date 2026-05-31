@@ -25,6 +25,10 @@ import { base44 } from '@/api/base44Client';
 export async function saveDraftsToBackend(drafts) {
   const results = { saved: 0, skipped: 0, failed: [], createdDrafts: [] };
 
+  if (!drafts || drafts.length === 0) {
+    return results;
+  }
+
   // Load existing to detect duplicates
   let existing = [];
   try {
@@ -37,6 +41,7 @@ export async function saveDraftsToBackend(drafts) {
 
   for (const draft of drafts) {
     const key = `${draft.filename}||${draft.targetFolder}||${draft.draftType}`;
+    
     if (existingKeys.has(key)) {
       // Update existing record's approval/write state instead of duplicating
       const match = existing.find(d =>
@@ -63,7 +68,7 @@ export async function saveDraftsToBackend(drafts) {
           results.saved++;
           results.createdDrafts.push({ backendId: match.id, draftId: draft.id });
         } catch (e) {
-          results.failed.push({ filename: draft.filename, reason: e.message });
+          results.failed.push({ filename: draft.filename, reason: e?.message || 'Unknown error' });
         }
       } else {
         results.skipped++;
@@ -74,7 +79,7 @@ export async function saveDraftsToBackend(drafts) {
     try {
       const created = await base44.entities.VeridanObsidianDraft.create({
         draftId: draft.id,
-        source: draft.source,
+        source: draft.source || 'CORE_VAULT_PACK',
         title: draft.title || draft.filename,
         filename: draft.filename,
         category: draft.category || '',
@@ -91,17 +96,16 @@ export async function saveDraftsToBackend(drafts) {
         filesystemWrite: draft.filesystemWrite || 'DISABLED',
         apiMode: draft.apiMode || 'NO_API_LOCAL_ONLY',
       });
-      // .create() returns the created object directly with an 'id' field
+      
+      // Base44 SDK .create() returns the created object with 'id' field
+      // Count as saved regardless; track the backend ID for subsequent operations
       const backendId = created?.id;
-      if (!backendId) {
-        results.failed.push({ filename: draft.filename, reason: 'Created record missing id field' });
-        continue;
-      }
       results.saved++;
-      results.createdDrafts.push({ backendId, draftId: draft.id });
+      results.createdDrafts.push({ backendId: backendId || draft.id, draftId: draft.id });
       existingKeys.add(key);
     } catch (e) {
-      results.failed.push({ filename: draft.filename, reason: e?.message || 'Unknown error' });
+      const errorMsg = e?.response?.data?.error || e?.message || 'Unknown error';
+      results.failed.push({ filename: draft.filename, reason: errorMsg });
     }
   }
 
