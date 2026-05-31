@@ -30,12 +30,6 @@ import {
   markDraftWritten,
   saveAuditToBackend,
 } from '@/lib/obsidianDraftStore';
-import StorageReconciliationPanel from './StorageReconciliationPanel';
-import ObsidianBridgeHealthPanel from './ObsidianBridgeHealthPanel';
-import ObsidianBridgeConnectorContract from './ObsidianBridgeConnectorContract';
-import DailyVaultHealthCheckPanel from '../vault-index/DailyVaultHealthCheckPanel';
-import VaultWriteBridgeDryRunPanel from '../vault-write/VaultWriteBridgeDryRunPanel';
-import VaultWriteExecutionPanel from '../vault-write/VaultWriteExecutionPanel';
 import { buildDrafts } from './cvpTemplates';
 
 const APPROVED_FOLDERS = [
@@ -305,26 +299,35 @@ export default function CoreVaultPackWorkflow() {
         {/* Result summary */}
         {runStatus === 'done' && summary && (
           <div className="border border-primary/30 bg-primary/5 rounded-sm p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2 text-[9px] font-bold text-primary">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Governed Vault Pack Complete
-              </div>
-              {summary.written > 0 && (
-                <Link
-                  to="/vault-file-index"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-mono font-bold border border-primary/40 text-primary bg-primary/15 hover:bg-primary/25 rounded-sm transition-colors"
-                >
-                  <FolderOpen className="w-3 h-3" /> View Written Files
-                </Link>
-              )}
-            </div>
+            {/* Status message based on actual counts */}
+            {(() => {
+              let statusMsg = 'Generated Only';
+              if (summary.written > 0) statusMsg = 'Complete';
+              else if (summary.autoApproved > 0) statusMsg = 'Saved';
+              else if (summary.savedToBackend > 0) statusMsg = 'Saved';
+              
+              return (
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-[9px] font-bold text-primary">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Vault Pack {statusMsg}
+                  </div>
+                  {summary.written > 0 && (
+                    <Link
+                      to="/vault-file-index"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-mono font-bold border border-primary/40 text-primary bg-primary/15 hover:bg-primary/25 rounded-sm transition-colors"
+                    >
+                      <FolderOpen className="w-3 h-3" /> View Written Files
+                    </Link>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[8px] font-mono">
               <div>📦 Generated: <span className="text-primary font-bold">{summary.generated}</span></div>
               <div>💾 Saved to backend: <span className="text-primary font-bold">{summary.savedToBackend}</span></div>
               <div>✅ Auto-Approved: <span className="text-primary font-bold">{summary.autoApproved}</span></div>
               <div>✍️ Written: <span className="text-primary font-bold">{summary.written}</span></div>
-              <div>⏭ Already written: <span className="text-slate-400">{summary.alreadyWritten}</span></div>
               {summary.failed?.length > 0 && (
                 <div>❌ Failed: <span className="text-destructive font-bold">{summary.failed.length}</span></div>
               )}
@@ -350,9 +353,6 @@ export default function CoreVaultPackWorkflow() {
               </div>
             )}
 
-            <div className="text-[6px] font-mono text-slate-600 border-t border-border/20 pt-2">
-              executionStatus: NOT_EXECUTED · dispatchStatus: NOT_DISPATCHED · openclawCall: NOT_SENT · storage: Base44 backend entities
-            </div>
             <button type="button" onClick={reset}
               className="text-[7px] font-mono text-slate-500 hover:text-slate-300 underline">
               Reset workflow
@@ -360,47 +360,11 @@ export default function CoreVaultPackWorkflow() {
           </div>
         )}
 
-        {/* Storage Reconciliation — shown after workflow completes */}
-        {runStatus === 'done' && summary && (
-          <StorageReconciliationPanel workflowSummary={summary} />
-        )}
-
-        {/* Daily Vault Health Check — shown after workflow completes */}
-        {runStatus === 'done' && summary && (
-          <DailyVaultHealthCheckPanel />
-        )}
-
-        {/* Bridge Health — shown after workflow completes, before dry-run */}
-        {runStatus === 'done' && summary && (
-          <ObsidianBridgeHealthPanel />
-        )}
-        {runStatus === 'done' && summary && (
-          <ObsidianBridgeConnectorContract />
-        )}
-
-        {/* Vault Write Bridge — shown after workflow completes */}
-        {runStatus === 'done' && summary && (
-          <VaultWriteBridgeDryRunPanel />
-        )}
-        {runStatus === 'done' && summary && (
-          <VaultWriteExecutionPanel />
-        )}
-
         {errorMsg && (
           <div className="flex items-center gap-2 text-[8px] font-mono text-destructive bg-destructive/10 border border-destructive/30 rounded-sm px-3 py-2">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errorMsg}
           </div>
         )}
-
-        {/* Verification panel */}
-        <div className="text-[6px] font-mono text-slate-600 border-t border-border/20 pt-2 space-y-0.5">
-          <div className="font-bold text-slate-500 uppercase tracking-widest text-[6px] mb-1">Storage Verification</div>
-          <div>✅ Draft content → VeridanObsidianDraft (backend entity)</div>
-          <div>✅ Audit records → VeridanObsidianWriteAudit (backend entity)</div>
-          <div>✅ localStorage → cache only (no large content, max 20 audit refs)</div>
-          <div>✅ No InvokeLLM · No OpenClaw · No credentials · No browser automation</div>
-          <div>✅ obsidianWriteApprovedDraft backend handles all vault writes</div>
-        </div>
       </div>
     </div>
   );
