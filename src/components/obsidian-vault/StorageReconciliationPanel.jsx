@@ -225,6 +225,96 @@ function RepairLogTable({ log }) {
   );
 }
 
+function DebugRow({ label, value, highlight }) {
+  return (
+    <div className="flex gap-1 py-0.5 border-b border-border/10 last:border-0">
+      <span className="text-slate-600 shrink-0 w-36 text-[6px]">{label}</span>
+      <span className={`text-[6px] font-mono break-all ${highlight ? 'text-amber-300' : 'text-slate-400'}`}>{value || <span className="text-slate-700 italic">—</span>}</span>
+    </div>
+  );
+}
+
+function OrphanSkipDebugTable({ log }) {
+  const skipped = log.filter(r => r.status === 'NO_MATCH');
+  const [expanded, setExpanded] = useState(true);
+  if (!skipped.length) return null;
+  return (
+    <div className="border border-amber-500/30 bg-amber-500/5 rounded-sm overflow-hidden">
+      <button type="button" onClick={() => setExpanded(v => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-amber-500/10 transition-colors text-left">
+        <div className="flex items-center gap-1.5">
+          <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
+          <span className="text-[7px] font-bold text-amber-400 uppercase tracking-wide">
+            {skipped.length} skipped orphan audit{skipped.length !== 1 ? 's' : ''} — diagnostic detail
+          </span>
+        </div>
+        {expanded ? <ChevronDown className="w-3 h-3 text-amber-500/60" /> : <ChevronRight className="w-3 h-3 text-amber-500/60" />}
+      </button>
+      {expanded && (
+        <div className="border-t border-amber-500/20 divide-y divide-amber-500/10">
+          {skipped.map((row, i) => {
+            const d = row.debug || {};
+            return (
+              <div key={i} className="p-3 space-y-2">
+                <div className="text-[7px] font-bold text-amber-300 uppercase tracking-wide">
+                  Audit #{i + 1} — {d.auditId || row.auditId || '?'}
+                </div>
+
+                {/* Two-column: audit vs best candidate */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Audit column */}
+                  <div className="bg-background/50 border border-amber-500/20 rounded-sm p-2">
+                    <div className="text-[6px] font-bold text-amber-400 uppercase tracking-widest mb-1.5">Orphan Audit</div>
+                    <DebugRow label="auditId (schema)" value={d.auditId} />
+                    <DebugRow label="entity id" value={d.auditEntityId} />
+                    <DebugRow label="filePath" value={d.auditFilePath} highlight={!d.auditFilePath} />
+                    <DebugRow label="folder/targetFolder" value={d.auditFolder} highlight={!d.auditFolder} />
+                    <DebugRow label="filename/fileName" value={d.auditFilename} highlight={!d.auditFilename} />
+                    <DebugRow label="source" value={d.auditSource} />
+                    <DebugRow label="timestamp" value={d.auditTimestamp} />
+                    <DebugRow label="writtenAt" value={d.auditWrittenAt} />
+                  </div>
+
+                  {/* Best candidate draft column */}
+                  <div className="bg-background/50 border border-slate-700/40 rounded-sm p-2">
+                    <div className="text-[6px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                      Best Candidate Draft <span className="text-primary">score={d.bestScore ?? 0}</span>
+                    </div>
+                    <DebugRow label="draft id" value={d.bestCandidateId} />
+                    <DebugRow label="filePath" value={d.bestDraftFilePath} highlight={!d.bestDraftFilePath} />
+                    <DebugRow label="folder/targetFolder" value={d.bestDraftFolder} highlight={!d.bestDraftFolder} />
+                    <DebugRow label="filename/fileName" value={d.bestDraftFilename} highlight={!d.bestDraftFilename} />
+                    <DebugRow label="source" value={d.bestDraftSource} />
+                  </div>
+                </div>
+
+                {/* Score breakdown */}
+                <div className="bg-background/40 border border-border/30 rounded-sm p-2 space-y-1">
+                  <div className="text-[6px] font-bold text-slate-500 uppercase tracking-widest mb-1">Score Breakdown</div>
+                  {d.scoreBreakdown?.length > 0
+                    ? d.scoreBreakdown.map((s, j) => (
+                        <div key={j} className="text-[6px] font-mono text-primary/80">✓ {s}</div>
+                      ))
+                    : <div className="text-[6px] font-mono text-slate-600 italic">No points awarded — no fields matched</div>
+                  }
+                  <div className="text-[6px] font-mono text-amber-400/80 border-t border-border/20 pt-1 mt-1">
+                    Total: {d.bestScore ?? 0}pts — threshold: 40pts — {(d.bestScore ?? 0) >= 40 ? '✓ would pass' : '✗ below threshold'}
+                  </div>
+                </div>
+
+                {/* Skip reason */}
+                <div className="text-[6px] font-mono text-destructive/80 bg-destructive/5 border border-destructive/20 rounded-sm px-2 py-1.5 break-all">
+                  <span className="font-bold">Skip reason:</span> {d.skipReason || row.reason}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function StorageReconciliationPanel({ workflowSummary, className = '' }) {
@@ -607,7 +697,7 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
               <div className="p-3 space-y-2.5">
                 <div className="text-[7px] font-mono text-slate-500 space-y-0.5">
                   <div>Links orphan <span className="text-primary">VeridanObsidianWriteAudit</span> records to matching <span className="text-primary">VeridanObsidianDraft</span> records via filePath / folder / filename / source matching.</div>
-                  <div>Confidence threshold: <span className="text-slate-300">≥ 50pts</span> (filePath exact match = 50pts · folder = 20pts · filename = 20pts · source = 10pts · timestamp ≤60s = 5pts)</div>
+                  <div>Confidence threshold: <span className="text-slate-300">≥ 40pts</span> (filePath exact = 50pts · constructed path = 45pts · folder = 20pts · filename = 20pts · source = 10pts · timestamp ≤60s = 5pts)</div>
                   <div>Safe fields only: <span className="text-slate-300">draftId · reconciliationStatus · reconciledAt · filePath · writtenAt · filesystemWrite</span></div>
                   <div className="text-destructive/70">Blocked: executionStatus · dispatchStatus · openclawCall · credentials · MEDIUM/HIGH risk · draft content/filename/folder</div>
                 </div>
@@ -679,22 +769,8 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
                       </div>
                     </div>
 
-                    {/* Skipped debug section */}
-                    {orphanResult.skipped > 0 && (() => {
-                      const skippedRows = orphanResult.log.filter(r => r.status === 'NO_MATCH');
-                      return skippedRows.length > 0 ? (
-                        <div className="border border-amber-500/20 bg-amber-500/5 rounded-sm p-2 space-y-1">
-                          <div className="text-[7px] font-bold text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
-                            <AlertCircle className="w-2.5 h-2.5" /> {skippedRows.length} skipped — score below threshold
-                          </div>
-                          {skippedRows.map((r, i) => (
-                            <div key={i} className="text-[6px] font-mono text-amber-400/70 bg-background/40 rounded-sm px-2 py-1 break-all">
-                              <span className="text-amber-300 font-bold">{r.auditId}</span> — {r.reason}
-                            </div>
-                          ))}
-                        </div>
-                      ) : null;
-                    })()}
+                    {/* Skipped debug section — expanded diagnostic table */}
+                    {orphanResult.skipped > 0 && <OrphanSkipDebugTable log={orphanResult.log} />}
 
                     {/* Orphan repair log */}
                     <RepairLogTable log={orphanResult.log.filter(r => r.status !== 'NO_MATCH')} />

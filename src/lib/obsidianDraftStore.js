@@ -598,13 +598,27 @@ export async function reconcileOrphanAudits() {
         ...logBase,
         action: 'SKIP',
         status: 'NO_MATCH',
-        reason: [
-          `bestScore=${bestCandidateScore} < 40 threshold`,
-          `bestCandidate=${bestCandidateId}`,
-          `audit.filePath="${audit.filePath || ''}"`,
-          `audit.folder="${auditFolder}"`,
-          `audit.filename="${auditBasename}"`,
-        ].join(' | '),
+        reason: `bestScore=${bestCandidateScore} < 40 threshold | bestCandidate=${bestCandidateId}`,
+        debug: {
+          // Audit fields
+          auditId,
+          auditEntityId: audit.id,
+          auditFilePath: audit.filePath || '',
+          auditFolder: auditFolder,
+          auditFilename: auditBasename,
+          auditSource: audit.source || '',
+          auditTimestamp: audit.timestamp || audit.created_date || '',
+          auditWrittenAt: audit.writtenAt || '',
+          // Best candidate draft fields
+          bestCandidateId,
+          bestScore: bestCandidateScore,
+          bestDraftFilePath: bestDraft?.filePath || '',
+          bestDraftFolder: bestDraft ? resolveFolder(bestDraft) : '',
+          bestDraftFilename: bestDraft ? (resolveFilename(bestDraft) || basename(normPath(bestDraft.filePath || ''))) : '',
+          bestDraftSource: bestDraft?.source || '',
+          scoreBreakdown: bestReasons,
+          skipReason: `Score ${bestCandidateScore} is below threshold of 40. ${drafts.length} drafts evaluated.`,
+        },
       });
       continue;
     }
