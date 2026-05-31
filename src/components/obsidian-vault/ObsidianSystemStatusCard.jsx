@@ -37,7 +37,16 @@ export default function ObsidianSystemStatusCard() {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        // Check Safe Test Write logs first (localStorage)
+        // Check latest bridge health check result first (from Check Bridge action)
+        let latestBridgeCheck = null;
+        try {
+          const bridgeCheckData = localStorage.getItem('veridan_obsidian_bridge_health');
+          if (bridgeCheckData) {
+            latestBridgeCheck = JSON.parse(bridgeCheckData);
+          }
+        } catch { /* ignore */ }
+        
+        // Check Safe Test Write logs (localStorage)
         let latestTestWrite = null;
         try {
           const testWriteLogs = JSON.parse(localStorage.getItem('veridan_safe_test_writes') || '[]');
@@ -59,8 +68,11 @@ export default function ObsidianSystemStatusCard() {
           ? new Date(successfulWrites[0].timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           : 'never';
         
-        // Bridge is working if: latest Safe Test Write is WRITE_COMPLETED, OR we have successful audits
-        const bridgeWorking = (latestTestWrite?.status === 'WRITE_COMPLETED') || (written > 0 || (latestTestWrite?.status === 'WRITE_COMPLETED'));
+        // Bridge is working if: latest bridge check succeeded, OR latest Safe Test Write is WRITE_COMPLETED, OR we have successful audits
+        const bridgeWorking = 
+          (latestBridgeCheck?.success === true) || 
+          (latestTestWrite?.status === 'WRITE_COMPLETED') || 
+          (written > 0);
         
         setStats({
           bridgeWorking: bridgeWorking ? 'working' : 'not-working',

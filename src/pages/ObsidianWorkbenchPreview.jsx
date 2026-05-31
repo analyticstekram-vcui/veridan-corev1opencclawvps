@@ -5,8 +5,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, WifiOff, Trash2, ChevronDown, FolderOpen } from 'lucide-react';
+import { Shield, Plus, WifiOff, Trash2, ChevronDown, FolderOpen, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
 import ModuleNav from '../components/navigation/ModuleNav';
 import ObsidianSystemStatusCard from '../components/obsidian-vault/ObsidianSystemStatusCard';
 import SafeTestWritePanel from '../components/obsidian-vault/SafeTestWritePanel';
@@ -89,11 +90,56 @@ export default function ObsidianWorkbenchPreview() {
   const [taskCreated, setTaskCreated] = useState(false);
   const [clearResult, setClearResult] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [checkBridgeLoading, setCheckBridgeLoading] = useState(false);
+  const [checkBridgeResult, setCheckBridgeResult] = useState(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('veridan_obsidian_selected_category');
     if (saved) setSelectedCategory(saved);
   }, []);
+
+  const handleCheckBridge = async () => {
+    setCheckBridgeLoading(true);
+    setCheckBridgeResult(null);
+    
+    try {
+      const response = await base44.functions.invoke('obsidianBridgeHealthCheck', {});
+      const data = response?.data;
+      
+      // Store result
+      const result = {
+        timestamp: new Date().toISOString(),
+        success: data?.success ?? true,
+        status: data?.status || 'unknown',
+        gatewayUrl: data?.url || 'not detected',
+        health: data?.health || 'unknown',
+        message: data?.message || 'Bridge check completed',
+        error: null,
+      };
+      
+      setCheckBridgeResult(result);
+      try {
+        localStorage.setItem('veridan_obsidian_bridge_health', JSON.stringify(result));
+      } catch { /* quota */ }
+    } catch (err) {
+      const errorData = err?.response?.data;
+      const result = {
+        timestamp: new Date().toISOString(),
+        success: false,
+        status: errorData?.status || 'ERROR',
+        message: errorData?.message || err?.message || 'Bridge check failed',
+        error: errorData?.error || errorData?.detail || JSON.stringify(errorData) || 'Unknown error',
+        gatewayUrl: errorData?.url || 'unknown',
+      };
+      
+      setCheckBridgeResult(result);
+      try {
+        localStorage.setItem('veridan_obsidian_bridge_health', JSON.stringify(result));
+      } catch { /* quota */ }
+    } finally {
+      setCheckBridgeLoading(false);
+    }
+  };
 
   const handleCreateTask = () => {
     if (!selectedCategory || !selectedNoteType || !purpose) return;
@@ -202,14 +248,55 @@ export default function ObsidianWorkbenchPreview() {
           <div className="px-4 py-2.5 bg-primary/10 border-b border-border/30 flex items-center gap-2">
             <div className="text-[10px] font-bold uppercase tracking-widest text-primary">1. Check Bridge</div>
           </div>
-          <div className="p-4">
-            <div className="text-[7px] font-mono text-slate-500 mb-3">Check if the Obsidian vault bridge is working.</div>
+          <div className="p-4 space-y-3">
+            <div className="text-[7px] font-mono text-slate-500">Verify the Obsidian vault bridge is working.</div>
             <button
               type="button"
-              className="w-full px-4 py-2.5 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 rounded-sm font-bold text-[10px] uppercase tracking-widest transition-colors"
+              onClick={handleCheckBridge}
+              disabled={checkBridgeLoading}
+              className="w-full px-4 py-2.5 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-sm font-bold text-[10px] uppercase tracking-widest transition-colors"
             >
-              Check Bridge Status
+              {checkBridgeLoading ? 'Checking bridge…' : 'Check Bridge Status'}
             </button>
+
+            {/* Result display */}
+            {checkBridgeResult && (
+              <div className={`border rounded-sm p-3 space-y-2 ${
+                checkBridgeResult.success
+                  ? 'border-primary/30 bg-primary/5'
+                  : 'border-destructive/30 bg-destructive/5'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {checkBridgeResult.success ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                  )}
+                  <span className={`text-[9px] font-bold uppercase tracking-widest ${
+                    checkBridgeResult.success ? 'text-primary' : 'text-destructive'
+                  }`}>
+                    {checkBridgeResult.status}
+                  </span>
+                </div>
+                <div className="text-[8px] font-mono space-y-1 text-slate-400">
+                  <div>{checkBridgeResult.message}</div>
+                  {checkBridgeResult.gatewayUrl && checkBridgeResult.gatewayUrl !== 'not detected' && checkBridgeResult.gatewayUrl !== 'unknown' && (
+                    <div>URL: <span className="text-slate-300">{checkBridgeResult.gatewayUrl}</span></div>
+                  )}
+                  {checkBridgeResult.health && checkBridgeResult.health !== 'unknown' && (
+                    <div>Health: <span className="text-slate-300">{checkBridgeResult.health}</span></div>
+                  )}
+                  {checkBridgeResult.timestamp && (
+                    <div className="text-slate-600">Checked: {new Date(checkBridgeResult.timestamp).toLocaleTimeString()}</div>
+                  )}
+                </div>
+                {checkBridgeResult.error && (
+                  <div className="text-[7px] font-mono text-destructive/80 bg-destructive/10 rounded-sm px-2 py-1.5 break-all">
+                    {checkBridgeResult.error}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
