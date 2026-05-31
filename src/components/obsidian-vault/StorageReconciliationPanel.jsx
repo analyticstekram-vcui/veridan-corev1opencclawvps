@@ -666,7 +666,7 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
                           { label: 'Skipped', value: orphanResult.skipped, color: 'text-slate-500' },
                           { label: 'Blocked', value: orphanResult.blocked, color: orphanResult.blocked > 0 ? 'text-destructive' : 'text-slate-500' },
                           { label: 'Errors', value: orphanResult.errors, color: orphanResult.errors > 0 ? 'text-destructive' : 'text-slate-500' },
-                          { label: 'Orphans Left', value: Math.max(0, orphanResult.checked - orphanResult.repaired - orphanResult.blocked - orphanResult.errors), color: 'text-slate-400' },
+                          { label: 'Orphans Left', value: Math.max(0, orphanResult.checked - orphanResult.repaired - orphanResult.blocked - orphanResult.errors - orphanResult.skipped), color: 'text-slate-400' },
                         ].map(({ label, value, color }) => (
                           <div key={label} className="flex flex-col items-center px-2 py-1.5 bg-background/50 border border-border/30 rounded-sm">
                             <span className={`text-[10px] font-bold ${color}`}>{value}</span>
@@ -679,8 +679,25 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
                       </div>
                     </div>
 
+                    {/* Skipped debug section */}
+                    {orphanResult.skipped > 0 && (() => {
+                      const skippedRows = orphanResult.log.filter(r => r.status === 'NO_MATCH');
+                      return skippedRows.length > 0 ? (
+                        <div className="border border-amber-500/20 bg-amber-500/5 rounded-sm p-2 space-y-1">
+                          <div className="text-[7px] font-bold text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                            <AlertCircle className="w-2.5 h-2.5" /> {skippedRows.length} skipped — score below threshold
+                          </div>
+                          {skippedRows.map((r, i) => (
+                            <div key={i} className="text-[6px] font-mono text-amber-400/70 bg-background/40 rounded-sm px-2 py-1 break-all">
+                              <span className="text-amber-300 font-bold">{r.auditId}</span> — {r.reason}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
+
                     {/* Orphan repair log */}
-                    <RepairLogTable log={orphanResult.log} />
+                    <RepairLogTable log={orphanResult.log.filter(r => r.status !== 'NO_MATCH')} />
                   </div>
                 )}
               </div>

@@ -430,6 +430,26 @@ export async function reconcileOrphanAudits() {
     return result;
   }
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  // Normalize a path: trim, lower, collapse slashes
+  const normPath = (p) => (p || '').trim().toLowerCase().replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
+
+  // Extract basename from a file path
+  const basename = (p) => {
+    const n = normPath(p);
+    const parts = n.split('/');
+    return parts[parts.length - 1] || '';
+  };
+
+  // Resolve all aliases for "folder": targetFolder, folder, allowlistedFolder
+  const resolveFolder = (obj) =>
+    normPath(obj.targetFolder || obj.folder || obj.allowlistedFolder || '');
+
+  // Resolve all aliases for "filename": filename, fileName
+  const resolveFilename = (obj) =>
+    (obj.filename || obj.fileName || '').trim().toLowerCase();
+
   // Build set of all known draft IDs (draftId field AND entity id)
   const draftById = {};
   const draftByDraftId = {};
@@ -438,17 +458,33 @@ export async function reconcileOrphanAudits() {
     if (d.draftId) draftByDraftId[d.draftId] = d;
   }
 
-  // Identify orphan audits: draftId set but no matching draft, OR draftId missing entirely
+  // Identify orphan audits: no draftId, OR draftId set but doesn't resolve to any known draft
   const orphanAudits = audits.filter(a => {
-    if (!a.draftId) return true; // no draftId set → orphan
-    return !draftByDraftId[a.draftId] && !draftById[a.draftId]; // draftId set but no match
+    if (!a.draftId) return true;
+    return !draftByDraftId[a.draftId] && !draftById[a.draftId];
   });
 
   for (const audit of orphanAudits) {
     result.checked++;
-    const logBase = { auditId: audit.auditId || audit.id, filename: audit.filename || '—', folder: audit.folder || '—' };
+    const auditId = audit.auditId || audit.id;
+    const auditFilename = resolveFilename(audit);
+    const auditFolder = resolveFolder(audit);
+    const auditFilePath = normPath(audit.filePath);
 
-    // Safety blocks on the audit itself
+    // Derive filename from filePath if not set directly
+    const auditBasename = auditFilename || basename(auditFilePath);
+
+    // Build a "constructed path" from folder + filename as fallback
+    const auditConstructedPath = (auditFolder && auditBasename)
+      ? `${auditFolder}/${auditBasename}` : '';
+
+    const logBase = {
+      auditId,
+      filename: auditBasename || '—',
+      folder: auditFolder || '—',
+    };
+
+    // Safety blocks on the audit itself — never touch execution/dispatch/openclaw
     if (audit.executionStatus && audit.executionStatus !== 'NOT_EXECUTED') {
       result.blocked++;
       result.log.push({ ...logBase, action: 'SKIP', status: 'BLOCKED', reason: `executionStatus=${audit.executionStatus}` });
@@ -469,51 +505,82 @@ export async function reconcileOrphanAudits() {
     let bestDraft = null;
     let bestScore = 0;
     let bestReasons = [];
+    let bestCandidateId = '—';
+    let bestCandidateScore = 0;
 
     for (const draft of drafts) {
-      // Block MEDIUM/HIGH risk drafts from being linked
+      // Hard blocks on draft side
       if (draft.riskLevel && draft.riskLevel !== 'LOW') continue;
-      // Block drafts with credential fields
       if (CREDENTIAL_FIELDS.some(f => draft[f])) continue;
-      // Don't re-link drafts that already have a different confirmed audit
-      if (draft.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' && draft.filePath && draft.filePath !== audit.filePath) continue;
+
+      const draftFilePath = normPath(draft.filePath);
+      const draftFolder = resolveFolder(draft);
+      const draftFilename = resolveFilename(draft);
+      const draftBasename = draftFilename || basename(draftFilePath);
+
+      // Build draft's constructed path from targetFolder + filename
+      const draftConstructedPath = (draftFolder && draftBasename)
+        ? `${draftFolder}/${draftBasename}` : '';
 
       let score = 0;
       const reasons = [];
 
-      // filePath exact match (strongest signal)
-      const auditFilePath = audit.filePath || '';
-      const draftFilePath = draft.filePath || '';
+      // ── filePath exact match (primary, strongest) ──────────────────────────
+      // Direct filePath-to-filePath
       if (auditFilePath && draftFilePath && auditFilePath === draftFilePath) {
-        score += 50; reasons.push('filePath exact match');
+        score += 50; reasons.push('filePath↔filePath exact');
+      }
+      // audit filePath matches draft's constructed path (draft has no filePath yet)
+      else if (auditFilePath && draftConstructedPath && auditFilePath === draftConstructedPath) {
+        score += 50; reasons.push('audit.filePath↔draft(folder+filename) exact');
+      }
+      // audit's constructed path matches draft filePath
+      else if (auditConstructedPath && draftFilePath && auditConstructedPath === draftFilePath) {
+        score += 50; reasons.push('audit(folder+filename)↔draft.filePath exact');
+      }
+      // Both have constructed paths that match (no filePath on either)
+      else if (auditConstructedPath && draftConstructedPath && auditConstructedPath === draftConstructedPath) {
+        score += 45; reasons.push('(folder+filename) constructed path match');
       }
 
-      // folder match
-      const auditFolder = (audit.folder || '').trim();
-      const draftFolder = (draft.targetFolder || '').trim();
+      // ── Folder match (+20) ─────────────────────────────────────────────────
       if (auditFolder && draftFolder && auditFolder === draftFolder) {
         score += 20; reasons.push('folder match');
       }
 
-      // filename match (normalize case + extension)
-      const auditFile = (audit.filename || '').toLowerCase().trim();
-      const draftFile = (draft.filename || '').toLowerCase().trim();
-      if (auditFile && draftFile && auditFile === draftFile) {
+      // ── Filename match (+20): compare basename from all sources ────────────
+      // Direct filename fields
+      if (auditBasename && draftBasename && auditBasename === draftBasename) {
         score += 20; reasons.push('filename match');
       }
+      // Audit filePath basename vs draft filename
+      else if (auditFilePath && draftBasename) {
+        const auditBase = basename(auditFilePath);
+        if (auditBase && auditBase === draftBasename) {
+          score += 20; reasons.push('audit.filePath basename↔draft.filename match');
+        }
+      }
 
-      // source match
+      // ── Source match (+10) ─────────────────────────────────────────────────
       const auditSource = (audit.source || '').trim();
       const draftSource = (draft.source || '').trim();
       if (auditSource && draftSource && auditSource === draftSource) {
         score += 10; reasons.push('source match');
       }
 
-      // writtenAt / timestamp proximity (within 60s)
-      const auditTs = audit.timestamp ? new Date(audit.timestamp).getTime() : null;
-      const draftTs = draft.writtenAt ? new Date(draft.writtenAt).getTime() : null;
+      // ── Timestamp proximity (+5, within 60s) ──────────────────────────────
+      const auditTs = audit.timestamp || audit.created_date
+        ? new Date(audit.timestamp || audit.created_date).getTime() : null;
+      const draftTs = draft.writtenAt || draft.created_date
+        ? new Date(draft.writtenAt || draft.created_date).getTime() : null;
       if (auditTs && draftTs && Math.abs(auditTs - draftTs) <= 60000) {
         score += 5; reasons.push('timestamp proximity <60s');
+      }
+
+      // Track best candidate for debug output even if below threshold
+      if (score > bestCandidateScore) {
+        bestCandidateScore = score;
+        bestCandidateId = draft.draftId || draft.id;
       }
 
       if (score > bestScore) {
@@ -523,50 +590,58 @@ export async function reconcileOrphanAudits() {
       }
     }
 
-    // Require confidence score >= 50 to proceed
-    if (!bestDraft || bestScore < 50) {
+    // Require confidence score >= 40 to proceed
+    // (filePath exact match = 50 → always qualifies; folder+filename = 40 → qualifies)
+    if (!bestDraft || bestScore < 40) {
       result.skipped++;
-      result.log.push({ ...logBase, action: 'SKIP', status: 'NO_MATCH', reason: `Best confidence score ${bestScore} < 50 — no confident match found` });
+      result.log.push({
+        ...logBase,
+        action: 'SKIP',
+        status: 'NO_MATCH',
+        reason: [
+          `bestScore=${bestCandidateScore} < 40 threshold`,
+          `bestCandidate=${bestCandidateId}`,
+          `audit.filePath="${audit.filePath || ''}"`,
+          `audit.folder="${auditFolder}"`,
+          `audit.filename="${auditBasename}"`,
+        ].join(' | '),
+      });
       continue;
     }
 
     const draft = bestDraft;
     const linkedDraftId = draft.draftId || draft.id;
 
-    // Patch the audit: set draftId + reconciliation metadata
-    const auditPatch = {};
-    const auditReasons = [];
-    if (!audit.draftId || audit.draftId !== linkedDraftId) {
-      auditPatch.draftId = linkedDraftId;
-      auditReasons.push(`draftId linked → ${linkedDraftId}`);
-    }
-    // reconciliationStatus and reconciledAt are safe metadata fields
-    auditPatch.reconciliationStatus = 'RECONCILED';
-    auditPatch.reconciledAt = new Date().toISOString();
-    auditReasons.push(`reconciliationStatus=RECONCILED`);
+    // ── Patch the audit ────────────────────────────────────────────────────
+    const auditPatch = {
+      draftId: linkedDraftId,
+      reconciliationStatus: 'RECONCILED',
+      reconciledAt: new Date().toISOString(),
+    };
+    const auditReasons = [`draftId→${linkedDraftId}`, 'reconciliationStatus=RECONCILED'];
 
-    // Patch the draft: safe metadata only
+    // ── Patch the draft (safe metadata only) ──────────────────────────────
     const draftPatch = {};
     const draftReasons = [];
     if (!draft.filePath && audit.filePath) {
       draftPatch.filePath = audit.filePath;
       draftReasons.push('filePath from audit');
     }
-    if (!draft.writtenAt && audit.timestamp) {
-      draftPatch.writtenAt = audit.timestamp;
-      draftReasons.push('writtenAt from audit.timestamp');
+    if (!draft.writtenAt && (audit.timestamp || audit.created_date)) {
+      draftPatch.writtenAt = audit.timestamp || audit.created_date;
+      draftReasons.push('writtenAt from audit');
     }
     if ((!draft.filesystemWrite || draft.filesystemWrite === 'DISABLED') && audit.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY') {
       draftPatch.filesystemWrite = 'COMPLETED_APPROVED_DRAFT_ONLY';
-      draftReasons.push('filesystemWrite → COMPLETED');
+      draftReasons.push('filesystemWrite→COMPLETED');
     }
     if (!draft.approvalStatus && audit.approvalStatus === 'APPROVED') {
       draftPatch.approvalStatus = 'APPROVED';
-      draftReasons.push('approvalStatus → APPROVED');
+      draftReasons.push('approvalStatus→APPROVED');
     }
     if (!draft.riskLevel && audit.riskLevel === 'LOW') {
       draftPatch.riskLevel = 'LOW';
-      draftReasons.push('riskLevel → LOW');
+      draftReasons.push('riskLevel→LOW');
     }
 
     // Apply patches
@@ -583,19 +658,17 @@ export async function reconcileOrphanAudits() {
       try {
         await base44.entities.VeridanObsidianDraft.update(draft.id, draftPatch);
       } catch (e) {
-        // Draft patch failure is non-fatal — audit link was already saved
-        result.log.push({ ...logBase, action: 'REPAIR_DRAFT', status: 'WARN', reason: `Draft metadata patch failed (audit link saved): ${e?.message}` });
+        result.log.push({ ...logBase, action: 'REPAIR_DRAFT', status: 'WARN', reason: `Draft patch failed (audit link saved): ${e?.message}` });
       }
     }
 
     if (success) {
       result.repaired++;
-      const allReasons = [...auditReasons, ...draftReasons].join(' | ');
       result.log.push({
         ...logBase,
         action: 'RECONCILE',
         status: 'REPAIRED',
-        reason: `Score=${bestScore} [${bestReasons.join(',')}] → ${allReasons}`,
+        reason: `Score=${bestScore} [${bestReasons.join(', ')}] | ${[...auditReasons, ...draftReasons].join(' | ')}`,
       });
     }
   }
