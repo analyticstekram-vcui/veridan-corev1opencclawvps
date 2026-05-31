@@ -170,27 +170,33 @@ export default function CoreVaultPackWorkflow() {
     setSummary(null);
     setErrorMsg('');
 
+    // Single tracking object for all phases
+    const runResult = { generated: 0, savedToBackend: 0, autoApproved: 0, written: 0, failed: [], alreadyWritten: 0, writtenFilenames: [] };
+
     try {
       console.log('[CVP Workflow] Starting governed vault pack workflow');
 
       // ── Phase 1: Generate ────────────────────────────────────────────────────
       console.log('[CVP Workflow] Phase 1: Generating drafts');
       const now = new Date().toISOString();
-      const freshDrafts = buildDrafts(now);
-      const generated = freshDrafts.length;
-      console.log(`[CVP Workflow] Generated ${generated} drafts`);
-      if (generated === 0) throw new Error('No drafts generated');
+      const generatedDrafts = buildDrafts(now);
+      runResult.generated = generatedDrafts.length;
+      console.log(`[CVP Workflow] Generated ${runResult.generated} drafts`);
+      if (runResult.generated === 0) throw new Error('No drafts generated from cvpTemplates');
+      
+      // Update UI with generated count immediately
+      setSummary({ ...runResult });
 
       // ── Phase 2: Save to backend ─────────────────────────────────────────────
       console.log('[CVP Workflow] Phase 2: Saving to backend');
       setCurrentPhase('Saving');
-      const saveResult = await saveDraftsToBackend(freshDrafts);
+      const saveResult = await saveDraftsToBackend(generatedDrafts);
       if (!saveResult || typeof saveResult.saved !== 'number') {
         throw new Error('saveDraftsToBackend returned invalid result: ' + JSON.stringify(saveResult));
       }
-      const savedCount = saveResult.saved;
+      runResult.savedToBackend = saveResult.saved;
       const saveErrors = saveResult.failed || [];
-      console.log(`[CVP Workflow] Saved ${savedCount}/${generated} drafts to backend`, saveResult);
+      console.log(`[CVP Workflow] Saved ${runResult.savedToBackend}/${runResult.generated} drafts to backend`, saveResult);
       
       // Log any save failures for debugging
       if (saveErrors.length > 0) {
@@ -198,12 +204,14 @@ export default function CoreVaultPackWorkflow() {
       }
       
       // VALIDATION: Stop if nothing saved
-      if (savedCount === 0) {
+      if (runResult.savedToBackend === 0) {
         const errorDetail = saveErrors.length > 0
           ? `All saves failed: ${saveErrors[0]?.reason || 'unknown error'}`
           : 'No drafts were saved to backend';
         throw new Error(`STOPPED: Generated drafts did not save to backend — ${errorDetail}`);
       }
+      
+      setSummary({ ...runResult });
 
       // ── Phase 3: Auto-Approve (backend, CORE_VAULT_PACK source only) ─────────
       console.log('[CVP Workflow] Phase 3: Auto-approving');
@@ -212,13 +220,15 @@ export default function CoreVaultPackWorkflow() {
       if (!approveResult || typeof approveResult.approved !== 'number') {
         throw new Error('autoApproveCVPDrafts returned invalid result: ' + JSON.stringify(approveResult));
       }
-      const autoApproved = approveResult.approved;
-      console.log(`[CVP Workflow] Auto-approved ${autoApproved} drafts`);
+      runResult.autoApproved = approveResult.approved;
+      console.log(`[CVP Workflow] Auto-approved ${runResult.autoApproved} drafts`);
       
       // VALIDATION: Stop if nothing approved
-      if (autoApproved === 0) {
+      if (runResult.autoApproved === 0) {
         throw new Error('STOPPED: Saved drafts were not approved');
       }
+      
+      setSummary({ ...runResult });
 
       // ── Phase 4: Load eligible approved drafts from backend ──────────────────
       console.log('[CVP Workflow] Phase 4: Loading eligible drafts');
@@ -231,7 +241,7 @@ export default function CoreVaultPackWorkflow() {
       console.log(`[CVP Workflow] Loaded ${toWrite.length} total eligible drafts, ${cvpToWrite.length} are CORE_VAULT_PACK`);
 
       // Count already-written CVP drafts (have filePath set, filesystemWrite = COMPLETED)
-      const alreadyWrittenCount = toWrite.filter(d =>
+      runResult.alreadyWritten = toWrite.filter(d =>
         d.source === 'CORE_VAULT_PACK' &&
         d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY'
       ).length;
@@ -242,34 +252,28 @@ export default function CoreVaultPackWorkflow() {
       if (!writeResult || typeof writeResult.written !== 'number') {
         throw new Error('executeWrites returned invalid result: ' + JSON.stringify(writeResult));
       }
-      const { written, failed } = writeResult;
-      console.log(`[CVP Workflow] Written ${written} drafts, ${failed?.length || 0} failed`);
+      runResult.written = writeResult.written;
+      runResult.failed = writeResult.failed || [];
+      console.log(`[CVP Workflow] Written ${runResult.written} drafts, ${runResult.failed?.length || 0} failed`);
       
       // VALIDATION: Stop if nothing written
-      if (written === 0) {
+      if (runResult.written === 0) {
         throw new Error('STOPPED: Approved drafts were not written');
       }
-
-      const finalSummary = {
-        generated,
-        savedToBackend: savedCount,
-        autoApproved,
-        written,
-        alreadyWritten: alreadyWrittenCount,
-        failed: failed || [],
-        writtenFilenames: cvpToWrite
-          .filter((_, i) => !failed?.find(f => f.filename === cvpToWrite[i]?.filename))
-          .map(d => d.filename),
-      };
       
-      console.log('[CVP Workflow] Workflow complete:', finalSummary);
-      setSummary(finalSummary);
+      runResult.writtenFilenames = cvpToWrite
+        .filter((_, i) => !runResult.failed?.find(f => f.filename === cvpToWrite[i]?.filename))
+        .map(d => d.filename);
+      
+      console.log('[CVP Workflow] Workflow complete:', runResult);
+      setSummary(runResult);
       setCurrentPhase('Complete');
       setRunStatus('done');
     } catch (err) {
       const errorMsg = err?.message || 'Unknown error';
       console.error('[CVP Workflow] Workflow failed:', errorMsg, err);
       setErrorMsg(errorMsg);
+      setSummary(runResult); // Always show progress so far
       setCurrentPhase('Failed');
       setRunStatus('done');
     }
