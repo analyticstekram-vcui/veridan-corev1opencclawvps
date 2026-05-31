@@ -16,6 +16,7 @@ import { Shield, Download, FileSearch, RefreshCw, Database } from 'lucide-react'
 import { loadAuditsFromBackend, loadDraftsFromBackend } from '@/lib/obsidianDraftStore';
 import StorageStatusPanel from '../components/obsidian-vault/StorageStatusPanel';
 import StorageReconciliationPanel from '../components/obsidian-vault/StorageReconciliationPanel';
+import DailyVaultHealthCheckPanel from '../components/vault-index/DailyVaultHealthCheckPanel';
 
 function buildFileRecords(audits, drafts) {
   const draftMap = {};
@@ -200,6 +201,9 @@ export default function VaultFileIndex() {
 
         {/* Storage Reconciliation */}
         <StorageReconciliationPanel />
+
+        {/* Daily Vault Health Check */}
+        <DailyVaultHealthCheckPanel />
 
         {/* Summary cards */}
         <VaultIndexSummaryCards

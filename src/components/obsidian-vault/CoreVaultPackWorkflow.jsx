@@ -31,6 +31,7 @@ import {
   saveAuditToBackend,
 } from '@/lib/obsidianDraftStore';
 import StorageReconciliationPanel from './StorageReconciliationPanel';
+import DailyVaultHealthCheckPanel from '../vault-index/DailyVaultHealthCheckPanel';
 import { buildDrafts } from './cvpTemplates';
 
 const APPROVED_FOLDERS = [
@@ -358,6 +359,11 @@ export default function CoreVaultPackWorkflow() {
         {/* Storage Reconciliation — shown after workflow completes */}
         {runStatus === 'done' && summary && (
           <StorageReconciliationPanel workflowSummary={summary} />
+        )}
+
+        {/* Daily Vault Health Check — shown after workflow completes */}
+        {runStatus === 'done' && summary && (
+          <DailyVaultHealthCheckPanel />
         )}
 
         {errorMsg && (
