@@ -41,22 +41,23 @@ const SECRET_PATTERNS = [
 ];
 
 const VERIFICATIONS = [
+  'obsidianWriteApprovedDraft implemented with narrow bridge connector',
+  'Missing bridge URL returns BACKEND_WRITE_BRIDGE_NOT_CONNECTED — no fake success',
+  'Server-side validation reruns independently of frontend checks',
+  'Only approved vault write endpoint (obsidianWriteApprovedDraft) can be called',
+  'Success audit saved to VeridanObsidianWriteAudit only after confirmed bridge write',
+  'File index update suggested only after confirmed write',
+  'No OpenClaw / InvokeLLM / browser automation / trading / money movement / generic filesystem',
   'Execution requires explicit PASS/WARN proposal — FAIL proposals are blocked',
   'Execution requires operatorApprovalRequired === true in proposal',
   'Execution requires valid proposalId',
-  'Re-validates all checks before write',
-  'Only obsidianWriteApprovedDraft backend endpoint used — no generic invoke',
-  'No OpenClaw dispatch',
-  'No InvokeLLM calls',
-  'No browser automation',
-  'No credentials or secrets collected',
-  'Folder must be in allowlist (re-checked at execution time)',
-  'Path traversal re-checked at execution time',
-  'Secret content re-checked at execution time',
-  'BACKEND_WRITE_BRIDGE_NOT_CONNECTED reported if endpoint unavailable — no fake success',
+  'Re-validates all checks before write (client-side)',
+  'Folder must be in allowlist (re-checked client + server)',
+  'Path traversal re-checked client + server',
+  'Secret content re-checked client + server',
   'Rollback snapshot metadata created before modify operations',
-  'Audit record written to VeridanObsidianWriteAudit after execution',
   'Export is local browser download — no secondary backend write',
+  'Four distinct error states: BACKEND_WRITE_BRIDGE_NOT_CONNECTED | BRIDGE_CALL_FAILED | BLOCKED_VALIDATION | EXECUTED',
 ];
 
 // ── Re-validate at execution time ─────────────────────────────────────────────
@@ -179,82 +180,57 @@ export default function VaultWriteExecutionPanel({ initialProposal }) {
     // ── Attempt backend write via narrow endpoint ─────────────────────────
     let backendWriteStatus = 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED';
     let writeResult = null;
+    let backendStatus = 'NOT_CONNECTED'; // BACKEND_WRITE_BRIDGE_NOT_CONNECTED | BRIDGE_CALL_FAILED | BLOCKED_VALIDATION | EXECUTED
 
     try {
-      // Build a draft-compatible payload for obsidianWriteApprovedDraft
-      const draftPayload = {
-        draftId: parsedProposal.proposalId,
-        source: 'VAULT_WRITE_BRIDGE',
-        title: parsedProposal.relativePath || parsedProposal.normalizedPath,
-        filename: parsedProposal.relativePath || parsedProposal.normalizedPath.split('/').pop(),
-        category: 'governed_write',
-        targetFolder: parsedProposal.allowlistedFolder,
-        content: parsedProposal.proposedContent || '',
-        draftType: `VAULT_BRIDGE_${parsedProposal.action.toUpperCase()}`,
-        riskLevel: 'LOW',
-        approvalStatus: 'APPROVED',
-        approvalState: 'APPROVED_DRAFT',
-        executionStatus: 'NOT_EXECUTED',
-        dispatchStatus: 'NOT_DISPATCHED',
-        openclawCall: 'NOT_SENT',
-        filesystemWrite: 'DISABLED',
-        apiMode: 'GOVERNED_VAULT_WRITE_BRIDGE',
-      };
+      const response = await base44.functions.invoke('obsidianWriteApprovedDraft', {
+        proposal: parsedProposal,
+      });
+      const d = response?.data;
 
-      const response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft: draftPayload });
-      if (response?.data?.success) {
+      if (d?.success && d?.status === 'EXECUTED') {
         backendWriteStatus = 'COMPLETED';
-        writeResult = response.data;
+        backendStatus = 'EXECUTED';
+        writeResult = d;
+      } else if (d?.status === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED') {
+        backendWriteStatus = 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED';
+        backendStatus = 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED';
+      } else if (d?.status === 'BRIDGE_CALL_FAILED') {
+        backendWriteStatus = `BRIDGE_CALL_FAILED: ${d?.message || ''}`;
+        backendStatus = 'BRIDGE_CALL_FAILED';
+      } else if (d?.status === 'BLOCKED_VALIDATION') {
+        backendWriteStatus = `BLOCKED_VALIDATION: ${(d?.errors || []).join(' | ')}`;
+        backendStatus = 'BLOCKED_VALIDATION';
       } else {
-        backendWriteStatus = `FAILED: ${response?.data?.error || 'Write returned failure'}`;
+        backendWriteStatus = `FAILED: ${d?.error || d?.message || 'Unknown response'}`;
+        backendStatus = 'BRIDGE_CALL_FAILED';
       }
     } catch (e) {
-      // If the function doesn't exist or returns a bridge-not-connected error, report clearly
       const msg = e?.response?.data?.error || e?.message || 'Unknown error';
-      if (msg.includes('not found') || msg.includes('404') || msg.includes('not connected')) {
-        backendWriteStatus = 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED';
-      } else {
-        backendWriteStatus = `FAILED: ${msg}`;
-      }
+      backendWriteStatus = `BRIDGE_CALL_FAILED: ${msg}`;
+      backendStatus = 'BRIDGE_CALL_FAILED';
     }
 
-    const executionId = `EXEC-${Date.now().toString(36).toUpperCase()}`;
-    const executedAt = new Date().toISOString();
-    const status = backendWriteStatus === 'COMPLETED' ? 'SUCCESS' : 'NOT_CONNECTED';
+    const executionId = writeResult?.executionId || `EXEC-${Date.now().toString(36).toUpperCase()}`;
+    const executedAt = writeResult?.executedAt || new Date().toISOString();
+    const status = backendStatus === 'EXECUTED' ? 'SUCCESS' : backendStatus;
 
-    // ── Save audit record (only on actual write success) ─────────────────
-    let auditEntryStatus = 'NOT_ATTEMPTED';
-    if (backendWriteStatus === 'COMPLETED') {
-      const auditRecord = {
-        auditId: `AUDIT-${executionId}`,
-        draftId: parsedProposal.proposalId,
-        filename: parsedProposal.relativePath || parsedProposal.normalizedPath.split('/').pop(),
-        folder: parsedProposal.allowlistedFolder,
-        filePath: writeResult?.filePath || parsedProposal.normalizedPath,
-        source: 'VAULT_WRITE_BRIDGE',
-        draftType: `VAULT_BRIDGE_${parsedProposal.action.toUpperCase()}`,
-        riskLevel: 'LOW',
-        approvalStatus: 'APPROVED',
-        filesystemWrite: 'COMPLETED_APPROVED_DRAFT_ONLY',
-        executionStatus: 'NOT_EXECUTED',
-        dispatchStatus: 'NOT_DISPATCHED',
-        openclawCall: 'NOT_SENT',
-        timestamp: executedAt,
-        writeMode: 'GOVERNED_VAULT_WRITE_BRIDGE',
-      };
-      const auditSaved = await saveAuditToBackend(auditRecord);
-      auditEntryStatus = auditSaved ? 'SAVED' : 'FAILED';
-    }
+    // Audit is saved server-side on success; frontend logs status only
+    const auditEntryStatus = backendStatus === 'EXECUTED'
+      ? (writeResult?.auditSaved ? 'SAVED_SERVER_SIDE' : 'ATTEMPTED_SERVER_SIDE')
+      : 'NOT_ATTEMPTED';
 
     const r = {
       executionId,
       executedAt,
       proposalId: parsedProposal.proposalId,
       action: parsedProposal.action,
-      normalizedPath: parsedProposal.normalizedPath,
+      normalizedPath: writeResult?.normalizedPath || parsedProposal.normalizedPath,
       status,
       backendWriteStatus,
-      rollbackSnapshot,
+      backendStatus,
+      rollbackSnapshot: writeResult?.rollbackSnapshot || rollbackSnapshot,
+      bridgeResponseSummary: writeResult?.bridgeResponseSummary || null,
       fileIndexUpdateStatus: status === 'SUCCESS' ? 'SUGGEST_REFRESH_VAULT_FILE_INDEX' : 'NOT_APPLICABLE',
       auditEntryStatus,
       safetySummary: {
@@ -267,7 +243,13 @@ export default function VaultWriteExecutionPanel({ initialProposal }) {
       },
       postExecutionRecommendation: status === 'SUCCESS'
         ? 'Run DailyVaultHealthCheckPanel to verify vault index integrity after this write.'
-        : 'Backend write bridge not connected. No vault write occurred. Check obsidianWriteApprovedDraft function status.',
+        : backendStatus === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED'
+          ? 'Bridge URL not configured. Set VERIDAN_OBSIDIAN_BRIDGE_URL in app secrets. No vault write occurred.'
+          : backendStatus === 'BRIDGE_CALL_FAILED'
+            ? 'Bridge call failed. Check VPS bridge connectivity and obsidianWriteApprovedDraft function logs.'
+            : backendStatus === 'BLOCKED_VALIDATION'
+              ? 'Server-side validation blocked the write. Review proposal fields and re-submit.'
+              : 'Check obsidianWriteApprovedDraft function status.',
       source: 'VaultWriteExecutionPanel',
     };
 
@@ -309,7 +291,13 @@ export default function VaultWriteExecutionPanel({ initialProposal }) {
           <PlayCircle className="w-3.5 h-3.5 text-primary" />
           <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">Vault Write — Controlled Execution</span>
           <span className="px-1.5 py-0.5 text-[6px] font-bold uppercase border border-primary/30 bg-primary/10 text-primary rounded-sm">APPROVED PROPOSALS ONLY</span>
-          {receipt && <StatusChip status={receipt.status === 'SUCCESS' ? 'EXECUTED' : 'NOT_CONNECTED'} />}
+          {receipt && <StatusChip status={
+            receipt.status === 'SUCCESS' ? 'EXECUTED'
+            : receipt.backendStatus === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED' ? 'NOT_CONNECTED'
+            : receipt.backendStatus === 'BRIDGE_CALL_FAILED' ? 'FAIL'
+            : receipt.backendStatus === 'BLOCKED_VALIDATION' ? 'BLOCKED'
+            : 'FAIL'
+          } />}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <button type="button" onClick={() => setShowVerification(v => !v)}
@@ -441,47 +429,80 @@ export default function VaultWriteExecutionPanel({ initialProposal }) {
         )}
 
         {/* Receipt */}
-        {receipt && (
-          <div className={`border rounded-sm p-3 space-y-2 ${receipt.status === 'SUCCESS' ? 'border-primary/30 bg-primary/5' : 'border-slate-500/30 bg-slate-500/5'}`}>
-            <div className="flex items-center gap-2">
-              {receipt.status === 'SUCCESS'
-                ? <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-                : <ServerOff className="w-3.5 h-3.5 text-slate-400" />}
-              <span className={`text-[8px] font-bold uppercase tracking-widest ${receipt.status === 'SUCCESS' ? 'text-primary' : 'text-slate-400'}`}>
-                {receipt.status === 'SUCCESS' ? 'Write Complete' : 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED'}
-              </span>
-            </div>
+        {receipt && (() => {
+          const bs = receipt.backendStatus;
+          const isSuccess = receipt.status === 'SUCCESS';
+          const borderCls = isSuccess ? 'border-primary/30 bg-primary/5'
+            : bs === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED' ? 'border-slate-500/30 bg-slate-500/5'
+            : bs === 'BRIDGE_CALL_FAILED' ? 'border-destructive/30 bg-destructive/5'
+            : bs === 'BLOCKED_VALIDATION' ? 'border-amber-500/30 bg-amber-500/5'
+            : 'border-slate-500/30 bg-slate-500/5';
+          const StatusIcon = isSuccess ? CheckCircle2
+            : bs === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED' ? ServerOff
+            : XCircle;
+          const statusColor = isSuccess ? 'text-primary'
+            : bs === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED' ? 'text-slate-400'
+            : bs === 'BLOCKED_VALIDATION' ? 'text-accent'
+            : 'text-destructive';
+          const statusLabel = isSuccess ? 'EXECUTED — Write Complete'
+            : bs === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED' ? 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED — Bridge URL not configured'
+            : bs === 'BRIDGE_CALL_FAILED' ? 'BRIDGE_CALL_FAILED — Bridge responded with error'
+            : bs === 'BLOCKED_VALIDATION' ? 'BLOCKED_VALIDATION — Server-side validation rejected'
+            : receipt.backendWriteStatus;
 
-            <div className="grid grid-cols-1 gap-0.5 text-[6px] font-mono text-slate-500">
-              <div>Execution ID: <span className="text-slate-300">{receipt.executionId}</span></div>
-              <div>Executed at: <span className="text-slate-300">{receipt.executedAt}</span></div>
-              <div>Proposal ID: <span className="text-slate-300">{receipt.proposalId}</span></div>
-              <div>Action: <span className="text-slate-300">{receipt.action}</span></div>
-              <div>Path: <span className="text-primary/80">{receipt.normalizedPath}</span></div>
-              <div>Backend write: <span className={receipt.backendWriteStatus === 'COMPLETED' ? 'text-primary' : 'text-slate-400'}>{receipt.backendWriteStatus}</span></div>
-              <div>Audit entry: <span className="text-slate-300">{receipt.auditEntryStatus}</span></div>
-              <div>File index: <span className="text-slate-300">{receipt.fileIndexUpdateStatus}</span></div>
-            </div>
-
-            {receipt.status !== 'SUCCESS' && (
-              <div className="flex items-start gap-1.5 text-[7px] font-mono text-slate-400">
-                <ServerOff className="w-2.5 h-2.5 shrink-0 mt-0.5 text-slate-500" />
-                No vault write occurred. The obsidianWriteApprovedDraft backend function did not return success. Check function deployment status.
+          return (
+            <div className={`border rounded-sm p-3 space-y-2 ${borderCls}`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <StatusIcon className={`w-3.5 h-3.5 ${statusColor}`} />
+                <span className={`text-[8px] font-bold uppercase tracking-widest ${statusColor}`}>
+                  {statusLabel}
+                </span>
               </div>
-            )}
 
-            {receipt.postExecutionRecommendation && (
-              <div className="flex items-start gap-1.5 text-[7px] font-mono text-accent">
-                <AlertTriangle className="w-2.5 h-2.5 shrink-0 mt-0.5" />
-                {receipt.postExecutionRecommendation}
+              <div className="grid grid-cols-1 gap-0.5 text-[6px] font-mono text-slate-500">
+                <div>Execution ID: <span className="text-slate-300">{receipt.executionId}</span></div>
+                <div>Executed at: <span className="text-slate-300">{receipt.executedAt}</span></div>
+                <div>Proposal ID: <span className="text-slate-300">{receipt.proposalId}</span></div>
+                <div>Action: <span className="text-slate-300">{receipt.action}</span></div>
+                <div>Path: <span className="text-primary/80">{receipt.normalizedPath}</span></div>
+                <div>Backend write: <span className={isSuccess ? 'text-primary' : 'text-slate-400'}>{receipt.backendWriteStatus}</span></div>
+                <div>Audit entry: <span className="text-slate-300">{receipt.auditEntryStatus}</span></div>
+                <div>File index: <span className="text-slate-300">{receipt.fileIndexUpdateStatus}</span></div>
               </div>
-            )}
 
-            {lastExecutionAttemptAt && (
-              <div className="text-[6px] font-mono text-slate-600">Last attempt: {lastExecutionAttemptAt}</div>
-            )}
-          </div>
-        )}
+              {/* Backend connector status section */}
+              <div className="border border-border/20 rounded-sm px-2 py-1.5 space-y-0.5">
+                <div className="text-[6px] font-bold uppercase tracking-widest text-slate-600 mb-1">Backend Connector Status</div>
+                <div className="text-[6px] font-mono text-slate-500">obsidianWriteApprovedDraft: <span className="text-primary">present</span></div>
+                <div className="text-[6px] font-mono text-slate-500">server-side validation: <span className="text-primary">enabled</span></div>
+                <div className="text-[6px] font-mono text-slate-500">bridge URL configured: <span className={bs === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED' ? 'text-destructive' : 'text-primary'}>{bs === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED' ? 'NO' : 'YES'}</span></div>
+                <div className="text-[6px] font-mono text-slate-500">last connector status: <span className="text-slate-300">{bs || '—'}</span></div>
+                <div className="text-[6px] font-mono text-slate-500">OpenClaw path: <span className="text-primary">disabled</span> · InvokeLLM: <span className="text-primary">disabled</span> · browser: <span className="text-primary">disabled</span> · trading: <span className="text-primary">disabled</span></div>
+              </div>
+
+              {!isSuccess && (
+                <div className="flex items-start gap-1.5 text-[7px] font-mono text-slate-400">
+                  <ServerOff className="w-2.5 h-2.5 shrink-0 mt-0.5 text-slate-500" />
+                  No vault write occurred.
+                  {bs === 'BACKEND_WRITE_BRIDGE_NOT_CONNECTED' && ' Set VERIDAN_OBSIDIAN_BRIDGE_URL in app secrets to enable the bridge.'}
+                  {bs === 'BRIDGE_CALL_FAILED' && ' Check VPS bridge connectivity and function logs.'}
+                  {bs === 'BLOCKED_VALIDATION' && ' Server rejected the proposal — check validation errors above.'}
+                </div>
+              )}
+
+              {receipt.postExecutionRecommendation && (
+                <div className="flex items-start gap-1.5 text-[7px] font-mono text-accent">
+                  <AlertTriangle className="w-2.5 h-2.5 shrink-0 mt-0.5" />
+                  {receipt.postExecutionRecommendation}
+                </div>
+              )}
+
+              {lastExecutionAttemptAt && (
+                <div className="text-[6px] font-mono text-slate-600">Last attempt: {lastExecutionAttemptAt}</div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Verification */}
         {showVerification && (
