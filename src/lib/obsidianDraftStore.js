@@ -72,7 +72,7 @@ export async function saveDraftsToBackend(drafts) {
     }
 
     try {
-      const response = await base44.entities.VeridanObsidianDraft.create({
+      const created = await base44.entities.VeridanObsidianDraft.create({
         draftId: draft.id,
         source: draft.source,
         title: draft.title || draft.filename,
@@ -91,12 +91,17 @@ export async function saveDraftsToBackend(drafts) {
         filesystemWrite: draft.filesystemWrite || 'DISABLED',
         apiMode: draft.apiMode || 'NO_API_LOCAL_ONLY',
       });
+      // .create() returns the created object directly with an 'id' field
+      const backendId = created?.id;
+      if (!backendId) {
+        results.failed.push({ filename: draft.filename, reason: 'Created record missing id field' });
+        continue;
+      }
       results.saved++;
-      // Store mapping of backend ID (auto-generated) to the local draftId for later reference
-      results.createdDrafts.push({ backendId: response.id || response.data?.id, draftId: draft.id });
+      results.createdDrafts.push({ backendId, draftId: draft.id });
       existingKeys.add(key);
     } catch (e) {
-      results.failed.push({ filename: draft.filename, reason: e.message });
+      results.failed.push({ filename: draft.filename, reason: e?.message || 'Unknown error' });
     }
   }
 
