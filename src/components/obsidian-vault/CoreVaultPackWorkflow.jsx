@@ -32,6 +32,7 @@ import {
 } from '@/lib/obsidianDraftStore';
 import StorageReconciliationPanel from './StorageReconciliationPanel';
 import ObsidianBridgeHealthPanel from './ObsidianBridgeHealthPanel';
+import ObsidianBridgeConnectorContract from './ObsidianBridgeConnectorContract';
 import DailyVaultHealthCheckPanel from '../vault-index/DailyVaultHealthCheckPanel';
 import VaultWriteBridgeDryRunPanel from '../vault-write/VaultWriteBridgeDryRunPanel';
 import VaultWriteExecutionPanel from '../vault-write/VaultWriteExecutionPanel';
@@ -372,6 +373,9 @@ export default function CoreVaultPackWorkflow() {
         {/* Bridge Health — shown after workflow completes, before dry-run */}
         {runStatus === 'done' && summary && (
           <ObsidianBridgeHealthPanel />
+        )}
+        {runStatus === 'done' && summary && (
+          <ObsidianBridgeConnectorContract />
         )}
 
         {/* Vault Write Bridge — shown after workflow completes */}

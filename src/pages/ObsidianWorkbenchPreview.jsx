@@ -14,6 +14,7 @@ import TemplateDraftGenerator from '../components/obsidian-vault/TemplateDraftGe
 import CoreVaultPackGenerator from '../components/obsidian-vault/CoreVaultPackGenerator';
 import CoreVaultPackWorkflow from '../components/obsidian-vault/CoreVaultPackWorkflow';
 import ObsidianBridgeHealthPanel from '../components/obsidian-vault/ObsidianBridgeHealthPanel';
+import ObsidianBridgeConnectorContract from '../components/obsidian-vault/ObsidianBridgeConnectorContract';
 import StorageStatusPanel from '../components/obsidian-vault/StorageStatusPanel';
 import { API_MODE_CONFIG } from '../lib/apiMode';
 
@@ -183,6 +184,7 @@ export default function ObsidianWorkbenchPreview() {
 
         {/* ── BRIDGE HEALTH CHECK ── */}
         <ObsidianBridgeHealthPanel />
+        <ObsidianBridgeConnectorContract />
 
         {/* ── ONE-CLICK: Core Vault Pack Workflow ── */}
         <CoreVaultPackWorkflow />
