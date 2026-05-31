@@ -170,47 +170,53 @@ export default function CoreVaultPackWorkflow() {
     setSummary(null);
     setErrorMsg('');
 
-    // ── Phase 1: Generate ────────────────────────────────────────────────────
-    const now = new Date().toISOString();
-    const freshDrafts = buildDrafts(now);
-    const generated = freshDrafts.length;
+    try {
+      // ── Phase 1: Generate ────────────────────────────────────────────────────
+      const now = new Date().toISOString();
+      const freshDrafts = buildDrafts(now);
+      const generated = freshDrafts.length;
 
-    // ── Phase 2: Save to backend ─────────────────────────────────────────────
-    setRunPhase('Saving drafts to backend storage…');
-    const saveResult = await saveDraftsToBackend(freshDrafts);
+      // ── Phase 2: Save to backend ─────────────────────────────────────────────
+      setRunPhase('Saving drafts to backend storage…');
+      const saveResult = await saveDraftsToBackend(freshDrafts);
 
-    // ── Phase 3: Auto-Approve (backend, CORE_VAULT_PACK source only) ─────────
-    setRunPhase('Auto-approving eligible drafts…');
-    const { approved: autoApproved } = await autoApproveCVPDrafts(APPROVED_FOLDERS, ALLOWED_CVP_DRAFT_TYPES);
+      // ── Phase 3: Auto-Approve (backend, CORE_VAULT_PACK source only) ─────────
+      setRunPhase('Auto-approving eligible drafts…');
+      const { approved: autoApproved } = await autoApproveCVPDrafts(APPROVED_FOLDERS, ALLOWED_CVP_DRAFT_TYPES);
 
-    // ── Phase 4: Load eligible approved drafts from backend ──────────────────
-    setRunPhase('Loading eligible drafts for write…');
-    const toWrite = await loadEligibleForWrite(APPROVED_FOLDERS);
-    const cvpToWrite = toWrite.filter(d => d.source === 'CORE_VAULT_PACK');
+      // ── Phase 4: Load eligible approved drafts from backend ──────────────────
+      setRunPhase('Loading eligible drafts for write…');
+      const toWrite = await loadEligibleForWrite(APPROVED_FOLDERS);
+      const cvpToWrite = toWrite.filter(d => d.source === 'CORE_VAULT_PACK');
 
-    // Count already-written CVP drafts (have filePath set, filesystemWrite = COMPLETED)
-    const alreadyWrittenCount = toWrite.filter(d =>
-      d.source === 'CORE_VAULT_PACK' &&
-      d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY'
-    ).length;
+      // Count already-written CVP drafts (have filePath set, filesystemWrite = COMPLETED)
+      const alreadyWrittenCount = toWrite.filter(d =>
+        d.source === 'CORE_VAULT_PACK' &&
+        d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY'
+      ).length;
 
-    // ── Phase 5: Write ────────────────────────────────────────────────────────
-    setRunPhase(`Writing ${cvpToWrite.length} draft(s) to vault…`);
-    const { written, failed } = await executeWrites(cvpToWrite);
+      // ── Phase 5: Write ────────────────────────────────────────────────────────
+      setRunPhase(`Writing ${cvpToWrite.length} draft(s) to vault…`);
+      const { written, failed } = await executeWrites(cvpToWrite);
 
-    setSummary({
-      generated,
-      savedToBackend: saveResult.saved,
-      autoApproved,
-      written,
-      alreadyWritten: alreadyWrittenCount,
-      failed: failed || [],
-      writtenFilenames: cvpToWrite
-        .filter((_, i) => !failed?.find(f => f.filename === cvpToWrite[i]?.filename))
-        .map(d => d.filename),
-    });
-    setRunPhase('');
-    setRunStatus('done');
+      setSummary({
+        generated,
+        savedToBackend: saveResult.saved,
+        autoApproved,
+        written,
+        alreadyWritten: alreadyWrittenCount,
+        failed: failed || [],
+        writtenFilenames: cvpToWrite
+          .filter((_, i) => !failed?.find(f => f.filename === cvpToWrite[i]?.filename))
+          .map(d => d.filename),
+      });
+      setRunPhase('');
+      setRunStatus('done');
+    } catch (err) {
+      setErrorMsg(`Workflow failed: ${err?.message || 'Unknown error'}`);
+      setRunStatus('done');
+      setRunPhase('');
+    }
   };
 
   // ── Retry failed writes ───────────────────────────────────────────────────
