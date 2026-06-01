@@ -48,30 +48,57 @@ const REPAIR_VERIFICATIONS = [
 // ── Reconciliation logic ──────────────────────────────────────────────────────
 
 function reconcile(drafts, audits, workflowSummary) {
-  const totalDrafts = drafts.length;
-  const totalAudits = audits.length;
+  // ── Separate archived CVP records from active records ─────────────────────
+  // "Archived CVP" = source CORE_VAULT_PACK AND archived === true
+  const archivedCVPDraftIds = new Set(
+    drafts
+      .filter(d => d.source === 'CORE_VAULT_PACK' && d.archived === true)
+      .map(d => d.draftId || d.id)
+      .filter(Boolean)
+  );
+  const archivedCVPDraftEntityIds = new Set(
+    drafts
+      .filter(d => d.source === 'CORE_VAULT_PACK' && d.archived === true)
+      .map(d => d.id)
+      .filter(Boolean)
+  );
 
-  // "Written" = audit has COMPLETED filesystem write
-  const writtenAudits = audits.filter(a =>
+  // Classify audits: historical archived vs active
+  const historicalArchivedAudits = audits.filter(a =>
+    a.archived === true ||
+    archivedCVPDraftIds.has(a.draftId) ||
+    archivedCVPDraftEntityIds.has(a.draftId)
+  );
+  const historicalArchivedAuditCount = historicalArchivedAudits.length;
+
+  // Active records (not archived CVP)
+  const activeDrafts = drafts.filter(d => !(d.source === 'CORE_VAULT_PACK' && d.archived === true));
+  const activeAudits = audits.filter(a => !historicalArchivedAudits.includes(a));
+
+  const totalDrafts = activeDrafts.length;
+  const totalAudits = activeAudits.length;
+
+  // "Written" = active audit has COMPLETED filesystem write
+  const writtenAudits = activeAudits.filter(a =>
     a.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' || a.filePath
   );
   const writtenCount = writtenAudits.length;
 
-  const failedAudits = audits.filter(a =>
+  const failedAudits = activeAudits.filter(a =>
     a.filesystemWrite && a.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY' && a.filesystemWrite !== 'DISABLED'
   );
   const failedCount = failedAudits.length;
 
-  // Drafts confirmed written (multiple criteria)
-  const writtenByField = drafts.filter(d =>
+  // Active drafts confirmed written
+  const writtenByField = activeDrafts.filter(d =>
     d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' || d.writtenAt || d.filePath
   );
   const confirmedWrittenDraftCount = writtenByField.length;
 
-  // Build sets for cross-checks
-  const auditFilenames = new Set(audits.map(a => (a.filename || '').toLowerCase()));
-  const draftIdSet = new Set(drafts.map(d => d.draftId || d.id).filter(Boolean));
-  const auditFilePathSet = new Set(audits.map(a => a.filePath).filter(Boolean));
+  // Build sets for cross-checks (active only)
+  const auditFilenames = new Set(activeAudits.map(a => (a.filename || '').toLowerCase()));
+  const draftIdSet = new Set(activeDrafts.map(d => d.draftId || d.id).filter(Boolean));
+  const auditFilePathSet = new Set(activeAudits.map(a => a.filePath).filter(Boolean));
 
   // Last workflow run checks
   const lastRunWritten = workflowSummary?.written ?? null;
@@ -79,41 +106,41 @@ function reconcile(drafts, audits, workflowSummary) {
     f => !auditFilenames.has(f.toLowerCase())
   ) ?? [];
 
-  // Approved drafts not yet written
-  const approvedNotWritten = drafts.filter(d =>
+  // Approved active drafts not yet written
+  const approvedNotWritten = activeDrafts.filter(d =>
     (d.approvalStatus === 'APPROVED' || d.approvalState === 'APPROVED_DRAFT') &&
     d.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY'
   );
 
-  // Audits without a matching draft record (orphans: missing draftId OR draftId set but no match)
-  const auditsWithoutDraft = audits.filter(a =>
+  // Active audits without a matching active draft (orphans)
+  const auditsWithoutDraft = activeAudits.filter(a =>
     !a.draftId || !draftIdSet.has(a.draftId)
   );
 
-  // Written drafts missing audit records (by filePath cross-check)
+  // Written active drafts missing audit records
   const writtenDraftsMissingAudit = writtenByField.filter(d =>
     d.filePath && !auditFilePathSet.has(d.filePath)
   );
 
-  // Duplicate filePaths in drafts
+  // Duplicate filePaths in active drafts
   const filePathCount = {};
-  for (const d of drafts) {
+  for (const d of activeDrafts) {
     if (d.filePath) filePathCount[d.filePath] = (filePathCount[d.filePath] || 0) + 1;
   }
   const duplicateFilePaths = Object.entries(filePathCount)
     .filter(([, count]) => count > 1)
     .map(([fp]) => fp);
 
-  // Drafts potentially repairable (has matching audit, missing metadata)
+  // Repairable active drafts
   const auditsByDraftId = {};
-  for (const a of audits) {
+  for (const a of activeAudits) {
     if (a.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY') continue;
     if (a.draftId) {
       if (!auditsByDraftId[a.draftId]) auditsByDraftId[a.draftId] = [];
       auditsByDraftId[a.draftId].push(a);
     }
   }
-  const repairableCount = drafts.filter(d => {
+  const repairableCount = activeDrafts.filter(d => {
     const draftId = d.draftId || d.id;
     if (!auditsByDraftId[draftId]) return false;
     if (d.riskLevel && d.riskLevel !== 'LOW') return false;
@@ -128,12 +155,15 @@ function reconcile(drafts, audits, workflowSummary) {
     duplicateFilePaths.length > 0 ||
     failedCount > 0;
 
+  const hasArchivedHistory = historicalArchivedAuditCount > 0;
+
   return {
     totalDrafts, totalAudits, writtenCount, failedCount,
     confirmedWrittenDraftCount, lastRunWritten,
     inLastRunNotInAudits, approvedNotWritten, auditsWithoutDraft,
     writtenDraftsMissingAudit, duplicateFilePaths,
     repairableCount, needsReview,
+    historicalArchivedAuditCount, historicalArchivedAudits, hasArchivedHistory,
   };
 }
 
@@ -472,7 +502,9 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
   const statusBadge = result
     ? result.needsReview
       ? { label: 'REVIEW REQUIRED', cls: 'text-destructive bg-destructive/10 border-destructive/40', icon: AlertTriangle }
-      : { label: 'CONSISTENT', cls: 'text-primary bg-primary/10 border-primary/30', icon: CheckCircle2 }
+      : result.hasArchivedHistory
+        ? { label: 'ARCHIVED HISTORY PRESENT', cls: 'text-accent bg-accent/10 border-accent/30', icon: CheckCircle2 }
+        : { label: 'CONSISTENT', cls: 'text-primary bg-primary/10 border-primary/30', icon: CheckCircle2 }
     : null;
 
   return (
@@ -536,13 +568,22 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
           <>
             {/* Count summary */}
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-              <CountCell label="Backend Drafts" value={result.totalDrafts} />
-              <CountCell label="Write Audits" value={result.totalAudits} />
+              <CountCell label="Active Drafts" value={result.totalDrafts} />
+              <CountCell label="Active Audits" value={result.totalAudits} />
               <CountCell label="Written Files" value={result.writtenCount} />
               <CountCell label="Confirmed Written" value={result.confirmedWrittenDraftCount} />
               <CountCell label="Failed Writes" value={result.failedCount} highlight={result.failedCount > 0} />
               <CountCell label="Repairable" value={result.repairableCount} warn={result.repairableCount > 0} />
             </div>
+            {/* Historical archived count */}
+            {result.hasArchivedHistory && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/40 border border-slate-700/40 rounded-sm">
+                <Info className="w-3 h-3 text-slate-500 shrink-0" />
+                <span className="text-[7px] font-mono text-slate-500">
+                  <span className="text-slate-300 font-bold">{result.historicalArchivedAuditCount}</span> historical archived CVP audit records excluded from active reconciliation (see below)
+                </span>
+              </div>
+            )}
 
             {/* Mismatch details */}
             <div className="space-y-1.5">
@@ -588,11 +629,25 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
               />
             </div>
 
+            {/* Historical / Archived CVP audits */}
+            {result.hasArchivedHistory && (
+              <DisclosureList
+                title="Historical / Archived CVP Audits (old test runs — excluded from active reconciliation)"
+                items={result.historicalArchivedAudits}
+                keyFn={a => a.id || a.auditId}
+                renderFn={a => `📦 ${a.filename || '—'}  draftId: ${a.draftId || 'none'}  written: ${a.filesystemWrite || '—'}`}
+                emptyMsg="No archived CVP audit records."
+                color="text-slate-500"
+              />
+            )}
+
             {/* Status line */}
             <div className="text-[6px] font-mono text-slate-600 border-t border-border/20 pt-2">
               {result.needsReview
                 ? <span className="text-destructive/70">⚠ One or more reconciliation checks require operator review.</span>
-                : <span className="text-primary/60">✅ All reconciliation checks passed — storage is consistent.</span>
+                : result.hasArchivedHistory
+                  ? <span className="text-accent/70">✅ Active reconciliation passed — {result.historicalArchivedAuditCount} historical archived CVP audit records present (not active orphans).</span>
+                  : <span className="text-primary/60">✅ All reconciliation checks passed — storage is consistent.</span>
               }
             </div>
 
