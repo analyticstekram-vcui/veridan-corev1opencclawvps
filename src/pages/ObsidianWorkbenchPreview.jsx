@@ -14,6 +14,7 @@ import SafeTestWritePanel from '../components/obsidian-vault/SafeTestWritePanel'
 import CoreVaultPackWorkflow from '../components/obsidian-vault/CoreVaultPackWorkflow';
 import DailyVaultHealthCheckPanel from '../components/vault-index/DailyVaultHealthCheckPanel';
 import StorageReconciliationPanel from '../components/obsidian-vault/StorageReconciliationPanel';
+import CleanCVPTestRunsPanel from '../components/obsidian-vault/CleanCVPTestRunsPanel';
 import ManualDraftForm from '../components/obsidian-vault/ManualDraftForm';
 import TemplateDraftGenerator from '../components/obsidian-vault/TemplateDraftGenerator';
 import CoreVaultPackGenerator from '../components/obsidian-vault/CoreVaultPackGenerator';
@@ -371,6 +372,9 @@ export default function ObsidianWorkbenchPreview() {
               <div className="text-[7px] font-mono text-destructive/70">
                 These tools are for advanced metadata repair and orphan audit reconciliation. Use only if normal workflow fails. All operations are read-only or metadata-only.
               </div>
+
+              {/* Clean Old CVP Test Runs */}
+              <CleanCVPTestRunsPanel />
 
               {/* Storage Reconciliation & Repair */}
               <StorageReconciliationPanel />
