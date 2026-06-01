@@ -158,6 +158,18 @@ function reconcile(drafts, audits, workflowSummary) {
 
   const hasArchivedHistory = historicalArchivedAuditCount > 0;
 
+  // Diagnostic breakdown (shown after every reconcile)
+  const diagnostic = {
+    totalDraftsLoaded: drafts.length,
+    archivedDraftsExcluded: archivedDrafts.length,
+    activeDraftsUsed: activeDrafts.length,
+    totalAuditsLoaded: audits.length,
+    archivedAuditsExcluded: historicalArchivedAuditCount,
+    activeAuditsUsed: activeAudits.length,
+    duplicateFilePathGroups: duplicateFilePaths.length,
+    orphanAudits: auditsWithoutDraft.length,
+  };
+
   return {
     totalDrafts, totalAudits, writtenCount, failedCount,
     confirmedWrittenDraftCount, lastRunWritten,
@@ -165,6 +177,7 @@ function reconcile(drafts, audits, workflowSummary) {
     writtenDraftsMissingAudit, duplicateFilePaths,
     repairableCount, needsReview,
     historicalArchivedAuditCount, historicalArchivedAudits, hasArchivedHistory,
+    diagnostic,
   };
 }
 
@@ -388,12 +401,16 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
     setLoading(true);
     setError('');
     try {
+      // Always fetch fresh from backend — never reuse stale state
       const [drafts, audits] = await Promise.all([
-        loadDraftsFromBackend(500),
-        loadAuditsFromBackend(500),
+        base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
+        base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000),
       ]);
       setAllDrafts(drafts);
-      setResult(reconcile(drafts, audits, workflowSummary));
+      const r = reconcile(drafts, audits, workflowSummary);
+      // Log diagnostic to console for debugging
+      console.log('[StorageReconciliation] Diagnostic:', r.diagnostic);
+      setResult(r);
     } catch (e) {
       setError(e?.message || 'Backend read failed during reconciliation');
     }
@@ -438,8 +455,8 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
       const r = await repairIndexMetadata();
       setRepairResult(r);
       const [drafts, audits] = await Promise.all([
-        loadDraftsFromBackend(500),
-        loadAuditsFromBackend(500),
+        base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
+        base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000),
       ]);
       setAllDrafts(drafts);
       setResult(reconcile(drafts, audits, workflowSummary));
@@ -487,8 +504,8 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
       const r = await reconcileOrphanAudits();
       setOrphanResult(r);
       const [drafts, audits] = await Promise.all([
-        loadDraftsFromBackend(500),
-        loadAuditsFromBackend(500),
+        base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
+        base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000),
       ]);
       setAllDrafts(drafts);
       setResult(reconcile(drafts, audits, workflowSummary));
@@ -522,10 +539,10 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
     };
 
     try {
-      // Load active (non-archived) drafts and audits
+      // Load active (non-archived) drafts and audits — always fresh from backend
       const [allDrafts, allAudits] = await Promise.all([
-        loadDraftsFromBackend(500),
-        loadAuditsFromBackend(500),
+        base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
+        base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000),
       ]);
 
       const activeDrafts = allDrafts.filter(d => !isArchived(d));
@@ -594,10 +611,10 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
 
       setDupResult(counts);
 
-      // Refresh reconciliation
+      // Refresh reconciliation — always fresh from backend
       const [drafts, audits] = await Promise.all([
-        loadDraftsFromBackend(500),
-        loadAuditsFromBackend(500),
+        base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
+        base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000),
       ]);
       setAllDrafts(drafts);
       setResult(reconcile(drafts, audits, workflowSummary));
@@ -686,12 +703,31 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
               <CountCell label="Failed Writes" value={result.failedCount} highlight={result.failedCount > 0} />
               <CountCell label="Repairable" value={result.repairableCount} warn={result.repairableCount > 0} />
             </div>
+            {/* Diagnostic breakdown — always shown after reconcile */}
+            {result.diagnostic && (
+              <div className="bg-slate-900/60 border border-slate-700/40 rounded-sm px-3 py-2 space-y-1">
+                <div className="text-[6px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Load Diagnostic (fresh from backend)</div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 text-[6px] font-mono">
+                  <div>Drafts loaded: <span className="text-slate-300 font-bold">{result.diagnostic.totalDraftsLoaded}</span></div>
+                  <div>Archived excluded: <span className={result.diagnostic.archivedDraftsExcluded > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}>{result.diagnostic.archivedDraftsExcluded}</span></div>
+                  <div>Active drafts used: <span className="text-primary font-bold">{result.diagnostic.activeDraftsUsed}</span></div>
+                  <div className="text-slate-700">—</div>
+                  <div>Audits loaded: <span className="text-slate-300 font-bold">{result.diagnostic.totalAuditsLoaded}</span></div>
+                  <div>Archived excluded: <span className={result.diagnostic.archivedAuditsExcluded > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}>{result.diagnostic.archivedAuditsExcluded}</span></div>
+                  <div>Active audits used: <span className="text-primary font-bold">{result.diagnostic.activeAuditsUsed}</span></div>
+                  <div className="text-slate-700">—</div>
+                  <div>Dup filePath groups: <span className={result.diagnostic.duplicateFilePathGroups > 0 ? 'text-destructive font-bold' : 'text-slate-400'}>{result.diagnostic.duplicateFilePathGroups}</span></div>
+                  <div>Orphan audits: <span className={result.diagnostic.orphanAudits > 0 ? 'text-destructive font-bold' : 'text-slate-400'}>{result.diagnostic.orphanAudits}</span></div>
+                </div>
+              </div>
+            )}
+
             {/* Historical archived count */}
             {result.hasArchivedHistory && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/40 border border-slate-700/40 rounded-sm">
                 <Info className="w-3 h-3 text-slate-500 shrink-0" />
                 <span className="text-[7px] font-mono text-slate-500">
-                  <span className="text-slate-300 font-bold">{result.historicalArchivedAuditCount}</span> historical archived CVP audit records excluded from active reconciliation (see below)
+                  <span className="text-slate-300 font-bold">{result.historicalArchivedAuditCount}</span> archived audit records excluded from active reconciliation (see below)
                 </span>
               </div>
             )}
