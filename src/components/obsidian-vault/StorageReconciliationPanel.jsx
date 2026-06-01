@@ -20,8 +20,9 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   GitCompare, RefreshCw, CheckCircle2, AlertTriangle, XCircle,
   ChevronDown, ChevronRight, ShieldCheck, Wrench, Clock,
-  AlertCircle, Shield, Info,
+  AlertCircle, Shield, Info, Archive,
 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import { loadDraftsFromBackend, loadAuditsFromBackend, repairIndexMetadata, reconcileOrphanAudits } from '@/lib/obsidianDraftStore';
 import OrphanManualLinkPanel from './OrphanManualLinkPanel';
 
@@ -497,6 +498,116 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
     setReconciling(false);
   };
 
+  // ── Duplicate filePath archive ────────────────────────────────────────────
+
+  const [dupArmed, setDupArmed] = useState(false);
+  const [dupRunning, setDupRunning] = useState(false);
+  const [dupResult, setDupResult] = useState(null);
+  const [dupError, setDupError] = useState('');
+
+  const runArchiveDuplicates = async () => {
+    setDupArmed(false);
+    setDupRunning(true);
+    setDupResult(null);
+    setDupError('');
+
+    const now = new Date().toISOString();
+    const counts = {
+      duplicateGroupsFound: 0,
+      recordsChecked: 0,
+      draftsArchived: 0,
+      auditsArchived: 0,
+      preservedRecords: 0,
+      errors: 0,
+    };
+
+    try {
+      // Load active (non-archived) drafts and audits
+      const [allDrafts, allAudits] = await Promise.all([
+        loadDraftsFromBackend(500),
+        loadAuditsFromBackend(500),
+      ]);
+
+      const activeDrafts = allDrafts.filter(d => !d.archived);
+      const activeAudits = allAudits.filter(a => !a.archived);
+
+      counts.recordsChecked = activeDrafts.length + activeAudits.length;
+
+      // Group active drafts by filePath
+      const draftsByFilePath = {};
+      for (const d of activeDrafts) {
+        if (!d.filePath) continue;
+        if (!draftsByFilePath[d.filePath]) draftsByFilePath[d.filePath] = [];
+        draftsByFilePath[d.filePath].push(d);
+      }
+
+      // Process only groups with > 1 record
+      const dupGroups = Object.entries(draftsByFilePath).filter(([, g]) => g.length > 1);
+      counts.duplicateGroupsFound = dupGroups.length;
+
+      for (const [, group] of dupGroups) {
+        // Sort: prefer COMPLETED + writtenAt desc, then created_date desc
+        const sorted = [...group].sort((a, b) => {
+          const aComplete = a.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' ? 1 : 0;
+          const bComplete = b.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' ? 1 : 0;
+          if (bComplete !== aComplete) return bComplete - aComplete;
+          const aTs = a.writtenAt || a.created_date || '';
+          const bTs = b.writtenAt || b.created_date || '';
+          return bTs.localeCompare(aTs);
+        });
+
+        // Preserve newest/best record; archive the rest
+        const [preserved, ...toArchive] = sorted;
+        counts.preservedRecords++;
+
+        for (const draft of toArchive) {
+          try {
+            await base44.entities.VeridanObsidianDraft.update(draft.id, {
+              archived: true,
+              archiveReason: 'DUPLICATE_FILEPATH_OLDER_RECORD',
+              archivedAt: now,
+            });
+            counts.draftsArchived++;
+          } catch {
+            counts.errors++;
+          }
+
+          // Archive matching audits by draftId
+          const matchingAudits = activeAudits.filter(a =>
+            a.draftId === (draft.draftId || draft.id) ||
+            a.draftId === draft.id
+          );
+          for (const audit of matchingAudits) {
+            try {
+              await base44.entities.VeridanObsidianWriteAudit.update(audit.id, {
+                archived: true,
+                archiveReason: 'DUPLICATE_FILEPATH_OLDER_AUDIT',
+                archivedAt: now,
+              });
+              counts.auditsArchived++;
+            } catch {
+              counts.errors++;
+            }
+          }
+        }
+      }
+
+      setDupResult(counts);
+
+      // Refresh reconciliation
+      const [drafts, audits] = await Promise.all([
+        loadDraftsFromBackend(500),
+        loadAuditsFromBackend(500),
+      ]);
+      setAllDrafts(drafts);
+      setResult(reconcile(drafts, audits, workflowSummary));
+    } catch (e) {
+      setDupError(e?.message || 'Duplicate archive failed');
+    }
+
+    setDupRunning(false);
+  };
+
   // ── Status badge ──────────────────────────────────────────────────────────
 
   const statusBadge = result
@@ -737,6 +848,90 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
 
                     {/* Repair log */}
                     <RepairLogTable log={repairResult.log} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── Duplicate FilePath Archive ───────────────────────────────── */}
+            <div className="border border-border/40 rounded-sm overflow-hidden mt-1">
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/40 border-b border-border/30">
+                <Archive className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="text-[7px] font-bold text-slate-400 uppercase tracking-wide">
+                  Archive Duplicate FilePath Records — metadata only · no vault writes · no bridge · no deletion
+                </span>
+              </div>
+              <div className="p-3 space-y-2.5">
+                <div className="text-[7px] font-mono text-slate-500 space-y-0.5">
+                  <div>Finds active draft records sharing the same <span className="text-slate-300">filePath</span>. Preserves the newest successful record per group. Archives older duplicates by setting <span className="text-primary">archived: true</span>.</div>
+                  <div>Also archives matching audit records for each archived draft. No records deleted. No vault writes. No bridge calls.</div>
+                </div>
+
+                {!dupArmed && !dupRunning && (
+                  <button type="button" onClick={() => setDupArmed(true)}
+                    disabled={dupRunning || loading || repairing}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[8px] font-bold uppercase tracking-widest border border-slate-500/40 text-slate-400 bg-slate-800/30 hover:bg-slate-700/30 disabled:opacity-40 rounded-sm transition-colors">
+                    <Archive className="w-3 h-3" /> Archive Duplicate FilePath Records
+                  </button>
+                )}
+
+                {dupArmed && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/40 rounded-sm">
+                      <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
+                      <span className="text-[8px] font-bold text-amber-500">
+                        Confirm: archive older duplicate filePath records? This cannot be undone from UI (records remain in DB, only metadata changes).
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={runArchiveDuplicates}
+                        className="flex items-center gap-1.5 px-3 py-2 text-[8px] font-bold uppercase tracking-widest border border-primary/50 text-primary bg-primary/10 hover:bg-primary/20 rounded-sm transition-colors">
+                        <CheckCircle2 className="w-3 h-3" /> Confirm Archive Duplicates
+                      </button>
+                      <button type="button" onClick={() => setDupArmed(false)}
+                        className="flex items-center gap-1.5 px-3 py-2 text-[8px] font-bold uppercase tracking-widest border border-border/40 text-slate-400 hover:text-slate-200 rounded-sm transition-colors">
+                        <XCircle className="w-3 h-3" /> Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {dupRunning && (
+                  <div className="flex items-center gap-2 text-[8px] font-mono text-slate-400">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Archiving duplicate records…
+                  </div>
+                )}
+
+                {dupError && (
+                  <div className="flex items-start gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-sm">
+                    <AlertCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-[7px] font-mono text-destructive"><span className="font-bold">Error:</span> {dupError}</div>
+                  </div>
+                )}
+
+                {dupResult && (
+                  <div className="border border-primary/30 bg-primary/5 rounded-sm p-3 space-y-2">
+                    <div className="text-[8px] font-bold text-primary flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3 h-3" /> Duplicate FilePath Archive Complete
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[
+                        { label: 'Dup Groups', value: dupResult.duplicateGroupsFound, color: dupResult.duplicateGroupsFound > 0 ? 'text-accent' : 'text-slate-300' },
+                        { label: 'Records Checked', value: dupResult.recordsChecked, color: 'text-slate-300' },
+                        { label: 'Drafts Archived', value: dupResult.draftsArchived, color: 'text-primary' },
+                        { label: 'Audits Archived', value: dupResult.auditsArchived, color: 'text-primary' },
+                        { label: 'Preserved', value: dupResult.preservedRecords, color: 'text-primary' },
+                        { label: 'Errors', value: dupResult.errors, color: dupResult.errors > 0 ? 'text-destructive' : 'text-slate-500' },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="flex flex-col items-center px-2 py-1.5 bg-background/50 border border-border/30 rounded-sm">
+                          <span className={`text-[10px] font-bold ${color}`}>{value}</span>
+                          <span className="text-[6px] font-mono text-slate-600">{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[6px] font-mono text-slate-600 border-t border-border/20 pt-1.5">
+                      No records deleted · No vault writes · No bridge calls · Reconciliation refreshed above
+                    </div>
                   </div>
                 )}
               </div>
