@@ -178,6 +178,9 @@ function reconcile(drafts, audits, workflowSummary) {
     repairableCount, needsReview,
     historicalArchivedAuditCount, historicalArchivedAudits, hasArchivedHistory,
     diagnostic,
+    // Pass through for diagnostic detail components
+    _activeDrafts: activeDrafts,
+    _filePathCount: filePathCount,
   };
 }
 
@@ -354,6 +357,108 @@ function OrphanSkipDebugTable({ log }) {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Duplicate FilePath Detail ─────────────────────────────────────────────────
+
+function DuplicateFilePathDetail({ duplicateFilePaths, activeDrafts }) {
+  const [open, setOpen] = useState(false);
+  if (duplicateFilePaths.length === 0) return (
+    <div className="border border-border/30 rounded-sm overflow-hidden">
+      <div className="px-3 py-2 bg-card/60">
+        <span className="text-[8px] font-bold text-slate-500">Duplicate filePath records (manual review required) <span className="font-mono">(0)</span></span>
+      </div>
+    </div>
+  );
+
+  // Build groups from activeDrafts
+  const groups = {};
+  for (const d of activeDrafts) {
+    if (d.filePath && duplicateFilePaths.includes(d.filePath)) {
+      if (!groups[d.filePath]) groups[d.filePath] = [];
+      groups[d.filePath].push(d);
+    }
+  }
+
+  return (
+    <div className="border border-destructive/40 rounded-sm overflow-hidden">
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-card/60 hover:bg-card text-left transition-colors">
+        <span className="text-[8px] font-bold text-destructive">
+          Duplicate filePath groups — archive duplicates to clear <span className="font-mono">({duplicateFilePaths.length})</span>
+        </span>
+        {open ? <ChevronDown className="w-3 h-3 text-slate-500 shrink-0" />
+               : <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />}
+      </button>
+      {open && (
+        <div className="border-t border-border/20 bg-background/40 divide-y divide-border/10 max-h-64 overflow-y-auto">
+          {duplicateFilePaths.map((fp, gi) => {
+            const group = groups[fp] || [];
+            const sorted = [...group].sort((a, b) => {
+              const aC = a.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' ? 1 : 0;
+              const bC = b.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' ? 1 : 0;
+              if (bC !== aC) return bC - aC;
+              return (b.writtenAt || b.created_date || '').localeCompare(a.writtenAt || a.created_date || '');
+            });
+            return (
+              <div key={gi} className="px-3 py-2 space-y-1">
+                <div className="text-[7px] font-bold text-destructive/80 break-all">⚠ {fp}</div>
+                {sorted.map((d, i) => (
+                  <div key={d.id} className={`text-[6px] font-mono pl-2 space-y-0.5 ${i === 0 ? 'text-primary' : 'text-slate-500'}`}>
+                    <span className="font-bold">{i === 0 ? '✓ KEEP' : '✗ ARCHIVE'}</span>
+                    {' · '}id:{d.id?.slice(0, 8)}
+                    {' · '}src:{d.source || '—'}
+                    {' · '}run:{d.runId || '—'}
+                    {' · '}write:{d.filesystemWrite || '—'}
+                    {' · '}arch:{String(d.archived)}
+                    {' · '}created:{(d.created_date || '').slice(0, 16)}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Orphan Audit Detail ───────────────────────────────────────────────────────
+
+function OrphanAuditDetail({ auditsWithoutDraft }) {
+  const [open, setOpen] = useState(false);
+  const count = auditsWithoutDraft.length;
+  return (
+    <div className="border border-border/30 rounded-sm overflow-hidden">
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-card/60 hover:bg-card text-left transition-colors">
+        <span className={`text-[8px] font-bold ${count > 0 ? 'text-slate-400' : 'text-slate-500'}`}>
+          Write audits without a matching draft record <span className="font-mono">({count})</span>
+        </span>
+        {open ? <ChevronDown className="w-3 h-3 text-slate-500 shrink-0" />
+               : <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />}
+      </button>
+      {open && (
+        <div className="px-3 py-2 border-t border-border/20 space-y-1.5 bg-background/40 max-h-64 overflow-y-auto">
+          {count === 0
+            ? <div className="text-[7px] font-mono text-slate-600">All audit records have a matching draft.</div>
+            : auditsWithoutDraft.map((a, i) => (
+                <div key={a.id || i} className="text-[6px] font-mono text-slate-400 border-b border-border/10 pb-1 last:border-0 space-y-0.5">
+                  <div className="text-slate-300 font-bold">{a.filename || '—'}</div>
+                  <div>auditId:{a.auditId || '—'} · draftId:{a.draftId || 'NONE'}</div>
+                  <div>filePath:{a.filePath || '—'}</div>
+                  <div>src:{a.source || '—'} · run:{a.runId || '—'} · arch:{String(a.archived)}</div>
+                  <div>created:{(a.created_date || '').slice(0, 16)}</div>
+                  <div className="text-amber-500/70">
+                    {!a.draftId ? '→ no draftId set on audit' : '→ draftId set but no matching active draft found'}
+                  </div>
+                </div>
+              ))
+          }
         </div>
       )}
     </div>
@@ -758,21 +863,12 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
                 emptyMsg="All written drafts have matching audit records."
                 color="text-accent"
               />
-              <DisclosureList
-                title="Write audits without a matching draft record"
-                items={result.auditsWithoutDraft}
-                keyFn={a => a.id || a.auditId}
-                renderFn={a => `→ ${a.filename}  draftId: ${a.draftId || 'none'}`}
-                emptyMsg="All audit records have a matching draft."
-                color="text-slate-400"
+              <DuplicateFilePathDetail
+                duplicateFilePaths={result.duplicateFilePaths}
+                activeDrafts={result._activeDrafts || []}
               />
-              <DisclosureList
-                title="Duplicate filePath records (manual review required)"
-                items={result.duplicateFilePaths}
-                keyFn={(f, i) => i}
-                renderFn={f => `⚠ ${f}`}
-                emptyMsg="No duplicate filePaths detected."
-                color="text-destructive"
+              <OrphanAuditDetail
+                auditsWithoutDraft={result.auditsWithoutDraft}
               />
             </div>
 

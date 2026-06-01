@@ -19,94 +19,131 @@ export default function CleanCVPTestRunsPanel() {
     setResult(null);
     setErrorMsg('');
 
+    const now = new Date().toISOString();
+
     try {
-      // 1. Load all CORE_VAULT_PACK drafts
-      const allDrafts = await base44.entities.VeridanObsidianDraft.list('-created_date', 500);
+      // 1. Load ALL CVP drafts (including already-archived) so we can see the full picture
+      const allDrafts = await base44.entities.VeridanObsidianDraft.list('-created_date', 1000);
       const cvpDrafts = allDrafts.filter(d => d.source === 'CORE_VAULT_PACK');
 
-      // 2. Group by runId (drafts without runId get a synthetic key based on created_date bucket)
-      const groups = {};
+      // 2. Among all CVP drafts, find the single best record per filePath to preserve.
+      //    "Best" = COMPLETED_APPROVED_DRAFT_ONLY + most recent writtenAt/created_date.
+      //    This handles duplicates both across runs AND within a run.
+      const byFilePath = {};
       for (const d of cvpDrafts) {
-        const key = d.runId || `no-runid-${d.created_date?.slice(0, 13) || 'unknown'}`;
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(d);
+        if (!d.filePath) continue; // drafts with no filePath handled separately below
+        if (!byFilePath[d.filePath]) byFilePath[d.filePath] = [];
+        byFilePath[d.filePath].push(d);
       }
 
-      // 3. Score each run: a "complete" run has exactly 10 drafts all with filesystemWrite = COMPLETED_APPROVED_DRAFT_ONLY
-      //    Pick the most recent complete run as the one to preserve.
-      //    "Most recent" = highest created_date among drafts in that group.
-      let bestRunId = null;
-      let bestRunTs = '';
-      let bestWrittenCount = 0;
-
-      for (const [key, drafts] of Object.entries(groups)) {
-        const written = drafts.filter(d => d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY').length;
-        if (written === 10 && drafts.length === 10) {
-          const newestTs = drafts.map(d => d.created_date || '').sort().reverse()[0] || '';
-          if (newestTs > bestRunTs) {
-            bestRunTs = newestTs;
-            bestRunId = key;
-            bestWrittenCount = written;
-          }
-        }
+      // Pick the one to preserve per filePath group
+      const preservedIds = new Set();
+      for (const group of Object.values(byFilePath)) {
+        const sorted = [...group].sort((a, b) => {
+          const aC = a.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' ? 1 : 0;
+          const bC = b.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY' ? 1 : 0;
+          if (bC !== aC) return bC - aC;
+          const aTs = a.writtenAt || a.created_date || '';
+          const bTs = b.writtenAt || b.created_date || '';
+          return bTs.localeCompare(aTs);
+        });
+        preservedIds.add(sorted[0].id);
       }
 
-      // 4. If no perfect run found, preserve the group with the highest written count (most recent tiebreak)
-      if (!bestRunId) {
-        let bestScore = -1;
-        for (const [key, drafts] of Object.entries(groups)) {
-          const written = drafts.filter(d => d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY').length;
-          const newestTs = drafts.map(d => d.created_date || '').sort().reverse()[0] || '';
-          if (written > bestScore || (written === bestScore && newestTs > bestRunTs)) {
-            bestScore = written;
-            bestRunTs = newestTs;
-            bestRunId = key;
-            bestWrittenCount = written;
-          }
-        }
-      }
+      // Also preserve drafts that have no filePath but are the only record for their draftType
+      // (these haven't been written yet — keep them if not-archived)
+      const noFilePathDrafts = cvpDrafts.filter(d => !d.filePath && !d.archived);
+      for (const d of noFilePathDrafts) preservedIds.add(d.id);
 
-      // 5. Archive all CVP drafts NOT in the preserved run
-      const draftsToArchive = cvpDrafts.filter(d => {
-        const key = d.runId || `no-runid-${d.created_date?.slice(0, 13) || 'unknown'}`;
-        return key !== bestRunId;
-      });
+      // 3. Archive all non-preserved CVP drafts
+      const draftsToArchive = cvpDrafts.filter(d => !preservedIds.has(d.id) && !d.archived);
 
       let archivedDrafts = 0;
       for (const d of draftsToArchive) {
         try {
-          await base44.entities.VeridanObsidianDraft.update(d.id, { archived: true });
+          await base44.entities.VeridanObsidianDraft.update(d.id, {
+            archived: true,
+            archiveReason: 'CVP_CLEANUP_DUPLICATE_OR_OLD_RUN',
+            archivedAt: now,
+          });
           archivedDrafts++;
         } catch { /* skip individual failures */ }
       }
 
-      // 6. Load all audits, find those matching archived draft IDs or with matching runId
-      const archivedDraftIds = new Set(draftsToArchive.map(d => d.draftId || d.id));
-      const archivedBackendIds = new Set(draftsToArchive.map(d => d.id));
+      // 4. Load all audits and archive those linked to archived drafts, OR
+      //    audits whose filePath has a better preserved draft (duplicate audit cleanup).
+      const archivedDraftEntityIds = new Set(draftsToArchive.map(d => d.id));
+      const archivedDraftSchemaIds = new Set(draftsToArchive.map(d => d.draftId).filter(Boolean));
 
-      const allAudits = await base44.entities.VeridanObsidianWriteAudit.list('-created_date', 500);
+      const allAudits = await base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000);
+
+      // Group audits by filePath to find duplicates there too
+      const auditsByFilePath = {};
+      for (const a of allAudits) {
+        if (!a.filePath || a.archived) continue;
+        if (!auditsByFilePath[a.filePath]) auditsByFilePath[a.filePath] = [];
+        auditsByFilePath[a.filePath].push(a);
+      }
+
+      // Per filePath, keep only the audit linked to the preserved draft (or newest if no link)
+      const preservedAuditIds = new Set();
+      for (const group of Object.values(auditsByFilePath)) {
+        if (group.length <= 1) {
+          if (group[0]) preservedAuditIds.add(group[0].id);
+          continue;
+        }
+        // Prefer audit whose draftId matches a preserved draft
+        const linked = group.find(a =>
+          preservedIds.has(a.draftId) || preservedIds.has(
+            allDrafts.find(d => (d.draftId === a.draftId || d.id === a.draftId))?.id
+          )
+        );
+        if (linked) {
+          preservedAuditIds.add(linked.id);
+        } else {
+          // Keep newest by timestamp
+          const sorted = [...group].sort((a, b) =>
+            (b.timestamp || b.created_date || '').localeCompare(a.timestamp || a.created_date || '')
+          );
+          preservedAuditIds.add(sorted[0].id);
+        }
+      }
+
+      // Audits to archive: linked to an archived draft OR duplicate filePath non-preserved
       const auditsToArchive = allAudits.filter(a => {
-        if (a.source !== 'VAULT_WRITE_BRIDGE' && a.source !== 'CORE_VAULT_PACK') return false;
-        // Match by draftId field
-        if (a.draftId && (archivedDraftIds.has(a.draftId) || archivedBackendIds.has(a.draftId))) return true;
+        if (a.archived) return false;
+        // Linked to a draft we just archived
+        if (a.draftId && (archivedDraftEntityIds.has(a.draftId) || archivedDraftSchemaIds.has(a.draftId))) return true;
+        // Duplicate audit for same filePath — not the preserved one
+        if (a.filePath && auditsByFilePath[a.filePath]?.length > 1 && !preservedAuditIds.has(a.id)) return true;
         return false;
       });
 
       let archivedAudits = 0;
       for (const a of auditsToArchive) {
         try {
-          await base44.entities.VeridanObsidianWriteAudit.update(a.id, { archived: true });
+          await base44.entities.VeridanObsidianWriteAudit.update(a.id, {
+            archived: true,
+            archiveReason: 'CVP_CLEANUP_DUPLICATE_OR_LINKED_TO_ARCHIVED_DRAFT',
+            archivedAt: now,
+          });
           archivedAudits++;
         } catch { /* skip */ }
       }
 
+      // Determine the preserved run for display
+      const preservedDrafts = cvpDrafts.filter(d => preservedIds.has(d.id));
+      const preservedRunIds = [...new Set(preservedDrafts.map(d => d.runId).filter(Boolean))];
+      const preservedWrittenCount = preservedDrafts.filter(d => d.filesystemWrite === 'COMPLETED_APPROVED_DRAFT_ONLY').length;
+
       setResult({
-        preservedRunId: bestRunId || 'none',
-        preservedWrittenCount: bestWrittenCount,
+        preservedRunId: preservedRunIds.join(', ') || 'filePath-deduped',
+        preservedWrittenCount,
+        preservedDraftCount: preservedIds.size,
         archivedDrafts,
         archivedAudits,
         totalCvpDrafts: cvpDrafts.length,
-        totalRuns: Object.keys(groups).length,
+        uniqueFilePaths: Object.keys(byFilePath).length,
       });
       setStep('done');
     } catch (e) {
@@ -175,10 +212,11 @@ export default function CleanCVPTestRunsPanel() {
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[7px] font-mono text-slate-400">
             <div>Archived Drafts: <span className="text-slate-200 font-bold">{result.archivedDrafts}</span></div>
             <div>Archived Audits: <span className="text-slate-200 font-bold">{result.archivedAudits}</span></div>
-            <div>Preserved Run: <span className="text-primary font-bold break-all">{result.preservedRunId}</span></div>
+            <div>Preserved Drafts: <span className="text-primary font-bold">{result.preservedDraftCount}</span></div>
             <div>Preserved Written: <span className="text-primary font-bold">{result.preservedWrittenCount}</span></div>
+            <div>Unique FilePaths: <span className="text-slate-300">{result.uniqueFilePaths}</span></div>
             <div>Total CVP Drafts: <span className="text-slate-300">{result.totalCvpDrafts}</span></div>
-            <div>Total Runs Found: <span className="text-slate-300">{result.totalRuns}</span></div>
+            <div className="col-span-2 break-all">Preserved Run(s): <span className="text-primary font-bold">{result.preservedRunId}</span></div>
           </div>
           <button
             type="button"
