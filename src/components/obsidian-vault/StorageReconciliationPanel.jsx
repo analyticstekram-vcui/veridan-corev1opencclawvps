@@ -49,32 +49,36 @@ const REPAIR_VERIFICATIONS = [
 // ── Reconciliation logic ──────────────────────────────────────────────────────
 
 function reconcile(drafts, audits, workflowSummary) {
-  // ── Separate archived CVP records from active records ─────────────────────
-  // "Archived CVP" = source CORE_VAULT_PACK AND archived === true
-  const archivedCVPDraftIds = new Set(
+  // ── Separate ALL archived records from active records ─────────────────────
+  // Any record with archived === true is excluded from active reconciliation.
+  // Audits are also excluded if their linked draft is archived.
+
+  const archivedDraftIds = new Set(
     drafts
-      .filter(d => d.source === 'CORE_VAULT_PACK' && d.archived === true)
+      .filter(d => d.archived === true)
       .map(d => d.draftId || d.id)
       .filter(Boolean)
   );
-  const archivedCVPDraftEntityIds = new Set(
+  const archivedDraftEntityIds = new Set(
     drafts
-      .filter(d => d.source === 'CORE_VAULT_PACK' && d.archived === true)
+      .filter(d => d.archived === true)
       .map(d => d.id)
       .filter(Boolean)
   );
 
-  // Classify audits: historical archived vs active
+  // Active drafts: not archived
+  const activeDrafts = drafts.filter(d => d.archived !== true);
+
+  // Historical archived audits: directly archived OR linked to an archived draft
   const historicalArchivedAudits = audits.filter(a =>
     a.archived === true ||
-    archivedCVPDraftIds.has(a.draftId) ||
-    archivedCVPDraftEntityIds.has(a.draftId)
+    (a.draftId && (archivedDraftIds.has(a.draftId) || archivedDraftEntityIds.has(a.draftId)))
   );
   const historicalArchivedAuditCount = historicalArchivedAudits.length;
 
-  // Active records (not archived CVP)
-  const activeDrafts = drafts.filter(d => !(d.source === 'CORE_VAULT_PACK' && d.archived === true));
-  const activeAudits = audits.filter(a => !historicalArchivedAudits.includes(a));
+  // Active audits: not in historical set
+  const archivedAuditEntityIds = new Set(historicalArchivedAudits.map(a => a.id).filter(Boolean));
+  const activeAudits = audits.filter(a => !archivedAuditEntityIds.has(a.id));
 
   const totalDrafts = activeDrafts.length;
   const totalAudits = activeAudits.length;
