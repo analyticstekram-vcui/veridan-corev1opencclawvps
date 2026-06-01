@@ -100,6 +100,7 @@ export async function saveDraftsToBackend(drafts) {
         openclawCall: draft.openclawCall || 'NOT_SENT',
         filesystemWrite: draft.filesystemWrite || 'DISABLED',
         apiMode: draft.apiMode || 'NO_API_LOCAL_ONLY',
+        ...(draft.runId ? { runId: draft.runId } : {}),
       });
       
       const backendId = created?.id;

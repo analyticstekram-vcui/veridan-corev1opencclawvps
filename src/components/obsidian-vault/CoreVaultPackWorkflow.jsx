@@ -195,10 +195,28 @@ export default function CoreVaultPackWorkflow() {
     try {
       console.log('[CVP Workflow] Starting governed vault pack workflow');
 
+      // ── Pre-flight: Delete stale CVP drafts with wrong targetFolder ──────────
+      console.log('[CVP Workflow] Pre-flight: Deleting stale CVP drafts with wrong targetFolder');
+      try {
+        const allDrafts = await base44.entities.VeridanObsidianDraft.list('-created_date', 200);
+        const stale = allDrafts.filter(d =>
+          d.source === 'CORE_VAULT_PACK' &&
+          d.targetFolder !== 'Veridan Core/Veridan Core System' &&
+          d.filesystemWrite !== 'COMPLETED_APPROVED_DRAFT_ONLY'
+        );
+        for (const d of stale) {
+          await base44.entities.VeridanObsidianDraft.delete(d.id).catch(() => {});
+        }
+        console.log(`[CVP Workflow] Pre-flight: deleted ${stale.length} stale drafts`);
+      } catch (e) {
+        console.warn('[CVP Workflow] Pre-flight stale cleanup failed (non-fatal):', e?.message);
+      }
+
       // ── Phase 1: Generate ────────────────────────────────────────────────────
       console.log('[CVP Workflow] Phase 1: Generating drafts');
       const now = new Date().toISOString();
-      const generatedDrafts = buildDrafts(now);
+      const runId = `RUN-${Date.now().toString(36).toUpperCase()}`;
+      const generatedDrafts = buildDrafts(now).map(d => ({ ...d, runId }));
       runResult.generated = generatedDrafts.length;
       console.log(`[CVP Workflow] Generated ${runResult.generated} drafts`);
       if (runResult.generated === 0) throw new Error('No drafts generated from cvpTemplates');
@@ -256,7 +274,8 @@ export default function CoreVaultPackWorkflow() {
       if (!Array.isArray(toWrite)) {
         throw new Error('loadEligibleForWrite returned invalid result: ' + JSON.stringify(toWrite));
       }
-      const cvpToWrite = toWrite.filter(d => d.source === 'CORE_VAULT_PACK');
+      // Only write drafts from THIS run (by runId), not stale approved records from prior runs
+      const cvpToWrite = toWrite.filter(d => d.source === 'CORE_VAULT_PACK' && d.runId === runId);
       console.log(`[CVP Workflow] Loaded ${toWrite.length} total eligible drafts, ${cvpToWrite.length} are CORE_VAULT_PACK`);
 
       // Count already-written CVP drafts (have filePath set, filesystemWrite = COMPLETED)

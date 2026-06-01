@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Unique draft identifier"
     },
+    "runId": {
+      "type": "string",
+      "description": "Run identifier \u2014 groups drafts from the same workflow execution"
+    },
     "source": {
       "type": "string",
       "enum": [
