@@ -19,6 +19,7 @@ import StorageReconciliationPanel from '../components/obsidian-vault/StorageReco
 import DailyVaultHealthCheckPanel from '../components/vault-index/DailyVaultHealthCheckPanel';
 import VaultWriteBridgeDryRunPanel from '../components/vault-write/VaultWriteBridgeDryRunPanel';
 import VaultWriteExecutionPanel from '../components/vault-write/VaultWriteExecutionPanel';
+import CleanCVPTestRunsPanel from '../components/obsidian-vault/CleanCVPTestRunsPanel';
 
 function buildFileRecords(audits, drafts) {
   const draftMap = {};
@@ -200,6 +201,9 @@ export default function VaultFileIndex() {
 
         {/* Storage Status */}
         <StorageStatusPanel />
+
+        {/* Clean Old CVP Test Runs */}
+        <CleanCVPTestRunsPanel />
 
         {/* Storage Reconciliation */}
         <StorageReconciliationPanel />
