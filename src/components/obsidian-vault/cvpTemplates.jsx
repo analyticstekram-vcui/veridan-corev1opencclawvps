@@ -59,7 +59,7 @@ This document provides a structured overview of the Veridan Core system architec
     title: 'OpenClaw Operating SOP',
     filename: 'openclaw_operating_sop.md',
     category: 'openclaw',
-    targetFolder: 'Veridan Core/OpenClaw',
+    targetFolder: 'Veridan Core/Veridan Core System',
     draftType: 'CVP_OPENCLAW_SOP',
     content: `# OpenClaw Operating SOP
 
@@ -114,7 +114,7 @@ Standard operating procedure for all OpenClaw operator interactions within the V
     title: 'Daily Operations SOP',
     filename: 'daily_operations_sop.md',
     category: 'operations',
-    targetFolder: 'Veridan Core/Daily Operations',
+    targetFolder: 'Veridan Core/Veridan Core System',
     draftType: 'CVP_DAILY_OPS_SOP',
     content: `# Daily Operations SOP
 
@@ -168,7 +168,7 @@ Defines the daily operator routine for Veridan Core system management, monitorin
     title: 'Trading Command SOP',
     filename: 'trading_command_sop.md',
     category: 'trading',
-    targetFolder: 'Veridan Core/Trading',
+    targetFolder: 'Veridan Core/Veridan Core System',
     draftType: 'CVP_TRADING_SOP',
     content: `# Trading Command SOP
 
@@ -221,7 +221,7 @@ Defines the standard procedure for trading signal intake, review, and paper exec
     title: 'Credit Monitoring SOP',
     filename: 'credit_monitoring_sop.md',
     category: 'credit',
-    targetFolder: 'Veridan Core/Credit',
+    targetFolder: 'Veridan Core/Veridan Core System',
     draftType: 'CVP_CREDIT_SOP',
     content: `# Credit Monitoring SOP
 
@@ -277,7 +277,7 @@ Defines procedures for monitoring credit facilities, managing ledger events, and
     title: 'Trust and Entity Governance SOP',
     filename: 'trust_entity_governance_sop.md',
     category: 'entities',
-    targetFolder: 'Veridan Core/Trust / Entities',
+    targetFolder: 'Veridan Core/Veridan Core System',
     draftType: 'CVP_TRUST_ENTITY_SOP',
     content: `# Trust and Entity Governance SOP
 

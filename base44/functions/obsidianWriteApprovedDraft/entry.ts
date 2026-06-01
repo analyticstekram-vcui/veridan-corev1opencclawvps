@@ -335,13 +335,16 @@ Deno.serve(async (req) => {
   let bridgeSuccess = false;
   let bridgeError = '';
 
+  const bridgeEndpoint = `${bridgeUrl}/vault/write-approved`;
+  console.log(`[obsidianWriteApprovedDraft] REQUEST filename="${normalized.relativePath}" folder="${normalized.folder}" contentLen=${normalized.content.length} normalizedPath="${normalized.normalizedPath}" endpoint="${bridgeEndpoint}" payloadKeys=${Object.keys(bridgePayload).join(',')}`);
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
     const bridgeToken = (Deno.env.get('VERIDAN_BRIDGE_TOKEN') || '').trim();
 
-    const bridgeRes = await fetch(`${bridgeUrl}/vault/write-approved`, {
+    const bridgeRes = await fetch(bridgeEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -356,6 +359,8 @@ Deno.serve(async (req) => {
     let bridgeData;
     try { bridgeData = JSON.parse(rawBody); } catch { bridgeData = { raw: rawBody }; }
 
+    console.log(`[obsidianWriteApprovedDraft] RESPONSE filename="${normalized.relativePath}" httpStatus=${bridgeRes.status} ok=${bridgeRes.ok} rawBodyLen=${rawBody.length} body=${rawBody.slice(0, 2000)}`);
+
     if (bridgeRes.ok) {
       bridgeSuccess = bridgeData?.success !== false;
       bridgeResponseSummary = {
@@ -365,13 +370,15 @@ Deno.serve(async (req) => {
         filePath: bridgeData?.filePath || normalized.normalizedPath,
       };
     } else {
-      bridgeError = `Bridge returned HTTP ${bridgeRes.status}: ${bridgeData?.error || bridgeData?.message || rawBody.slice(0, 300)}`;
+      bridgeError = `Bridge returned HTTP ${bridgeRes.status}: ${bridgeData?.error || bridgeData?.message || rawBody.slice(0, 500)}`;
       bridgeResponseSummary = {
         httpStatus: bridgeRes.status,
         bridgeSuccess: false,
         message: bridgeError,
         upstreamBody: bridgeData,
+        upstreamRaw: rawBody.slice(0, 2000),
       };
+      console.error(`[obsidianWriteApprovedDraft] BRIDGE FAILURE filename="${normalized.relativePath}" status=${bridgeRes.status} error="${bridgeError}" upstreamBody=`, JSON.stringify(bridgeData));
     }
   } catch (e) {
     if (e.name === 'AbortError') {
@@ -379,6 +386,7 @@ Deno.serve(async (req) => {
     } else {
       bridgeError = e?.message || 'Bridge call failed';
     }
+    console.error(`[obsidianWriteApprovedDraft] EXCEPTION filename="${normalized.relativePath}" error="${bridgeError}"`);
     bridgeResponseSummary = { httpStatus: null, bridgeSuccess: false, message: bridgeError };
   }
 

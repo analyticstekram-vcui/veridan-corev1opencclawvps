@@ -93,14 +93,22 @@ async function executeWrites(toWrite) {
       response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft: draftPayload });
     } catch (invokeErr) {
       const rawData = invokeErr?.response?.data;
+      const httpStatus = invokeErr?.response?.status;
+      // Prefer the structured error fields from the 502 response body
+      const upstreamSummary = rawData?.bridgeResponseSummary;
+      const upstreamRaw = upstreamSummary?.upstreamRaw || upstreamSummary?.upstreamBody;
+      const backendMsg = rawData?.message || rawData?.backendWriteStatus || '';
       const backendErrors = rawData?.errors;
       const backendError = rawData?.error;
-      const httpStatus = invokeErr?.response?.status;
-      const reason = Array.isArray(backendErrors) && backendErrors.length > 0
+      const baseReason = Array.isArray(backendErrors) && backendErrors.length > 0
         ? backendErrors.join(' | ')
-        : (backendError || invokeErr.message || 'Backend error');
-      console.error(`[CVP Write] FAILED: ${draft.filename} | status: ${httpStatus} | reason: ${reason} | fullResponse:`, rawData);
-      failed.push({ id: draft.id || draft.draftId, filename: draft.filename, reason: `${httpStatus ? `[${httpStatus}] ` : ''}${reason}` });
+        : (backendMsg || backendError || invokeErr.message || 'Backend error');
+      const upstreamDetail = upstreamRaw
+        ? ` | upstream: ${typeof upstreamRaw === 'string' ? upstreamRaw.slice(0, 400) : JSON.stringify(upstreamRaw).slice(0, 400)}`
+        : '';
+      const reason = `${httpStatus ? `[${httpStatus}] ` : ''}${baseReason}${upstreamDetail}`;
+      console.error(`[CVP Write] FAILED: ${draft.filename} | status: ${httpStatus} | reason: ${baseReason} | upstreamSummary:`, upstreamSummary, '| fullResponse:', rawData);
+      failed.push({ id: draft.id || draft.draftId, filename: draft.filename, reason, bridgeSummary: upstreamSummary });
       continue;
     }
 
@@ -345,6 +353,37 @@ export default function CoreVaultPackWorkflow() {
     setRunStatus('done');
   };
 
+  // ── Single-file diagnostic test (no new generation, uses existing approved backend record) ──
+  const [diagResult, setDiagResult] = useState(null);
+  const [diagRunning, setDiagRunning] = useState(false);
+
+  const handleDiagnosticTest = async () => {
+    setDiagRunning(true);
+    setDiagResult(null);
+    const TARGET = 'trust_entity_governance_sop.md';
+    console.log(`[CVP Diag] Starting single-file diagnostic for: ${TARGET}`);
+    try {
+      const eligible = await loadEligibleForWrite(APPROVED_FOLDERS);
+      const match = eligible.find(d => d.filename === TARGET);
+      if (!match) {
+        setDiagResult({ ok: false, msg: `No approved eligible draft found for "${TARGET}". Run the full workflow first to generate+approve it.` });
+        setDiagRunning(false);
+        return;
+      }
+      console.log(`[CVP Diag] Found draft: id=${match.id} folder=${match.targetFolder} contentLen=${(match.content||'').length}`);
+      const { written, failed } = await executeWrites([match]);
+      if (written > 0) {
+        setDiagResult({ ok: true, msg: `✅ SUCCESS: ${TARGET} written to vault.` });
+      } else {
+        const f = failed[0];
+        setDiagResult({ ok: false, msg: f?.reason || 'Write failed with no reason', bridgeSummary: f?.bridgeSummary });
+      }
+    } catch (e) {
+      setDiagResult({ ok: false, msg: e?.message || 'Diagnostic failed' });
+    }
+    setDiagRunning(false);
+  };
+
   const isRunning = runStatus === 'running';
 
   return (
@@ -394,6 +433,28 @@ export default function CoreVaultPackWorkflow() {
           <div>✅ source === "CORE_VAULT_PACK" · riskLevel === "LOW" · executionStatus === "NOT_EXECUTED"</div>
           <div>✅ targetFolder in allowlist · draftType in CVP types · no credential fields</div>
           <div>❌ Manual / imported / AI / browser drafts → never auto-approved</div>
+        </div>
+
+        {/* DIAGNOSTIC TEST BUTTON */}
+        <div className="border border-amber-500/30 bg-amber-500/5 rounded-sm p-3 space-y-2">
+          <div className="text-[7px] font-bold uppercase text-amber-500 tracking-widest">Single-File Diagnostic — trust_entity_governance_sop.md</div>
+          <div className="text-[6px] font-mono text-slate-500">Uses existing approved backend draft only. No new generation.</div>
+          <button
+            type="button"
+            onClick={handleDiagnosticTest}
+            disabled={diagRunning || isRunning}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 disabled:opacity-40 rounded-sm font-bold text-[9px] uppercase tracking-widest transition-colors"
+          >
+            {diagRunning ? <><Loader2 className="w-3 h-3 animate-spin" /> Testing…</> : '▶ Test Write: trust_entity_governance_sop.md'}
+          </button>
+          {diagResult && (
+            <div className={`text-[7px] font-mono rounded-sm px-2 py-2 space-y-1 border ${diagResult.ok ? 'text-primary bg-primary/5 border-primary/30' : 'text-destructive bg-destructive/5 border-destructive/30'}`}>
+              <div className="font-bold break-all">{diagResult.msg}</div>
+              {diagResult.bridgeSummary && (
+                <pre className="text-[6px] text-slate-400 whitespace-pre-wrap break-all overflow-auto max-h-32">{JSON.stringify(diagResult.bridgeSummary, null, 2)}</pre>
+              )}
+            </div>
+          )}
         </div>
 
         {/* PRIMARY BUTTON */}
@@ -497,16 +558,21 @@ export default function CoreVaultPackWorkflow() {
                 <div className="text-[7px] font-mono text-destructive space-y-0.5">
                   <div className="font-bold">❌ Failed (unique): {summary.failed.length}</div>
                   {summary.failed.map((s, i) => (
-                    <div key={i} className="ml-2 flex items-center justify-between gap-2">
-                      <span className="text-destructive/70">— {s.filename}: {s.reason}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRetrySingle(s.filename)}
-                        disabled={isRunning}
-                        className="shrink-0 px-2 py-0.5 text-[6px] font-bold uppercase border border-destructive/30 text-destructive/80 hover:bg-destructive/10 disabled:opacity-40 rounded-sm transition-colors"
-                      >
-                        <RefreshCw className="w-2 h-2 inline mr-0.5" />Retry
-                      </button>
+                    <div key={i} className="ml-2 space-y-0.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-destructive/70 break-all">— {s.filename}: {s.reason}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRetrySingle(s.filename)}
+                          disabled={isRunning}
+                          className="shrink-0 px-2 py-0.5 text-[6px] font-bold uppercase border border-destructive/30 text-destructive/80 hover:bg-destructive/10 disabled:opacity-40 rounded-sm transition-colors"
+                        >
+                          <RefreshCw className="w-2 h-2 inline mr-0.5" />Retry
+                        </button>
+                      </div>
+                      {s.bridgeSummary && (
+                        <pre className="text-[6px] font-mono text-slate-500 bg-background/60 border border-border/20 rounded-sm px-2 py-1 whitespace-pre-wrap break-all overflow-auto max-h-24">{JSON.stringify(s.bridgeSummary, null, 2)}</pre>
+                      )}
                     </div>
                   ))}
                 </div>
