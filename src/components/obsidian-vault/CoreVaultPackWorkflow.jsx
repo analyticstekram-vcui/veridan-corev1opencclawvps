@@ -267,7 +267,9 @@ export default function CoreVaultPackWorkflow() {
       
       console.log('[CVP Workflow] Workflow complete:', runResult);
       setSummary(runResult);
-      setCurrentPhase('Complete');
+      // PARTIAL if some failed, COMPLETE only if all succeeded
+      const finalPhase = runResult.failed.length > 0 ? 'Partial' : 'Complete';
+      setCurrentPhase(finalPhase);
       setRunStatus('done');
     } catch (err) {
       const errorMsg = err?.message || 'Unknown error';
@@ -379,7 +381,7 @@ export default function CoreVaultPackWorkflow() {
         {runStatus === 'done' && (
           <div className="space-y-2 text-center">
             {/* Phase indicator */}
-            <div className={`text-[8px] font-bold ${currentPhase === 'Complete' ? 'text-primary' : 'text-destructive'}`}>
+            <div className={`text-[8px] font-bold ${currentPhase === 'Complete' ? 'text-primary' : currentPhase === 'Partial' ? 'text-accent' : 'text-destructive'}`}>
               Phase: {currentPhase}
             </div>
 
@@ -409,14 +411,19 @@ export default function CoreVaultPackWorkflow() {
             {/* Status message based on actual counts */}
             {(() => {
               let statusMsg = 'Generated Only';
-              if (summary.written > 0) statusMsg = 'Complete';
+              if (summary.written > 0 && (!summary.failed || summary.failed.length === 0)) statusMsg = 'Complete';
+              else if (summary.written > 0 && summary.failed?.length > 0) statusMsg = 'Partial';
+              else if (summary.failed?.length > 0 && summary.written === 0) statusMsg = 'Failed';
               else if (summary.autoApproved > 0) statusMsg = 'Saved';
               else if (summary.savedToBackend > 0) statusMsg = 'Saved';
               
+              const statusColor = statusMsg === 'Complete' ? 'text-primary' : statusMsg === 'Partial' ? 'text-accent' : 'text-destructive';
+              const StatusIcon = statusMsg === 'Complete' ? CheckCircle2 : AlertCircle;
+
               return (
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2 text-[9px] font-bold text-primary">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Vault Pack {statusMsg}
+                  <div className={`flex items-center gap-2 text-[9px] font-bold ${statusColor}`}>
+                    <StatusIcon className="w-3.5 h-3.5" /> Vault Pack {statusMsg}
                   </div>
                   {summary.written > 0 && (
                     <Link
