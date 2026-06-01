@@ -64,11 +64,9 @@ const ALLOWED_CVP_DRAFT_TYPES = [
 // ── Shared write executor ────────────────────────────────────────────────────
 async function executeWrites(toWrite) {
   let written = 0;
-  const alreadyWritten = [];
   const failed = [];
 
   for (const draft of toWrite) {
-    // Build a shape compatible with obsidianWriteApprovedDraft
     const draftPayload = {
       id: draft.id || draft.draftId,
       draftId: draft.draftId || draft.id,
@@ -88,23 +86,28 @@ async function executeWrites(toWrite) {
       filesystemWrite: draft.filesystemWrite || 'DISABLED',
     };
 
+    console.log(`[CVP Write] Attempting: ${draft.filename} | folder: ${draft.targetFolder} | contentLen: ${(draft.content || '').length} | payload:`, JSON.stringify({ ...draftPayload, content: `[${(draftPayload.content || '').length} chars]` }));
+
     let response;
     try {
       response = await base44.functions.invoke('obsidianWriteApprovedDraft', { draft: draftPayload });
     } catch (invokeErr) {
-      const backendErrors = invokeErr?.response?.data?.errors;
-      const backendError = invokeErr?.response?.data?.error;
+      const rawData = invokeErr?.response?.data;
+      const backendErrors = rawData?.errors;
+      const backendError = rawData?.error;
+      const httpStatus = invokeErr?.response?.status;
       const reason = Array.isArray(backendErrors) && backendErrors.length > 0
         ? backendErrors.join(' | ')
         : (backendError || invokeErr.message || 'Backend error');
-      failed.push({ id: draft.id || draft.draftId, filename: draft.filename, reason });
+      console.error(`[CVP Write] FAILED: ${draft.filename} | status: ${httpStatus} | reason: ${reason} | fullResponse:`, rawData);
+      failed.push({ id: draft.id || draft.draftId, filename: draft.filename, reason: `${httpStatus ? `[${httpStatus}] ` : ''}${reason}` });
       continue;
     }
 
     if (response.data.success) {
       const filePath = response.data.filePath;
+      console.log(`[CVP Write] SUCCESS: ${draft.filename} → ${filePath}`);
 
-      // Build audit record
       const auditRecord = {
         ...response.data.auditRecord,
         auditId: response.data.auditRecord?.auditId || `AUDIT-${Date.now().toString(36).toUpperCase()}-CVP`,
@@ -123,30 +126,38 @@ async function executeWrites(toWrite) {
         riskLevel: 'LOW',
       };
 
-      // Save audit to backend (primary) + localStorage (cache)
       await saveAuditToBackend(auditRecord);
       try {
         const audits = JSON.parse(localStorage.getItem('veridan_obsidian_write_audits') || '[]');
-        // Strip content from cache entry
         const cacheEntry = { ...auditRecord };
         delete cacheEntry.content;
         audits.unshift(cacheEntry);
-        if (audits.length > 20) audits.length = 20; // Keep cache small
+        if (audits.length > 20) audits.length = 20;
         localStorage.setItem('veridan_obsidian_write_audits', JSON.stringify(audits));
-      } catch { /* quota — cache not critical, backend has authoritative copy */ }
+      } catch { /* quota — cache not critical */ }
 
-      // Mark draft written in backend
       if (draft.id) {
         await markDraftWritten(draft.id, filePath).catch(() => {});
       }
 
       written++;
     } else {
-      failed.push({ id: draft.id || draft.draftId, filename: draft.filename, reason: response.data.error || 'Write returned failure' });
+      const reason = response.data.error || 'Write returned failure';
+      console.error(`[CVP Write] FAILED (non-success response): ${draft.filename} | reason: ${reason} | fullResponse:`, response.data);
+      failed.push({ id: draft.id || draft.draftId, filename: draft.filename, reason });
     }
   }
 
-  return { written, alreadyWritten, failed };
+  return { written, failed };
+}
+
+// Deduplicate failed list by filename (keep last occurrence)
+function deduplicateFailed(failedList) {
+  const seen = new Map();
+  for (const f of failedList) {
+    seen.set(f.filename, f);
+  }
+  return Array.from(seen.values());
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -253,7 +264,7 @@ export default function CoreVaultPackWorkflow() {
         throw new Error('executeWrites returned invalid result: ' + JSON.stringify(writeResult));
       }
       runResult.written = writeResult.written;
-      runResult.failed = writeResult.failed || [];
+      runResult.failed = deduplicateFailed(writeResult.failed || []);
       console.log(`[CVP Workflow] Written ${runResult.written} drafts, ${runResult.failed?.length || 0} failed`);
       
       // VALIDATION: Stop if nothing written
@@ -281,23 +292,56 @@ export default function CoreVaultPackWorkflow() {
     }
   };
 
-  // ── Retry failed writes ───────────────────────────────────────────────────
+  // ── Retry all failed writes (uses existing approved backend records, no new generation) ──
   const handleRetryFailed = async () => {
     if (!summary?.failed?.length) return;
     setRunStatus('running');
     setCurrentPhase('Writing');
 
+    // Reset failed list before retry so failures don't accumulate
     const failedFilenames = new Set(summary.failed.map(f => f.filename));
     const eligible = await loadEligibleForWrite(APPROVED_FOLDERS);
     const toRetry = eligible.filter(d => failedFilenames.has(d.filename));
+
+    console.log(`[CVP Retry] Retrying ${toRetry.length} drafts from backend:`, toRetry.map(d => d.filename));
     const { written, failed } = await executeWrites(toRetry);
+
+    const uniqueFailed = deduplicateFailed(failed);
+    const newWritten = (summary.written || 0) + written;
+    const finalPhase = uniqueFailed.length === 0 ? 'Complete' : written > 0 ? 'Partial' : 'Failed';
 
     setSummary(prev => ({
       ...prev,
-      written: (prev.written || 0) + written,
-      failed: failed || [],
+      written: newWritten,
+      failed: uniqueFailed,
     }));
-    setCurrentPhase('Complete');
+    setCurrentPhase(finalPhase);
+    setRunStatus('done');
+  };
+
+  // ── Retry a single failed file ─────────────────────────────────────────────
+  const handleRetrySingle = async (filename) => {
+    setRunStatus('running');
+    setCurrentPhase('Writing');
+
+    const eligible = await loadEligibleForWrite(APPROVED_FOLDERS);
+    const toRetry = eligible.filter(d => d.filename === filename);
+
+    console.log(`[CVP Retry Single] Retrying: ${filename}`, toRetry);
+    const { written, failed } = await executeWrites(toRetry);
+
+    setSummary(prev => {
+      // Remove this filename from failed list, add back only if it failed again
+      const remainingFailed = deduplicateFailed([
+        ...(prev.failed || []).filter(f => f.filename !== filename),
+        ...failed,
+      ]);
+      const newWritten = (prev.written || 0) + written;
+      const finalPhase = remainingFailed.length === 0 ? 'Complete' : newWritten > 0 ? 'Partial' : 'Failed';
+      setCurrentPhase(finalPhase);
+      return { ...prev, written: newWritten, failed: remainingFailed };
+    });
+
     setRunStatus('done');
   };
 
@@ -451,9 +495,19 @@ export default function CoreVaultPackWorkflow() {
             {summary.failed?.length > 0 && (
               <div className="space-y-2">
                 <div className="text-[7px] font-mono text-destructive space-y-0.5">
-                  <div className="font-bold">❌ Failed (retriable): {summary.failed.length}</div>
+                  <div className="font-bold">❌ Failed (unique): {summary.failed.length}</div>
                   {summary.failed.map((s, i) => (
-                    <div key={i} className="ml-2 text-destructive/70">— {s.filename}: {s.reason}</div>
+                    <div key={i} className="ml-2 flex items-center justify-between gap-2">
+                      <span className="text-destructive/70">— {s.filename}: {s.reason}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRetrySingle(s.filename)}
+                        disabled={isRunning}
+                        className="shrink-0 px-2 py-0.5 text-[6px] font-bold uppercase border border-destructive/30 text-destructive/80 hover:bg-destructive/10 disabled:opacity-40 rounded-sm transition-colors"
+                      >
+                        <RefreshCw className="w-2 h-2 inline mr-0.5" />Retry
+                      </button>
+                    </div>
                   ))}
                 </div>
                 <button
@@ -462,7 +516,7 @@ export default function CoreVaultPackWorkflow() {
                   disabled={isRunning}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 text-destructive hover:bg-destructive/20 disabled:opacity-40 rounded-sm font-bold text-[9px] uppercase tracking-widest transition-colors"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> Retry {summary.failed.length} Failed Write(s)
+                  <RefreshCw className="w-3.5 h-3.5" /> Retry All {summary.failed.length} Failed
                 </button>
               </div>
             )}
