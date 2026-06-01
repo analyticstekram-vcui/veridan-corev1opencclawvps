@@ -48,30 +48,26 @@ const REPAIR_VERIFICATIONS = [
 
 // ── Reconciliation logic ──────────────────────────────────────────────────────
 
+// Safely check archived flag — handles both boolean true and string "true"
+function isArchived(record) {
+  return record.archived === true || record.archived === 'true';
+}
+
 function reconcile(drafts, audits, workflowSummary) {
   // ── Separate ALL archived records from active records ─────────────────────
-  // Any record with archived === true is excluded from active reconciliation.
+  // Any record with archived === true (or "true") is excluded from active reconciliation.
   // Audits are also excluded if their linked draft is archived.
 
-  const archivedDraftIds = new Set(
-    drafts
-      .filter(d => d.archived === true)
-      .map(d => d.draftId || d.id)
-      .filter(Boolean)
-  );
-  const archivedDraftEntityIds = new Set(
-    drafts
-      .filter(d => d.archived === true)
-      .map(d => d.id)
-      .filter(Boolean)
-  );
+  const archivedDrafts = drafts.filter(isArchived);
+  const archivedDraftIds = new Set(archivedDrafts.map(d => d.draftId).filter(Boolean));
+  const archivedDraftEntityIds = new Set(archivedDrafts.map(d => d.id).filter(Boolean));
 
   // Active drafts: not archived
-  const activeDrafts = drafts.filter(d => d.archived !== true);
+  const activeDrafts = drafts.filter(d => !isArchived(d));
 
   // Historical archived audits: directly archived OR linked to an archived draft
   const historicalArchivedAudits = audits.filter(a =>
-    a.archived === true ||
+    isArchived(a) ||
     (a.draftId && (archivedDraftIds.has(a.draftId) || archivedDraftEntityIds.has(a.draftId)))
   );
   const historicalArchivedAuditCount = historicalArchivedAudits.length;
@@ -532,8 +528,8 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
         loadAuditsFromBackend(500),
       ]);
 
-      const activeDrafts = allDrafts.filter(d => !d.archived);
-      const activeAudits = allAudits.filter(a => !a.archived);
+      const activeDrafts = allDrafts.filter(d => !isArchived(d));
+      const activeAudits = allAudits.filter(a => !isArchived(a));
 
       counts.recordsChecked = activeDrafts.length + activeAudits.length;
 
