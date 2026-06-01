@@ -48,9 +48,14 @@ const REPAIR_VERIFICATIONS = [
 
 // ── Reconciliation logic ──────────────────────────────────────────────────────
 
-// Safely check archived flag — handles both boolean true and string "true"
+// Safely check archived flag — handles all known variants
 function isArchived(record) {
-  return record.archived === true || record.archived === 'true';
+  if (!record) return false;
+  if (record.archived === true || record.archived === 'true') return true;
+  if (record.isArchived === true || record.isArchived === 'true') return true;
+  if (record.status === 'ARCHIVED') return true;
+  if (record.archiveStatus === 'ARCHIVED') return true;
+  return false;
 }
 
 function reconcile(drafts, audits, workflowSummary) {
@@ -472,6 +477,7 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
   const [allDrafts, setAllDrafts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [lastRefreshed, setLastRefreshed] = useState(null);
   const [showVerification, setShowVerification] = useState(false);
 
   // Repair state
@@ -502,20 +508,20 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
 
   // ── Reconcile Now ─────────────────────────────────────────────────────────
 
-  const runReconciliation = useCallback(async () => {
+  const runReconciliation = useCallback(async (label) => {
     setLoading(true);
     setError('');
     try {
-      // Always fetch fresh from backend — never reuse stale state
+      // Always fetch fresh directly from backend — 1000 record limit, no cached helpers
       const [drafts, audits] = await Promise.all([
         base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
         base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000),
       ]);
       setAllDrafts(drafts);
       const r = reconcile(drafts, audits, workflowSummary);
-      // Log diagnostic to console for debugging
-      console.log('[StorageReconciliation] Diagnostic:', r.diagnostic);
+      console.log('[StorageReconciliation] Diagnostic (archived excluded):', r.diagnostic);
       setResult(r);
+      setLastRefreshed({ ts: new Date().toLocaleTimeString(), label: label || null });
     } catch (e) {
       setError(e?.message || 'Backend read failed during reconciliation');
     }
@@ -559,12 +565,7 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
     try {
       const r = await repairIndexMetadata();
       setRepairResult(r);
-      const [drafts, audits] = await Promise.all([
-        base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
-        base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000),
-      ]);
-      setAllDrafts(drafts);
-      setResult(reconcile(drafts, audits, workflowSummary));
+      await runReconciliation('After metadata repair');
     } catch (e) {
       setRepairError(e?.message || 'Repair failed');
     }
@@ -608,12 +609,7 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
     try {
       const r = await reconcileOrphanAudits();
       setOrphanResult(r);
-      const [drafts, audits] = await Promise.all([
-        base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
-        base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000),
-      ]);
-      setAllDrafts(drafts);
-      setResult(reconcile(drafts, audits, workflowSummary));
+      await runReconciliation('After orphan reconciliation');
     } catch (e) {
       setOrphanError(e?.message || 'Orphan reconciliation failed');
     }
@@ -715,14 +711,7 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
       }
 
       setDupResult(counts);
-
-      // Refresh reconciliation — always fresh from backend
-      const [drafts, audits] = await Promise.all([
-        base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
-        base44.entities.VeridanObsidianWriteAudit.list('-created_date', 1000),
-      ]);
-      setAllDrafts(drafts);
-      setResult(reconcile(drafts, audits, workflowSummary));
+      await runReconciliation('After duplicate archive');
     } catch (e) {
       setDupError(e?.message || 'Duplicate archive failed');
     }
@@ -752,6 +741,12 @@ export default function StorageReconciliationPanel({ workflowSummary, className 
             <span className={`flex items-center gap-1 px-2 py-0.5 text-[7px] font-bold uppercase border rounded-sm ${statusBadge.cls}`}>
               <statusBadge.icon className="w-2.5 h-2.5" />
               {statusBadge.label}
+            </span>
+          )}
+          {lastRefreshed && (
+            <span className="flex items-center gap-1 px-2 py-0.5 text-[6px] font-mono text-primary/70 bg-primary/5 border border-primary/20 rounded-sm">
+              <CheckCircle2 className="w-2 h-2" />
+              {lastRefreshed.label ? `${lastRefreshed.label} · ` : ''}{lastRefreshed.ts}
             </span>
           )}
         </div>
