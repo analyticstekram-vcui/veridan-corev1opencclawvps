@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu, Plus, CheckCircle2, Shield, ArrowRight, Clock, WifiOff } from 'lucide-react';
+import { Radio, Terminal, TrendingUp, CreditCard, Briefcase, BookOpen, AlertCircle, Cpu, Plus, CheckCircle2, Shield, ArrowRight, Clock, WifiOff, BotMessageSquare } from 'lucide-react';
 import OpenClawTaskQueueItem from '../components/dashboard/OpenClawTaskQueueItem';
 import VeridanCoreBranchDashboard from '../components/dashboard/VeridanCoreBranchDashboard';
 import CurrentBuildStateCard from '../components/governance/CurrentBuildStateCard';
@@ -54,19 +54,56 @@ export default function Dashboard() {
 
       {/* Quick Navigation Section */}
       <div className="border-b border-border bg-card px-6 py-6">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-[14px] font-mono font-bold uppercase text-slate-100 tracking-wide mb-4">Quick Navigation</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-            {navItems.map(({ label, path, icon: Icon }) => (
-              <Link
-                key={path}
-                to={path}
-                className="flex flex-col items-center justify-center gap-2 px-4 py-4 bg-secondary/30 border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-colors rounded-sm text-center"
-              >
-                <Icon className="w-5 h-5 text-primary" />
-                <span className="text-[10px] font-mono font-bold uppercase text-foreground">{label}</span>
+        <div className="max-w-7xl mx-auto space-y-4">
+          <div>
+            <h2 className="text-[14px] font-mono font-bold uppercase text-slate-100 tracking-wide mb-3">Quick Navigation</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+              {navItems.map(({ label, path, icon: Icon }) => (
+                <Link
+                  key={path}
+                  to={path}
+                  className="flex flex-col items-center justify-center gap-2 px-4 py-4 bg-secondary/30 border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-colors rounded-sm text-center"
+                >
+                  <Icon className="w-5 h-5 text-primary" />
+                  <span className="text-[10px] font-mono font-bold uppercase text-foreground">{label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Obsidian / Knowledge Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[9px] font-mono font-bold uppercase text-primary/70 tracking-widest">Obsidian / Knowledge</span>
+              <span className="px-1.5 py-0.5 text-[6px] font-bold uppercase border border-primary/30 bg-primary/10 text-primary rounded-sm">NEW</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <Link to="/vault-agent"
+                className="flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/30 hover:border-primary/60 hover:bg-primary/10 transition-colors rounded-sm">
+                <BotMessageSquare className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <div className="text-[10px] font-mono font-bold uppercase text-primary">Vault Agent v1</div>
+                  <div className="text-[8px] text-slate-500 mt-0.5">AI-assisted vault analysis · governance-safe</div>
+                </div>
+                <span className="ml-auto text-[6px] font-bold uppercase border border-amber-500/30 bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded-sm shrink-0">GOVERNANCE_ASSISTED</span>
               </Link>
-            ))}
+              <Link to="/vault-file-index"
+                className="flex items-center gap-3 px-4 py-3 bg-secondary/20 border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-colors rounded-sm">
+                <BookOpen className="w-5 h-5 text-slate-400 shrink-0" />
+                <div>
+                  <div className="text-[10px] font-mono font-bold uppercase text-slate-300">Vault File Index</div>
+                  <div className="text-[8px] text-slate-500 mt-0.5">Written files · reconciliation · cleanup</div>
+                </div>
+              </Link>
+              <Link to="/obsidian-workbench-preview"
+                className="flex items-center gap-3 px-4 py-3 bg-secondary/20 border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-colors rounded-sm">
+                <BookOpen className="w-5 h-5 text-slate-400 shrink-0" />
+                <div>
+                  <div className="text-[10px] font-mono font-bold uppercase text-slate-300">Obsidian Workbench</div>
+                  <div className="text-[8px] text-slate-500 mt-0.5">Vault pack workflow · write drafts</div>
+                </div>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

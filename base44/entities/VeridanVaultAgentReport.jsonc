@@ -1,0 +1,95 @@
+{
+  "name": "VeridanVaultAgentReport",
+  "type": "object",
+  "properties": {
+    "reportId": {
+      "type": "string",
+      "description": "Unique report identifier"
+    },
+    "reportDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this report was generated"
+    },
+    "healthScore": {
+      "type": "number",
+      "description": "Vault health score 0-100"
+    },
+    "totalDrafts": {
+      "type": "number"
+    },
+    "approvedDrafts": {
+      "type": "number"
+    },
+    "pendingDrafts": {
+      "type": "number"
+    },
+    "writtenDrafts": {
+      "type": "number"
+    },
+    "archivedDrafts": {
+      "type": "number"
+    },
+    "failedWrites": {
+      "type": "number"
+    },
+    "duplicateCandidates": {
+      "type": "number"
+    },
+    "orphanCandidates": {
+      "type": "number"
+    },
+    "lastWriteTimestamp": {
+      "type": "string"
+    },
+    "missingDocCount": {
+      "type": "number"
+    },
+    "coveragePercent": {
+      "type": "number"
+    },
+    "topRisks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "domainCoverage": {
+      "type": "object",
+      "description": "Per-domain coverage breakdown"
+    },
+    "agentMode": {
+      "type": "string",
+      "enum": [
+        "GOVERNANCE_ASSISTED"
+      ],
+      "default": "GOVERNANCE_ASSISTED"
+    },
+    "executionStatus": {
+      "type": "string",
+      "default": "NOT_EXECUTED"
+    },
+    "dispatchStatus": {
+      "type": "string",
+      "default": "NOT_DISPATCHED"
+    },
+    "generatedBy": {
+      "type": "string",
+      "description": "Email of operator who generated this report"
+    }
+  },
+  "required": [
+    "reportId",
+    "reportDate",
+    "healthScore",
+    "agentMode",
+    "executionStatus",
+    "dispatchStatus"
+  ]
+}

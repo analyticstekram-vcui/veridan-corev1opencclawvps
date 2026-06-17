@@ -45,6 +45,7 @@ import ObsidianWorkbenchPreview from './pages/ObsidianWorkbenchPreview';
 import ObsidianDraftReview from './pages/ObsidianDraftReview';
 import VeridanCoreCurrentStateAudit from './pages/VeridanCoreCurrentStateAudit';
 import VaultFileIndex from './pages/VaultFileIndex';
+import VeridanVaultAgent from './pages/VeridanVaultAgent';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -113,6 +114,7 @@ const AuthenticatedApp = () => {
       <Route path="/obsidian-draft-review" element={<ObsidianDraftReview />} />
       <Route path="/veridan-core-audit" element={<VeridanCoreCurrentStateAudit />} />
       <Route path="/vault-file-index" element={<VaultFileIndex />} />
+      <Route path="/vault-agent" element={<VeridanVaultAgent />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
