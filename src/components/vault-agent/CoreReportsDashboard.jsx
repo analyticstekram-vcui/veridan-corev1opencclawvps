@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { FileText, Activity, CheckCircle2 } from 'lucide-react';
+import { FileText, Activity } from 'lucide-react';
 import Phase3SafetyStrip from './Phase3SafetyStrip';
 import BridgeStatusBadges from './BridgeStatusBadges';
 import GovernanceScorePanel from './GovernanceScorePanel';
