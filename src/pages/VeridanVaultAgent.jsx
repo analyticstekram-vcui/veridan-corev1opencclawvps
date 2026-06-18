@@ -14,7 +14,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { RefreshCw, BotMessageSquare, Database, Save, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, BotMessageSquare, Database } from 'lucide-react';
 import ModuleNav from '../components/navigation/ModuleNav';
 import { base44 } from '@/api/base44Client';
 import { computeDomainCoverage, computeHealthScore, TOTAL_EXPECTED_DOCS } from '../components/vault-agent/vaultAgentDomains';
@@ -24,6 +24,7 @@ import DomainCoverageTable from '../components/vault-agent/DomainCoverageTable';
 import MissingDocRecommendations from '../components/vault-agent/MissingDocRecommendations';
 import DailyVaultBrief from '../components/vault-agent/DailyVaultBrief';
 import VaultAgentVerification from '../components/vault-agent/VaultAgentVerification';
+import CoreReportsDashboard from '../components/vault-agent/CoreReportsDashboard';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ function computeStats(drafts, audits) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 const TABS = [
+  { id: 'core',       label: 'Core Reports' },
   { id: 'brief',      label: 'Daily Brief' },
   { id: 'health',     label: 'Health Summary' },
   { id: 'coverage',   label: 'Domain Coverage' },
@@ -98,18 +100,15 @@ const TABS = [
 ];
 
 export default function VeridanVaultAgent() {
-  const [activeTab, setActiveTab] = useState('brief');
+  const [activeTab, setActiveTab] = useState('core');
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [audits, setAudits] = useState([]);
   const [stats, setStats] = useState(null);
   const [lastRefreshed, setLastRefreshed] = useState(null);
-  const [savingReport, setSavingReport] = useState(false);
-  const [reportSaved, setReportSaved] = useState(false);
 
   const runAnalysis = useCallback(async () => {
     setLoading(true);
-    setReportSaved(false);
     try {
       const [allDrafts, allAudits] = await Promise.all([
         base44.entities.VeridanObsidianDraft.list('-created_date', 1000),
@@ -126,38 +125,6 @@ export default function VeridanVaultAgent() {
   }, []);
 
   useEffect(() => { runAnalysis(); }, [runAnalysis]);
-
-  const handleSaveReport = async () => {
-    if (!stats) return;
-    setSavingReport(true);
-    try {
-      const user = await base44.auth.me();
-      await base44.entities.VeridanVaultAgentReport.create({
-        reportId: `VAR-${Date.now().toString(36).toUpperCase()}`,
-        reportDate: new Date().toISOString().split('T')[0],
-        healthScore: stats.healthScore,
-        totalDrafts: stats.totalDrafts,
-        approvedDrafts: stats.approvedDrafts,
-        pendingDrafts: stats.pendingDrafts,
-        writtenDrafts: stats.writtenDrafts,
-        archivedDrafts: stats.archivedDrafts,
-        failedWrites: stats.failedWrites,
-        duplicateCandidates: stats.duplicateCandidates,
-        orphanCandidates: stats.orphanCandidates,
-        lastWriteTimestamp: stats.lastWriteTimestamp,
-        missingDocCount: stats.domainCoverage.reduce((a, d) => a + d.missing, 0),
-        coveragePercent: stats.coveragePct,
-        agentMode: 'GOVERNANCE_ASSISTED',
-        executionStatus: 'NOT_EXECUTED',
-        dispatchStatus: 'NOT_DISPATCHED',
-        generatedBy: user?.email || 'operator',
-      });
-      setReportSaved(true);
-    } catch (e) {
-      console.error('[VaultAgent] Report save failed:', e);
-    }
-    setSavingReport(false);
-  };
 
   // Derived data for sub-components
   const pendingDraftsList = drafts.filter(d =>
@@ -185,15 +152,15 @@ export default function VeridanVaultAgent() {
             <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
               <BotMessageSquare className="w-5 h-5 text-primary" />
               Veridan Vault Agent v1
+              <span className="text-[8px] font-mono text-slate-500 font-normal">Phase 3 · Core Integration</span>
             </h1>
             <p className="text-[9px] text-slate-400 mt-1">
-              AI-assisted knowledge vault analysis · Governance-safe · Approval-based draft creation
+              Governance-safe read-only reporting · Phase 2 report integration · Knowledge vault analysis
             </p>
             <div className="flex flex-wrap gap-1.5 mt-2">
-              {['GOVERNANCE_ASSISTED', 'NOT_EXECUTED', 'NOT_DISPATCHED', 'APPROVAL_REQUIRED'].map(chip => (
+              {['READ_ONLY', 'REPORTING_ONLY', 'NO_EXECUTION', 'OPENCLAW_DISABLED'].map(chip => (
                 <span key={chip} className={`px-2 py-0.5 text-[7px] font-bold uppercase border rounded-sm ${
-                  chip === 'GOVERNANCE_ASSISTED' ? 'border-primary/30 bg-primary/10 text-primary' :
-                  chip === 'APPROVAL_REQUIRED' ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' :
+                  chip === 'READ_ONLY' || chip === 'REPORTING_ONLY' ? 'border-primary/30 bg-primary/10 text-primary' :
                   'border-destructive/30 bg-destructive/10 text-destructive'
                 }`}>{chip}</span>
               ))}
@@ -202,21 +169,7 @@ export default function VeridanVaultAgent() {
           <div className="flex items-center gap-2 flex-wrap">
             {lastRefreshed && (
               <span className="text-[7px] font-mono text-slate-500 flex items-center gap-1">
-                <Database className="w-2.5 h-2.5" /> refreshed {lastRefreshed}
-              </span>
-            )}
-            {stats && !reportSaved && (
-              <button type="button" onClick={handleSaveReport} disabled={savingReport}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[8px] font-bold uppercase border border-slate-500/40 text-slate-400 hover:text-slate-200 hover:border-slate-400/60 rounded-sm transition-colors disabled:opacity-50">
-                {savingReport
-                  ? <><RefreshCw className="w-3 h-3 animate-spin" /> Saving…</>
-                  : <><Save className="w-3 h-3" /> Save Report</>
-                }
-              </button>
-            )}
-            {reportSaved && (
-              <span className="flex items-center gap-1 text-[8px] font-mono text-primary">
-                <CheckCircle2 className="w-3 h-3" /> Report saved
+                <Database className="w-2.5 h-2.5" /> entity data refreshed {lastRefreshed}
               </span>
             )}
             <button type="button" onClick={runAnalysis} disabled={loading}
@@ -246,6 +199,8 @@ export default function VeridanVaultAgent() {
 
       {/* Content */}
       <div className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-4">
+
+        {activeTab === 'core' && <CoreReportsDashboard />}
 
         {activeTab === 'brief' && (
           <DailyVaultBrief
