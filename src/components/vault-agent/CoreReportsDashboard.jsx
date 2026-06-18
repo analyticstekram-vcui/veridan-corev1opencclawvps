@@ -16,6 +16,7 @@ import PendingApprovalsPanel from './PendingApprovalsPanel';
 import ReviewsDuePanel from './ReviewsDuePanel';
 import OpenClawBoundaryPanel from './OpenClawBoundaryPanel';
 import RecommendedActionsPanel from './RecommendedActionsPanel';
+import Phase4MonitoringLayer from './monitoring/Phase4MonitoringLayer';
 import { getReportData } from '@/lib/vaultAgentReportAdapter';
 
 function VaultKpiStrip({ dailyBrief }) {
@@ -70,7 +71,7 @@ function DataSourceNote({ meta }) {
 export default function CoreReportsDashboard() {
   const data = getReportData();
   const { dailyBrief, pendingApprovals, reviewsDue, openclawBoundary,
-          weeklyGovernanceBrief, recommendedActions, adapterMeta } = data;
+          weeklyGovernanceBrief, recommendedActions, monitoring, adapterMeta } = data;
 
   return (
     <div className="space-y-4">
@@ -89,6 +90,8 @@ export default function CoreReportsDashboard() {
       </div>
 
       <RecommendedActionsPanel actions={recommendedActions} />
+
+      <Phase4MonitoringLayer monitoring={monitoring} />
     </div>
   );
 }

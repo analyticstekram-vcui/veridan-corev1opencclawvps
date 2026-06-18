@@ -128,11 +128,58 @@ export const MOCK_REPORT_DATA = {
     'Normalize exception records into structured EXC blocks for automation.',
   ],
 
+  // ── Phase 4: Monitoring Layer (read-only derived metrics) ──────────────────
+  // TODO: When live vault bridge is connected, compute these from real-time data.
+  monitoring: {
+    phase: 'Phase 4 Monitoring Layer',
+    dataAsOf: '2026-06-17',
+    lastRefreshTime: '2026-06-17T23:45:00Z',
+    freshnessHours: 24,
+    freshnessScore: 92,     // 0-100: how current the data is
+    freshnessStatus: 'FRESH', // FRESH | STALE | EXPIRED
+    healthScore: 91,        // composite 0-100
+    healthBreakdown: {
+      governance: 96,       // readiness score
+      coverage: 88,         // doc coverage
+      approvals: 80,        // penalised by 4 pending
+      exceptions: 100,      // 0 open = perfect
+      boundary: 95,         // conditionally compliant
+    },
+    governanceMonitor: {
+      maturityScore: 94,
+      activationScore: 86,
+      readinessScore: 96,
+      pendingApprovals: 4,
+      reviewsDue7d: 6,
+      openExceptions: 0,
+      activationGap: 10,    // readiness - activation
+      status: 'MONITORING',
+    },
+    exceptionMonitor: {
+      openCount: 0,
+      resolvedCount: 0,
+      totalHistorical: 0,
+      status: 'CLEAR',
+      note: 'No structured exceptions on record. Exception register review due 2026-06-24.',
+    },
+    openclawMonitor: {
+      mode: 'DOCUMENTATION_ONLY',
+      executionEnabled: false,
+      dispatchEnabled: false,
+      boundaryCompliant: true,
+      boundaryStatus: 'Conditionally compliant for documentation-stage operation',
+      docsPresent: 5,
+      docsRequired: 5,
+      coveragePercent: 100,
+    },
+  },
+
   // Adapter metadata
   adapterMeta: {
     mode: 'MOCK',
     // TODO: Change to 'LIVE' when vault bridge is connected
     dataAsOf: '2026-06-17',
+    currentPhase: 'Phase 4 Monitoring Layer',
     localVaultPath: 'C:\\Users\\peter\\OneDrive\\Desktop\\obsidians\\veridans mind',
     safetyMode: 'READ_ONLY',
     executionStatus: 'NOT_EXECUTED',
