@@ -53,7 +53,7 @@ function sanitizeMarkdown(markdown) {
 function parseNumber(markdown, patterns, fallback = 0) {
   for (const pattern of patterns) {
     const match = markdown.match(pattern);
-    if (match) {
+    if (match?.[1]) {
       const value = Number(String(match[1]).replace(/,/g, ''));
       if (Number.isFinite(value)) return value;
     }
@@ -64,7 +64,7 @@ function parseNumber(markdown, patterns, fallback = 0) {
 function parseDate(markdown, patterns, fallback = '2026-06-17') {
   for (const pattern of patterns) {
     const match = markdown.match(pattern);
-    if (match) return match[1];
+    if (match?.[1]) return match[1];
   }
   return fallback;
 }
@@ -109,7 +109,7 @@ function parsePendingApprovalRows(markdown) {
 function parseReviewsDue(markdown) {
   const dueDate = parseDate(markdown, [
     /Due Within 7 Days[\s\S]*?(\d{4}-\d{2}-\d{2})/i,
-    /2026-06-24/,
+    /(2026-06-24)/,
   ], '2026-06-24');
 
   const knownTitles = [
@@ -199,53 +199,26 @@ export async function parseVaultAgentReports() {
   const lastRefreshTime = extractLastRefresh(allMarkdown);
   const freshness = computeFreshness(lastRefreshTime);
 
-  const notes = parseNumber(joined, [
-    /Total Notes\D+(\d+)/i,
-    /Notes\D+(\d+)/i,
-  ], 70);
+  const notes = parseNumber(joined, [/Total Notes\D+(\d+)/i, /Notes\D+(\d+)/i], 70);
+  const links = parseNumber(joined, [/Wiki-?links\D+(\d+)/i, /Total Wiki-?links\D+(\d+)/i], 1228);
+  const pendingApprovalsCount = parseNumber(joined, [/Pending Approvals\D+(\d+)/i], 4);
+  const dueWithin7Days = parseNumber(joined, [/Due Within 7 Days\D+(\d+)/i, /Reviews Due \(7d\)\D+(\d+)/i], 6);
+  const openExceptions = parseNumber(joined, [/Open Exceptions\D+(\d+)/i], 0);
+  const governanceReadiness = parseNumber(joined, [/Governance Readiness Score\D+(\d+)/i, /Readiness Score\D+(\d+)/i], 96);
+  const governanceActivation = parseNumber(joined, [/Governance Activation Score\D+(\d+)/i, /Activation Score\D+(\d+)/i], 86);
+  const governanceMaturity = parseNumber(joined, [/Governance Maturity Score\D+(\d+)/i, /Maturity Score\D+(\d+)/i], 94);
 
-  const links = parseNumber(joined, [
-    /Wiki-?links\D+(\d+)/i,
-    /Total Wiki-?links\D+(\d+)/i,
-  ], 1228);
-
-  const pendingApprovalsCount = parseNumber(joined, [
-    /Pending Approvals\D+(\d+)/i,
-  ], 4);
-
-  const dueWithin7Days = parseNumber(joined, [
-    /Due Within 7 Days\D+(\d+)/i,
-    /Reviews Due \(7d\)\D+(\d+)/i,
-  ], 6);
-
-  const openExceptions = parseNumber(joined, [
-    /Open Exceptions\D+(\d+)/i,
-  ], 0);
-
-  const governanceReadiness = parseNumber(joined, [
-    /Governance Readiness Score\D+(\d+)/i,
-    /Readiness Score\D+(\d+)/i,
-  ], 96);
-
-  const governanceActivation = parseNumber(joined, [
-    /Governance Activation Score\D+(\d+)/i,
-    /Activation Score\D+(\d+)/i,
-  ], 86);
-
-  const governanceMaturity = parseNumber(joined, [
-    /Governance Maturity Score\D+(\d+)/i,
-    /Maturity Score\D+(\d+)/i,
-  ], 94);
-
-  const pendingApprovals = parsePendingApprovalRows(approvals);
-  const normalizedPendingApprovals = pendingApprovals.length > 0 ? pendingApprovals : [
+  const parsedApprovals = parsePendingApprovalRows(approvals);
+  const pendingApprovalRecords = parsedApprovals.length > 0 ? parsedApprovals : [
     { id: 'GOV-20260617-002', title: 'Governance Activation Matrix', status: 'Pending Approval', approver: 'Veridan Governance Authority' },
     { id: 'GOV-20260617-004', title: 'Governance Evidence Register', status: 'Pending Approval', approver: 'Veridan Governance Authority' },
     { id: 'GOV-20260617-006', title: 'Governance Charter', status: 'Pending Approval', approver: 'Veridan Governance Authority' },
     { id: 'GOV-20260617-008', title: 'Emergency Shutdown Policy', status: 'Pending Approval', approver: 'Veridan Governance Authority' },
   ];
 
+  const pendingApprovalTotal = pendingApprovalRecords.length || pendingApprovalsCount;
   const reviewsDue = parseReviewsDue(reviews);
+  const reviewsDueTotal = reviewsDue.length || dueWithin7Days;
   const wikiLinks = parseWikiLinks(joined);
   const vaultHealthScore = Math.round((governanceReadiness + governanceActivation + freshness.freshnessScore) / 3);
 
@@ -261,9 +234,9 @@ export async function parseVaultAgentReports() {
     tradingEnabled: false,
     notes,
     links,
-    pendingApprovals: normalizedPendingApprovals.length || pendingApprovalsCount,
-    pendingApprovalsCount: normalizedPendingApprovals.length || pendingApprovalsCount,
-    dueWithin7Days: reviewsDue.length || dueWithin7Days,
+    pendingApprovalsTotal: pendingApprovalTotal,
+    pendingApprovalsCount: pendingApprovalTotal,
+    dueWithin7Days: reviewsDueTotal,
     openExceptions,
     governanceReadiness,
     governanceActivation,
@@ -282,8 +255,8 @@ export async function parseVaultAgentReports() {
       governanceMaturityScore: governanceMaturity,
       governanceActivationScore: governanceActivation,
       governanceReadinessScore: governanceReadiness,
-      pendingApprovalsCount: normalizedPendingApprovals.length || pendingApprovalsCount,
-      reviewsDueWithin7Days: reviewsDue.length || dueWithin7Days,
+      pendingApprovalsCount: pendingApprovalTotal,
+      reviewsDueWithin7Days: reviewsDueTotal,
       openExceptions,
       openclawBoundaryStatus: 'Conditionally compliant for documentation-stage operation',
       openclawDocs: [
@@ -295,7 +268,7 @@ export async function parseVaultAgentReports() {
       ],
     },
 
-    pendingApprovals: normalizedPendingApprovals,
+    pendingApprovals: pendingApprovalRecords,
     reviewsDue,
 
     openclawBoundary: {
@@ -336,7 +309,7 @@ export async function parseVaultAgentReports() {
       healthBreakdown: {
         governance: governanceReadiness,
         coverage: 88,
-        approvals: normalizedPendingApprovals.length > 0 ? 80 : 100,
+        approvals: pendingApprovalTotal > 0 ? 80 : 100,
         exceptions: openExceptions === 0 ? 100 : 70,
         boundary: 95,
       },
@@ -344,8 +317,8 @@ export async function parseVaultAgentReports() {
         maturityScore: governanceMaturity,
         activationScore: governanceActivation,
         readinessScore: governanceReadiness,
-        pendingApprovals: normalizedPendingApprovals.length || pendingApprovalsCount,
-        reviewsDue7d: reviewsDue.length || dueWithin7Days,
+        pendingApprovals: pendingApprovalTotal,
+        reviewsDue7d: reviewsDueTotal,
         openExceptions,
         activationGap: Math.max(0, governanceReadiness - governanceActivation),
         status: 'MONITORING',
@@ -409,6 +382,18 @@ export function verifyBridgePayloadShape(payload) {
     ['brokerEnabled', payload.brokerEnabled === false],
     ['bankingEnabled', payload.bankingEnabled === false],
     ['tradingEnabled', payload.tradingEnabled === false],
+    ['notes', typeof payload.notes === 'number'],
+    ['links', typeof payload.links === 'number'],
+    ['pendingApprovalsTotal', typeof payload.pendingApprovalsTotal === 'number'],
+    ['dueWithin7Days', typeof payload.dueWithin7Days === 'number'],
+    ['openExceptions', typeof payload.openExceptions === 'number'],
+    ['governanceReadiness', typeof payload.governanceReadiness === 'number'],
+    ['governanceActivation', typeof payload.governanceActivation === 'number'],
+    ['vaultHealthScore', typeof payload.vaultHealthScore === 'number'],
+    ['freshnessScore', typeof payload.freshnessScore === 'number'],
+    ['freshnessStatus', typeof payload.freshnessStatus === 'string'],
+    ['generatedAt', typeof payload.generatedAt === 'string'],
+    ['lastRefreshTime', typeof payload.lastRefreshTime === 'string'],
     ['dailyBrief', Boolean(payload.dailyBrief)],
     ['weeklyGovernanceBrief', Boolean(payload.weeklyGovernanceBrief)],
     ['pendingApprovals', Array.isArray(payload.pendingApprovals)],
