@@ -1,23 +1,24 @@
 /**
  * CoreReportsDashboard.jsx
- * Phase 3 — Veridan Core Integration
+ * Phase 5 — Live Read-Only Bridge Integration
  *
- * Read-only dashboard panel presenting Vault Agent Phase 2 report data.
- * Data source: vaultAgentReportAdapter (mock with TODO for live bridge).
+ * Read-only dashboard panel presenting Vault Agent report data.
+ * Data source: localhost GET-only bridge when verified, mock fallback otherwise.
  *
  * SAFETY: READ_ONLY · REPORTING_ONLY · NO_EXECUTION · NO_DISPATCH
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FileText, Activity, CheckCircle2 } from 'lucide-react';
 import Phase3SafetyStrip from './Phase3SafetyStrip';
+import BridgeStatusBadges from './BridgeStatusBadges';
 import GovernanceScorePanel from './GovernanceScorePanel';
 import PendingApprovalsPanel from './PendingApprovalsPanel';
 import ReviewsDuePanel from './ReviewsDuePanel';
 import OpenClawBoundaryPanel from './OpenClawBoundaryPanel';
 import RecommendedActionsPanel from './RecommendedActionsPanel';
 import Phase4MonitoringLayer from './monitoring/Phase4MonitoringLayer';
-import { getReportData } from '@/lib/vaultAgentReportAdapter';
+import { getVaultAgentMockFallbackData, loadVaultAgentReportData } from '@/lib/vaultAgentLiveAdapter';
 
 function VaultKpiStrip({ dailyBrief }) {
   const kpis = [
@@ -52,6 +53,8 @@ function VaultKpiStrip({ dailyBrief }) {
 }
 
 function DataSourceNote({ meta }) {
+  const isLive = meta.mode === 'LIVE_READ_ONLY';
+
   return (
     <div className="flex items-center gap-2 px-3 py-2 border border-border/30 bg-card/40 rounded-sm text-[7px] font-mono text-slate-500">
       <FileText className="w-3 h-3 shrink-0 text-slate-600" />
@@ -60,8 +63,10 @@ function DataSourceNote({ meta }) {
         {' · '}As of: <span className="text-slate-300">{meta.dataAsOf}</span>
         {' · '}Local vault: <span className="text-slate-500 italic">{meta.localVaultPath}</span>
         {' · '}
-        <span className="text-amber-400">
-          TODO: Connect live vault bridge to replace mock data when local vault is accessible from server environment.
+        <span className={isLive ? 'text-primary' : 'text-amber-400'}>
+          {isLive
+            ? 'Live bridge verified: localhost GET-only reporting data accepted.'
+            : 'Mock fallback active: live bridge unavailable or rejected by safety verification.'}
         </span>
       </span>
     </div>
@@ -69,13 +74,27 @@ function DataSourceNote({ meta }) {
 }
 
 export default function CoreReportsDashboard() {
-  const data = getReportData();
+  const [data, setData] = useState(() => getVaultAgentMockFallbackData());
+
+  useEffect(() => {
+    let mounted = true;
+
+    loadVaultAgentReportData().then(nextData => {
+      if (mounted) setData(nextData);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const { dailyBrief, pendingApprovals, reviewsDue, openclawBoundary,
-          weeklyGovernanceBrief, recommendedActions, monitoring, adapterMeta } = data;
+          weeklyGovernanceBrief, recommendedActions, monitoring, adapterMeta, bridgeStatus } = data;
 
   return (
     <div className="space-y-4">
       <Phase3SafetyStrip adapterMode={adapterMeta.mode} />
+      <BridgeStatusBadges bridgeStatus={bridgeStatus} />
       <DataSourceNote meta={adapterMeta} />
       <VaultKpiStrip dailyBrief={dailyBrief} />
 
