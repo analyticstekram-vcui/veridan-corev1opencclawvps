@@ -42,38 +42,36 @@ const REQUIRED_SAFETY_META = {
   bankAccess: 'DISABLED',
 };
 
-const FORBIDDEN_SIGNAL_KEYS = [
-  'write',
-  'writes',
-  'writer',
-  'mutation',
-  'mutations',
-  'create',
-  'created',
-  'update',
-  'updated',
-  'delete',
-  'deleted',
-  'remove',
-  'removed',
-  'approve',
-  'approvalMutation',
-  'activate',
-  'activation',
-  'execute',
-  'execution',
-  'dispatch',
-  'trade',
-  'trading',
-  'broker',
-  'bank',
-  'banking',
-  'openclawExecution',
-  'databaseWrite',
-  'dbWrite',
-  'scheduler',
-  'automation',
-];
+const FORBIDDEN_ACTION_KEYS = new Set([
+  'writeenabled',
+  'canwrite',
+  'vaultwriteenabled',
+  'entitywriteenabled',
+  'databasewriteenabled',
+  'databasewrites',
+  'dbwrite',
+  'mutationenabled',
+  'mutationsenabled',
+  'createenabled',
+  'updateenabled',
+  'deleteenabled',
+  'removeenabled',
+  'approveenabled',
+  'approvalmutation',
+  'activateenabled',
+  'activationenabled',
+  'governanceactivation',
+  'executeenabled',
+  'executionenabled',
+  'dispatchenabled',
+  'tradingenabled',
+  'brokeraccess',
+  'bankaccess',
+  'bankingaccess',
+  'openclawexecution',
+  'schedulerenabled',
+  'automationenabled',
+]);
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -84,22 +82,21 @@ function isDisabledValue(value) {
   return DISABLED_VALUES.has(value);
 }
 
-function hasUnsafeSignal(value, path = []) {
+function hasUnsafeSignal(value) {
   if (Array.isArray(value)) {
-    return value.some((entry, index) => hasUnsafeSignal(entry, [...path, String(index)]));
+    return value.some(entry => hasUnsafeSignal(entry));
   }
 
   if (!isPlainObject(value)) return false;
 
   return Object.entries(value).some(([key, child]) => {
     const normalizedKey = key.toLowerCase();
-    const matchesForbiddenKey = FORBIDDEN_SIGNAL_KEYS.some(signal => normalizedKey.includes(signal.toLowerCase()));
 
-    if (matchesForbiddenKey && !isDisabledValue(child)) {
+    if (FORBIDDEN_ACTION_KEYS.has(normalizedKey) && !isDisabledValue(child)) {
       return true;
     }
 
-    return hasUnsafeSignal(child, [...path, key]);
+    return hasUnsafeSignal(child);
   });
 }
 
