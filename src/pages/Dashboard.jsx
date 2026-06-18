@@ -82,10 +82,10 @@ export default function Dashboard() {
                 className="flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/30 hover:border-primary/60 hover:bg-primary/10 transition-colors rounded-sm">
                 <BotMessageSquare className="w-5 h-5 text-primary shrink-0" />
                 <div>
-                  <div className="text-[10px] font-mono font-bold uppercase text-primary">Vault Agent v1</div>
-                  <div className="text-[8px] text-slate-500 mt-0.5">AI-assisted vault analysis · governance-safe</div>
+                  <div className="text-[10px] font-mono font-bold uppercase text-primary">Vault Agent</div>
+                  <div className="text-[8px] text-slate-500 mt-0.5">Read-only reporting · Phase 3 core integration</div>
                 </div>
-                <span className="ml-auto text-[6px] font-bold uppercase border border-amber-500/30 bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded-sm shrink-0">GOVERNANCE_ASSISTED</span>
+                <span className="ml-auto text-[6px] font-bold uppercase border border-primary/30 bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm shrink-0">READ_ONLY</span>
               </Link>
               <Link to="/vault-file-index"
                 className="flex items-center gap-3 px-4 py-3 bg-secondary/20 border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-colors rounded-sm">
