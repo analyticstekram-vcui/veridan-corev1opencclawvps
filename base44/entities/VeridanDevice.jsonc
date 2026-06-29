@@ -1,0 +1,49 @@
+{
+  "name": "VeridanDevice",
+  "type": "object",
+  "properties": {
+    "deviceToken": {
+      "type": "string",
+      "description": "APNs device token (hex string from iOS app)"
+    },
+    "bundleId": {
+      "type": "string",
+      "description": "iOS bundle ID (e.g. com.veridan.alerts)"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "sandbox",
+        "production"
+      ],
+      "default": "sandbox",
+      "description": "APNs environment this token is valid for"
+    },
+    "userId": {
+      "type": "string",
+      "description": "Base44 user ID who registered this device"
+    },
+    "registeredAt": {
+      "type": "string",
+      "description": "ISO timestamp of initial registration"
+    },
+    "updatedAt": {
+      "type": "string",
+      "description": "ISO timestamp of last update"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this device should receive alerts"
+    },
+    "label": {
+      "type": "string",
+      "description": "Optional friendly label (e.g. My iPhone)"
+    }
+  },
+  "required": [
+    "deviceToken",
+    "bundleId",
+    "environment"
+  ]
+}

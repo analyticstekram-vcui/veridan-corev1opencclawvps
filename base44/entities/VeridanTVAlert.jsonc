@@ -1,0 +1,63 @@
+{
+  "name": "VeridanTVAlert",
+  "type": "object",
+  "properties": {
+    "ticker": {
+      "type": "string",
+      "description": "Symbol/ticker from TradingView"
+    },
+    "alertType": {
+      "type": "string",
+      "description": "Alert type or strategy signal name"
+    },
+    "price": {
+      "type": "string",
+      "description": "Price at time of alert"
+    },
+    "interval": {
+      "type": "string",
+      "description": "Chart interval (e.g. 15m, 1H, 1D)"
+    },
+    "message": {
+      "type": "string",
+      "description": "Alert message body"
+    },
+    "rawPayload": {
+      "type": "string",
+      "description": "Full raw JSON payload from TradingView (stringified)"
+    },
+    "receivedAt": {
+      "type": "string",
+      "description": "ISO timestamp when alert was received"
+    },
+    "pushStatus": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "SENT",
+        "FAILED",
+        "DRY_RUN_SKIPPED"
+      ],
+      "default": "DRY_RUN_SKIPPED",
+      "description": "APNs push delivery status"
+    },
+    "pushError": {
+      "type": "string",
+      "description": "Error message if push failed"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "default": true,
+      "description": "True if push was skipped due to dry-run mode"
+    },
+    "devicesTargeted": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of registered devices targeted"
+    }
+  },
+  "required": [
+    "receivedAt",
+    "pushStatus"
+  ]
+}
