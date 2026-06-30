@@ -46,6 +46,7 @@ import ObsidianDraftReview from './pages/ObsidianDraftReview';
 import VeridanCoreCurrentStateAudit from './pages/VeridanCoreCurrentStateAudit';
 import VaultFileIndex from './pages/VaultFileIndex';
 import VeridanVaultAgent from './pages/VeridanVaultAgent';
+import TradingAlertNotifications from './pages/TradingAlertNotifications';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -115,6 +116,7 @@ const AuthenticatedApp = () => {
       <Route path="/veridan-core-audit" element={<VeridanCoreCurrentStateAudit />} />
       <Route path="/vault-file-index" element={<VaultFileIndex />} />
       <Route path="/vault-agent" element={<VeridanVaultAgent />} />
+      <Route path="/trading-alert-notifications" element={<TradingAlertNotifications />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
