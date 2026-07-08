@@ -1,39 +1,46 @@
-**Welcome to your Base44 project** 
+# Veridan Core v1
 
-**About**
+Veridan Core is the orchestration layer for the Tekram Analytics AI ecosystem.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+It is designed to sit between the human interface, currently ChatGPT, and the execution network made of agents, MCP servers, apps, widgets, APIs, and automation workflows.
 
-This project contains everything you need to run your app locally.
+## System model
 
-**Edit the code in your local development environment**
-
-Any change pushed to the repo will also be reflected in the Base44 Builder.
-
-**Prerequisites:** 
-
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
-
-```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
+```text
+User
+  -> ChatGPT Interface
+    -> Veridan Core Router
+      -> Agent Hub
+      -> MCP Hub
+      -> Memory Hub
+      -> Automation Engine
+        -> External Services
 ```
 
-Run the app: `npm run dev`
+## Phase 1 goal
 
-**Publish your changes**
+Create a working foundation that can:
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+1. Register agents.
+2. Register MCP servers and external tool bridges.
+3. Route a user command to the right agent.
+4. Track capabilities and permissions.
+5. Prepare the system for automation, memory, and dashboard interfaces.
 
-**Docs & Support**
+## Core modules
 
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
+- `core/router.json` - command routing rules.
+- `core/agent-registry.json` - known agents and their capabilities.
+- `core/mcp-registry.json` - known MCP servers and tool bridges.
+- `core/system-manifest.json` - top-level system identity and operating principles.
+- `agents/` - agent definitions.
+- `mcp/` - MCP connector definitions.
+- `docs/` - architecture and operating notes.
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+## Current interface
+
+ChatGPT is the primary interface. Veridan Core is the system layer. Agents are the executors. MCP servers are the bridges to tools and services.
+
+## Safety rule for trading
+
+Trading-related agents may analyze, prepare, and explain trades. Actual order execution should require explicit user confirmation and permission boundaries.
