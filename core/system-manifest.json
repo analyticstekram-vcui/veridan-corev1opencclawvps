@@ -1,0 +1,24 @@
+{
+  "system": "Veridan Core",
+  "version": "1.0.0-alpha",
+  "organization": "Tekram Analytics",
+  "primary_interface": "ChatGPT",
+  "role": "AI orchestration layer",
+  "description": "Coordinates agents, MCP servers, memory, apps, widgets, APIs, and automation workflows.",
+  "operating_model": {
+    "interface": "ChatGPT receives natural language commands from the user.",
+    "router": "Veridan Core interprets intent and selects the correct execution path.",
+    "agents": "Specialized executors perform analysis, coding, research, trading preparation, and automation tasks.",
+    "mcps": "MCP servers expose external tools and data sources through standardized bridges.",
+    "memory": "Knowledge, strategies, notes, journals, and project state are persisted for later use.",
+    "automation": "Scheduled or event-triggered workflows coordinate agents and tools."
+  },
+  "principles": [
+    "ChatGPT is the conversational interface, not the whole system.",
+    "Veridan Core is the orchestration system.",
+    "Agents execute specialized tasks.",
+    "MCP servers bridge tools and data.",
+    "High-risk actions require explicit permission boundaries."
+  ],
+  "status": "foundation_started"
+}
