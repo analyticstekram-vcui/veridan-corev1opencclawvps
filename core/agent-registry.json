@@ -1,0 +1,51 @@
+{
+  "registry_type": "agent_registry",
+  "version": "1.0.0-alpha",
+  "agents": [
+    {
+      "id": "trading-agent",
+      "name": "Trading Agent",
+      "purpose": "Analyze markets, evaluate trading setups, prepare trade plans, and coordinate with approved trading tools.",
+      "status": "planned",
+      "capabilities": ["market_analysis", "options_analysis", "risk_review", "trade_plan_preparation"],
+      "allowed_mcp_ids": ["tradingview-mcp", "robinhood-connector"],
+      "permission_level": "requires_confirmation_for_execution"
+    },
+    {
+      "id": "research-agent",
+      "name": "Research Agent",
+      "purpose": "Gather, summarize, and compare information from public and private sources.",
+      "status": "planned",
+      "capabilities": ["web_research", "source_synthesis", "market_research", "company_research"],
+      "allowed_mcp_ids": ["github-connector", "tradingview-mcp"],
+      "permission_level": "read_only_by_default"
+    },
+    {
+      "id": "coding-agent",
+      "name": "Coding Agent",
+      "purpose": "Inspect repositories, propose changes, edit code, and support deployment workflows.",
+      "status": "planned",
+      "capabilities": ["repo_inspection", "code_generation", "debugging", "documentation"],
+      "allowed_mcp_ids": ["github-connector"],
+      "permission_level": "write_with_user_direction"
+    },
+    {
+      "id": "automation-agent",
+      "name": "Automation Agent",
+      "purpose": "Run scheduled and event-triggered workflows across agents and tools.",
+      "status": "planned",
+      "capabilities": ["scheduling", "event_monitoring", "workflow_dispatch"],
+      "allowed_mcp_ids": ["gmail-connector", "calendar-connector", "github-connector"],
+      "permission_level": "bounded_automation"
+    },
+    {
+      "id": "memory-agent",
+      "name": "Memory Agent",
+      "purpose": "Maintain project knowledge, strategy notes, trading journal entries, and system documentation.",
+      "status": "planned",
+      "capabilities": ["knowledge_capture", "retrieval", "summarization", "documentation"],
+      "allowed_mcp_ids": [],
+      "permission_level": "internal_only"
+    }
+  ]
+}
