@@ -1,0 +1,70 @@
+name: Veridan VPS Deploy
+
+# Disabled by filename. Rename to veridan-vps-deploy.yml only after:
+# - A dedicated least-privilege VPS deployment key is created.
+# - GitHub Actions secrets are configured.
+# - The production environment requires owner approval.
+# - The deployment branch strategy is approved.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to deploy
+        required: true
+        default: infra/vps-deployment
+
+concurrency:
+  group: veridan-vps-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Veridan Core to VPS
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.VERIDAN_VPS_DEPLOY_KEY }}" > ~/.ssh/veridan_vps_deploy_key
+          chmod 600 ~/.ssh/veridan_vps_deploy_key
+          ssh-keyscan -p "${{ secrets.VERIDAN_VPS_SSH_PORT }}" "${{ secrets.VERIDAN_VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy over SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/veridan_vps_deploy_key \
+            -p "${{ secrets.VERIDAN_VPS_SSH_PORT }}" \
+            -o IdentitiesOnly=yes \
+            "${{ secrets.VERIDAN_VPS_USER }}@${{ secrets.VERIDAN_VPS_HOST }}" \
+            'set -euo pipefail
+             cd /home/peter/veridan/veridan-os
+             git fetch origin
+             git checkout "${{ inputs.ref }}"
+             git pull --ff-only origin "${{ inputs.ref }}"
+             docker compose build
+             docker compose up -d
+             docker compose ps
+             curl -fsS http://127.0.0.1:8080/health
+            '
+
+      - name: Verify health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/veridan_vps_deploy_key \
+            -p "${{ secrets.VERIDAN_VPS_SSH_PORT }}" \
+            -o IdentitiesOnly=yes \
+            "${{ secrets.VERIDAN_VPS_USER }}@${{ secrets.VERIDAN_VPS_HOST }}" \
+            'curl -fsS http://127.0.0.1:8080/health && docker inspect veridan-core-web --format "{{.State.Health.Status}}" | grep -x healthy'
