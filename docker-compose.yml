@@ -1,0 +1,21 @@
+services:
+  veridan-core-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: veridan-core-web:local
+    container_name: veridan-core-web
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:8080:8080
+    healthcheck:
+      test: [CMD, wget, -qO-, http://127.0.0.1:8080/health]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 3
